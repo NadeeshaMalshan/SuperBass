@@ -118,7 +118,7 @@ Recommended Worker
 
 ---
 
-## 🎯 Vision
+## 👁️ Vision
 
 To make finding trusted local workers easier, faster, and smarter for people across Sri Lanka.
 
