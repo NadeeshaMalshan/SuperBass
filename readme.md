@@ -142,7 +142,7 @@ To make finding trusted local workers easier, faster, and smarter for people acr
 * Worker availability
 * AI-assisted service requests
 
----
+----
 
 ## 🤝 Contributing
 
