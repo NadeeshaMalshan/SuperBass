@@ -1,0 +1,6 @@
+@Superbass_HostAddress = http://localhost:5237
+
+GET {{Superbass_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
