@@ -1,111 +1,138 @@
+/* Material Design 3 & Design Tokens for SuperBass */
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  --md-sys-color-primary: #FDC101;
+  --md-sys-color-on-primary: #18181b;
+  --md-sys-color-primary-container: #fef3c7;
+  --md-sys-color-on-primary-container: #78350f;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  --md-sys-color-surface: #ffffff;
+  --md-sys-color-on-surface: #0f172a;
+  --md-sys-color-surface-variant: #f1f5f9;
+  --md-sys-color-on-surface-variant: #475569;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --md-sys-color-outline: #cbd5e1;
+  --md-sys-color-outline-variant: #e2e8f0;
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+  --brand-yellow: #FDC101;
+  --brand-yellow-hover: #d97706;
+  --brand-yellow-light: #fffbeb;
+  --brand-yellow-glow: rgba(245, 158, 11, 0.28);
+
+  --font-heading: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --bg-gradient: radial-gradient(circle at 50% 0%, rgba(245, 158, 11, 0.08) 0%, rgba(255, 255, 255, 0) 50%),
+    radial-gradient(circle at 80% 20%, rgba(245, 158, 11, 0.04) 0%, rgba(255, 255, 255, 0) 40%);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
+    --md-sys-color-surface: #0b0f17;
+    --md-sys-color-on-surface: #f8fafc;
+    --md-sys-color-surface-variant: #1e293b;
+    --md-sys-color-on-surface-variant: #94a3b8;
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
+    --md-sys-color-outline: #334155;
+    --md-sys-color-outline-variant: #1e293b;
+
+    --brand-yellow: #fbbf24;
+    --brand-yellow-hover: #f59e0b;
+    --brand-yellow-light: rgba(251, 191, 36, 0.12);
+    --brand-yellow-glow: rgba(251, 191, 36, 0.22);
+
+    --bg-gradient: radial-gradient(circle at 50% 0%, rgba(245, 158, 11, 0.12) 0%, rgba(11, 15, 23, 0) 60%),
+      radial-gradient(circle at 80% 20%, rgba(251, 191, 36, 0.06) 0%, rgba(11, 15, 23, 0) 45%);
   }
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 body {
-  margin: 0;
+  font-family: var(--font-body);
+  background-color: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  background-image: var(--bg-gradient);
+  background-repeat: no-repeat;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
 #root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  box-sizing: border-box;
+  width: 100%;
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+a {
+  color: inherit;
+  text-decoration: none;
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
+button {
+  font-family: inherit;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
+/* Material Symbols alignment */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  vertical-align: middle;
   display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+/* Custom M3 button styles for the Hero CTA and Header */
+md-filled-button.hero-cta-button {
+  --md-filled-button-container-color: var(--brand-yellow);
+  --md-filled-button-label-text-color: #111827;
+  --md-filled-button-hover-container-color: var(--brand-yellow-hover);
+  --md-filled-button-focus-container-color: var(--brand-yellow-hover);
+  --md-filled-button-container-shape: 9999px;
+  --md-filled-button-container-height: 56px;
+  --md-filled-button-label-text-font: var(--font-heading);
+  --md-filled-button-label-text-size: 1.15rem;
+  --md-filled-button-label-text-weight: 700;
+  --md-filled-button-leading-space: 48px;
+  --md-filled-button-trailing-space: 48px;
+  --md-filled-button-with-trailing-icon-leading-space: 44px;
+  --md-filled-button-with-trailing-icon-trailing-space: 40px;
+  min-width: 210px;
+  margin: 16px auto 36px;
+  display: inline-flex;
+  justify-content: center;
+  box-shadow: 0 10px 25px -5px var(--brand-yellow-glow), 0 4px 10px -3px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+md-filled-button.hero-cta-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 30px -5px var(--brand-yellow-glow), 0 8px 16px -4px rgba(0, 0, 0, 0.1);
+}
+
+md-filled-button.hero-cta-button:active {
+  transform: translateY(0);
+}
+
+md-outlined-button.hero-secondary-button {
+  --md-outlined-button-outline-color: var(--md-sys-color-outline);
+  --md-outlined-button-label-text-color: var(--md-sys-color-on-surface);
+  --md-outlined-button-container-shape: 9999px;
+  --md-outlined-button-container-height: 56px;
+  --md-outlined-button-label-text-font: var(--font-heading);
+  --md-outlined-button-label-text-size: 1rem;
+  --md-outlined-button-label-text-weight: 600;
+  --md-outlined-button-leading-space: 32px;
+  --md-outlined-button-trailing-space: 32px;
+  margin: 12px 8px;
+  cursor: pointer;
 }
