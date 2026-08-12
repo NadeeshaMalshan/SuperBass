@@ -117,6 +117,41 @@ export default function App() {
         </div>
 
       </main>
+
+      {/* Black Background Banner Section */}
+      <section className="black-banner-section">
+        <div className="black-banner-container">
+          <p className="black-banner-text">
+            Find reliable local workers for home repairs, maintenance, and everyday services - all in one simple platform.
+          </p>
+
+          {/* 3x3 Workers Minimalist Grid */}
+          <div className="workers-grid-3x3">
+            {[
+              { id: 'electrician', icon: 'fa-solid fa-bolt', title: 'Electrician' },
+              { id: 'plumber', icon: 'fa-solid fa-faucet-drip', title: 'Plumber' },
+              { id: 'carpenter', icon: 'fa-solid fa-hammer', title: 'Carpenter' },
+              { id: 'mason', icon: 'fa-solid fa-trowel-bricks', title: 'Mason' },
+              { id: 'painter', icon: 'fa-solid fa-paint-roller', title: 'Painter' },
+              { id: 'ac-tech', icon: 'fa-solid fa-snowflake', title: 'AC Repair' },
+              { id: 'roofing', icon: 'fa-solid fa-house-chimney', title: 'Roofing' },
+              { id: 'appliances', icon: 'fa-solid fa-screwdriver-wrench', title: 'Appliance Repair' },
+              { id: 'cctv', icon: 'fa-solid fa-video', title: 'CCTV & Security' }
+            ].map((worker) => (
+              <div key={worker.id} className="worker-item">
+                <div className="worker-icon-frame">
+                  <span className="corner top-left"></span>
+                  <span className="corner top-right"></span>
+                  <span className="corner bottom-left"></span>
+                  <span className="corner bottom-right"></span>
+                  <i className={worker.icon}></i>
+                </div>
+                <span className="worker-name">{worker.title}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
