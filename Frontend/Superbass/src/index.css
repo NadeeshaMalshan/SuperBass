@@ -37,8 +37,6 @@ body {
   font-family: var(--font-body);
   background-color: var(--md-sys-color-surface);
   color: var(--md-sys-color-on-surface);
-  background-image: var(--bg-gradient);
-  background-repeat: no-repeat;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
