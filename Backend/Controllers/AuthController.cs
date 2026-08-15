@@ -41,6 +41,7 @@ namespace Superbass.Controllers
             string? sub = null;
             string? email = null;
             string? name = null;
+            string? picture = null;
 
             // 1. Try validating as JWT ID Token (if token format has 3 parts separated by dots)
             if (tokenToValidate.Split('.').Length == 3)
@@ -51,6 +52,7 @@ namespace Superbass.Controllers
                     sub = payload.Subject;
                     email = payload.Email;
                     name = payload.Name;
+                    picture = payload.Picture;
                 }
                 catch (InvalidJwtException)
                 {
@@ -77,6 +79,7 @@ namespace Superbass.Controllers
                         if (root.TryGetProperty("sub", out var subProp)) sub = subProp.GetString();
                         if (root.TryGetProperty("email", out var emailProp)) email = emailProp.GetString();
                         if (root.TryGetProperty("name", out var nameProp)) name = nameProp.GetString();
+                        if (root.TryGetProperty("picture", out var picProp)) picture = picProp.GetString();
                     }
                 }
                 catch (Exception ex)
@@ -107,7 +110,7 @@ namespace Superbass.Controllers
             var token = tokenHandler.CreateToken(tokenDescriptor);
             var jwt = tokenHandler.WriteToken(token);
 
-            return Ok(new { token = jwt, email = email, name = name ?? email });
+            return Ok(new { token = jwt, email = email, name = name ?? email, picture = picture });
         }
     }
 

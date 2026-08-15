@@ -8,10 +8,29 @@ import '@material/web/textfield/outlined-text-field.js';
 
 export default function Find() {
   const [isLoggedIn, setIsLoggedIn] = React.useState(false);
+  const [showLogoutPopup, setShowLogoutPopup] = React.useState(false);
+  const [userName, setUserName] = React.useState('');
+  const [userPicture, setUserPicture] = React.useState('');
 
   React.useEffect(() => {
     setIsLoggedIn(!!localStorage.getItem('token'));
+    setUserName(localStorage.getItem('userName') || '');
+    setUserPicture(localStorage.getItem('userPicture') || '');
   }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('userName');
+    localStorage.removeItem('userPicture');
+    setIsLoggedIn(false);
+    setShowLogoutPopup(false);
+    navigate('/');
+  };
+
+  const getFirstName = (name) => {
+    if (!name) return 'Account';
+    return name.split(' ')[0];
+  };
 
   const navigate = (newPath) => {
     window.history.pushState({}, '', newPath);
@@ -41,36 +60,71 @@ export default function Find() {
         <div className="nav-actions">
           {isLoggedIn ? (
             <>
-              <md-filled-button 
+              <md-filled-button
                 onClick={() => navigate('/create')}
-                style={{ 
-                  '--md-sys-color-primary': '#4285F4', 
-                  '--md-sys-color-on-primary': '#ffffff',
+                style={{
+                  '--md-sys-color-primary': '#FDC101',
+                  '--md-sys-color-on-primary': '#000000',
                   padding: '0 24px',
                   minWidth: '100px',
                   margin: '0 10px'
                 }}
               >
-                Create
+                Create community post
               </md-filled-button>
-              <md-filled-button 
-                onClick={() => navigate('/account')}
-                style={{ 
-                  '--md-sys-color-primary': '#34A853', 
-                  '--md-sys-color-on-primary': '#ffffff',
-                  padding: '0 24px',
-                  minWidth: '100px',
-                  margin: '0 10px'
-                }}
-              >
-                Account
-              </md-filled-button>
+              <div style={{ position: 'relative', display: 'inline-block' }}>
+                <md-filled-button
+                  onClick={() => setShowLogoutPopup(!showLogoutPopup)}
+                  style={{
+                    '--md-sys-color-primary': '#000000',
+                    '--md-sys-color-on-primary': '#ffffff',
+                    padding: '0 16px',
+                    minWidth: '100px',
+                    margin: '0 10px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  {userPicture && <img slot="icon" src={userPicture} alt="User" style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover' }} />}
+                  {getFirstName(userName)}
+                </md-filled-button>
+                {showLogoutPopup && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    right: '10px',
+                    marginTop: '8px',
+                    backgroundColor: '#ffffff',
+                    color: '#000000',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    padding: '8px 0',
+                    zIndex: 1000,
+                    minWidth: '150px',
+                    textAlign: 'left'
+                  }}>
+                    <button 
+                      onClick={() => { setShowLogoutPopup(false); navigate('/account'); }} 
+                      style={{ width: '100%', padding: '12px 16px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', fontSize: '16px', color: '#000000' }}
+                    >
+                      My Account
+                    </button>
+                    <button 
+                      onClick={handleLogout} 
+                      style={{ width: '100%', padding: '12px 16px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', fontSize: '16px', color: '#EA4335' }}
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
             </>
           ) : (
-            <md-filled-button 
+            <md-filled-button
               onClick={() => navigate('/join')}
-              style={{ 
-                '--md-sys-color-primary': '#FDC101', 
+              style={{
+                '--md-sys-color-primary': '#FDC101',
                 '--md-sys-color-on-primary': '#000000',
                 padding: '0 24px',
                 minWidth: '100px',

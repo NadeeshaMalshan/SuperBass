@@ -23,9 +23,10 @@ function JoinContent() {
             idToken: tokenResponse.id_token
         });
         console.log("Backend response:", res.data);
-        alert(`Welcome ${res.data.name}!`);
-        // Store the JWT
+        // Store the JWT and user info
         localStorage.setItem("token", res.data.token);
+        if (res.data.name) localStorage.setItem("userName", res.data.name);
+        if (res.data.picture) localStorage.setItem("userPicture", res.data.picture);
         
         // Redirect to Find page
         window.history.pushState({}, '', '/find');
