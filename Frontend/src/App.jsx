@@ -48,6 +48,10 @@ const generateM3CookiePath9 = (cx = 250, cy = 250, rOuter = 230, rInner = 190) =
 };
 
 export default function App() {
+  const navigate = (newPath) => {
+    window.history.pushState({}, '', newPath);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  };
   const [uploadedImage, setUploadedImage] = useState(null);
   const [aiUploadedImage, setAiUploadedImage] = useState(null);
   const fileInputRef = useRef(null);
@@ -92,7 +96,7 @@ export default function App() {
 
 
           {/* Material 3 Filled Button for Primary Action */}
-          <md-filled-button class="header-cta-btn">
+          <md-filled-button class="header-cta-btn" onClick={() => navigate('/find')}>
             Get Started
           </md-filled-button>
         </div>
