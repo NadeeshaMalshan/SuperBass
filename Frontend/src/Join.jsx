@@ -5,7 +5,7 @@ import { GoogleOAuthProvider, useGoogleLogin } from '@react-oauth/google';
 import axios from 'axios';
 
 // IMPORTANT: Replace with your actual Google Client ID from Google Cloud Console
-const GOOGLE_CLIENT_ID = "810309110237-j6d9lbf0rauli2crj71504qs4br3aj65.apps.googleusercontent.com";
+const GOOGLE_CLIENT_ID = "918768879306-9tv31jo0ot00ogc496h13e6tccfv63qe.apps.googleusercontent.com";
 
 function JoinContent() {
   const goHome = () => {

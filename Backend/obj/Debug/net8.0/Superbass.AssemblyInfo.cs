@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Superbass")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f6c51b1decec0726ac2b7c1fcc9cc74b83f822fd")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+228f14021df58d36aa595630997d067629c1767c")]
 [assembly: System.Reflection.AssemblyProductAttribute("Superbass")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Superbass")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
