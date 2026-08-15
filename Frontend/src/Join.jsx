@@ -19,7 +19,8 @@ function JoinContent() {
         console.log("Google Token:", tokenResponse);
         // Send to our backend
         const res = await axios.post("http://localhost:5237/api/auth/google", {
-            idToken: tokenResponse.access_token // Note: useGoogleLogin by default returns an access_token. For id_token, we need implicit flow or backend exchange.
+            accessToken: tokenResponse.access_token,
+            idToken: tokenResponse.id_token
         });
         console.log("Backend response:", res.data);
         alert(`Welcome ${res.data.name}!`);
