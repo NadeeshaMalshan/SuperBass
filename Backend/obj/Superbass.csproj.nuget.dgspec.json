@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Nadeesha\\Documents\\GitHub\\superBass\\Backend\\Superbass\\Superbass.csproj": {}
+    "C:\\Users\\Nadeesha\\Documents\\GitHub\\superබාස් — AI-Powered Community Home Service Platform\\Backend\\Superbass.csproj": {}
   },
   "projects": {
-    "C:\\Users\\Nadeesha\\Documents\\GitHub\\superBass\\Backend\\Superbass\\Superbass.csproj": {
+    "C:\\Users\\Nadeesha\\Documents\\GitHub\\superබාස් — AI-Powered Community Home Service Platform\\Backend\\Superbass.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Nadeesha\\Documents\\GitHub\\superBass\\Backend\\Superbass\\Superbass.csproj",
+        "projectUniqueName": "C:\\Users\\Nadeesha\\Documents\\GitHub\\superබාස් — AI-Powered Community Home Service Platform\\Backend\\Superbass.csproj",
         "projectName": "Superbass",
-        "projectPath": "C:\\Users\\Nadeesha\\Documents\\GitHub\\superBass\\Backend\\Superbass\\Superbass.csproj",
+        "projectPath": "C:\\Users\\Nadeesha\\Documents\\GitHub\\superබාස් — AI-Powered Community Home Service Platform\\Backend\\Superbass.csproj",
         "packagesPath": "C:\\Users\\Nadeesha\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Nadeesha\\Documents\\GitHub\\superBass\\Backend\\Superbass\\obj\\",
+        "outputPath": "C:\\Users\\Nadeesha\\Documents\\GitHub\\superබාස් — AI-Powered Community Home Service Platform\\Backend\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\Nadeesha\\AppData\\Roaming\\NuGet\\NuGet.Config"
@@ -43,6 +43,18 @@
         "net8.0": {
           "targetAlias": "net8.0",
           "dependencies": {
+            "DotNetEnv": {
+              "target": "Package",
+              "version": "[3.2.0, )"
+            },
+            "Google.Apis.Auth": {
+              "target": "Package",
+              "version": "[1.75.0, )"
+            },
+            "Microsoft.AspNetCore.Authentication.JwtBearer": {
+              "target": "Package",
+              "version": "[8.0.8, )"
+            },
             "Swashbuckle.AspNetCore": {
               "target": "Package",
               "version": "[6.6.2, )"

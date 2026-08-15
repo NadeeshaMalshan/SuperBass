@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@material/web": "^2.5.0",
+    "@react-oauth/google": "^0.12.2",
+    "axios": "^1.19.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },
