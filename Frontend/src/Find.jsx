@@ -61,7 +61,7 @@ export default function Find() {
           {isLoggedIn ? (
             <>
               <md-filled-button
-                onClick={() => navigate('/create')}
+                onClick={() => navigate('/community')}
                 style={{
                   '--md-sys-color-primary': '#FDC101',
                   '--md-sys-color-on-primary': '#000000',
@@ -70,7 +70,7 @@ export default function Find() {
                   margin: '0 10px'
                 }}
               >
-                Create community post
+                Community Posts
               </md-filled-button>
               <div style={{ position: 'relative', display: 'inline-block' }}>
                 <md-filled-button

@@ -85,7 +85,8 @@ export default function App() {
         </a>
 
         <ul className="nav-links">
-          <li className="nav-link">Services</li>
+          <li className="nav-link" onClick={() => navigate('/find')}>Services</li>
+          <li className="nav-link" onClick={() => navigate('/community')}>Community</li>
           <li className="nav-link">How it Works</li>
           <li className="nav-link">AI Diagnostic</li>
           <li className="nav-link">For Baas / Pros</li>

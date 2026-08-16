@@ -4,6 +4,7 @@ import './index.css'
 import App from './App.jsx'
 import Find from './Find.jsx'
 import Join from './Join.jsx'
+import Community from './Community.jsx'
 function Router() {
   const [path, setPath] = useState(window.location.pathname);
 
@@ -18,6 +19,9 @@ function Router() {
   }
   if (path === '/join' || path === '/join.jsx') {
     return <Join />;
+  }
+  if (path === '/community' || path === '/community.jsx') {
+    return <Community />;
   }
 
   return <App />;

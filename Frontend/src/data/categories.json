@@ -1,0 +1,12 @@
+[
+  { "id": "plumbing", "name": "Plumbing", "icon": "fa-faucet-drip" },
+  { "id": "electrical", "name": "Electrical", "icon": "fa-bolt" },
+  { "id": "carpentry", "name": "Carpentry", "icon": "fa-hammer" },
+  { "id": "masonry", "name": "Masonry", "icon": "fa-trowel-bricks" },
+  { "id": "painting", "name": "Painting", "icon": "fa-paint-roller" },
+  { "id": "ac-repair", "name": "AC Repair", "icon": "fa-snowflake" },
+  { "id": "roofing", "name": "Roofing", "icon": "fa-house-chimney" },
+  { "id": "appliance-repair", "name": "Appliance Repair", "icon": "fa-screwdriver-wrench" },
+  { "id": "cctv-security", "name": "CCTV & Security", "icon": "fa-video" },
+  { "id": "general", "name": "General Advice", "icon": "fa-circle-info" }
+]
