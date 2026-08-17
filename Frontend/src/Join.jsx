@@ -28,8 +28,12 @@ function JoinContent() {
         if (res.data.name) localStorage.setItem("userName", res.data.name);
         if (res.data.picture) localStorage.setItem("userPicture", res.data.picture);
         
-        // Redirect to Find page
-        window.history.pushState({}, '', '/find');
+        // Redirect based on user status
+        if (res.data.isNewUser) {
+          window.history.pushState({}, '', '/onboarding');
+        } else {
+          window.history.pushState({}, '', '/find');
+        }
         window.dispatchEvent(new PopStateEvent('popstate'));
       } catch (err) {
         console.error("Login failed:", err);

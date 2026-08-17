@@ -5,6 +5,7 @@ import App from './App.jsx'
 import Find from './Find.jsx'
 import Join from './Join.jsx'
 import Community from './Community.jsx'
+import Onboarding from './Onboarding.jsx'
 function Router() {
   const [path, setPath] = useState(window.location.pathname);
 
@@ -22,6 +23,9 @@ function Router() {
   }
   if (path === '/community' || path === '/community.jsx') {
     return <Community />;
+  }
+  if (path === '/onboarding' || path === '/onboarding.jsx') {
+    return <Onboarding />;
   }
 
   return <App />;
