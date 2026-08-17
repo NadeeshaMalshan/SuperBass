@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace Superbass.Models
 {
     public class CommunityPost
     {
+        [Key]
         public int PostId { get; set; }
         public string UserId { get; set; } = string.Empty;
         public string UserName { get; set; } = string.Empty;
@@ -26,6 +28,7 @@ namespace Superbass.Models
 
     public class CommunityComment
     {
+        [Key]
         public int CommentId { get; set; }
         public int PostId { get; set; }
         public string UserId { get; set; } = string.Empty;
@@ -37,6 +40,7 @@ namespace Superbass.Models
 
     public class CommunityReport
     {
+        [Key]
         public int ReportId { get; set; }
         public int PostId { get; set; }
         public string ReporterUserId { get; set; } = string.Empty;

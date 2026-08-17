@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+using Superbass.Models;
 using Superbass.Services;
 
 // Load .env file
@@ -10,9 +12,15 @@ builder.WebHost.UseUrls("http://localhost:5237");
 
 // Add services to the container.
 
+var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection") 
+    ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
+builder.Services.AddDbContext<SuperbassDbContext>(options =>
+    options.UseNpgsql(connectionString));
+
 builder.Services.AddControllers();
 builder.Services.AddHttpClient();
-builder.Services.AddSingleton<ICommunityPostRepository, InMemoryCommunityPostRepository>();
+builder.Services.AddScoped<ICommunityPostRepository, EfCommunityPostRepository>();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
