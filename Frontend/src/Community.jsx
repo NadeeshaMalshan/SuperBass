@@ -232,21 +232,6 @@ export default function Community() {
         </ul>
 
         <div className="nav-actions" style={{ display: 'flex', gap: '12px' }}>
-          <button
-            onClick={() => setActiveTab(activeTab === 'feed' ? 'moderation' : 'feed')}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '20px',
-              border: '1px solid #d1d5db',
-              backgroundColor: activeTab === 'moderation' ? '#111827' : '#ffffff',
-              color: activeTab === 'moderation' ? '#ffffff' : '#374151',
-              fontWeight: '600',
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}
-          >
-            {activeTab === 'feed' ? 'Admin Moderation' : 'Back to Feed'}
-          </button>
           <md-filled-button 
             onClick={() => setIsCreateModalOpen(true)}
             style={{
