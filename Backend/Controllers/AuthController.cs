@@ -10,6 +10,8 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
+using System.Security.Cryptography;
+using Superbass.Models;
 
 namespace Superbass.Controllers
 {
@@ -19,11 +21,13 @@ namespace Superbass.Controllers
     {
         private readonly IConfiguration _configuration;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly SuperbassDbContext _dbContext;
 
-        public AuthController(IConfiguration configuration, IHttpClientFactory httpClientFactory)
+        public AuthController(IConfiguration configuration, IHttpClientFactory httpClientFactory, SuperbassDbContext dbContext)
         {
             _configuration = configuration;
             _httpClientFactory = httpClientFactory;
+            _dbContext = dbContext;
         }
 
         [HttpPost("google")]
@@ -110,7 +114,36 @@ namespace Superbass.Controllers
             var token = tokenHandler.CreateToken(tokenDescriptor);
             var jwt = tokenHandler.WriteToken(token);
 
-            return Ok(new { token = jwt, email = email, name = name ?? email, picture = picture });
+            var jwtHash = Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(jwt)));
+
+            bool isNewUser = false;
+            var resident = await _dbContext.Residents.FindAsync(email);
+            if (resident == null)
+            {
+                isNewUser = true;
+                resident = new Resident
+                {
+                    Email = email,
+                    Name = name ?? email,
+                    PasswordHash = jwtHash,
+                    PhoneNo = request.PhoneNo,
+                    Address = request.Address,
+                    LocationLat = request.LocationLat,
+                    LocationLng = request.LocationLng
+                };
+                _dbContext.Residents.Add(resident);
+            }
+            else
+            {
+                resident.PasswordHash = jwtHash;
+                if (request.PhoneNo != null) resident.PhoneNo = request.PhoneNo;
+                if (request.Address != null) resident.Address = request.Address;
+                if (request.LocationLat != null) resident.LocationLat = request.LocationLat;
+                if (request.LocationLng != null) resident.LocationLng = request.LocationLng;
+            }
+            await _dbContext.SaveChangesAsync();
+
+            return Ok(new { token = jwt, email = email, name = name ?? email, picture = picture, isNewUser = isNewUser });
         }
     }
 
@@ -118,5 +151,9 @@ namespace Superbass.Controllers
     {
         public string? IdToken { get; set; }
         public string? AccessToken { get; set; }
+        public string? PhoneNo { get; set; }
+        public string? Address { get; set; }
+        public double? LocationLat { get; set; }
+        public double? LocationLng { get; set; }
     }
 }
