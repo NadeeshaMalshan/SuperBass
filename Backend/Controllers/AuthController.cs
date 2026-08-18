@@ -13,6 +13,7 @@ using Microsoft.Extensions.Configuration;
 using System.Security.Cryptography;
 using Superbass.Models;
 
+
 namespace Superbass.Controllers
 {
     [Route("api/[controller]")]
@@ -126,7 +127,7 @@ namespace Superbass.Controllers
                     Email = email,
                     Name = name ?? email,
                     PasswordHash = jwtHash,
-                    PhoneNo = request.PhoneNo,
+                    PhoneNumber = request.PhoneNumber,
                     Address = request.Address,
                     LocationLat = request.LocationLat,
                     LocationLng = request.LocationLng
@@ -136,7 +137,7 @@ namespace Superbass.Controllers
             else
             {
                 resident.PasswordHash = jwtHash;
-                if (request.PhoneNo != null) resident.PhoneNo = request.PhoneNo;
+                if (request.PhoneNumber != null) resident.PhoneNumber = request.PhoneNumber;
                 if (request.Address != null) resident.Address = request.Address;
                 if (request.LocationLat != null) resident.LocationLat = request.LocationLat;
                 if (request.LocationLng != null) resident.LocationLng = request.LocationLng;
@@ -176,7 +177,7 @@ namespace Superbass.Controllers
                 var resident = await _dbContext.Residents.FindAsync(email);
                 if (resident == null) return NotFound(new { message = "User not found." });
 
-                resident.PhoneNo = request.PhoneNo;
+                resident.PhoneNumber = request.PhoneNo;
                 resident.Address = request.Address;
                 resident.LocationLat = request.LocationLat;
                 resident.LocationLng = request.LocationLng;
@@ -196,7 +197,7 @@ namespace Superbass.Controllers
     {
         public string? IdToken { get; set; }
         public string? AccessToken { get; set; }
-        public string? PhoneNo { get; set; }
+        public string? PhoneNumber { get; set; }
         public string? Address { get; set; }
         public double? LocationLat { get; set; }
         public double? LocationLng { get; set; }

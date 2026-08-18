@@ -1,6 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Superbass.Models;
 using Superbass.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+
+
 
 // Load .env file
 DotNetEnv.Env.Load();
@@ -17,6 +22,28 @@ var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__De
 
 builder.Services.AddDbContext<SuperbassDbContext>(options =>
     options.UseNpgsql(connectionString));
+
+var jwtKey = builder.Configuration["Authentication:Jwt:Secret"]
+    ?? "super_secret_key_that_must_be_long_enough_12345";
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(jwtKey)),
+        ValidateIssuer = false,
+        ValidateAudience = false,
+        ClockSkew = TimeSpan.Zero
+    };
+});
+
+builder.Services.AddAuthorization();
 
 builder.Services.AddControllers();
 builder.Services.AddHttpClient();
