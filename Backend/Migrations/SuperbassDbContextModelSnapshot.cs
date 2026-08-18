@@ -169,15 +169,6 @@ namespace Superbass.Migrations
                     b.Property<string>("Address")
                         .HasColumnType("text");
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
                     b.Property<double?>("LocationLat")
                         .HasColumnType("double precision");
 
@@ -192,9 +183,6 @@ namespace Superbass.Migrations
 
                     b.Property<string>("PhoneNo")
                         .HasColumnType("text");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Email");
 
