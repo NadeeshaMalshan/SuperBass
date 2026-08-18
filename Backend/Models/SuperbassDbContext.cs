@@ -17,6 +17,7 @@ namespace Superbass.Models
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.Entity<Resident>().HasQueryFilter(u => !u.IsDeleted);
         }
     }
 }
