@@ -188,6 +188,127 @@ namespace Superbass.Migrations
 
                     b.ToTable("Residents");
                 });
+
+            modelBuilder.Entity("Superbass.Models.Worker", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AcceptedJobs")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("AvailabilityScheduleJson")
+                        .HasColumnType("text");
+
+                    b.Property<int>("CancelledJobs")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("CommunicationRating")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("CompletedJobs")
+                        .HasColumnType("integer");
+
+                    b.Property<double>("CoverageRadiusKm")
+                        .HasColumnType("double precision");
+
+                    b.Property<decimal?>("DailyRate")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal?>("HourlyRate")
+                        .HasColumnType("numeric");
+
+                    b.Property<bool>("IsAvailable")
+                        .HasColumnType("boolean");
+
+                    b.Property<double?>("LocationLat")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("LocationLng")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<double>("OverallRating")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("PhoneNo")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PricingModel")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("PrimaryServiceArea")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ProfileImage")
+                        .HasColumnType("text");
+
+                    b.Property<int>("PunctualityRating")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("QualityRating")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RejectedJobs")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Workers");
+                });
+
+            modelBuilder.Entity("Superbass.Models.WorkerSkill", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ExperienceYears")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SkillName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("WorkerId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkerId");
+
+                    b.ToTable("WorkerSkills");
+                });
+
+            modelBuilder.Entity("Superbass.Models.WorkerSkill", b =>
+                {
+                    b.HasOne("Superbass.Models.Worker", null)
+                        .WithMany("Skills")
+                        .HasForeignKey("WorkerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Superbass.Models.Worker", b =>
+                {
+                    b.Navigation("Skills");
+                });
 #pragma warning restore 612, 618
         }
     }
