@@ -14,6 +14,10 @@ namespace Superbass.Models
         public DbSet<CommunityReport> CommunityReports { get; set; }
         public DbSet<Resident> Residents { get; set; }
 
+        // Component 2: Worker Management
+        public DbSet<Worker> Workers { get; set; }
+        public DbSet<WorkerSkill> WorkerSkills { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

@@ -12,7 +12,7 @@ builder.WebHost.UseUrls("http://localhost:5237");
 
 // Add services to the container.
 
-var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection") 
+var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
     ?? builder.Configuration.GetConnectionString("DefaultConnection");
 
 builder.Services.AddDbContext<SuperbassDbContext>(options =>
@@ -24,6 +24,8 @@ builder.Services.AddScoped<ICommunityPostRepository, EfCommunityPostRepository>(
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+// worker
+builder.Services.AddScoped<WorkerRepository, EfWorkerRepository>();
 
 // Configure CORS
 builder.Services.AddCors(options =>
