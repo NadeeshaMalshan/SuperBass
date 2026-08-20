@@ -6,6 +6,8 @@ import Find from './Find.jsx'
 import Join from './Join.jsx'
 import Community from './Community.jsx'
 import Onboarding from './Onboarding.jsx'
+import ResidentProfile from './ResidentProfile.jsx'
+
 function Router() {
   const [path, setPath] = useState(window.location.pathname);
 
@@ -14,6 +16,10 @@ function Router() {
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
+
+  if (path === '/account' || path === '/account.jsx') {
+    return <ResidentProfile />;
+  }
 
   if (path === '/find' || path === '/find.jsx') {
     return <Find />;

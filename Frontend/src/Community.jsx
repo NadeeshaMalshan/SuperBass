@@ -245,6 +245,28 @@ export default function Community() {
           >
             + Create Post
           </md-filled-button>
+
+          <md-filled-button
+            onClick={() => {
+              window.history.pushState({}, '', '/account');
+              window.dispatchEvent(new PopStateEvent('popstate'));
+            }}
+            style={{
+              '--md-sys-color-primary': '#000000',
+              '--md-sys-color-on-primary': '#ffffff',
+              padding: '0 16px',
+              height: '42px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              '--md-filled-button-container-shape': '50px'
+            }}
+          >
+            {localStorage.getItem('userPicture') && (
+              <img slot="icon" src={localStorage.getItem('userPicture')} alt="User" style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover' }} />
+            )}
+            {localStorage.getItem('userName') ? localStorage.getItem('userName').split(' ')[0] : 'My Profile'}
+          </md-filled-button>
         </div>
       </header>
 
