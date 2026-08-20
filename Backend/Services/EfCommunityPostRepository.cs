@@ -262,5 +262,10 @@ namespace Superbass.Services
             }
             return false;
         }
+
+        public IEnumerable<CommunityPost> GetPostsByUserId(string userId)
+        {
+            return _context.CommunityPosts.Where(p => p.UserId == userId && p.Status != "Removed").OrderByDescending(p => p.CreatedAt).ToList();
+        }
     }
 }

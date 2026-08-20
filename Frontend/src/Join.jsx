@@ -27,6 +27,7 @@ function JoinContent() {
         localStorage.setItem("token", res.data.token);
         if (res.data.name) localStorage.setItem("userName", res.data.name);
         if (res.data.picture) localStorage.setItem("userPicture", res.data.picture);
+        if (res.data.email) localStorage.setItem("email", res.data.email);
         
         // Redirect based on user status
         if (res.data.isNewUser) {
