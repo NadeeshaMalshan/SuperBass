@@ -136,6 +136,16 @@ namespace Superbass.Controllers
             return Ok(new { message = "Service area updated successfully" });
         }
 
+        // PUT /api/workers/{id}/password
+        [HttpPut("{id}/password")]
+        public async Task<IActionResult> UpdatePassword(int id, [FromBody] PasswordUpdateDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.NewPassword)) return BadRequest(new { message = "New password is required" });
+            var success = await _workerRepository.UpdatePasswordAsync(id, dto.NewPassword);
+            if (!success) return NotFound();
+            return Ok(new { message = "Password updated successfully" });
+        }
+
         // DTOs for new endpoints
         public class AvailabilityUpdateDto
         {
@@ -154,6 +164,11 @@ namespace Superbass.Controllers
         {
             public string ServiceArea { get; set; } = string.Empty;
             public double RadiusKm { get; set; }
+        }
+
+        public class PasswordUpdateDto
+        {
+            public string NewPassword { get; set; } = string.Empty;
         }
     }
 }
