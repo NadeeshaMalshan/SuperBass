@@ -6,6 +6,15 @@ import Find from './Find.jsx'
 import Join from './Join.jsx'
 import Community from './Community.jsx'
 import Onboarding from './Onboarding.jsx'
+
+// Worker Pages
+import WorkerRegister from './pages/worker/WorkerRegister.jsx'
+import WorkerLogin from './pages/worker/WorkerLogin.jsx'
+import WorkerDashboard from './pages/worker/WorkerDashboard.jsx'
+import WorkerJobs from './pages/worker/WorkerJobs.jsx'
+import WorkerPerformance from './pages/worker/WorkerPerformance.jsx'
+import WorkerProfile from './pages/worker/WorkerProfile.jsx'
+
 function Router() {
   const [path, setPath] = useState(window.location.pathname);
 
@@ -26,6 +35,26 @@ function Router() {
   }
   if (path === '/onboarding' || path === '/onboarding.jsx') {
     return <Onboarding />;
+  }
+
+  // Worker Routes
+  if (path === '/worker/register' || path === '/worker/register.jsx') {
+    return <WorkerRegister />;
+  }
+  if (path === '/worker/login' || path === '/worker/login.jsx') {
+    return <WorkerLogin />;
+  }
+  if (path === '/worker/dashboard' || path === '/worker/dashboard.jsx') {
+    return <WorkerDashboard />;
+  }
+  if (path === '/worker/jobs' || path === '/worker/jobs.jsx') {
+    return <WorkerJobs />;
+  }
+  if (path === '/worker/performance' || path === '/worker/performance.jsx') {
+    return <WorkerPerformance />;
+  }
+  if (path === '/worker/profile' || path === '/worker/profile.jsx') {
+    return <WorkerProfile />;
   }
 
   return <App />;
