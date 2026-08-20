@@ -19,15 +19,15 @@ function JoinContent() {
         console.log("Google Token:", tokenResponse);
         // Send to our backend
         const res = await axios.post("http://localhost:5237/api/auth/google", {
-            accessToken: tokenResponse.access_token,
-            idToken: tokenResponse.id_token
+          accessToken: tokenResponse.access_token,
+          idToken: tokenResponse.id_token
         });
         console.log("Backend response:", res.data);
         // Store the JWT and user info
         localStorage.setItem("token", res.data.token);
         if (res.data.name) localStorage.setItem("userName", res.data.name);
         if (res.data.picture) localStorage.setItem("userPicture", res.data.picture);
-        
+
         // Redirect based on user status
         if (res.data.isNewUser) {
           window.history.pushState({}, '', '/onboarding');
@@ -58,16 +58,16 @@ function JoinContent() {
       </a>
 
       {/* Login Button (Material 3) */}
-      <md-filled-button 
+      <md-filled-button
         onClick={() => login()}
         style={{
-        '--md-filled-button-container-shape': '50px',
-        '--md-sys-color-primary': '#FDC101',
-        '--md-sys-color-on-primary': '#000000',
-        width: '350px',
-        height: '56px',
-        fontSize: '18px',
-      }}>
+          '--md-filled-button-container-shape': '50px',
+          '--md-sys-color-primary': '#FDC101',
+          '--md-sys-color-on-primary': '#000000',
+          width: '350px',
+          height: '56px',
+          fontSize: '18px',
+        }}>
         <svg slot="icon" width="24" height="24" viewBox="0 0 48 48">
           <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
           <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
@@ -79,15 +79,21 @@ function JoinContent() {
       </md-filled-button>
 
       {/* Join as Worker Button */}
-      <md-filled-button style={{
-        '--md-filled-button-container-shape': '50px',
-        '--md-sys-color-primary': '#000000',
-        '--md-sys-color-on-primary': '#ffffff',
-        width: '350px',
-        height: '56px',
-        fontSize: '18px',
-        marginTop: '16px'
-      }}>
+      <md-filled-button
+        onClick={() => {
+          window.history.pushState({}, '', '/worker/login');
+          window.dispatchEvent(new PopStateEvent('popstate'));
+        }}
+        style={{
+          '--md-filled-button-container-shape': '50px',
+          '--md-sys-color-primary': '#2563EB',
+          '--md-sys-color-on-primary': '#ffffff',
+          width: '350px',
+          height: '56px',
+          fontSize: '18px',
+          marginTop: '16px',
+          cursor: 'pointer'
+        }}>
         Join as Worker
       </md-filled-button>
     </div>
