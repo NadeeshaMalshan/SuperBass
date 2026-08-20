@@ -197,5 +197,16 @@ namespace Superbass.Services
             await _context.SaveChangesAsync();
             return true;
         }
+
+        public async Task<bool> UpdatePasswordAsync(int workerId, string newPassword)
+        {
+            var worker = await _context.Workers.FindAsync(workerId);
+            if (worker == null) return false;
+
+            worker.PasswordHash = newPassword; // Simple hash / string update
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
     }
 }

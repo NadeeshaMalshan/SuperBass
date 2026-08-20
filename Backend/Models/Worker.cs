@@ -20,6 +20,7 @@ namespace Superbass.Models
         public string? PhoneNo { get; set; }
         public string? ProfileImage { get; set; }
         public string? Description { get; set; }
+        public string? PasswordHash { get; set; }
         
         // Location & Service Area
         public string? PrimaryServiceArea { get; set; }
