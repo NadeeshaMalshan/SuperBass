@@ -11,6 +11,7 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using System.Security.Cryptography;
+using Microsoft.EntityFrameworkCore;
 using Superbass.Models;
 
 namespace Superbass.Controllers
@@ -143,7 +144,20 @@ namespace Superbass.Controllers
             }
             await _dbContext.SaveChangesAsync();
 
-            return Ok(new { token = jwt, email = email, name = name ?? email, picture = picture, isNewUser = isNewUser });
+            var worker = await _dbContext.Workers.FirstOrDefaultAsync(w => w.ResidentEmail == email || w.Email == email);
+            bool isWorker = worker != null;
+            string activeRole = isWorker ? "Worker" : "Resident";
+
+            return Ok(new { 
+                token = jwt, 
+                email = email, 
+                name = name ?? email, 
+                picture = picture, 
+                isNewUser = isNewUser,
+                isWorker = isWorker,
+                activeRole = activeRole,
+                workerId = worker?.Id
+            });
         }
 
         [HttpPost("onboarding")]
