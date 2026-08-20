@@ -17,5 +17,6 @@ namespace Superbass.Services
         Task<bool> UpdateAvailabilityAsync(int workerId, bool isAvailable, string? scheduleJson);
         Task<bool> UpdatePricingAsync(int workerId, string model, decimal? hourlyRate, decimal? dailyRate);
         Task<bool> UpdateServiceAreaAsync(int workerId, string serviceArea, double radiusKm);
+        Task<bool> UpdatePasswordAsync(int workerId, string newPassword);
     }
 }
