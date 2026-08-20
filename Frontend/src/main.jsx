@@ -14,6 +14,7 @@ import WorkerDashboard from './pages/worker/WorkerDashboard.jsx'
 import WorkerJobs from './pages/worker/WorkerJobs.jsx'
 import WorkerPerformance from './pages/worker/WorkerPerformance.jsx'
 import WorkerProfile from './pages/worker/WorkerProfile.jsx'
+import ResidentProfile from './ResidentProfile.jsx'
 
 function Router() {
   const [path, setPath] = useState(window.location.pathname);
@@ -24,10 +25,14 @@ function Router() {
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
+  if (path === '/account' || path === '/account.jsx') {
+    return <ResidentProfile />;
+  }
+
   if (path === '/find' || path === '/find.jsx') {
     return <Find />;
   }
-  if (path === '/join' || path === '/join.jsx') {
+  if (path === '/join' || path === '/join.jsx' || path === '/worker/register' || path === '/worker/register.jsx') {
     return <Join />;
   }
   if (path === '/community' || path === '/community.jsx') {

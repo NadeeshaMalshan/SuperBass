@@ -22,6 +22,7 @@ namespace Superbass.Services
         IEnumerable<CommunityPost> GetModerationQueue();
         bool UpdatePostStatus(int postId, string status);
         IEnumerable<ServiceCategory> GetCategories();
+        IEnumerable<CommunityPost> GetPostsByUserId(string userId);
     }
 
     public class InMemoryCommunityPostRepository : ICommunityPostRepository
@@ -279,6 +280,11 @@ namespace Superbass.Services
                 return true;
             }
             return false;
+        }
+
+        public IEnumerable<CommunityPost> GetPostsByUserId(string userId)
+        {
+            return _posts.Values.Where(p => p.UserId == userId && p.Status != "Removed").OrderByDescending(p => p.CreatedAt).ToList();
         }
     }
 }

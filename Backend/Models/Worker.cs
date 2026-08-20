@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Superbass.Models
 {
@@ -7,6 +8,12 @@ namespace Superbass.Models
         [Key]
         public int Id { get; set; }
         
+        [Required]
+        public string ResidentEmail { get; set; } = null!;
+
+        [ForeignKey(nameof(ResidentEmail))]
+        public Resident? Resident { get; set; }
+
         [Required]
         public string Name { get; set; } = null!;
         public string Email { get; set; } = null!;

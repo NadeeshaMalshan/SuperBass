@@ -1,6 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Superbass.Models;
 using Superbass.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 // Load .env file
 DotNetEnv.Env.Load();
@@ -38,6 +41,22 @@ builder.Services.AddCors(options =>
                   .AllowAnyMethod();
         });
 });
+
+builder.Services.AddScoped<IResidentRepository, EfResidentRepository>();
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        var secretKey = builder.Configuration["Authentication:Jwt:Secret"] ?? "super_secret_key_that_must_be_long_enough_12345";
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(secretKey)),
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            ClockSkew = TimeSpan.Zero
+        };
+    });
 
 var app = builder.Build();
 

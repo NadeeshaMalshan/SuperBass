@@ -22,6 +22,11 @@ namespace Superbass.Services
             return await _context.Workers.Include(w => w.Skills).FirstOrDefaultAsync(w => w.Id == id);
         }
 
+        public async Task<Worker?> GetWorkerByEmailAsync(string email)
+        {
+            return await _context.Workers.Include(w => w.Skills).FirstOrDefaultAsync(w => w.ResidentEmail == email || w.Email == email);
+        }
+
         public async Task<IEnumerable<Worker>> SearchWorkersAsync(string? skill, string? location, double? maxDistanceKm)
         {
             var query = _context.Workers.Include(w => w.Skills).AsQueryable();
@@ -41,6 +46,37 @@ namespace Superbass.Services
 
         public async Task<Worker> CreateWorkerAsync(Worker worker)
         {
+            _context.Workers.Add(worker);
+            await _context.SaveChangesAsync();
+            return worker;
+        }
+
+        public async Task<Worker> CreateWorkerFromResidentAsync(string residentEmail, string? description, string primaryServiceArea, double coverageRadiusKm, string pricingModel, decimal? hourlyRate, decimal? dailyRate, List<WorkerSkill> skills)
+        {
+            var resident = await _context.Residents.FindAsync(residentEmail);
+            if (resident == null) throw new KeyNotFoundException("Resident profile not found.");
+
+            var existingWorker = await _context.Workers.FirstOrDefaultAsync(w => w.ResidentEmail == residentEmail || w.Email == residentEmail);
+            if (existingWorker != null) throw new InvalidOperationException("User is already registered as a worker.");
+
+            var worker = new Worker
+            {
+                ResidentEmail = resident.Email,
+                Email = resident.Email,
+                Name = resident.Name ?? resident.Email,
+                PhoneNo = resident.PhoneNo,
+                LocationLat = resident.LocationLat,
+                LocationLng = resident.LocationLng,
+                Description = description,
+                PrimaryServiceArea = primaryServiceArea,
+                CoverageRadiusKm = coverageRadiusKm,
+                PricingModel = pricingModel,
+                HourlyRate = hourlyRate,
+                DailyRate = dailyRate,
+                IsAvailable = true,
+                Skills = skills ?? new List<WorkerSkill>()
+            };
+
             _context.Workers.Add(worker);
             await _context.SaveChangesAsync();
             return worker;
@@ -68,6 +104,16 @@ namespace Superbass.Services
         public async Task<bool> DeleteWorkerAsync(int id)
         {
             var worker = await _context.Workers.FindAsync(id);
+            if (worker == null) return false;
+
+            _context.Workers.Remove(worker);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> DeleteWorkerByEmailAsync(string email)
+        {
+            var worker = await _context.Workers.Include(w => w.Skills).FirstOrDefaultAsync(w => w.ResidentEmail == email || w.Email == email);
             if (worker == null) return false;
 
             _context.Workers.Remove(worker);

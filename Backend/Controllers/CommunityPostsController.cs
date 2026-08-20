@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using System.Collections.Generic;
+using System.Security.Claims;
 using Superbass.Models;
 using Superbass.Services;
 
@@ -29,6 +31,21 @@ namespace Superbass.Controllers
         public IActionResult GetPosts([FromQuery] string? search, [FromQuery] string? category, [FromQuery] string? location, [FromQuery] string? sort)
         {
             var posts = _repository.GetPosts(search, category, location, sort);
+            return Ok(posts);
+        }
+
+        // GET /api/community-posts/user/{email}
+        [Authorize]
+        [HttpGet("user/{email}")]
+        public IActionResult GetPostsByUser(string email)
+        {
+            var tokenEmail = User.FindFirstValue(ClaimTypes.Email);
+            if (string.IsNullOrWhiteSpace(tokenEmail) || tokenEmail != email)
+            {
+                return Forbid();
+            }
+
+            var posts = _repository.GetPostsByUserId(email);
             return Ok(posts);
         }
 
