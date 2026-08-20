@@ -21,6 +21,12 @@ namespace Superbass.Models
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<Worker>()
+                .HasOne(w => w.Resident)
+                .WithOne(r => r.WorkerProfile)
+                .HasForeignKey<Worker>(w => w.ResidentEmail)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }
