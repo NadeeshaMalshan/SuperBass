@@ -24,7 +24,7 @@ function Router() {
   if (path === '/find' || path === '/find.jsx') {
     return <Find />;
   }
-  if (path === '/join' || path === '/join.jsx') {
+  if (path === '/join' || path === '/join.jsx' || path === '/worker/register' || path === '/worker/register.jsx') {
     return <Join />;
   }
   if (path === '/community' || path === '/community.jsx') {

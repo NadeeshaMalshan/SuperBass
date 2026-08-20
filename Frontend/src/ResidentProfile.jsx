@@ -196,6 +196,23 @@ export default function ResidentProfile() {
             >
               Settings
             </button>
+            <button 
+              onClick={() => navigateTo('/worker/register')}
+              style={{ 
+                padding: '12px 16px', 
+                textAlign: 'left', 
+                borderRadius: '8px', 
+                border: 'none', 
+                background: '#eff6ff', 
+                color: '#2563eb', 
+                fontWeight: '600', 
+                cursor: 'pointer', 
+                fontSize: '1rem',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              Join as Worker
+            </button>
           </nav>
         </aside>
 
