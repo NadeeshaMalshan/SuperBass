@@ -1,6 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
 using Superbass.Models;
 using Superbass.Services;
+using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 namespace Superbass.Controllers
 {
@@ -9,10 +13,12 @@ namespace Superbass.Controllers
     public class WorkersController : ControllerBase
     {
         private readonly WorkerRepository _workerRepository;
+        private readonly IConfiguration _configuration;
 
-        public WorkersController(WorkerRepository workerRepository)
+        public WorkersController(WorkerRepository workerRepository, IConfiguration configuration)
         {
             _workerRepository = workerRepository;
+            _configuration = configuration;
         }
 
         // GET: /api/workers
@@ -38,15 +44,6 @@ namespace Superbass.Controllers
         {
             var results = await _workerRepository.SearchWorkersAsync(skill, location, null);
             return Ok(results);
-        }
-
-        // POST: /api/workers
-        [HttpPost]
-        public async Task<IActionResult> Create([FromBody] Worker worker)
-        {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
-            var created = await _workerRepository.CreateWorkerAsync(worker);
-            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
 
         // PUT: /api/workers/5
@@ -136,7 +133,140 @@ namespace Superbass.Controllers
             return Ok(new { message = "Service area updated successfully" });
         }
 
+        // GET: /api/workers/me
+        [HttpGet("me")]
+        public async Task<IActionResult> GetMyWorkerProfile([FromQuery] string? email)
+        {
+            var targetEmail = email ?? GetEmailFromRequest();
+            if (string.IsNullOrEmpty(targetEmail))
+            {
+                return BadRequest(new { message = "Email is required or must be provided in Authorization header." });
+            }
+
+            var worker = await _workerRepository.GetWorkerByEmailAsync(targetEmail);
+            if (worker == null)
+            {
+                return NotFound(new { message = "User is not a worker.", activeRole = "Resident" });
+            }
+
+            return Ok(new { worker, activeRole = "Worker" });
+        }
+
+        // POST: /api/workers/become-worker
+        [HttpPost("become-worker")]
+        public async Task<IActionResult> BecomeWorker([FromBody] BecomeWorkerDto dto)
+        {
+            var targetEmail = dto.Email ?? GetEmailFromRequest();
+            if (string.IsNullOrEmpty(targetEmail))
+            {
+                return BadRequest(new { message = "Email is required in payload or Authorization header." });
+            }
+
+            try
+            {
+                var skills = dto.Skills.Select(s => new WorkerSkill
+                {
+                    SkillName = s.SkillName,
+                    ExperienceYears = s.ExperienceYears
+                }).ToList();
+
+                var worker = await _workerRepository.CreateWorkerFromResidentAsync(
+                    targetEmail,
+                    dto.Description,
+                    dto.PrimaryServiceArea,
+                    dto.CoverageRadiusKm,
+                    dto.PricingModel,
+                    dto.HourlyRate,
+                    dto.DailyRate,
+                    skills
+                );
+
+                return CreatedAtAction(nameof(GetById), new { id = worker.Id }, new { worker, activeRole = "Worker", message = "Successfully upgraded to Worker." });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        // DELETE: /api/workers/revert-to-resident
+        [HttpDelete("revert-to-resident")]
+        public async Task<IActionResult> RevertToResident([FromQuery] string? email)
+        {
+            var targetEmail = email ?? GetEmailFromRequest();
+            if (string.IsNullOrEmpty(targetEmail))
+            {
+                return BadRequest(new { message = "Email is required or must be provided in Authorization header." });
+            }
+
+            var success = await _workerRepository.DeleteWorkerByEmailAsync(targetEmail);
+            if (!success)
+            {
+                return NotFound(new { message = "Worker record not found for this user." });
+            }
+
+            return Ok(new { message = "Worker profile deleted successfully. User reverted to Resident.", activeRole = "Resident" });
+        }
+
+        private string? GetEmailFromRequest()
+        {
+            var emailClaim = User?.FindFirst(ClaimTypes.Email)?.Value ?? User?.FindFirst("email")?.Value;
+            if (!string.IsNullOrEmpty(emailClaim)) return emailClaim;
+
+            var authHeader = Request.Headers["Authorization"].FirstOrDefault();
+            if (authHeader != null && authHeader.StartsWith("Bearer "))
+            {
+                var token = authHeader.Substring("Bearer ".Length).Trim();
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var key = Encoding.ASCII.GetBytes(_configuration["Authentication:Jwt:Secret"] ?? "super_secret_key_that_must_be_long_enough_12345");
+                
+                try
+                {
+                    tokenHandler.ValidateToken(token, new TokenValidationParameters
+                    {
+                        ValidateIssuerSigningKey = true,
+                        IssuerSigningKey = new SymmetricSecurityKey(key),
+                        ValidateIssuer = false,
+                        ValidateAudience = false,
+                        ClockSkew = TimeSpan.Zero
+                    }, out SecurityToken validatedToken);
+
+                    var jwtToken = (JwtSecurityToken)validatedToken;
+                    var claim = jwtToken.Claims.FirstOrDefault(x => x.Type == ClaimTypes.Email || x.Type == "email" || x.Type.Contains("emailaddress"));
+                    if (claim != null) return claim.Value;
+                }
+                catch
+                {
+                    // Ignore token parse errors and fall through
+                }
+            }
+
+            return null;
+        }
+
         // DTOs for new endpoints
+        public class BecomeWorkerDto
+        {
+            public string? Email { get; set; }
+            public string? Description { get; set; }
+            public string PrimaryServiceArea { get; set; } = "Default Area";
+            public double CoverageRadiusKm { get; set; } = 10.0;
+            public string PricingModel { get; set; } = "Hourly";
+            public decimal? HourlyRate { get; set; }
+            public decimal? DailyRate { get; set; }
+            public List<WorkerSkillDto> Skills { get; set; } = new();
+        }
+
+        public class WorkerSkillDto
+        {
+            public string SkillName { get; set; } = null!;
+            public int ExperienceYears { get; set; } = 1;
+        }
+
         public class AvailabilityUpdateDto
         {
             public bool IsAvailable { get; set; }
