@@ -141,6 +141,8 @@ namespace Superbass.Controllers
             var success = await _workerRepository.UpdatePasswordAsync(id, dto.NewPassword);
             if (!success) return NotFound();
             return Ok(new { message = "Password updated successfully" });
+        }
+
         // GET: /api/workers/me
         [HttpGet("me")]
         public async Task<IActionResult> GetMyWorkerProfile([FromQuery] string? email)
