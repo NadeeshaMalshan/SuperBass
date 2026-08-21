@@ -29,7 +29,7 @@ function JoinContent() {
         if (res.data.picture) localStorage.setItem("userPicture", res.data.picture);
 
         if (res.data.email) localStorage.setItem("email", res.data.email);
-        
+
         // Redirect based on user status
         if (res.data.isNewUser) {
           window.history.pushState({}, '', '/onboarding');
