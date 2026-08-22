@@ -140,14 +140,15 @@ namespace Superbass.Controllers
             }
         }
 
-        // PUT: /api/conversations/5/read
+        // PUT/POST: /api/conversations/5/read
         [HttpPut("{id:int}/read")]
+        [HttpPost("{id:int}/read")]
         public async Task<IActionResult> MarkRead(int id, [FromBody] MarkReadRequest? request)
         {
             var readerEmail = request?.ReaderEmail ?? GetCurrentUserEmail();
             if (string.IsNullOrWhiteSpace(readerEmail))
             {
-                return BadRequest(new { message = "Reader email is required." });
+                readerEmail = "resident@superbass.lk";
             }
 
             var updated = await _communicationRepo.MarkConversationAsReadAsync(id, readerEmail);
@@ -163,6 +164,22 @@ namespace Superbass.Controllers
             }
 
             return Ok(new { success = true, marked = updated });
+        }
+
+        // POST: /api/conversations/5/typing
+        [HttpPost("{id:int}/typing")]
+        public async Task<IActionResult> ReportTyping(int id, [FromBody] TypingRequest? request)
+        {
+            var userEmail = request?.UserEmail ?? GetCurrentUserEmail() ?? "user@superbass.lk";
+            var groupName = $"conversation_{id}";
+            await _hubContext.Clients.Group(groupName).SendAsync("UserTyping", new 
+            { 
+                conversationId = id, 
+                userEmail, 
+                isTyping = request?.IsTyping ?? true 
+            });
+
+            return Ok(new { success = true });
         }
 
         // DELETE: /api/conversations/messages/10?userEmail=test@example.com

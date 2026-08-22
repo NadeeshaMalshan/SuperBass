@@ -34,6 +34,8 @@ export default function Chats() {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [emojiCategory, setEmojiCategory] = useState('smileys');
 
+  const [isTyping, setIsTyping] = useState(false);
+
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const textInputRef = useRef(null);
@@ -52,7 +54,7 @@ export default function Chats() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, isTyping, showEmojiPicker]);
 
   // Fetch all user conversations
   const fetchConversations = async () => {
@@ -91,6 +93,13 @@ export default function Chats() {
       if (res.data && Array.isArray(res.data)) {
         setMessages(res.data);
       }
+
+      // Mark conversation as read
+      try {
+        await axios.post(`${API_BASE_URL}/${conversationId}/read`, { readerEmail: currentUserEmail }, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+      } catch (e) {}
     } catch (err) {
       console.error('Error fetching messages:', err);
     }
@@ -103,6 +112,18 @@ export default function Chats() {
       return () => clearInterval(msgInterval);
     }
   }, [selectedChat]);
+
+  const handleInputChange = (e) => {
+    setInputText(e.target.value);
+    if (selectedChat) {
+      try {
+        axios.post(`${API_BASE_URL}/${selectedChat.id}/typing`, {
+          userEmail: currentUserEmail,
+          isTyping: true
+        });
+      } catch (err) {}
+    }
+  };
 
   const handleSelectConversation = (conv) => {
     setSelectedChat(conv);
@@ -383,11 +404,35 @@ export default function Chats() {
                           />
                         )}
                       </div>
-                      <span className="chats-msg-time">{formatMessageTime(msg.createdAt)}</span>
+                      <span className="chats-msg-time">
+                        {formatMessageTime(msg.createdAt)}
+                        {isResident && (
+                          msg.id && msg.id.toString().startsWith('local-') ? (
+                            <i className="fa-solid fa-check" title="Sent" style={{ fontSize: '0.7rem', color: '#94a3b8' }}></i>
+                          ) : msg.isRead ? (
+                            <i className="fa-solid fa-check-double" title="Read" style={{ fontSize: '0.7rem', color: '#0284c7' }}></i>
+                          ) : (
+                            <i className="fa-solid fa-check-double" title="Delivered" style={{ fontSize: '0.7rem', color: '#94a3b8' }}></i>
+                          )
+                        )}
+                      </span>
                     </div>
                   </div>
                 );
               })}
+
+              {isTyping && (
+                <div className="chats-bubble-row worker">
+                  <div className="chats-msg-avatar">
+                    {getInitial(selectedChat.workerName || 'W')}
+                  </div>
+                  <div className="chats-typing-bubble">
+                    <span className="chats-typing-dot"></span>
+                    <span className="chats-typing-dot"></span>
+                    <span className="chats-typing-dot"></span>
+                  </div>
+                </div>
+              )}
 
               <div ref={messagesEndRef} />
             </div>
@@ -452,7 +497,7 @@ export default function Chats() {
                   className="chats-pill-text-input"
                   placeholder="Chat message..."
                   value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
+                  onChange={handleInputChange}
                   onKeyDown={handleKeyDown}
                   disabled={isSending}
                 />

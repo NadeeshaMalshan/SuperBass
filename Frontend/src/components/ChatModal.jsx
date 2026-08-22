@@ -119,10 +119,29 @@ export default function ChatModal({
       if (res.data && Array.isArray(res.data)) {
         setMessages(res.data);
       }
+
+      // Mark incoming messages as read
+      try {
+        await axios.post(`${API_BASE_URL}/${convId}/read`, { readerEmail: currentUserEmail }, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+      } catch (e) {}
     } catch (err) {
       if (!isPolling) {
         console.error('Error fetching messages from DB:', err);
       }
+    }
+  };
+
+  const handleInputChange = (e) => {
+    setInputText(e.target.value);
+    if (conversationId) {
+      try {
+        axios.post(`${API_BASE_URL}/${conversationId}/typing`, {
+          userEmail: currentUserEmail,
+          isTyping: true
+        });
+      } catch (err) {}
     }
   };
 
@@ -309,8 +328,17 @@ export default function ChatModal({
                       />
                     )}
                   </div>
-                  <div className="gm-time-text">
-                    {formatMessageTime(msg.createdAt)}
+                  <div className="gm-time-text" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    <span>{formatMessageTime(msg.createdAt)}</span>
+                    {isResident && (
+                      msg.id && msg.id.toString().startsWith('temp-') ? (
+                        <i className="fa-solid fa-check" title="Sent" style={{ fontSize: '0.7rem', color: '#94a3b8' }}></i>
+                      ) : msg.isRead ? (
+                        <i className="fa-solid fa-check-double" title="Read" style={{ fontSize: '0.7rem', color: '#0284c7' }}></i>
+                      ) : (
+                        <i className="fa-solid fa-check-double" title="Delivered" style={{ fontSize: '0.7rem', color: '#94a3b8' }}></i>
+                      )
+                    )}
                   </div>
                 </div>
               </div>

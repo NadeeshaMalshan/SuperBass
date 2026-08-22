@@ -32,6 +32,12 @@ namespace Superbass.Models
         public string? ReaderEmail { get; set; }
     }
 
+    public class TypingRequest
+    {
+        public string? UserEmail { get; set; }
+        public bool IsTyping { get; set; } = true;
+    }
+
     public class ConversationSummaryDto
     {
         public int Id { get; set; }
