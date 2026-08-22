@@ -327,7 +327,11 @@ export default function ResidentProfile() {
         content: editContent,
         serviceCategoryId: editCategory,
         location: editLocation,
-        images: editImages
+        images: editImages,
+        userEmail: userEmail,
+        userName: userName
+      }, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
 
       alert("Post updated successfully!");
@@ -335,7 +339,8 @@ export default function ResidentProfile() {
       fetchUserPosts();
     } catch (err) {
       console.error("Error updating post:", err);
-      alert("Failed to update post.");
+      const msg = err.response?.data?.message || "Failed to update post.";
+      alert(msg);
     }
   };
 
@@ -344,7 +349,9 @@ export default function ResidentProfile() {
     if (!window.confirm("Are you sure you want to delete this community post?")) return;
 
     try {
-      await axios.delete(`http://localhost:5237/api/community-posts/${postId}`);
+      await axios.delete(`http://localhost:5237/api/community-posts/${postId}?requesterEmail=${encodeURIComponent(userEmail || '')}&requesterName=${encodeURIComponent(userName || '')}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
       alert("Post deleted successfully.");
       setUserPosts(prev => prev.filter(p => p.postId !== postId));
       if (selectedPostForDetail && selectedPostForDetail.postId === postId) {
@@ -352,7 +359,8 @@ export default function ResidentProfile() {
       }
     } catch (err) {
       console.error("Error deleting post:", err);
-      alert("Failed to delete post.");
+      const msg = err.response?.data?.message || "Failed to delete post.";
+      alert(msg);
     }
   };
 
