@@ -292,10 +292,6 @@ export default function Community() {
               transition: 'all 0.2s ease'
             }}
           >
-<<<<<<< Updated upstream
-            + Create Post
-          </md-filled-button>
-=======
             <i className="fa-solid fa-plus"></i> Post Ad / Request
           </button>
 
@@ -323,7 +319,6 @@ export default function Community() {
             )}
             {localStorage.getItem('userName') ? localStorage.getItem('userName').split(' ')[0] : 'My Profile'}
           </button>
->>>>>>> Stashed changes
         </div>
       </header>
 

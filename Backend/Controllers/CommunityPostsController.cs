@@ -32,6 +32,19 @@ namespace Superbass.Controllers
             return Ok(posts);
         }
 
+        // GET /api/community-posts/user/{email}
+        [HttpGet("user/{email}")]
+        public IActionResult GetPostsByUser(string email)
+        {
+            var posts = _repository.GetPostsByUserId(email);
+            if (!posts.Any())
+            {
+                posts = _repository.GetPosts(null, null, null, null)
+                    .Where(p => p.UserId == email || p.UserName.Contains(email.Split('@')[0], StringComparison.OrdinalIgnoreCase));
+            }
+            return Ok(posts);
+        }
+
         // GET /api/community-posts/{id}
         [HttpGet("{id}")]
         public IActionResult GetPostById(int id)
