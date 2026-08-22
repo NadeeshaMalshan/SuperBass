@@ -284,15 +284,6 @@ export default function Community() {
     }
   };
 
-      alert("Post updated successfully!");
-      setEditingPost(null);
-      fetchPosts();
-    } catch (err) {
-      console.error("Error updating post:", err);
-      alert("Failed to update post.");
-    }
-  };
-
   // Image Upload for New Post
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files || []);
