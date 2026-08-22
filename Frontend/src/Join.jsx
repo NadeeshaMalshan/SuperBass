@@ -27,11 +27,15 @@ function JoinContent() {
         localStorage.setItem("token", res.data.token);
         if (res.data.name) localStorage.setItem("userName", res.data.name);
         if (res.data.picture) localStorage.setItem("userPicture", res.data.picture);
-
         if (res.data.email) localStorage.setItem("email", res.data.email);
 
-        // Redirect based on user status
-        if (res.data.isNewUser) {
+        const activeRole = res.data.activeRole || (res.data.isWorker ? 'Worker' : 'Resident');
+        localStorage.setItem("activeRole", activeRole);
+
+        // Redirect based on user role and status
+        if (activeRole === 'Worker') {
+          window.history.pushState({}, '', '/worker/dashboard');
+        } else if (res.data.isNewUser) {
           window.history.pushState({}, '', '/onboarding');
         } else {
           window.history.pushState({}, '', '/find');
@@ -77,26 +81,7 @@ function JoinContent() {
           <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
           <path fill="none" d="M0 0h48v48H0z"></path>
         </svg>
-        Login as Google
-      </md-filled-button>
-
-      {/* Join as Worker Button */}
-      <md-filled-button
-        onClick={() => {
-          window.history.pushState({}, '', '/worker/login');
-          window.dispatchEvent(new PopStateEvent('popstate'));
-        }}
-        style={{
-          '--md-filled-button-container-shape': '50px',
-          '--md-sys-color-primary': '#2563EB',
-          '--md-sys-color-on-primary': '#ffffff',
-          width: '350px',
-          height: '56px',
-          fontSize: '18px',
-          marginTop: '16px',
-          cursor: 'pointer'
-        }}>
-        Join as Worker
+        Login with Google
       </md-filled-button>
     </div>
   );
