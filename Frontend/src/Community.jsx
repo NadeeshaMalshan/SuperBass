@@ -266,6 +266,7 @@ export default function Community() {
     e.preventDefault();
     if (!newTitle.trim() || !newContent.trim()) return;
 
+    try {
       const userEmail = localStorage.getItem('email');
       const token = localStorage.getItem('token');
       await axios.post(API_BASE_URL, {
