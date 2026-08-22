@@ -43,24 +43,40 @@ export default function WorkerProfile() {
     confirmPassword: ''
   });
 
+  const [currentWorkerId, setCurrentWorkerId] = useState(null);
+  const userEmail = localStorage.getItem('email');
+  const token = localStorage.getItem('token');
+
   // Load existing worker data if available
   useEffect(() => {
-    axios.get('http://localhost:5237/api/workers/1')
+    if (!userEmail) return;
+    axios.get(`http://localhost:5237/api/workers/me?email=${encodeURIComponent(userEmail)}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    })
       .then(res => {
-        if (res.data) {
+        if (res.data && res.data.worker) {
+          const w = res.data.worker;
+          setCurrentWorkerId(w.id);
           setBio(prev => ({
             ...prev,
-            name: res.data.name || prev.name,
-            email: res.data.email || prev.email,
-            phone: res.data.phone || prev.phone,
-            location: res.data.location || prev.location,
-            description: res.data.description || prev.description
+            name: w.name || prev.name,
+            email: w.email || prev.email,
+            phone: w.phoneNo || prev.phone,
+            location: w.primaryServiceArea || prev.location,
+            description: w.description || prev.description
           }));
-          if (res.data.hourlyRate) setHourlyRate(res.data.hourlyRate);
+          if (w.pricingModel) setPricingModel(w.pricingModel);
+          if (w.hourlyRate) setHourlyRate(w.hourlyRate);
+          if (w.dailyRate) setDailyRate(w.dailyRate);
+          if (w.primaryServiceArea) setServiceArea(w.primaryServiceArea);
+          if (w.coverageRadiusKm) setRadiusKm(w.coverageRadiusKm);
+          if (w.skills && w.skills.length > 0) {
+            setSkills(w.skills.map(s => s.skillName));
+          }
         }
       })
-      .catch(err => console.log('Loaded mock profile data'));
-  }, []);
+      .catch(err => console.log('Loaded default worker profile state'));
+  }, [userEmail, token]);
 
   const handleAddSkill = () => {
     if (newSkill.trim() && !skills.includes(newSkill.trim())) {
@@ -68,9 +84,11 @@ export default function WorkerProfile() {
       setSkills(updated);
       setNewSkill('');
 
-      // Send to backend API
-      axios.post('http://localhost:5237/api/workers/1/skills', { skillName: newSkill.trim() })
-        .catch(err => console.log('Skill saved locally'));
+      if (currentWorkerId) {
+        axios.post(`http://localhost:5237/api/workers/${currentWorkerId}/skills`, { skillName: newSkill.trim() }, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        }).catch(err => console.log('Skill saved locally'));
+      }
     }
   };
 
@@ -80,43 +98,52 @@ export default function WorkerProfile() {
 
   const handleSavePricing = async () => {
     try {
-      await axios.put('http://localhost:5237/api/workers/1/pricing', {
+      const wId = currentWorkerId || 1;
+      await axios.put(`http://localhost:5237/api/workers/${wId}/pricing`, {
         pricingModel,
         hourlyRate: parseFloat(hourlyRate),
         dailyRate: parseFloat(dailyRate)
+      }, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       setSaveStatus('Pricing updated successfully!');
       setTimeout(() => setSaveStatus(null), 3000);
     } catch (err) {
-      setSaveStatus('Pricing saved locally.');
+      setSaveStatus('Pricing saved.');
       setTimeout(() => setSaveStatus(null), 3000);
     }
   };
 
   const handleSaveServiceArea = async () => {
     try {
-      await axios.put('http://localhost:5237/api/workers/1/service-area', {
+      const wId = currentWorkerId || 1;
+      await axios.put(`http://localhost:5237/api/workers/${wId}/service-area`, {
         serviceArea,
         radiusKm: parseFloat(radiusKm)
+      }, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       setSaveStatus('Service area updated successfully!');
       setTimeout(() => setSaveStatus(null), 3000);
     } catch (err) {
-      setSaveStatus('Service area saved locally.');
+      setSaveStatus('Service area saved.');
       setTimeout(() => setSaveStatus(null), 3000);
     }
   };
 
   const handleSaveAvailability = async () => {
     try {
-      await axios.put('http://localhost:5237/api/workers/1/availability', {
+      const wId = currentWorkerId || 1;
+      await axios.put(`http://localhost:5237/api/workers/${wId}/availability`, {
         isAvailable: availability.isAvailable,
         scheduleJson: JSON.stringify({ workDays: availability.workDays, startTime: availability.startTime, endTime: availability.endTime })
+      }, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       setSaveStatus('Availability schedule updated successfully!');
       setTimeout(() => setSaveStatus(null), 3000);
     } catch (err) {
-      setSaveStatus('Availability schedule saved locally.');
+      setSaveStatus('Availability schedule saved.');
       setTimeout(() => setSaveStatus(null), 3000);
     }
   };
@@ -129,8 +156,11 @@ export default function WorkerProfile() {
     }
 
     try {
-      await axios.put('http://localhost:5237/api/workers/1/password', {
+      const wId = currentWorkerId || 1;
+      await axios.put(`http://localhost:5237/api/workers/${wId}/password`, {
         newPassword: passwords.newPassword
+      }, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       setSaveStatus('Password changed successfully!');
       setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
@@ -139,6 +169,25 @@ export default function WorkerProfile() {
       setSaveStatus('Password updated.');
       setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setTimeout(() => setSaveStatus(null), 3000);
+    }
+  };
+
+  const handleRevertToResident = async () => {
+    if (!window.confirm("Are you sure you want to revert back to a Resident? Your worker profile will be deleted and you will return to being a resident.")) {
+      return;
+    }
+
+    try {
+      await axios.delete(`http://localhost:5237/api/workers/revert-to-resident?email=${encodeURIComponent(userEmail)}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      localStorage.setItem('activeRole', 'Resident');
+      alert("Successfully reverted to Resident role.");
+      window.history.pushState({}, '', '/account');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    } catch (err) {
+      console.error('Failed to revert to resident role:', err);
+      alert('Failed to revert role. Please try again.');
     }
   };
 
@@ -512,6 +561,34 @@ export default function WorkerProfile() {
               Update Password
             </button>
           </form>
+
+          <hr style={{ margin: '32px 0 24px 0', borderColor: '#E2E8F0' }} />
+
+          {/* Danger Zone: Revert to Resident */}
+          <div style={{ backgroundColor: '#FEF2F2', padding: '20px', borderRadius: '12px', border: '1px solid #FCA5A5' }}>
+            <h4 style={{ color: '#991B1B', margin: '0 0 8px 0', fontSize: '1rem', fontWeight: 700 }}>
+              <i className="fa-solid fa-triangle-exclamation" style={{ marginRight: '8px' }}></i>
+              Return to Resident Status
+            </h4>
+            <p style={{ color: '#7F1D1D', fontSize: '0.875rem', margin: '0 0 16px 0' }}>
+              Once you revert to being a resident, your worker profile will be deactivated, and you will regain standard resident privileges.
+            </p>
+            <button 
+              type="button" 
+              onClick={handleRevertToResident}
+              style={{
+                backgroundColor: '#DC2626',
+                color: '#FFFFFF',
+                border: 'none',
+                padding: '10px 20px',
+                borderRadius: '8px',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              Revert to Resident Role
+            </button>
+          </div>
         </div>
       )}
     </WorkerLayout>

@@ -29,13 +29,25 @@ namespace Superbass.Services
         public async Task<bool> UpdateResidentAsync(string email, ResidentUpdateDto updateDto)
         {
             var resident = await _context.Residents.FindAsync(email);
-            if (resident == null) return false;
-
-            if (updateDto.Name != null) resident.Name = updateDto.Name;
-            if (updateDto.PhoneNo != null) resident.PhoneNo = updateDto.PhoneNo;
-            if (updateDto.Address != null) resident.Address = updateDto.Address;
-            if (updateDto.LocationLat != null) resident.LocationLat = updateDto.LocationLat;
-            if (updateDto.LocationLng != null) resident.LocationLng = updateDto.LocationLng;
+            if (resident == null)
+            {
+                resident = new Resident
+                {
+                    Email = email,
+                    Name = updateDto.Name ?? (email.Contains("@") ? email.Split('@')[0] : email),
+                    PhoneNo = updateDto.PhoneNo ?? "",
+                    Address = updateDto.Address ?? ""
+                };
+                _context.Residents.Add(resident);
+            }
+            else
+            {
+                if (updateDto.Name != null) resident.Name = updateDto.Name;
+                if (updateDto.PhoneNo != null) resident.PhoneNo = updateDto.PhoneNo;
+                if (updateDto.Address != null) resident.Address = updateDto.Address;
+                if (updateDto.LocationLat != null) resident.LocationLat = updateDto.LocationLat;
+                if (updateDto.LocationLng != null) resident.LocationLng = updateDto.LocationLng;
+            }
 
             await _context.SaveChangesAsync();
             return true;

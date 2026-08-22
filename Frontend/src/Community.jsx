@@ -54,6 +54,27 @@ export default function Community() {
   const [newImages, setNewImages] = useState([]);
   const fileInputRef = useRef(null);
 
+  const currentUserEmail = localStorage.getItem('email');
+  const currentUserName = localStorage.getItem('userName');
+
+  const isPostOwner = (post) => {
+    if (!post) return false;
+    if (!currentUserEmail && !currentUserName) return false;
+
+    const postUserId = post.userId ? post.userId.trim().toLowerCase() : '';
+    const postUserName = post.userName ? post.userName.trim().toLowerCase() : '';
+    const emailLower = currentUserEmail ? currentUserEmail.trim().toLowerCase() : '';
+    const emailPrefix = emailLower.includes('@') ? emailLower.split('@')[0] : emailLower;
+    const nameLower = currentUserName ? currentUserName.trim().toLowerCase() : '';
+
+    return (
+      (emailLower && postUserId === emailLower) ||
+      (emailPrefix && postUserId === emailPrefix) ||
+      (nameLower && postUserName === nameLower) ||
+      (emailPrefix && postUserName === emailPrefix)
+    );
+  };
+
   // Comments State (postId -> array of comments)
   const [commentsMap, setCommentsMap] = useState({});
   const [newCommentText, setNewCommentText] = useState('');
@@ -218,7 +239,12 @@ export default function Community() {
     if (!window.confirm("Are you sure you want to delete this community post?")) return;
 
     try {
-      await axios.delete(`${API_BASE_URL}/${postId}`);
+      const userEmail = localStorage.getItem('email');
+      const userName = localStorage.getItem('userName');
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API_BASE_URL}/${postId}?requesterEmail=${encodeURIComponent(userEmail || '')}&requesterName=${encodeURIComponent(userName || '')}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
       alert("Post deleted successfully.");
       setPosts(prev => prev.filter(p => p.postId !== postId));
       if (selectedPostForDetail && selectedPostForDetail.postId === postId) {
@@ -226,7 +252,8 @@ export default function Community() {
       }
     } catch (err) {
       console.error("Error deleting post:", err);
-      alert("Failed to delete post.");
+      const msg = err.response?.data?.message || "Failed to delete post.";
+      alert(msg);
     }
   };
 
@@ -259,12 +286,19 @@ export default function Community() {
     if (!editingPost || !editTitle.trim() || !editContent.trim()) return;
 
     try {
+      const userEmail = localStorage.getItem('email');
+      const userName = localStorage.getItem('userName');
+      const token = localStorage.getItem('token');
       await axios.put(`${API_BASE_URL}/${editingPost.postId}`, {
         title: editTitle,
         content: editContent,
         serviceCategoryId: editCategory,
         location: editLocation,
-        images: editImages
+        images: editImages,
+        userEmail: userEmail,
+        userName: userName
+      }, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
 
       alert("Post updated successfully!");
@@ -272,7 +306,8 @@ export default function Community() {
       fetchPosts();
     } catch (err) {
       console.error("Error updating post:", err);
-      alert("Failed to update post.");
+      const msg = err.response?.data?.message || "Failed to update post.";
+      alert(msg);
     }
   };
 
@@ -585,48 +620,50 @@ export default function Community() {
                         {post.title}
                       </h3>
 
-                      {/* Card Action Controls: Edit & Delete */}
-                      <div style={{ display: 'flex', gap: '6px', shrink: 0 }} onClick={(e) => e.stopPropagation()}>
-                        <button
-                          onClick={(e) => handleOpenEdit(post, e)}
-                          title="Edit Post"
-                          style={{
-                            backgroundColor: '#eff6ff',
-                            color: '#2563eb',
-                            border: '1px solid #bfdbfe',
-                            borderRadius: '6px',
-                            padding: '4px 10px',
-                            fontSize: '0.775rem',
-                            fontWeight: '700',
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                          }}
-                        >
-                          <i className="fa-solid fa-pen"></i> Edit
-                        </button>
+                      {/* Card Action Controls: Edit & Delete (Only for Post Author) */}
+                      {isPostOwner(post) && (
+                        <div style={{ display: 'flex', gap: '6px', shrink: 0 }} onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={(e) => handleOpenEdit(post, e)}
+                            title="Edit Post"
+                            style={{
+                              backgroundColor: '#eff6ff',
+                              color: '#2563eb',
+                              border: '1px solid #bfdbfe',
+                              borderRadius: '6px',
+                              padding: '4px 10px',
+                              fontSize: '0.775rem',
+                              fontWeight: '700',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                          >
+                            <i className="fa-solid fa-pen"></i> Edit
+                          </button>
 
-                        <button
-                          onClick={(e) => handleDeletePost(post.postId, e)}
-                          title="Delete Post"
-                          style={{
-                            backgroundColor: '#fef2f2',
-                            color: '#ef4444',
-                            border: '1px solid #fecaca',
-                            borderRadius: '6px',
-                            padding: '4px 10px',
-                            fontSize: '0.775rem',
-                            fontWeight: '700',
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                          }}
-                        >
-                          <i className="fa-solid fa-trash"></i> Delete
-                        </button>
-                      </div>
+                          <button
+                            onClick={(e) => handleDeletePost(post.postId, e)}
+                            title="Delete Post"
+                            style={{
+                              backgroundColor: '#fef2f2',
+                              color: '#ef4444',
+                              border: '1px solid #fecaca',
+                              borderRadius: '6px',
+                              padding: '4px 10px',
+                              fontSize: '0.775rem',
+                              fontWeight: '700',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                          >
+                            <i className="fa-solid fa-trash"></i> Delete
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {/* Condition / Subtag */}
@@ -817,37 +854,42 @@ export default function Community() {
                   <i className="fa-solid fa-thumbs-up"></i> Interested ({selectedPostForDetail.likesCount || 0})
                 </button>
 
-                <button
-                  onClick={(e) => { setSelectedPostForDetail(null); handleOpenEdit(selectedPostForDetail, e); }}
-                  style={{
-                    backgroundColor: '#3b82f6',
-                    color: '#ffffff',
-                    border: 'none',
-                    padding: '8px 16px',
-                    borderRadius: '20px',
-                    fontWeight: '700',
-                    fontSize: '0.875rem',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Edit Post
-                </button>
+                {/* Author Controls in Detail Modal */}
+                {isPostOwner(selectedPostForDetail) && (
+                  <>
+                    <button
+                      onClick={(e) => { setSelectedPostForDetail(null); handleOpenEdit(selectedPostForDetail, e); }}
+                      style={{
+                        backgroundColor: '#3b82f6',
+                        color: '#ffffff',
+                        border: 'none',
+                        padding: '8px 16px',
+                        borderRadius: '20px',
+                        fontWeight: '700',
+                        fontSize: '0.875rem',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Edit Post
+                    </button>
 
-                <button
-                  onClick={(e) => { handleDeletePost(selectedPostForDetail.postId, e); }}
-                  style={{
-                    backgroundColor: '#ef4444',
-                    color: '#ffffff',
-                    border: 'none',
-                    padding: '8px 16px',
-                    borderRadius: '20px',
-                    fontWeight: '700',
-                    fontSize: '0.875rem',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Delete Post
-                </button>
+                    <button
+                      onClick={(e) => { handleDeletePost(selectedPostForDetail.postId, e); }}
+                      style={{
+                        backgroundColor: '#ef4444',
+                        color: '#ffffff',
+                        border: 'none',
+                        padding: '8px 16px',
+                        borderRadius: '20px',
+                        fontWeight: '700',
+                        fontSize: '0.875rem',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Delete Post
+                    </button>
+                  </>
+                )}
 
                 <button
                   onClick={() => setReportingPostId(selectedPostForDetail.postId)}

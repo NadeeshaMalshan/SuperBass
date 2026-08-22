@@ -76,6 +76,9 @@ namespace Superbass.Models
         public string ServiceCategoryId { get; set; } = string.Empty;
         public string Location { get; set; } = string.Empty;
         public List<string>? Images { get; set; }
+        public string? UserName { get; set; }
+        public string? UserEmail { get; set; }
+        public string? UserId { get; set; }
     }
 
     public class CreateCommentRequest
