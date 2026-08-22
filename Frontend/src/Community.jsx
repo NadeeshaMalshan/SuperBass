@@ -266,7 +266,8 @@ export default function Community() {
     e.preventDefault();
     if (!newTitle.trim() || !newContent.trim()) return;
 
-    try {
+      const userEmail = localStorage.getItem('email');
+      const token = localStorage.getItem('token');
       await axios.post(API_BASE_URL, {
         title: newTitle,
         content: newContent,
@@ -274,7 +275,10 @@ export default function Community() {
         location: newLocation,
         images: newImages,
         userName: localStorage.getItem('userName') || "You (Resident)",
-        userAvatar: localStorage.getItem('userPicture') || "https://api.dicebear.com/7.x/avataaars/svg?seed=CurrentUser"
+        userAvatar: localStorage.getItem('userPicture') || "https://api.dicebear.com/7.x/avataaars/svg?seed=CurrentUser",
+        userEmail: userEmail
+      }, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
 
       // Refresh listings strictly from DB
