@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import categoriesData from './data/categories.json';
+import UserMenu from './components/UserMenu.jsx';
 import '@material/web/button/filled-button.js';
 import '@material/web/button/outlined-button.js';
 import '@material/web/textfield/filled-text-field.js';
@@ -410,7 +411,7 @@ export default function ResidentProfile() {
         <a href="/" onClick={(e) => { e.preventDefault(); navigateTo('/'); }} style={{ cursor: 'pointer' }}>
           <img src="/iconWithText-cropped.png" alt="Super බාස් Logo" style={{ height: '40px' }} />
         </a>
-        <div style={{ display: 'flex', gap: '1rem' }}>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           <md-outlined-button onClick={() => navigateTo('/find')}>Find Workers</md-outlined-button>
           <md-filled-button 
             onClick={() => navigateTo('/community')}
@@ -418,6 +419,7 @@ export default function ResidentProfile() {
           >
             Community Board
           </md-filled-button>
+          <UserMenu />
         </div>
       </header>
 

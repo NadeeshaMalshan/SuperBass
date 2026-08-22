@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import './App.css';
+import UserMenu from './components/UserMenu.jsx';
 
 // Google Material 3 Web Components
 import '@material/web/button/filled-button.js';
@@ -92,11 +93,19 @@ export default function App() {
           <li className="nav-link">For Baas / Pros</li>
         </ul>
 
-        <div className="nav-actions">
-          {/* Material 3 Filled Button for Primary Action */}
-          <md-filled-button class="header-cta-btn" onClick={() => navigate('/find')}>
-            Get Started
-          </md-filled-button>
+        <div className="nav-actions" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          {localStorage.getItem('token') ? (
+            <>
+              <md-filled-button class="header-cta-btn" onClick={() => navigate('/find')}>
+                Find Workers
+              </md-filled-button>
+              <UserMenu />
+            </>
+          ) : (
+            <md-filled-button class="header-cta-btn" onClick={() => navigate('/find')}>
+              Get Started
+            </md-filled-button>
+          )}
         </div>
       </header>
 

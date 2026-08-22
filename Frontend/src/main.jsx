@@ -6,6 +6,7 @@ import Find from './Find.jsx'
 import Join from './Join.jsx'
 import Community from './Community.jsx'
 import Onboarding from './Onboarding.jsx'
+import Chats from './Chats.jsx'
 
 // Worker Pages
 import WorkerRegister from './pages/worker/WorkerRegister.jsx'
@@ -37,6 +38,9 @@ function Router() {
   }
   if (path === '/community' || path === '/community.jsx') {
     return <Community />;
+  }
+  if (path === '/chats' || path === '/chats.jsx') {
+    return <Chats />;
   }
   if (path === '/onboarding' || path === '/onboarding.jsx') {
     return <Onboarding />;

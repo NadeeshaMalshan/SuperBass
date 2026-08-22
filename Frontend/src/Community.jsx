@@ -3,6 +3,8 @@ import axios from 'axios';
 import './App.css';
 import './Community.css';
 import categoriesData from './data/categories.json';
+import ChatModal from './components/ChatModal.jsx';
+import UserMenu from './components/UserMenu.jsx';
 
 // Material 3 Web Components
 import '@material/web/button/filled-button.js';
@@ -59,6 +61,31 @@ export default function Community() {
   // Report Modal State
   const [reportingPostId, setReportingPostId] = useState(null);
   const [reportReason, setReportReason] = useState('');
+
+  // Chat Modal State
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatRecipient, setChatRecipient] = useState({
+    name: 'Jayashan Manodya',
+    email: 'jayashan@superbass.lk',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Jayashan'
+  });
+  const [chatPostContext, setChatPostContext] = useState(null);
+
+  const handleOpenChat = (post) => {
+    if (!post) return;
+    setChatRecipient({
+      name: post.userName || 'SuperBass Member',
+      email: post.userId || post.userEmail || `${post.userName?.toLowerCase().replace(/\s+/g, '') || 'member'}@superbass.lk`,
+      avatar: post.userAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.postId || post.userName}`,
+      workerId: null,
+      userId: post.userId
+    });
+    setChatPostContext({
+      id: post.postId,
+      title: post.title
+    });
+    setIsChatOpen(true);
+  };
 
   // Fetch Posts strictly from Backend Database
   const fetchPosts = async () => {
@@ -359,30 +386,7 @@ export default function Community() {
             <i className="fa-solid fa-plus"></i> Post Ad / Request
           </button>
 
-          <button
-            onClick={() => {
-              window.history.pushState({}, '', '/account');
-              window.dispatchEvent(new PopStateEvent('popstate'));
-            }}
-            style={{
-              backgroundColor: '#0f172a',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '24px',
-              padding: '8px 16px',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-          >
-            {localStorage.getItem('userPicture') && (
-              <img src={localStorage.getItem('userPicture')} alt="User" style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover' }} />
-            )}
-            {localStorage.getItem('userName') ? localStorage.getItem('userName').split(' ')[0] : 'My Profile'}
-          </button>
+          <UserMenu />
         </div>
       </header>
 
@@ -762,7 +766,7 @@ export default function Community() {
                 </div>
 
                 <button
-                  onClick={() => alert(`Contacting ${selectedPostForDetail.userName} via SuperBass chat...`)}
+                  onClick={() => handleOpenChat(selectedPostForDetail)}
                   style={{
                     backgroundColor: '#0f172a',
                     color: '#ffffff',
@@ -771,8 +775,14 @@ export default function Community() {
                     padding: '8px 18px',
                     fontWeight: '700',
                     fontSize: '0.875rem',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    transition: 'all 0.2s'
                   }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0284c7'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#0f172a'}
                 >
                   <i className="fa-solid fa-comment-dots"></i> Chat / Contact
                 </button>
@@ -1250,6 +1260,13 @@ export default function Community() {
           </div>
         </div>
       )}
+      {/* Interactive Realtime Chat Modal */}
+      <ChatModal
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        recipient={chatRecipient}
+        postContext={chatPostContext}
+      />
     </div>
   );
 }

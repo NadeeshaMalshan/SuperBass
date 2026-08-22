@@ -1,5 +1,6 @@
 import React from 'react';
 import './App.css';
+import UserMenu from './components/UserMenu.jsx';
 
 // Google Material 3 Web Components
 import '@material/web/button/filled-button.js';
@@ -72,56 +73,7 @@ export default function Find() {
               >
                 Community Posts
               </md-filled-button>
-              <div style={{ position: 'relative', display: 'inline-block' }}>
-                <md-filled-button
-                  onClick={() => {
-                    window.history.pushState({}, '', '/account');
-                    window.dispatchEvent(new PopStateEvent('popstate'));
-                  }}
-                  style={{
-                    '--md-sys-color-primary': '#000000',
-                    '--md-sys-color-on-primary': '#ffffff',
-                    padding: '0 16px',
-                    minWidth: '100px',
-                    margin: '0 10px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}
-                >
-                  {userPicture && <img slot="icon" src={userPicture} alt="User" style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover' }} />}
-                  {getFirstName(userName)}
-                </md-filled-button>
-                {showLogoutPopup && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '100%',
-                    right: '10px',
-                    marginTop: '8px',
-                    backgroundColor: '#ffffff',
-                    color: '#000000',
-                    borderRadius: '8px',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                    padding: '8px 0',
-                    zIndex: 1000,
-                    minWidth: '150px',
-                    textAlign: 'left'
-                  }}>
-                    <button 
-                      onClick={() => { setShowLogoutPopup(false); navigate('/account'); }} 
-                      style={{ width: '100%', padding: '12px 16px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', fontSize: '16px', color: '#000000' }}
-                    >
-                      My Account
-                    </button>
-                    <button 
-                      onClick={handleLogout} 
-                      style={{ width: '100%', padding: '12px 16px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', fontSize: '16px', color: '#EA4335' }}
-                    >
-                      Logout
-                    </button>
-                  </div>
-                )}
-              </div>
+              <UserMenu />
             </>
           ) : (
             <md-filled-button
