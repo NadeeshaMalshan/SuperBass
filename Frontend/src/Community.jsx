@@ -295,28 +295,6 @@ export default function Community() {
             <i className="fa-solid fa-plus"></i> Post Ad / Request
           </button>
 
-          <button
-            onClick={() => {
-              window.history.pushState({}, '', '/account');
-              window.dispatchEvent(new PopStateEvent('popstate'));
-            }}
-            style={{
-              backgroundColor: '#0f172a',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '24px',
-              padding: '8px 16px',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-          >
-            + Create Post
-          </md-filled-button>
-
           <md-filled-button
             onClick={() => {
               window.history.pushState({}, '', '/account');
