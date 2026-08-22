@@ -132,14 +132,18 @@ export default function Chats() {
     setMessages(prev => [...prev, newMsg]);
     setInputText('');
     const clearImg = previewImage;
-    setPreviewImage(null);
-
     try {
+      const isUserWorker = selectedChat.workerEmail?.toLowerCase() === currentUserEmail.toLowerCase();
+      const targetReceiverEmail = isUserWorker ? selectedChat.residentEmail : selectedChat.workerEmail;
+      const targetReceiverRole = isUserWorker ? 'Resident' : 'Worker';
+
       await axios.post(
         `${API_BASE_URL}/${selectedChat.id}/messages`,
         {
           senderEmail: currentUserEmail,
-          senderRole: 'Resident',
+          senderRole: isUserWorker ? 'Worker' : 'Resident',
+          receiverEmail: targetReceiverEmail,
+          receiverRole: targetReceiverRole,
           messageType: newMsg.messageType,
           content: newMsg.content,
           attachmentUrl: clearImg

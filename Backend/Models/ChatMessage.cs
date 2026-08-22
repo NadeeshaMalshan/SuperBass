@@ -21,6 +21,9 @@ namespace Superbass.Models
         [Required]
         public string SenderRole { get; set; } = "Resident"; // "Resident" or "Worker" or "System"
 
+        public string? ReceiverEmail { get; set; }
+        public string? ReceiverRole { get; set; } // "Resident" or "Worker"
+
         public string MessageType { get; set; } = "Text"; // "Text", "Image", "Attachment", "System", "BookingUpdate"
 
         public string Content { get; set; } = string.Empty;

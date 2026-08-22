@@ -182,6 +182,8 @@ export default function ChatModal({
           {
             senderEmail: currentUserEmail,
             senderRole: 'Resident',
+            receiverEmail: recipient.email || `${recipient.name?.toLowerCase().replace(/\s+/g, '') || 'worker'}@superbass.lk`,
+            receiverRole: 'Worker',
             messageType: msgType,
             content: msgContent,
             attachmentUrl: imageToClear

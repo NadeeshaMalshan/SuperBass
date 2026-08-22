@@ -117,6 +117,8 @@ namespace Superbass.Services
                         ConversationId = conversation.Id,
                         SenderEmail = residentEmail,
                         SenderRole = "Resident",
+                        ReceiverEmail = worker.Email ?? worker.ResidentEmail,
+                        ReceiverRole = "Worker",
                         MessageType = "Text",
                         Content = request.InitialMessage.Trim(),
                         CreatedAt = DateTime.UtcNow,
@@ -189,6 +191,8 @@ namespace Superbass.Services
                     ConversationId = m.ConversationId,
                     SenderEmail = m.SenderEmail,
                     SenderRole = m.SenderRole,
+                    ReceiverEmail = m.ReceiverEmail,
+                    ReceiverRole = m.ReceiverRole,
                     MessageType = m.MessageType,
                     Content = m.Content,
                     AttachmentUrl = m.AttachmentUrl,
@@ -235,6 +239,8 @@ namespace Superbass.Services
                     ConversationId = m.ConversationId,
                     SenderEmail = m.SenderEmail,
                     SenderRole = m.SenderRole,
+                    ReceiverEmail = m.ReceiverEmail,
+                    ReceiverRole = m.ReceiverRole,
                     MessageType = m.MessageType,
                     Content = m.Content,
                     AttachmentUrl = m.AttachmentUrl,
@@ -265,11 +271,31 @@ namespace Superbass.Services
                 throw new KeyNotFoundException($"Conversation with ID {conversationId} not found.");
             }
 
+            // Determine receiver automatically if not provided
+            string receiverEmail = request.ReceiverEmail ?? string.Empty;
+            string receiverRole = request.ReceiverRole ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(receiverEmail))
+            {
+                if (senderEmail.Equals(conversation.ResidentEmail, StringComparison.OrdinalIgnoreCase))
+                {
+                    receiverEmail = conversation.Worker?.Email ?? conversation.Worker?.ResidentEmail ?? "worker@superbass.lk";
+                    receiverRole = "Worker";
+                }
+                else
+                {
+                    receiverEmail = conversation.ResidentEmail;
+                    receiverRole = "Resident";
+                }
+            }
+
             var message = new ChatMessage
             {
                 ConversationId = conversationId,
                 SenderEmail = senderEmail,
                 SenderRole = string.IsNullOrWhiteSpace(senderRole) ? "Resident" : senderRole,
+                ReceiverEmail = receiverEmail,
+                ReceiverRole = string.IsNullOrWhiteSpace(receiverRole) ? (senderRole == "Resident" ? "Worker" : "Resident") : receiverRole,
                 MessageType = string.IsNullOrWhiteSpace(request.MessageType) ? "Text" : request.MessageType,
                 Content = request.Content ?? string.Empty,
                 AttachmentUrl = request.AttachmentUrl,
@@ -299,6 +325,8 @@ namespace Superbass.Services
                 ConversationId = message.ConversationId,
                 SenderEmail = message.SenderEmail,
                 SenderRole = message.SenderRole,
+                ReceiverEmail = message.ReceiverEmail,
+                ReceiverRole = message.ReceiverRole,
                 MessageType = message.MessageType,
                 Content = message.Content,
                 AttachmentUrl = message.AttachmentUrl,

@@ -18,6 +18,8 @@ namespace Superbass.Models
     {
         public string? SenderEmail { get; set; }
         public string? SenderRole { get; set; } // "Resident" or "Worker"
+        public string? ReceiverEmail { get; set; }
+        public string? ReceiverRole { get; set; } // "Resident" or "Worker"
         public string? MessageType { get; set; } = "Text"; // "Text", "Image", "Attachment", "BookingUpdate"
         public string Content { get; set; } = string.Empty;
         public string? AttachmentUrl { get; set; }
@@ -57,6 +59,8 @@ namespace Superbass.Models
         public int ConversationId { get; set; }
         public string SenderEmail { get; set; } = null!;
         public string SenderRole { get; set; } = null!;
+        public string? ReceiverEmail { get; set; }
+        public string? ReceiverRole { get; set; }
         public string MessageType { get; set; } = "Text";
         public string Content { get; set; } = string.Empty;
         public string? AttachmentUrl { get; set; }
