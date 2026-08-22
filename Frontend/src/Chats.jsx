@@ -346,7 +346,11 @@ export default function Chats() {
             {/* Header */}
             <div className="chats-main-header">
               <div className="chats-header-user-info">
-                {selectedChat.workerProfileImage ? (
+                {selectedChat.workerEmail?.toLowerCase() === currentUserEmail.toLowerCase() ? (
+                  <div className="chats-header-avatar">
+                    {getInitial(selectedChat.residentName || 'Resident')}
+                  </div>
+                ) : selectedChat.workerProfileImage ? (
                   <img src={selectedChat.workerProfileImage} alt="avatar" className="chats-header-avatar" />
                 ) : (
                   <div className="chats-header-avatar">
@@ -354,7 +358,11 @@ export default function Chats() {
                   </div>
                 )}
                 <div>
-                  <h3 className="chats-header-name">{selectedChat.workerName || 'Jayashan Manodya'}</h3>
+                  <h3 className="chats-header-name">
+                    {selectedChat.workerEmail?.toLowerCase() === currentUserEmail.toLowerCase()
+                      ? (selectedChat.residentName || 'Resident Client')
+                      : (selectedChat.workerName || 'SuperBass Worker')}
+                  </h3>
                   <span className="chats-header-status">
                     <i className="fa-solid fa-circle" style={{ fontSize: '0.5rem' }}></i> Active now
                   </span>
@@ -366,7 +374,7 @@ export default function Chats() {
                   type="button"
                   className="chats-pill-icon-btn"
                   title="Call"
-                  onClick={() => alert(`Calling ${selectedChat.workerName}...`)}
+                  onClick={() => alert(`Calling ${selectedChat.workerEmail?.toLowerCase() === currentUserEmail.toLowerCase() ? (selectedChat.residentName || 'Client') : (selectedChat.workerName || 'Worker')}...`)}
                 >
                   <i className="fa-solid fa-phone"></i>
                 </button>
@@ -378,22 +386,24 @@ export default function Chats() {
               <div className="chats-stream-date">Today</div>
 
               {messages.map((msg, idx) => {
-                const isResident = msg.senderRole === 'Resident' || 
-                  (msg.senderEmail?.toLowerCase() === currentUserEmail.toLowerCase() && msg.senderRole !== 'Worker');
+                const isOutgoing = msg.senderEmail?.toLowerCase() === currentUserEmail.toLowerCase();
+                const otherPartyName = selectedChat.workerEmail?.toLowerCase() === currentUserEmail.toLowerCase()
+                  ? (selectedChat.residentName || 'Resident')
+                  : (selectedChat.workerName || 'Worker');
 
                 return (
                   <div
                     key={msg.id || idx}
-                    className={`chats-bubble-row ${isResident ? 'resident' : 'worker'}`}
+                    className={`chats-bubble-row ${isOutgoing ? 'resident' : 'worker'}`}
                   >
-                    {!isResident && (
+                    {!isOutgoing && (
                       <div className="chats-msg-avatar">
-                        {getInitial(selectedChat.workerName || 'W')}
+                        {getInitial(otherPartyName)}
                       </div>
                     )}
 
                     <div className="chats-msg-wrapper">
-                      <div className={`chats-bubble ${isResident ? 'resident' : 'worker'}`}>
+                      <div className={`chats-bubble ${isOutgoing ? 'resident' : 'worker'}`}>
                         {msg.content && <div>{msg.content}</div>}
                         {msg.attachmentUrl && (
                           <img
@@ -406,7 +416,7 @@ export default function Chats() {
                       </div>
                       <span className="chats-msg-time">
                         {formatMessageTime(msg.createdAt)}
-                        {isResident && (
+                        {isOutgoing && (
                           msg.id && msg.id.toString().startsWith('local-') ? (
                             <i className="fa-solid fa-check" title="Sent" style={{ fontSize: '0.7rem', color: '#94a3b8' }}></i>
                           ) : msg.isRead ? (
@@ -424,7 +434,7 @@ export default function Chats() {
               {isTyping && (
                 <div className="chats-bubble-row worker">
                   <div className="chats-msg-avatar">
-                    {getInitial(selectedChat.workerName || 'W')}
+                    {getInitial(selectedChat.workerEmail?.toLowerCase() === currentUserEmail.toLowerCase() ? (selectedChat.residentName || 'R') : (selectedChat.workerName || 'W'))}
                   </div>
                   <div className="chats-typing-bubble">
                     <span className="chats-typing-dot"></span>

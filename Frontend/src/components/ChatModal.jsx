@@ -298,26 +298,25 @@ export default function ChatModal({
           </div>
 
           {messages.map((msg, index) => {
-            const isResident = msg.senderRole === 'Resident' || 
-              (msg.senderEmail?.toLowerCase() === currentUserEmail.toLowerCase() && msg.senderRole !== 'Worker');
+            const isOutgoing = msg.senderEmail?.toLowerCase() === currentUserEmail.toLowerCase();
 
             return (
               <div
                 key={msg.id || index}
-                className={`gm-message-row ${isResident ? 'resident' : 'worker'}`}
+                className={`gm-message-row ${isOutgoing ? 'resident' : 'worker'}`}
               >
-                {!isResident && (
+                {!isOutgoing && (
                   <div className="gm-worker-avatar">
                     {recipient.avatar ? (
                       <img src={recipient.avatar} alt="avatar" />
                     ) : (
-                      getInitial(recipient.name)
+                      getInitial(recipient.name || 'User')
                     )}
                   </div>
                 )}
 
                 <div className="gm-bubble-wrapper">
-                  <div className={`gm-bubble ${isResident ? 'resident' : 'worker'}`}>
+                  <div className={`gm-bubble ${isOutgoing ? 'resident' : 'worker'}`}>
                     {msg.content && <div>{msg.content}</div>}
                     {msg.attachmentUrl && (
                       <img
@@ -330,7 +329,7 @@ export default function ChatModal({
                   </div>
                   <div className="gm-time-text" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                     <span>{formatMessageTime(msg.createdAt)}</span>
-                    {isResident && (
+                    {isOutgoing && (
                       msg.id && msg.id.toString().startsWith('temp-') ? (
                         <i className="fa-solid fa-check" title="Sent" style={{ fontSize: '0.7rem', color: '#94a3b8' }}></i>
                       ) : msg.isRead ? (
