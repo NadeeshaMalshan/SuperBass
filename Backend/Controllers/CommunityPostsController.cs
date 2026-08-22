@@ -65,9 +65,32 @@ namespace Superbass.Controllers
                 return BadRequest(new { message = "Title and Content are required." });
             }
 
-            string userId = User.Identity?.Name ?? request.UserName ?? "demo_user_1";
+            string userId = !string.IsNullOrWhiteSpace(request.UserEmail) ? request.UserEmail :
+                            !string.IsNullOrWhiteSpace(request.UserId) ? request.UserId :
+                            GetEmailFromRequest() ?? User.Identity?.Name ?? request.UserName ?? "demo_user_1";
+
             var created = _repository.CreatePost(request, userId);
             return CreatedAtAction(nameof(GetPostById), new { id = created.PostId }, created);
+        }
+
+        private string? GetEmailFromRequest()
+        {
+            var claim = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Email || c.Type == "email")?.Value;
+            if (!string.IsNullOrEmpty(claim)) return claim;
+
+            var authHeader = Request.Headers["Authorization"].FirstOrDefault();
+            if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    var token = authHeader.Substring("Bearer ".Length).Trim();
+                    var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+                    var jwtToken = handler.ReadJwtToken(token);
+                    return jwtToken.Claims.FirstOrDefault(c => c.Type == "email" || c.Type == System.Security.Claims.ClaimTypes.Email)?.Value;
+                }
+                catch { }
+            }
+            return null;
         }
 
         // PUT /api/community-posts/{id}
