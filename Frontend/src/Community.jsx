@@ -32,6 +32,15 @@ export default function Community() {
   const [selectedPostForDetail, setSelectedPostForDetail] = useState(null);
   const [selectedGalleryImage, setSelectedGalleryImage] = useState(null);
 
+  // Edit Modal State
+  const [editingPost, setEditingPost] = useState(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editContent, setEditContent] = useState('');
+  const [editCategory, setEditCategory] = useState('plumbing');
+  const [editLocation, setEditLocation] = useState('Colombo 05');
+  const [editImages, setEditImages] = useState([]);
+  const editFileInputRef = useRef(null);
+
   // Create Post Modal State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
@@ -176,6 +185,70 @@ export default function Community() {
     setNewCommentText('');
   };
 
+  // Delete Post from DB
+  const handleDeletePost = async (postId, e) => {
+    if (e) e.stopPropagation();
+    if (!window.confirm("Are you sure you want to delete this community post?")) return;
+
+    try {
+      await axios.delete(`${API_BASE_URL}/${postId}`);
+      alert("Post deleted successfully.");
+      setPosts(prev => prev.filter(p => p.postId !== postId));
+      if (selectedPostForDetail && selectedPostForDetail.postId === postId) {
+        setSelectedPostForDetail(null);
+      }
+    } catch (err) {
+      console.error("Error deleting post:", err);
+      alert("Failed to delete post.");
+    }
+  };
+
+  // Open Edit Modal
+  const handleOpenEdit = (post, e) => {
+    if (e) e.stopPropagation();
+    setEditingPost(post);
+    setEditTitle(post.title);
+    setEditContent(post.content);
+    setEditCategory(post.serviceCategoryId || 'plumbing');
+    setEditLocation(post.location || 'Colombo 05');
+    setEditImages(post.images || []);
+  };
+
+  // Handle image upload for Edit
+  const handleEditImageUpload = (e) => {
+    const files = Array.from(e.target.files || []);
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setEditImages(prev => [...prev, reader.result]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Submit Edit Post
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    if (!editingPost || !editTitle.trim() || !editContent.trim()) return;
+
+    try {
+      await axios.put(`${API_BASE_URL}/${editingPost.postId}`, {
+        title: editTitle,
+        content: editContent,
+        serviceCategoryId: editCategory,
+        location: editLocation,
+        images: editImages
+      });
+
+      alert("Post updated successfully!");
+      setEditingPost(null);
+      fetchPosts();
+    } catch (err) {
+      console.error("Error updating post:", err);
+      alert("Failed to update post.");
+    }
+  };
+
   // Image Upload for New Post
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files || []);
@@ -218,20 +291,6 @@ export default function Community() {
     setNewImages([]);
   };
 
-  // Delete Post directly from Community view
-  const handleDeletePostInCommunity = async (postId) => {
-    if (!window.confirm("Are you sure you want to delete this community post?")) return;
-    try {
-      await axios.delete(`${API_BASE_URL}/${postId}`);
-      alert("Post deleted successfully.");
-      setPosts(prev => prev.filter(p => p.postId !== postId));
-      setSelectedPostForDetail(null);
-    } catch (err) {
-      console.error("Error deleting post:", err);
-      alert("Failed to delete post.");
-    }
-  };
-
   // Submit Report to DB
   const handleReportSubmit = async () => {
     if (!reportingPostId || !reportReason.trim()) return;
@@ -270,15 +329,15 @@ export default function Community() {
         <ul className="nav-links">
           <li className="nav-link" onClick={() => navigate('/')}>Home</li>
           <li className="nav-link" onClick={() => navigate('/find')}>Find Workers</li>
-          <li className="nav-link active" style={{ color: '#FDC101', fontWeight: 700 }}>Community</li>
+          <li className="nav-link active" style={{ color: '#009688', fontWeight: 700 }}>Community</li>
         </ul>
 
         <div className="nav-actions" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           <button 
             onClick={() => setIsCreateModalOpen(true)}
             style={{
-              backgroundColor: '#FDC101',
-              color: '#000000',
+              backgroundColor: '#009688',
+              color: '#ffffff',
               border: 'none',
               borderRadius: '24px',
               padding: '10px 20px',
@@ -288,34 +347,37 @@ export default function Community() {
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              boxShadow: '0 3px 10px rgba(253, 193, 1, 0.4)',
+              boxShadow: '0 3px 10px rgba(0, 150, 136, 0.3)',
               transition: 'all 0.2s ease'
             }}
           >
             <i className="fa-solid fa-plus"></i> Post Ad / Request
           </button>
 
-          <md-filled-button
+          <button
             onClick={() => {
               window.history.pushState({}, '', '/account');
               window.dispatchEvent(new PopStateEvent('popstate'));
             }}
             style={{
-              '--md-sys-color-primary': '#000000',
-              '--md-sys-color-on-primary': '#ffffff',
-              padding: '0 16px',
-              height: '42px',
+              backgroundColor: '#0f172a',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '24px',
+              padding: '8px 16px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '8px',
-              '--md-filled-button-container-shape': '50px'
+              gap: '8px'
             }}
           >
             {localStorage.getItem('userPicture') && (
-              <img slot="icon" src={localStorage.getItem('userPicture')} alt="User" style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover' }} />
+              <img src={localStorage.getItem('userPicture')} alt="User" style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover' }} />
             )}
             {localStorage.getItem('userName') ? localStorage.getItem('userName').split(' ')[0] : 'My Profile'}
-          </md-filled-button>
+          </button>
         </div>
       </header>
 
@@ -437,7 +499,7 @@ export default function Community() {
         {/* Listings Cards Container */}
         {loading ? (
           <div style={{ textAlign: 'center', padding: '4rem', color: '#64748b' }}>
-            <i className="fa-solid fa-circle-notch fa-spin" style={{ fontSize: '2rem', color: '#FDC101', marginBottom: '1rem' }}></i>
+            <i className="fa-solid fa-circle-notch fa-spin" style={{ fontSize: '2rem', color: '#009688', marginBottom: '1rem' }}></i>
             <p style={{ fontSize: '1.1rem', fontWeight: '500' }}>Loading database posts...</p>
           </div>
         ) : (activeTab === 'feed' ? posts : moderationPosts).length === 0 ? (
@@ -459,7 +521,7 @@ export default function Community() {
               <button
                 onClick={() => setIsCreateModalOpen(true)}
                 style={{
-                  backgroundColor: '#FDC101',
+                  backgroundColor: '#009688',
                   color: '#ffffff',
                   border: 'none',
                   borderRadius: '24px',
@@ -500,7 +562,7 @@ export default function Community() {
                     </>
                   ) : (
                     <div className="ikman-img-placeholder">
-                      <i className="fa-solid fa-border-all"></i>
+                      <i className="fa-solid fa-image"></i>
                     </div>
                   )}
                 </div>
@@ -508,10 +570,55 @@ export default function Community() {
                 {/* Right Details Content Column */}
                 <div className="ikman-content-col">
                   <div>
-                    {/* Item Title */}
-                    <h3 className="ikman-title">
-                      {post.title}
-                    </h3>
+                    {/* Item Title & Edit/Delete Action Controls */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                      <h3 className="ikman-title">
+                        {post.title}
+                      </h3>
+
+                      {/* Card Action Controls: Edit & Delete */}
+                      <div style={{ display: 'flex', gap: '6px', shrink: 0 }} onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={(e) => handleOpenEdit(post, e)}
+                          title="Edit Post"
+                          style={{
+                            backgroundColor: '#eff6ff',
+                            color: '#2563eb',
+                            border: '1px solid #bfdbfe',
+                            borderRadius: '6px',
+                            padding: '4px 10px',
+                            fontSize: '0.775rem',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          <i className="fa-solid fa-pen"></i> Edit
+                        </button>
+
+                        <button
+                          onClick={(e) => handleDeletePost(post.postId, e)}
+                          title="Delete Post"
+                          style={{
+                            backgroundColor: '#fef2f2',
+                            color: '#ef4444',
+                            border: '1px solid #fecaca',
+                            borderRadius: '6px',
+                            padding: '4px 10px',
+                            fontSize: '0.775rem',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          <i className="fa-solid fa-trash"></i> Delete
+                        </button>
+                      </div>
+                    </div>
 
                     {/* Condition / Subtag */}
                     {post.condition && (
@@ -542,9 +649,9 @@ export default function Community() {
                       </span>
                     </div>
 
-                    {/* Location & Category Line */}
+                    {/* Location Line */}
                     <div className="ikman-location-cat">
-                      <span>{post.location}</span>
+                      <span>📍 {post.location}</span>
                     </div>
 
                     {/* Price Tag */}
@@ -619,7 +726,7 @@ export default function Community() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f0fdf4', padding: '14px 18px', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
                 <div>
                   <span style={{ fontSize: '0.85rem', color: '#166534', fontWeight: '600' }}>Listing Price / Budget</span>
-                  <div style={{ fontSize: '1.4rem', fontWeight: '800', color: '#FDC101' }}>
+                  <div style={{ fontSize: '1.4rem', fontWeight: '800', color: '#009688' }}>
                     {selectedPostForDetail.price || 'Inquire / Quote'}
                   </div>
                 </div>
@@ -674,8 +781,8 @@ export default function Community() {
                 </p>
               </div>
 
-              {/* Like / Comment Actions Bar */}
-              <div style={{ display: 'flex', gap: '16px', alignItems: 'center', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
+              {/* Like / Comment / Edit / Delete Actions Bar */}
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center', borderTop: '1px solid #e2e8f0', paddingTop: '1rem', flexWrap: 'wrap' }}>
                 <button
                   onClick={(e) => handleLike(selectedPostForDetail.postId, e)}
                   style={{
@@ -683,7 +790,7 @@ export default function Community() {
                     border: 'none',
                     color: selectedPostForDetail.isLiked ? '#0284c7' : '#475569',
                     fontWeight: '700',
-                    fontSize: '0.9rem',
+                    fontSize: '0.875rem',
                     padding: '8px 16px',
                     borderRadius: '20px',
                     cursor: 'pointer',
@@ -696,20 +803,35 @@ export default function Community() {
                 </button>
 
                 <button
-                  onClick={() => handleDeletePostInCommunity(selectedPostForDetail.postId)}
+                  onClick={(e) => { setSelectedPostForDetail(null); handleOpenEdit(selectedPostForDetail, e); }}
                   style={{
-                    backgroundColor: '#fef2f2',
-                    color: '#ef4444',
-                    border: '1px solid #fecaca',
-                    fontSize: '0.85rem',
-                    fontWeight: '600',
-                    padding: '6px 12px',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    marginLeft: 'auto'
+                    backgroundColor: '#3b82f6',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '8px 16px',
+                    borderRadius: '20px',
+                    fontWeight: '700',
+                    fontSize: '0.875rem',
+                    cursor: 'pointer'
                   }}
                 >
-                  <i className="fa-solid fa-trash"></i> Delete
+                  Edit Post
+                </button>
+
+                <button
+                  onClick={(e) => { handleDeletePost(selectedPostForDetail.postId, e); }}
+                  style={{
+                    backgroundColor: '#ef4444',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '8px 16px',
+                    borderRadius: '20px',
+                    fontWeight: '700',
+                    fontSize: '0.875rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Delete Post
                 </button>
 
                 <button
@@ -719,10 +841,11 @@ export default function Community() {
                     border: 'none',
                     color: '#94a3b8',
                     fontSize: '0.85rem',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    marginLeft: 'auto'
                   }}
                 >
-                  <i className="fa-solid fa-flag"></i> Report Listing
+                  <i className="fa-solid fa-flag"></i> Report
                 </button>
               </div>
 
@@ -774,7 +897,7 @@ export default function Community() {
                   <button
                     onClick={() => handleAddComment(selectedPostForDetail.postId)}
                     style={{
-                      backgroundColor: '#FDC101',
+                      backgroundColor: '#009688',
                       color: '#ffffff',
                       border: 'none',
                       padding: '10px 18px',
@@ -789,6 +912,104 @@ export default function Community() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT POST MODAL */}
+      {editingPost && (
+        <div className="modal-overlay" onClick={() => setEditingPost(null)}>
+          <div className="detail-modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '560px' }}>
+            <div className="modal-header">
+              <h2 style={{ fontSize: '1.35rem', fontWeight: '800', margin: 0, color: '#0f172a' }}>Edit Community Post</h2>
+              <button onClick={() => setEditingPost(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>✕</button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Ad Title</label>
+                <input
+                  type="text"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  required
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Category</label>
+                  <select
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value)}
+                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                  >
+                    {categoriesData.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Location</label>
+                  <input
+                    type="text"
+                    value={editLocation}
+                    onChange={(e) => setEditLocation(e.target.value)}
+                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Description</label>
+                <textarea
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  required
+                  rows={4}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem', fontFamily: 'inherit' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Photos ({editImages.length} attached)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  ref={editFileInputRef}
+                  onChange={handleEditImageUpload}
+                  style={{ display: 'none' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => editFileInputRef.current?.click()}
+                  style={{
+                    padding: '10px 16px', borderRadius: '8px', border: '1px dashed #94a3b8',
+                    backgroundColor: '#f8fafc', cursor: 'pointer', fontWeight: '600', fontSize: '0.875rem', width: '100%'
+                  }}
+                >
+                  <i className="fa-solid fa-camera"></i> Add / Change Photos
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setEditingPost(null)}
+                  style={{ padding: '10px 20px', borderRadius: '20px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', fontWeight: '600', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={{ padding: '10px 24px', borderRadius: '20px', border: 'none', backgroundColor: '#3b82f6', color: '#ffffff', fontWeight: '700', cursor: 'pointer' }}
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -923,27 +1144,7 @@ export default function Community() {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Attach Multiple Photos ({newImages.length})</label>
-                {newImages.length > 0 && (
-                  <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', marginBottom: '8px' }}>
-                    {newImages.map((img, idx) => (
-                      <div key={idx} style={{ position: 'relative', width: '70px', height: '55px', flexShrink: 0 }}>
-                        <img src={img} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '6px' }} />
-                        <button
-                          type="button"
-                          onClick={() => setNewImages(prev => prev.filter((_, i) => i !== idx))}
-                          style={{
-                            position: 'absolute', top: '-4px', right: '-4px', backgroundColor: '#ef4444', color: '#fff',
-                            border: 'none', borderRadius: '50%', width: '18px', height: '18px', fontSize: '10px',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
-                          }}
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Attach Multiple Photos</label>
                 <input
                   type="file"
                   accept="image/*"
@@ -966,7 +1167,7 @@ export default function Community() {
                     width: '100%'
                   }}
                 >
-                  📷 Choose Multiple Photos
+                  <i className="fa-solid fa-camera"></i> Choose Photos ({newImages.length} attached)
                 </button>
               </div>
 
@@ -991,8 +1192,8 @@ export default function Community() {
                     padding: '10px 24px',
                     borderRadius: '20px',
                     border: 'none',
-                    backgroundColor: '#FDC101',
-                    color: '#000000',
+                    backgroundColor: '#009688',
+                    color: '#ffffff',
                     fontWeight: '700',
                     cursor: 'pointer'
                   }}
