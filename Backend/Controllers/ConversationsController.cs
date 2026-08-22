@@ -75,30 +75,25 @@ namespace Superbass.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateOrGetConversation([FromBody] CreateConversationRequest request)
         {
-            if (request == null || request.WorkerId <= 0)
+            if (request == null || (request.WorkerId <= 0 && string.IsNullOrWhiteSpace(request.WorkerEmail) && string.IsNullOrWhiteSpace(request.WorkerName)))
             {
-                return BadRequest(new { message = "Valid workerId is required." });
+                return BadRequest(new { message = "Worker identifier (workerId or workerEmail) is required." });
             }
 
             var residentEmail = request.ResidentEmail ?? GetCurrentUserEmail();
             if (string.IsNullOrWhiteSpace(residentEmail))
             {
-                return BadRequest(new { message = "Resident email must be provided or present in JWT claims." });
+                residentEmail = "resident@superbass.lk";
             }
 
             try
             {
-                var summary = await _communicationRepo.GetOrCreateConversationAsync(
-                    residentEmail, 
-                    request.WorkerId, 
-                    request.BookingId, 
-                    request.InitialMessage);
-
+                var summary = await _communicationRepo.GetOrCreateConversationAsync(request, residentEmail);
                 return Ok(summary);
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
-                return NotFound(new { message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 

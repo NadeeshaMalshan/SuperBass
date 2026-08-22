@@ -17,37 +17,62 @@ namespace Superbass.Services
         }
 
         public async Task<ConversationSummaryDto> GetOrCreateConversationAsync(
-            string residentEmail, 
-            int workerId, 
-            int? bookingId = null, 
-            string? initialMessage = null)
+            CreateConversationRequest request,
+            string residentEmail)
         {
-            var worker = await _context.Workers.FindAsync(workerId);
-            if (worker == null)
+            Worker? worker = null;
+
+            if (request.WorkerId > 0)
             {
-                worker = await _context.Workers.FirstOrDefaultAsync();
-                if (worker == null)
-                {
-                    worker = new Worker
-                    {
-                        ResidentEmail = residentEmail,
-                        Name = "Jayashan Manodya",
-                        Email = "jayashan@superbass.lk",
-                        PrimaryServiceArea = "Colombo",
-                        HourlyRate = 2500,
-                        OverallRating = 4.9,
-                        IsAvailable = true
-                    };
-                    _context.Workers.Add(worker);
-                    await _context.SaveChangesAsync();
-                }
-                workerId = worker.Id;
+                worker = await _context.Workers.FindAsync(request.WorkerId);
             }
 
+            if (worker == null && !string.IsNullOrWhiteSpace(request.WorkerEmail))
+            {
+                worker = await _context.Workers.FirstOrDefaultAsync(w => 
+                    w.Email == request.WorkerEmail || w.ResidentEmail == request.WorkerEmail);
+            }
+
+            if (worker == null)
+            {
+                // Ensure a Resident entry exists for the worker
+                var workerEmail = !string.IsNullOrWhiteSpace(request.WorkerEmail) 
+                    ? request.WorkerEmail 
+                    : $"worker{DateTime.UtcNow.Ticks}@superbass.lk";
+
+                var workerResident = await _context.Residents.FindAsync(workerEmail);
+                if (workerResident == null)
+                {
+                    workerResident = new Resident
+                    {
+                        Email = workerEmail,
+                        Name = request.WorkerName ?? "SuperBass Worker",
+                        PhoneNo = "0771234567"
+                    };
+                    _context.Residents.Add(workerResident);
+                    await _context.SaveChangesAsync();
+                }
+
+                // Create a Worker profile
+                worker = new Worker
+                {
+                    ResidentEmail = workerEmail,
+                    Email = workerEmail,
+                    Name = request.WorkerName ?? workerResident.Name ?? "Worker",
+                    ProfileImage = request.WorkerAvatar,
+                    Description = "Verified Community Service Professional",
+                    PrimaryServiceArea = "Colombo",
+                    IsAvailable = true,
+                    OverallRating = 5.0
+                };
+                _context.Workers.Add(worker);
+                await _context.SaveChangesAsync();
+            }
+
+            // Ensure Resident profile exists for sender
             var resident = await _context.Residents.FindAsync(residentEmail);
             if (resident == null)
             {
-                // If resident not found in Residents table, create a minimal stub
                 resident = new Resident
                 {
                     Email = residentEmail,
@@ -61,11 +86,11 @@ namespace Superbass.Services
             var query = _context.Conversations
                 .Include(c => c.Resident)
                 .Include(c => c.Worker)
-                .Where(c => c.ResidentEmail == residentEmail && c.WorkerId == workerId);
+                .Where(c => c.ResidentEmail == residentEmail && c.WorkerId == worker.Id);
 
-            if (bookingId.HasValue)
+            if (request.BookingId.HasValue)
             {
-                query = query.Where(c => c.BookingId == bookingId);
+                query = query.Where(c => c.BookingId == request.BookingId.Value);
             }
 
             var conversation = await query.FirstOrDefaultAsync();
@@ -75,8 +100,8 @@ namespace Superbass.Services
                 conversation = new Conversation
                 {
                     ResidentEmail = residentEmail,
-                    WorkerId = workerId,
-                    BookingId = bookingId,
+                    WorkerId = worker.Id,
+                    BookingId = request.BookingId,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
@@ -85,7 +110,7 @@ namespace Superbass.Services
                 await _context.SaveChangesAsync();
 
                 // If initial message provided, save it
-                if (!string.IsNullOrWhiteSpace(initialMessage))
+                if (!string.IsNullOrWhiteSpace(request.InitialMessage))
                 {
                     var msg = new ChatMessage
                     {
@@ -93,7 +118,7 @@ namespace Superbass.Services
                         SenderEmail = residentEmail,
                         SenderRole = "Resident",
                         MessageType = "Text",
-                        Content = initialMessage.Trim(),
+                        Content = request.InitialMessage.Trim(),
                         CreatedAt = DateTime.UtcNow,
                         IsRead = false
                     };

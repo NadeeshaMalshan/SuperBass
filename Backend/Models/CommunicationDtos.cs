@@ -6,6 +6,9 @@ namespace Superbass.Models
     public class CreateConversationRequest
     {
         public int WorkerId { get; set; }
+        public string? WorkerEmail { get; set; }
+        public string? WorkerName { get; set; }
+        public string? WorkerAvatar { get; set; }
         public string? ResidentEmail { get; set; }
         public int? BookingId { get; set; }
         public string? InitialMessage { get; set; }

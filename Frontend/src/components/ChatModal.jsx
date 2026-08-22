@@ -48,12 +48,10 @@ export default function ChatModal({
 
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
-  const isWorker = localStorage.getItem('role') === 'worker' || 
-                   localStorage.getItem('workerAuth') === 'true' || 
-                   window.location.pathname.startsWith('/worker');
-  const currentUserRole = isWorker ? 'Worker' : 'Resident';
-  const currentUserEmail = localStorage.getItem(isWorker ? 'workerEmail' : 'email') || (isWorker ? 'worker@superbass.lk' : 'resident@superbass.lk');
-  const currentUserName = localStorage.getItem('userName') || (isWorker ? 'Worker' : 'Resident');
+  const textInputRef = useRef(null);
+
+  const currentUserEmail = localStorage.getItem('email') || 'resident@superbass.lk';
+  const currentUserName = localStorage.getItem('userName') || 'You';
   const token = localStorage.getItem('token');
 
   const scrollToBottom = () => {
@@ -74,27 +72,20 @@ export default function ChatModal({
 
     const initConversation = async () => {
       try {
-        const res = await axios.get(API_BASE_URL, {
-          params: { userEmail: currentUserEmail },
+        const res = await axios.post(API_BASE_URL, {
+          workerId: recipient.workerId || 0,
+          workerEmail: recipient.email || `${recipient.name?.toLowerCase().replace(/\s+/g, '') || 'worker'}@superbass.lk`,
+          workerName: recipient.name || 'Jayashan Manodya',
+          workerAvatar: recipient.avatar || null,
+          residentEmail: currentUserEmail,
+          bookingId: postContext?.id || null
+        }, {
           headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
 
-        if (res.data && Array.isArray(res.data) && res.data.length > 0) {
-          const existing = res.data.find(c => 
-            c.workerEmail?.toLowerCase() === recipient.email?.toLowerCase() ||
-            c.residentEmail?.toLowerCase() === recipient.email?.toLowerCase() ||
-            (recipient.workerId && c.workerId === recipient.workerId)
-          );
-
-          if (existing && isMounted) {
-            setConversationId(existing.id);
-            loadMessages(existing.id);
-            return;
-          }
-        }
-
-        if (isMounted) {
-          setMessages([]);
+        if (res.data && res.data.id && isMounted) {
+          setConversationId(res.data.id);
+          loadMessages(res.data.id);
         }
       } catch (err) {
         console.warn('Backend conversations init error:', err.message);
@@ -110,18 +101,19 @@ export default function ChatModal({
       if (conversationId) {
         loadMessages(conversationId, true);
       }
-    }, 4000);
+    }, 3000);
 
     return () => {
       isMounted = false;
       clearInterval(pollInterval);
     };
-  }, [isOpen, recipient.email, recipient.workerId, conversationId]);
+  }, [isOpen, recipient.email, recipient.workerId, recipient.name]);
 
   const loadMessages = async (convId, isPolling = false) => {
+    if (!convId) return;
     try {
       const res = await axios.get(`${API_BASE_URL}/${convId}/messages`, {
-        params: { userEmail: currentUserEmail, page: 1, pageSize: 50 },
+        params: { userEmail: currentUserEmail, page: 1, pageSize: 60 },
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       if (res.data && Array.isArray(res.data)) {
@@ -129,7 +121,7 @@ export default function ChatModal({
       }
     } catch (err) {
       if (!isPolling) {
-        console.error('Error fetching messages:', err);
+        console.error('Error fetching messages from DB:', err);
       }
     }
   };
@@ -141,56 +133,68 @@ export default function ChatModal({
     setIsSending(true);
     setShowEmojiPicker(false);
 
-    const newMessageObj = {
-      id: `client-${Date.now()}`,
+    const imageToClear = previewImage;
+    const msgType = imageToClear ? 'Image' : 'Text';
+    const msgContent = textToSend || (imageToClear ? 'Shared an image' : '');
+
+    const optimisticMsg = {
+      id: `temp-${Date.now()}`,
       conversationId: conversationId || 1,
       senderEmail: currentUserEmail,
-      senderRole: currentUserRole,
-      messageType: previewImage ? 'Image' : 'Text',
-      content: textToSend || (previewImage ? 'Shared an image' : ''),
-      attachmentUrl: previewImage,
+      senderRole: 'Resident',
+      messageType: msgType,
+      content: msgContent,
+      attachmentUrl: imageToClear,
       createdAt: new Date().toISOString()
     };
 
-    setMessages(prev => [...prev, newMessageObj]);
+    setMessages(prev => [...prev, optimisticMsg]);
     setInputText('');
-    const imageToClear = previewImage;
     setPreviewImage(null);
 
     try {
-      if (conversationId) {
+      let currentConvId = conversationId;
+
+      if (!currentConvId) {
+        const createRes = await axios.post(
+          API_BASE_URL,
+          {
+            workerId: recipient.workerId || 0,
+            workerEmail: recipient.email || `${recipient.name?.toLowerCase().replace(/\s+/g, '') || 'worker'}@superbass.lk`,
+            workerName: recipient.name || 'Jayashan Manodya',
+            workerAvatar: recipient.avatar || null,
+            residentEmail: currentUserEmail,
+            bookingId: postContext?.id || null
+          },
+          {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+          }
+        );
+        if (createRes.data && createRes.data.id) {
+          currentConvId = createRes.data.id;
+          setConversationId(currentConvId);
+        }
+      }
+
+      if (currentConvId) {
         await axios.post(
-          `${API_BASE_URL}/${conversationId}/messages`,
+          `${API_BASE_URL}/${currentConvId}/messages`,
           {
             senderEmail: currentUserEmail,
-            senderRole: currentUserRole,
-            messageType: newMessageObj.messageType,
-            content: newMessageObj.content,
+            senderRole: 'Resident',
+            messageType: msgType,
+            content: msgContent,
             attachmentUrl: imageToClear
           },
           {
             headers: token ? { Authorization: `Bearer ${token}` } : {}
           }
         );
-      } else {
-        const workerId = recipient.workerId || 1;
-        const res = await axios.post(
-          API_BASE_URL,
-          {
-            workerId: workerId,
-            residentEmail: isWorker ? recipient.email : currentUserEmail,
-            initialMessage: textToSend
-          },
-          {
-            headers: token ? { Authorization: `Bearer ${token}` } : {}
-          }
-        );
-        if (res.data && res.data.id) {
-          setConversationId(res.data.id);
-        }
+        // Refresh messages from DB
+        await loadMessages(currentConvId);
       }
     } catch (err) {
-      console.error('Error sending message:', err);
+      console.error('Error saving message to DB:', err);
     } finally {
       setIsSending(false);
     }
@@ -246,7 +250,7 @@ export default function ChatModal({
 
   return (
     <div className="chat-modal-overlay" onClick={onClose}>
-      <div className={`chat-modal-container role-${currentUserRole.toLowerCase()}`} onClick={(e) => e.stopPropagation()}>
+      <div className="chat-modal-container" onClick={(e) => e.stopPropagation()}>
         {/* Top Header */}
         <div className="gm-header">
           <div className="gm-header-left">
@@ -273,17 +277,16 @@ export default function ChatModal({
           </div>
 
           {messages.map((msg, index) => {
-            const isOutgoing = msg.senderEmail?.toLowerCase() === currentUserEmail.toLowerCase();
-            const msgSenderRole = msg.senderRole || (isOutgoing ? currentUserRole : (isWorker ? 'Resident' : 'Worker'));
-            const isResidentMsg = msgSenderRole === 'Resident';
+            const isResident = msg.senderRole === 'Resident' || 
+              (msg.senderEmail?.toLowerCase() === currentUserEmail.toLowerCase() && msg.senderRole !== 'Worker');
 
             return (
               <div
                 key={msg.id || index}
-                className={`gm-message-row ${isOutgoing ? 'outgoing' : 'incoming'}`}
+                className={`gm-message-row ${isResident ? 'resident' : 'worker'}`}
               >
-                {!isOutgoing && (
-                  <div className="gm-worker-avatar" style={{ backgroundColor: isWorker ? '#0284c7' : '#f06292' }}>
+                {!isResident && (
+                  <div className="gm-worker-avatar">
                     {recipient.avatar ? (
                       <img src={recipient.avatar} alt="avatar" />
                     ) : (
@@ -293,7 +296,7 @@ export default function ChatModal({
                 )}
 
                 <div className="gm-bubble-wrapper">
-                  <div className={`gm-bubble ${isResidentMsg ? 'resident' : 'worker'}`}>
+                  <div className={`gm-bubble ${isResident ? 'resident' : 'worker'}`}>
                     {msg.content && <div>{msg.content}</div>}
                     {msg.attachmentUrl && (
                       <img

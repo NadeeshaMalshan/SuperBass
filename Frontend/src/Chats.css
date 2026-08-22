@@ -11,66 +11,6 @@
   overflow: hidden;
 }
 
-/* Resident Theme (Yellow) */
-.chats-page-container.role-resident .chat-item-card.active {
-  background-color: #fefce8;
-  border-left: 4px solid #FDC101;
-}
-
-.chats-page-container.role-resident .chat-item-card.active .chat-item-preview {
-  color: #854d0e;
-}
-
-.chats-page-container.role-resident .chat-item-badge {
-  background-color: #FDC101;
-  color: #111827;
-}
-
-.chats-page-container.role-resident .chats-pill-input:focus-within {
-  border-color: #eab308;
-  box-shadow: 0 0 0 3px rgba(253, 193, 1, 0.18);
-}
-
-.chats-page-container.role-resident .chats-send-fab-btn.active {
-  background-color: #FDC101;
-  color: #111827;
-  box-shadow: 0 2px 8px rgba(253, 193, 1, 0.4);
-}
-
-.chats-page-container.role-resident .chats-send-fab-btn.active:hover {
-  background-color: #eab308;
-}
-
-/* Worker Theme (Blue) */
-.chats-page-container.role-worker .chat-item-card.active {
-  background-color: #f0f9ff;
-  border-left: 4px solid #0284c7;
-}
-
-.chats-page-container.role-worker .chat-item-card.active .chat-item-preview {
-  color: #0369a1;
-}
-
-.chats-page-container.role-worker .chat-item-badge {
-  background-color: #0284c7;
-  color: #ffffff;
-}
-
-.chats-page-container.role-worker .chats-pill-input:focus-within {
-  border-color: #0284c7;
-  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.18);
-}
-
-.chats-page-container.role-worker .chats-send-fab-btn.active {
-  background-color: #0284c7;
-  color: #ffffff;
-  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35);
-}
-
-.chats-page-container.role-worker .chats-send-fab-btn.active:hover {
-  background-color: #0369a1;
-}
-
 /* App Header Navbar */
 .chats-navbar {
   height: 64px;

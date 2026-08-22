@@ -38,11 +38,7 @@ export default function Chats() {
   const fileInputRef = useRef(null);
   const textInputRef = useRef(null);
 
-  const isWorker = localStorage.getItem('role') === 'worker' || 
-                   localStorage.getItem('workerAuth') === 'true' || 
-                   window.location.pathname.startsWith('/worker');
-  const currentUserRole = isWorker ? 'Worker' : 'Resident';
-  const currentUserEmail = localStorage.getItem(isWorker ? 'workerEmail' : 'email') || (isWorker ? 'worker@superbass.lk' : 'resident@superbass.lk');
+  const currentUserEmail = localStorage.getItem('email') || 'resident@superbass.lk';
   const token = localStorage.getItem('token');
 
   const navigate = (newPath) => {
@@ -126,7 +122,7 @@ export default function Chats() {
       id: `local-${Date.now()}`,
       conversationId: selectedChat.id,
       senderEmail: currentUserEmail,
-      senderRole: currentUserRole,
+      senderRole: 'Resident',
       messageType: previewImage ? 'Image' : 'Text',
       content: text || (previewImage ? 'Shared an image' : ''),
       attachmentUrl: previewImage,
@@ -143,7 +139,7 @@ export default function Chats() {
         `${API_BASE_URL}/${selectedChat.id}/messages`,
         {
           senderEmail: currentUserEmail,
-          senderRole: currentUserRole,
+          senderRole: 'Resident',
           messageType: newMsg.messageType,
           content: newMsg.content,
           attachmentUrl: clearImg
@@ -216,7 +212,7 @@ export default function Chats() {
   const hasContentToSend = inputText.trim().length > 0 || previewImage !== null;
 
   return (
-    <div className={`chats-page-container role-${currentUserRole.toLowerCase()}`}>
+    <div className="chats-page-container">
       {/* App Header Navbar */}
       <header className="chats-navbar">
         <div className="chats-nav-left">
@@ -357,23 +353,22 @@ export default function Chats() {
               <div className="chats-stream-date">Today</div>
 
               {messages.map((msg, idx) => {
-                const isOutgoing = msg.senderEmail?.toLowerCase() === currentUserEmail.toLowerCase();
-                const msgSenderRole = msg.senderRole || (isOutgoing ? currentUserRole : (isWorker ? 'Resident' : 'Worker'));
-                const isResidentMsg = msgSenderRole === 'Resident';
+                const isResident = msg.senderRole === 'Resident' || 
+                  (msg.senderEmail?.toLowerCase() === currentUserEmail.toLowerCase() && msg.senderRole !== 'Worker');
 
                 return (
                   <div
                     key={msg.id || idx}
-                    className={`chats-bubble-row ${isOutgoing ? 'outgoing' : 'incoming'}`}
+                    className={`chats-bubble-row ${isResident ? 'resident' : 'worker'}`}
                   >
-                    {!isOutgoing && (
-                      <div className="chats-msg-avatar" style={{ backgroundColor: isWorker ? '#0284c7' : '#f06292' }}>
+                    {!isResident && (
+                      <div className="chats-msg-avatar">
                         {getInitial(selectedChat.workerName || 'W')}
                       </div>
                     )}
 
                     <div className="chats-msg-wrapper">
-                      <div className={`chats-bubble ${isResidentMsg ? 'resident' : 'worker'}`}>
+                      <div className={`chats-bubble ${isResident ? 'resident' : 'worker'}`}>
                         {msg.content && <div>{msg.content}</div>}
                         {msg.attachmentUrl && (
                           <img

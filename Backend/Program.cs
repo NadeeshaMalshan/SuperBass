@@ -27,6 +27,7 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<ICommunityPostRepository, EfCommunityPostRepository>();
 builder.Services.AddScoped<WorkerRepository, EfWorkerRepository>();
 builder.Services.AddScoped<IResidentRepository, EfResidentRepository>();
+builder.Services.AddScoped<ICommunicationRepository, EfCommunicationRepository>();
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();

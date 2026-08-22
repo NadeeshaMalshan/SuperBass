@@ -39,48 +39,6 @@
   animation: gmSlideUp 0.2s cubic-bezier(0.1, 0.9, 0.2, 1);
 }
 
-/* Resident Theme: Yellow Accents */
-.chat-modal-container.role-resident .gm-pill-container:focus-within {
-  border-color: #eab308;
-  box-shadow: 0 1px 3px rgba(234, 179, 8, 0.2);
-}
-
-.chat-modal-container.role-resident .gm-send-circle.active {
-  background-color: #FDC101;
-  color: #111827;
-  box-shadow: 0 2px 8px rgba(253, 193, 1, 0.4);
-}
-
-.chat-modal-container.role-resident .gm-send-circle:hover.active {
-  background-color: #eab308;
-}
-
-.chat-modal-container.role-resident .gm-emoji-tab-btn.active {
-  background-color: #fef9c3;
-  color: #854d0e;
-}
-
-/* Worker Theme: Blue Accents */
-.chat-modal-container.role-worker .gm-pill-container:focus-within {
-  border-color: #0284c7;
-  box-shadow: 0 1px 3px rgba(2, 132, 199, 0.2);
-}
-
-.chat-modal-container.role-worker .gm-send-circle.active {
-  background-color: #0284c7;
-  color: #ffffff;
-  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35);
-}
-
-.chat-modal-container.role-worker .gm-send-circle:hover.active {
-  background-color: #0369a1;
-}
-
-.chat-modal-container.role-worker .gm-emoji-tab-btn.active {
-  background-color: #e0f2fe;
-  color: #0369a1;
-}
-
 @keyframes gmSlideUp {
   from {
     transform: translateY(18px);
@@ -175,25 +133,23 @@
   width: 100%;
 }
 
-.gm-message-row.incoming,
 .gm-message-row.worker {
   justify-content: flex-start;
   align-items: flex-start;
   gap: 12px;
 }
 
-.gm-message-row.outgoing,
 .gm-message-row.resident {
   justify-content: flex-end;
   align-items: flex-end;
 }
 
-/* Avatar for Incoming */
+/* Avatar for Incoming (Pink/Coral Circular Initial from screenshot) */
 .gm-worker-avatar {
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  background-color: #f06292;
+  background-color: #f06292; /* Material Pink / Coral circle as in screenshot */
   color: #ffffff;
   display: flex;
   align-items: center;
@@ -217,12 +173,10 @@
   max-width: 68%;
 }
 
-.gm-message-row.outgoing .gm-bubble-wrapper,
 .gm-message-row.resident .gm-bubble-wrapper {
   align-items: flex-end;
 }
 
-.gm-message-row.incoming .gm-bubble-wrapper,
 .gm-message-row.worker .gm-bubble-wrapper {
   align-items: flex-start;
 }
