@@ -100,12 +100,16 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
         });
         
         setProfile({
-          name: response.data.name || '',
+          name: response.data.name || (userEmail ? userEmail.split('@')[0] : ''),
           phoneNo: response.data.phoneNo || '',
           address: response.data.address || ''
         });
       } catch (err) {
         console.error('Failed to fetch profile', err);
+        setProfile(prev => ({
+          ...prev,
+          name: prev.name || (userEmail ? userEmail.split('@')[0] : 'User')
+        }));
       } finally {
         setLoading(false);
       }
