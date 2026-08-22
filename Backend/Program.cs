@@ -31,6 +31,24 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+<<<<<<< Updated upstream
+=======
+// Auto-apply pending migrations (which creates missing tables)
+using (var scope = app.Services.CreateScope())
+{
+    try
+    {
+        var services = scope.ServiceProvider;
+        var context = services.GetRequiredService<SuperbassDbContext>();
+        context.Database.Migrate();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Database migration status/warning: {ex.Message}");
+    }
+}
+
+>>>>>>> Stashed changes
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
