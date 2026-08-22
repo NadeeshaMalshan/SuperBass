@@ -25,7 +25,13 @@ function Router() {
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
+  const activeRole = localStorage.getItem('activeRole') || 'Resident';
+
+  // Role Guard: Active Worker trying to access Resident account profile
   if (path === '/account' || path === '/account.jsx') {
+    if (activeRole === 'Worker') {
+      return <WorkerDashboard />;
+    }
     return <ResidentProfile />;
   }
 
@@ -40,6 +46,13 @@ function Router() {
   }
   if (path === '/onboarding' || path === '/onboarding.jsx') {
     return <Onboarding />;
+  }
+
+  // Worker Routes Role Guard: Resident trying to access Worker pages
+  if (path.startsWith('/worker/')) {
+    if (activeRole !== 'Worker' && path !== '/worker/register' && path !== '/worker/login') {
+      return <ResidentProfile defaultTab="become-worker" />;
+    }
   }
 
   // Worker Routes
