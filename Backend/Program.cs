@@ -25,13 +25,14 @@ builder.Services.AddControllers();
 builder.Services.AddSignalR();
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<ICommunityPostRepository, EfCommunityPostRepository>();
+builder.Services.AddScoped<WorkerRepository, EfWorkerRepository>();
+builder.Services.AddScoped<IResidentRepository, EfResidentRepository>();
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 // worker
 builder.Services.AddScoped<WorkerRepository, EfWorkerRepository>();
-// communication
-builder.Services.AddScoped<ICommunicationRepository, EfCommunicationRepository>();
 
 // Configure CORS
 builder.Services.AddCors(options =>
@@ -45,8 +46,6 @@ builder.Services.AddCors(options =>
                   .AllowCredentials();
         });
 });
-
-builder.Services.AddScoped<IResidentRepository, EfResidentRepository>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -82,9 +81,16 @@ var app = builder.Build();
 // Auto-apply pending migrations (which creates missing tables)
 using (var scope = app.Services.CreateScope())
 {
-    var services = scope.ServiceProvider;
-    var context = services.GetRequiredService<SuperbassDbContext>();
-    context.Database.Migrate();
+    try
+    {
+        var services = scope.ServiceProvider;
+        var context = services.GetRequiredService<SuperbassDbContext>();
+        context.Database.Migrate();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Database migration status/warning: {ex.Message}");
+    }
 }
 
 // Configure the HTTP request pipeline.
