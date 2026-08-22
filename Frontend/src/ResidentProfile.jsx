@@ -6,7 +6,9 @@ import '@material/web/button/outlined-button.js';
 import '@material/web/textfield/filled-text-field.js';
 
 export default function ResidentProfile() {
-  const [activeTab, setActiveTab] = useState('overview');
+  const urlParams = new URLSearchParams(window.location.search);
+  const tabParam = urlParams.get('tab');
+  const [activeTab, setActiveTab] = useState(tabParam || 'overview');
   
   const [profile, setProfile] = useState({
     name: '',
@@ -18,29 +20,23 @@ export default function ResidentProfile() {
   const [userPosts, setUserPosts] = useState([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
 
-  // Modals for Community Posts Management in Dashboard
-  const [selectedPostForDetail, setSelectedPostForDetail] = useState(null);
-  const [selectedGalleryImage, setSelectedGalleryImage] = useState(null);
-  const [commentsMap, setCommentsMap] = useState({});
-  const [newCommentText, setNewCommentText] = useState('');
+  // Worker status state
+  const [isWorker, setIsWorker] = useState(false);
+  const [workerProfile, setWorkerProfile] = useState(null);
+  const [checkingWorker, setCheckingWorker] = useState(true);
 
-  // Edit Modal State
-  const [editingPost, setEditingPost] = useState(null);
-  const [editTitle, setEditTitle] = useState('');
-  const [editContent, setEditContent] = useState('');
-  const [editCategory, setEditCategory] = useState('plumbing');
-  const [editLocation, setEditLocation] = useState('Colombo 05');
-  const [editImages, setEditImages] = useState([]);
-  const editFileInputRef = useRef(null);
-
-  // Create Modal State
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [createTitle, setCreateTitle] = useState('');
-  const [createContent, setCreateContent] = useState('');
-  const [createCategory, setCreateCategory] = useState('plumbing');
-  const [createLocation, setCreateLocation] = useState('Colombo 05');
-  const [createImages, setCreateImages] = useState([]);
-  const fileInputRef = useRef(null);
+  // Become worker form state
+  const [workerForm, setWorkerForm] = useState({
+    description: '',
+    primaryServiceArea: '',
+    coverageRadiusKm: 10,
+    pricingModel: 'Hourly',
+    hourlyRate: '',
+    dailyRate: '',
+    skills: [{ skillName: '', experienceYears: 1 }]
+  });
+  const [submittingWorker, setSubmittingWorker] = useState(false);
+  const [workerError, setWorkerError] = useState(null);
 
   let userEmail = localStorage.getItem('email');
   const token = localStorage.getItem('token');
@@ -64,6 +60,7 @@ export default function ResidentProfile() {
     localStorage.removeItem('email');
     localStorage.removeItem('userName');
     localStorage.removeItem('userPicture');
+    localStorage.removeItem('activeRole');
     window.history.pushState({}, '', '/');
     window.dispatchEvent(new PopStateEvent('popstate'));
   };
@@ -99,34 +96,27 @@ export default function ResidentProfile() {
     }
   }, [userEmail, token]);
 
-  // Fetch User Posts for Dashboard
-  const fetchUserPosts = async () => {
-    setLoadingPosts(true);
-    try {
-      let res;
-      if (userEmail) {
-        res = await axios.get(`http://localhost:5237/api/community-posts/user/${encodeURIComponent(userEmail)}`);
-      }
-      
-      if (res && res.data && res.data.length > 0) {
-        setUserPosts(res.data);
-      } else {
-        // Fallback: Fetch all posts if user email filter returns 0
-        const allRes = await axios.get(`http://localhost:5237/api/community-posts`);
-        setUserPosts(allRes.data || []);
-      }
-    } catch (err) {
-      console.error("Failed to fetch user posts:", err);
+  // Check if current user is already a worker
+  useEffect(() => {
+    const checkWorkerStatus = async () => {
+      if (!userEmail) return;
       try {
-        const allRes = await axios.get(`http://localhost:5237/api/community-posts`);
-        setUserPosts(allRes.data || []);
-      } catch (e) {
-        setUserPosts([]);
+        const res = await axios.get(`http://localhost:5237/api/workers/me?email=${encodeURIComponent(userEmail)}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.data && res.data.worker) {
+          setIsWorker(true);
+          setWorkerProfile(res.data.worker);
+        }
+      } catch (err) {
+        setIsWorker(false);
+        setWorkerProfile(null);
+      } finally {
+        setCheckingWorker(false);
       }
-    } finally {
-      setLoadingPosts(false);
-    }
-  };
+    };
+    checkWorkerStatus();
+  }, [userEmail, token]);
 
   useEffect(() => {
     if (activeTab === 'posts') {
@@ -134,7 +124,69 @@ export default function ResidentProfile() {
     }
   }, [activeTab, userEmail]);
 
-  const handleUpdateProfile = async (e) => {
+  // Skill management handlers
+  const handleAddSkill = () => {
+    setWorkerForm({
+      ...workerForm,
+      skills: [...workerForm.skills, { skillName: '', experienceYears: 1 }]
+    });
+  };
+
+  const handleRemoveSkill = (index) => {
+    const updated = workerForm.skills.filter((_, i) => i !== index);
+    setWorkerForm({ ...workerForm, skills: updated });
+  };
+
+  const handleSkillChange = (index, field, value) => {
+    const updated = [...workerForm.skills];
+    updated[index][field] = value;
+    setWorkerForm({ ...workerForm, skills: updated });
+  };
+
+  // Submit worker upgrade
+  const handleBecomeWorkerSubmit = async (e) => {
+    e.preventDefault();
+    setSubmittingWorker(true);
+    setWorkerError(null);
+
+    try {
+      const validSkills = workerForm.skills
+        .filter(s => s.skillName.trim() !== '')
+        .map(s => ({
+          skillName: s.skillName.trim(),
+          experienceYears: parseInt(s.experienceYears) || 1
+        }));
+
+      const payload = {
+        email: userEmail,
+        description: workerForm.description,
+        primaryServiceArea: workerForm.primaryServiceArea || 'Default Area',
+        coverageRadiusKm: parseFloat(workerForm.coverageRadiusKm) || 10,
+        pricingModel: workerForm.pricingModel,
+        hourlyRate: workerForm.hourlyRate ? parseFloat(workerForm.hourlyRate) : null,
+        dailyRate: workerForm.dailyRate ? parseFloat(workerForm.dailyRate) : null,
+        skills: validSkills
+      };
+
+      const res = await axios.post('http://localhost:5237/api/workers/become-worker', payload, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      alert('Successfully upgraded your profile to a Worker profile!');
+      setIsWorker(true);
+      setWorkerProfile(res.data.worker);
+      localStorage.setItem('activeRole', 'Worker');
+      navigateTo('/worker/dashboard');
+    } catch (err) {
+      console.error('Failed to become worker:', err);
+      const msg = err.response?.data?.message || 'Failed to complete worker profile creation.';
+      setWorkerError(msg);
+    } finally {
+      setSubmittingWorker(false);
+    }
+  };
+
+  const handleUpdate = async (e) => {
     e.preventDefault();
     try {
       await axios.put(`http://localhost:5237/api/residents/${encodeURIComponent(userEmail)}`, profile, {
@@ -351,6 +403,13 @@ export default function ResidentProfile() {
                <p style={{ margin: 0, fontSize: '0.85rem', color: '#6b7280', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
                  {userEmail}
                </p>
+               {isWorker && (
+                 <div style={{ marginTop: '0.25rem' }}>
+                   <span style={{ backgroundColor: '#DBEAFE', color: '#1E40AF', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                     Active Worker
+                   </span>
+                 </div>
+               )}
              </div>
           </div>
 
@@ -379,24 +438,46 @@ export default function ResidentProfile() {
             >
               Settings
             </button>
-            <button 
-              onClick={() => navigateTo('/worker/register')}
-              style={{ 
-                padding: '12px 16px', 
-                textAlign: 'left', 
-                borderRadius: '8px', 
-                border: 'none', 
-                background: '#f0fdf4', 
-                color: '#166534', 
-                fontWeight: '600', 
-                cursor: 'pointer', 
-                fontSize: '1rem',
-                transition: 'all 0.2s ease',
-                marginTop: '1rem'
-              }}
-            >
-              Join as Worker
-            </button>
+
+            {isWorker ? (
+              <button 
+                onClick={() => navigateTo('/worker/dashboard')}
+                style={{ 
+                  padding: '12px 16px', 
+                  textAlign: 'left', 
+                  borderRadius: '8px', 
+                  border: 'none', 
+                  background: '#2563eb', 
+                  color: '#ffffff', 
+                  fontWeight: '600', 
+                  cursor: 'pointer', 
+                  fontSize: '1rem',
+                  transition: 'all 0.2s ease',
+                  marginTop: '0.5rem'
+                }}
+              >
+                Worker Dashboard →
+              </button>
+            ) : (
+              <button 
+                onClick={() => setActiveTab('become-worker')}
+                style={{ 
+                  padding: '12px 16px', 
+                  textAlign: 'left', 
+                  borderRadius: '8px', 
+                  border: 'none', 
+                  background: activeTab === 'become-worker' ? '#dbeafe' : '#eff6ff', 
+                  color: '#2563eb', 
+                  fontWeight: '600', 
+                  cursor: 'pointer', 
+                  fontSize: '1rem',
+                  transition: 'all 0.2s ease',
+                  marginTop: '0.5rem'
+                }}
+              >
+                Join as Worker
+              </button>
+            )}
           </nav>
         </aside>
 
@@ -690,6 +771,176 @@ export default function ResidentProfile() {
                   Delete Account
                 </md-filled-button>
               </div>
+            </div>
+          )}
+
+          {/* TAB: Become Worker */}
+          {activeTab === 'become-worker' && (
+            <div>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: '800', margin: 0, color: '#111827' }}>Upgrade to Worker Profile</h2>
+                <p style={{ color: '#6b7280', marginTop: '0.5rem', fontSize: '0.95rem' }}>
+                  Complete your trade profile details below to start listing your services on SuperBass.
+                </p>
+              </div>
+
+              {isWorker ? (
+                <div style={{ padding: '2.5rem', backgroundColor: '#EFF6FF', borderRadius: '16px', border: '1px solid #BFDBFE', textAlign: 'center' }}>
+                  <h3 style={{ margin: '0 0 0.5rem 0', color: '#1E40AF', fontSize: '1.25rem', fontWeight: '700' }}>
+                    You are already a registered Worker!
+                  </h3>
+                  <p style={{ color: '#1E3A8A', marginBottom: '1.5rem', fontSize: '0.95rem' }}>
+                    Your worker profile is active. You can manage your jobs, skills, and availability in your Worker Dashboard.
+                  </p>
+                  <md-filled-button 
+                    type="button"
+                    onClick={() => navigateTo('/worker/dashboard')}
+                    style={{ '--md-sys-color-primary': '#2563EB', '--md-sys-color-on-primary': '#ffffff', '--md-filled-button-container-shape': '50px' }}
+                  >
+                    Go to Worker Dashboard
+                  </md-filled-button>
+                </div>
+              ) : (
+                <form onSubmit={handleBecomeWorkerSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  
+                  {workerError && (
+                    <div style={{ padding: '1rem', backgroundColor: '#FEF2F2', border: '1px solid #FCA5A5', color: '#991B1B', borderRadius: '8px', fontSize: '0.9rem' }}>
+                      {workerError}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <label style={{ fontWeight: '600', fontSize: '0.9rem', color: '#374151' }}>Trade Experience / Short Bio *</label>
+                    <textarea
+                      rows="3"
+                      required
+                      placeholder="Describe your skills, experience, and trade specialization..."
+                      value={workerForm.description}
+                      onChange={(e) => setWorkerForm({ ...workerForm, description: e.target.value })}
+                      style={{ padding: '12px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '0.95rem', fontFamily: 'inherit' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <label style={{ fontWeight: '600', fontSize: '0.9rem', color: '#374151' }}>Primary Service Area / City *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Colombo, Kandy, Galle"
+                        value={workerForm.primaryServiceArea}
+                        onChange={(e) => setWorkerForm({ ...workerForm, primaryServiceArea: e.target.value })}
+                        style={{ padding: '12px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '0.95rem' }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <label style={{ fontWeight: '600', fontSize: '0.9rem', color: '#374151' }}>Coverage Radius (Km)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="200"
+                        value={workerForm.coverageRadiusKm}
+                        onChange={(e) => setWorkerForm({ ...workerForm, coverageRadiusKm: e.target.value })}
+                        style={{ padding: '12px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '0.95rem' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <label style={{ fontWeight: '600', fontSize: '0.9rem', color: '#374151' }}>Pricing Model</label>
+                      <select
+                        value={workerForm.pricingModel}
+                        onChange={(e) => setWorkerForm({ ...workerForm, pricingModel: e.target.value })}
+                        style={{ padding: '12px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '0.95rem', backgroundColor: '#fff' }}
+                      >
+                        <option value="Hourly">Hourly Rate</option>
+                        <option value="Daily">Daily Rate</option>
+                        <option value="Fixed">Fixed Quote</option>
+                      </select>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <label style={{ fontWeight: '600', fontSize: '0.9rem', color: '#374151' }}>Hourly Rate (LKR)</label>
+                      <input
+                        type="number"
+                        placeholder="e.g. 1500"
+                        value={workerForm.hourlyRate}
+                        onChange={(e) => setWorkerForm({ ...workerForm, hourlyRate: e.target.value })}
+                        style={{ padding: '12px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '0.95rem' }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <label style={{ fontWeight: '600', fontSize: '0.9rem', color: '#374151' }}>Daily Rate (LKR)</label>
+                      <input
+                        type="number"
+                        placeholder="e.g. 8000"
+                        value={workerForm.dailyRate}
+                        onChange={(e) => setWorkerForm({ ...workerForm, dailyRate: e.target.value })}
+                        style={{ padding: '12px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '0.95rem' }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Skills Section */}
+                  <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: '1.5rem', marginTop: '0.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                      <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '700', color: '#111827' }}>Skills & Trade Specialization</h4>
+                      <button
+                        type="button"
+                        onClick={handleAddSkill}
+                        style={{ padding: '6px 14px', borderRadius: '6px', border: '1px solid #2563EB', backgroundColor: '#EFF6FF', color: '#2563EB', fontWeight: '600', cursor: 'pointer', fontSize: '0.85rem' }}
+                      >
+                        + Add Skill
+                      </button>
+                    </div>
+
+                    {workerForm.skills.map((skill, index) => (
+                      <div key={index} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '0.75rem' }}>
+                        <input
+                          type="text"
+                          placeholder="Skill Name (e.g. Electrical Wiring, Plumbing)"
+                          value={skill.skillName}
+                          onChange={(e) => handleSkillChange(index, 'skillName', e.target.value)}
+                          style={{ flex: 2, padding: '10px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '0.9rem' }}
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          max="50"
+                          placeholder="Years Exp."
+                          value={skill.experienceYears}
+                          onChange={(e) => handleSkillChange(index, 'experienceYears', e.target.value)}
+                          style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '0.9rem' }}
+                        />
+                        {workerForm.skills.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSkill(index)}
+                            style={{ border: 'none', background: 'none', color: '#EF4444', fontWeight: 'bold', cursor: 'pointer', fontSize: '1.1rem', padding: '0 8px' }}
+                            title="Remove Skill"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ marginTop: '1rem' }}>
+                    <md-filled-button
+                      type="submit"
+                      disabled={submittingWorker}
+                      style={{ '--md-sys-color-primary': '#2563EB', '--md-sys-color-on-primary': '#ffffff', height: '48px', fontSize: '16px', '--md-filled-button-container-shape': '50px', padding: '0 32px' }}
+                    >
+                      {submittingWorker ? 'Upgrading Account...' : 'Complete Worker Upgrade'}
+                    </md-filled-button>
+                  </div>
+
+                </form>
+              )}
             </div>
           )}
 
