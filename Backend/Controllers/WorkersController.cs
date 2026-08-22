@@ -156,7 +156,7 @@ namespace Superbass.Controllers
             var worker = await _workerRepository.GetWorkerByEmailAsync(targetEmail);
             if (worker == null)
             {
-                return NotFound(new { message = "User is not a worker.", activeRole = "Resident" });
+                return Ok(new { worker = (object?)null, activeRole = "Resident", message = "User is not a worker." });
             }
 
             return Ok(new { worker, activeRole = "Worker" });
