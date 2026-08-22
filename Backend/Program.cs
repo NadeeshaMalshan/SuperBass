@@ -22,6 +22,7 @@ builder.Services.AddDbContext<SuperbassDbContext>(options =>
     options.UseNpgsql(connectionString));
 
 builder.Services.AddControllers();
+builder.Services.AddSignalR();
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<ICommunityPostRepository, EfCommunityPostRepository>();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -29,6 +30,8 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 // worker
 builder.Services.AddScoped<WorkerRepository, EfWorkerRepository>();
+// communication
+builder.Services.AddScoped<ICommunicationRepository, EfCommunicationRepository>();
 
 // Configure CORS
 builder.Services.AddCors(options =>
@@ -36,9 +39,10 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend",
         policy =>
         {
-            policy.WithOrigins("http://localhost:5173", "http://localhost:3000") // Adjust as needed
+            policy.WithOrigins("http://localhost:5173", "http://localhost:3000", "http://localhost:5174") // Adjust as needed
                   .AllowAnyHeader()
-                  .AllowAnyMethod();
+                  .AllowAnyMethod()
+                  .AllowCredentials();
         });
 });
 
@@ -55,6 +59,21 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuer = false,
             ValidateAudience = false,
             ClockSkew = TimeSpan.Zero
+        };
+
+        // Allow SignalR to receive JWT via query string access_token
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            }
         };
     });
 
@@ -76,6 +95,7 @@ if (app.Environment.IsDevelopment())
 }
 
 // app.UseHttpsRedirection();
+app.UseStaticFiles();
 
 app.UseCors("AllowFrontend"); // Use CORS
 
@@ -83,5 +103,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<ChatHub>("/hubs/chat");
 
 app.Run();

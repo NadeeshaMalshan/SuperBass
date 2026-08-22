@@ -1,6 +1,57 @@
 @Superbass_HostAddress = http://localhost:5237
 
-GET {{Superbass_HostAddress}}/weatherforecast/
+### 1. Get User Conversations
+GET {{Superbass_HostAddress}}/api/conversations?userEmail=resident@test.com
 Accept: application/json
 
-###
+### 2. Create or Get Conversation with Worker
+POST {{Superbass_HostAddress}}/api/conversations
+Content-Type: application/json
+
+{
+  "workerId": 1,
+  "residentEmail": "resident@test.com",
+  "initialMessage": "Hello! Are you available tomorrow for plumbing repair?"
+}
+
+### 3. Get Conversation Details by ID
+GET {{Superbass_HostAddress}}/api/conversations/1?userEmail=resident@test.com
+Accept: application/json
+
+### 4. Send Message in Conversation (Resident to Worker)
+POST {{Superbass_HostAddress}}/api/conversations/1/messages
+Content-Type: application/json
+
+{
+  "senderEmail": "resident@test.com",
+  "senderRole": "Resident",
+  "messageType": "Text",
+  "content": "Can you check the kitchen sink leak?"
+}
+
+### 5. Send Message in Conversation (Worker to Resident)
+POST {{Superbass_HostAddress}}/api/conversations/1/messages
+Content-Type: application/json
+
+{
+  "senderEmail": "worker@test.com",
+  "senderRole": "Worker",
+  "messageType": "Text",
+  "content": "Sure, I can come by at 10:00 AM tomorrow."
+}
+
+### 6. Get Message History (Paged)
+GET {{Superbass_HostAddress}}/api/conversations/1/messages?userEmail=resident@test.com&page=1&pageSize=50
+Accept: application/json
+
+### 7. Mark Conversation Messages as Read
+PUT {{Superbass_HostAddress}}/api/conversations/1/read
+Content-Type: application/json
+
+{
+  "readerEmail": "resident@test.com"
+}
+
+### 8. Get Total Unread Messages Count
+GET {{Superbass_HostAddress}}/api/conversations/unread-count?userEmail=resident@test.com
+Accept: application/json

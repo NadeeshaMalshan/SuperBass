@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Superbass.Models;
@@ -12,9 +13,11 @@ using Superbass.Models;
 namespace Superbass.Migrations
 {
     [DbContext(typeof(SuperbassDbContext))]
-    partial class SuperbassDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260822140000_AddCommunicationTables")]
+    partial class AddCommunicationTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -22,6 +25,61 @@ namespace Superbass.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("Superbass.Models.ChatMessage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AttachmentName")
+                        .HasColumnType("text");
+
+                    b.Property<long?>("AttachmentSize")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("AttachmentUrl")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("ConversationId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("MessageType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("SenderEmail")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SenderRole")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConversationId", "CreatedAt");
+
+                    b.ToTable("ChatMessages");
+                });
 
             modelBuilder.Entity("Superbass.Models.CommunityComment", b =>
                 {
@@ -60,14 +118,15 @@ namespace Superbass.Migrations
 
             modelBuilder.Entity("Superbass.Models.CommunityPost", b =>
                 {
-                    b.Property<int>("PostId")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("PostId"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("CommentsCount")
-                        .HasColumnType("integer");
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("Content")
                         .IsRequired()
@@ -76,11 +135,7 @@ namespace Superbass.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<List<string>>("Images")
-                        .IsRequired()
-                        .HasColumnType("text[]");
-
-                    b.Property<List<string>>("LikedByUsers")
+                    b.Property<List<string>>("ImageUrls")
                         .IsRequired()
                         .HasColumnType("text[]");
 
@@ -91,17 +146,6 @@ namespace Superbass.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int>("ReportCount")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("ServiceCategoryId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("ServiceCategoryName")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text");
@@ -109,9 +153,6 @@ namespace Superbass.Migrations
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasColumnType("text");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("UserAvatar")
                         .IsRequired()
@@ -125,7 +166,7 @@ namespace Superbass.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.HasKey("PostId");
+                    b.HasKey("Id");
 
                     b.ToTable("CommunityPosts");
                 });
@@ -148,17 +189,58 @@ namespace Superbass.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("ReporterUserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Status")
+                    b.Property<string>("ReporterId")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.HasKey("ReportId");
 
                     b.ToTable("CommunityReports");
+                });
+
+            modelBuilder.Entity("Superbass.Models.Conversation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("BookingId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastMessage")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("LastMessageAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastSenderEmail")
+                        .HasColumnType("text");
+
+                    b.Property<string>("LastSenderRole")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ResidentEmail")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("WorkerId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ResidentEmail");
+
+                    b.HasIndex("WorkerId");
+
+                    b.ToTable("Conversations");
                 });
 
             modelBuilder.Entity("Superbass.Models.Resident", b =>
@@ -306,104 +388,15 @@ namespace Superbass.Migrations
                     b.ToTable("WorkerSkills");
                 });
 
-            modelBuilder.Entity("Superbass.Models.Conversation", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int?>("BookingId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("LastMessage")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("LastMessageAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("LastSenderEmail")
-                        .HasColumnType("text");
-
-                    b.Property<string>("LastSenderRole")
-                        .HasColumnType("text");
-
-                    b.Property<string>("ResidentEmail")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("WorkerId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ResidentEmail");
-
-                    b.HasIndex("WorkerId");
-
-                    b.ToTable("Conversations");
-                });
-
             modelBuilder.Entity("Superbass.Models.ChatMessage", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                    b.HasOne("Superbass.Models.Conversation", "Conversation")
+                        .WithMany("Messages")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AttachmentName")
-                        .HasColumnType("text");
-
-                    b.Property<long?>("AttachmentSize")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("AttachmentUrl")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("ConversationId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsRead")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("MessageType")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("ReadAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("SenderEmail")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("SenderRole")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ConversationId", "CreatedAt");
-
-                    b.ToTable("ChatMessages");
+                    b.Navigation("Conversation");
                 });
 
             modelBuilder.Entity("Superbass.Models.Conversation", b =>
@@ -423,17 +416,6 @@ namespace Superbass.Migrations
                     b.Navigation("Resident");
 
                     b.Navigation("Worker");
-                });
-
-            modelBuilder.Entity("Superbass.Models.ChatMessage", b =>
-                {
-                    b.HasOne("Superbass.Models.Conversation", "Conversation")
-                        .WithMany("Messages")
-                        .HasForeignKey("ConversationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Conversation");
                 });
 
             modelBuilder.Entity("Superbass.Models.Worker", b =>

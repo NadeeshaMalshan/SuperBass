@@ -142,7 +142,6 @@ namespace Superbass.Controllers
             if (!success) return NotFound();
             return Ok(new { message = "Password updated successfully" });
         }
-
         // GET: /api/workers/me
         [HttpGet("me")]
         public async Task<IActionResult> GetMyWorkerProfile([FromQuery] string? email)
