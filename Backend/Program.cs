@@ -1,4 +1,9 @@
+using Microsoft.EntityFrameworkCore;
+using Superbass.Models;
 using Superbass.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 // Load .env file
 DotNetEnv.Env.Load();
@@ -10,9 +15,18 @@ builder.WebHost.UseUrls("http://localhost:5237");
 
 // Add services to the container.
 
+var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
+    ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
+builder.Services.AddDbContext<SuperbassDbContext>(options =>
+    options.UseNpgsql(connectionString));
+
 builder.Services.AddControllers();
 builder.Services.AddHttpClient();
-builder.Services.AddSingleton<ICommunityPostRepository, InMemoryCommunityPostRepository>();
+builder.Services.AddScoped<ICommunityPostRepository, EfCommunityPostRepository>();
+builder.Services.AddScoped<WorkerRepository, EfWorkerRepository>();
+builder.Services.AddScoped<IResidentRepository, EfResidentRepository>();
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -29,10 +43,22 @@ builder.Services.AddCors(options =>
         });
 });
 
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        var secretKey = builder.Configuration["Authentication:Jwt:Secret"] ?? "super_secret_key_that_must_be_long_enough_12345";
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(secretKey)),
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            ClockSkew = TimeSpan.Zero
+        };
+    });
+
 var app = builder.Build();
 
-<<<<<<< Updated upstream
-=======
 // Auto-apply pending migrations (which creates missing tables)
 using (var scope = app.Services.CreateScope())
 {
@@ -48,7 +74,6 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
->>>>>>> Stashed changes
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
