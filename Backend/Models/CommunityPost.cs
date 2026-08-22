@@ -65,6 +65,8 @@ namespace Superbass.Models
         public List<string>? Images { get; set; }
         public string? UserName { get; set; }
         public string? UserAvatar { get; set; }
+        public string? UserEmail { get; set; }
+        public string? UserId { get; set; }
     }
 
     public class UpdatePostRequest
