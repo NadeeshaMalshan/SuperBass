@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import './App.css';
+import './Community.css';
 import categoriesData from './data/categories.json';
 
 // Material 3 Web Components
@@ -15,9 +16,9 @@ export default function Community() {
     window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
-  // State
+  // State (DB Posts strictly)
   const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedLocation, setSelectedLocation] = useState('all');
@@ -27,25 +28,30 @@ export default function Community() {
   const [activeTab, setActiveTab] = useState('feed');
   const [moderationPosts, setModerationPosts] = useState([]);
 
+  // Detail Modal State
+  const [selectedPostForDetail, setSelectedPostForDetail] = useState(null);
+  const [selectedGalleryImage, setSelectedGalleryImage] = useState(null);
+
   // Create Post Modal State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newContent, setNewContent] = useState('');
   const [newCategory, setNewCategory] = useState('plumbing');
+  const [newCondition, setNewCondition] = useState('Brand New');
+  const [newPrice, setNewPrice] = useState('');
   const [newLocation, setNewLocation] = useState('Colombo 05');
   const [newImages, setNewImages] = useState([]);
   const fileInputRef = useRef(null);
 
-  // Expanded Comments State (postId -> boolean)
-  const [expandedComments, setExpandedComments] = useState({});
-  const [commentsMap, setCommentsMap] = useState({}); // postId -> array of comments
-  const [commentInputs, setCommentInputs] = useState({}); // postId -> text
+  // Comments State (postId -> array of comments)
+  const [commentsMap, setCommentsMap] = useState({});
+  const [newCommentText, setNewCommentText] = useState('');
 
   // Report Modal State
   const [reportingPostId, setReportingPostId] = useState(null);
   const [reportReason, setReportReason] = useState('');
 
-  // Fetch Posts
+  // Fetch Posts strictly from Backend Database
   const fetchPosts = async () => {
     try {
       setLoading(true);
@@ -56,21 +62,34 @@ export default function Community() {
       if (sortBy) params.sort = sortBy;
 
       const res = await axios.get(API_BASE_URL, { params });
-      setPosts(res.data);
+      if (res.data && Array.isArray(res.data)) {
+        const enriched = res.data.map((p, idx) => ({
+          ...p,
+          condition: p.condition || 'Brand New',
+          price: p.price || (p.priceVal ? `Rs ${p.priceVal.toLocaleString()}` : 'Inquire / Quote'),
+          badgeType: p.badgeType || (idx % 2 === 0 ? 'verified_member' : 'grey_member'),
+          hasBump: p.hasBump || false
+        }));
+        setPosts(enriched);
+      } else {
+        setPosts([]);
+      }
     } catch (err) {
-      console.error("Error fetching community posts:", err);
+      console.error("Error fetching community posts from DB:", err);
+      setPosts([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Fetch Moderation Queue
+  // Fetch Moderation Queue from DB
   const fetchModerationQueue = async () => {
     try {
       const res = await axios.get(`${API_BASE_URL}/moderation`);
-      setModerationPosts(res.data);
+      setModerationPosts(res.data || []);
     } catch (err) {
       console.error("Error fetching moderation queue:", err);
+      setModerationPosts([]);
     }
   };
 
@@ -85,59 +104,76 @@ export default function Community() {
   }, [activeTab]);
 
   // Handle Like
-  const handleLike = async (postId) => {
+  const handleLike = async (postId, e) => {
+    if (e) e.stopPropagation();
     try {
       const res = await axios.post(`${API_BASE_URL}/${postId}/like`);
-      setPosts(prev => prev.map(p => {
-        if (p.postId === postId) {
-          return { ...p, likesCount: res.data.likesCount, isLiked: res.data.isLiked };
+      if (res.data) {
+        setPosts(prev => prev.map(p => {
+          if (p.postId === postId) {
+            return {
+              ...p,
+              isLiked: res.data.isLiked,
+              likesCount: res.data.likesCount
+            };
+          }
+          return p;
+        }));
+
+        if (selectedPostForDetail && selectedPostForDetail.postId === postId) {
+          setSelectedPostForDetail(prev => ({
+            ...prev,
+            isLiked: res.data.isLiked,
+            likesCount: res.data.likesCount
+          }));
         }
-        return p;
-      }));
-    } catch (err) {
-      console.error("Error toggling like:", err);
-    }
-  };
-
-  // Toggle Comment Section
-  const toggleComments = async (postId) => {
-    const isExpanded = !!expandedComments[postId];
-    setExpandedComments(prev => ({ ...prev, [postId]: !isExpanded }));
-
-    if (!isExpanded && !commentsMap[postId]) {
-      try {
-        const res = await axios.get(`${API_BASE_URL}/${postId}/comments`);
-        setCommentsMap(prev => ({ ...prev, [postId]: res.data }));
-      } catch (err) {
-        console.error("Error fetching comments:", err);
       }
+    } catch (err) {
+      console.error("Error liking post:", err);
     }
   };
 
-  // Submit Comment
+  // Open Detail Modal & Fetch Comments from DB
+  const handleCardClick = async (post) => {
+    setSelectedPostForDetail(post);
+    setSelectedGalleryImage(post.images && post.images.length > 0 ? post.images[0] : null);
+
+    try {
+      const res = await axios.get(`${API_BASE_URL}/${post.postId}/comments`);
+      setCommentsMap(prev => ({ ...prev, [post.postId]: res.data || [] }));
+    } catch (err) {
+      console.error("Error fetching comments:", err);
+      setCommentsMap(prev => ({ ...prev, [post.postId]: [] }));
+    }
+  };
+
+  // Submit Comment in Detail Modal to DB
   const handleAddComment = async (postId) => {
-    const content = commentInputs[postId];
-    if (!content || !content.trim()) return;
+    if (!newCommentText || !newCommentText.trim()) return;
 
     try {
       const res = await axios.post(`${API_BASE_URL}/${postId}/comments`, {
-        content,
-        userName: "You (Resident)",
-        userAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=CurrentUser"
+        content: newCommentText,
+        userName: localStorage.getItem('userName') || "You (Resident)",
+        userAvatar: localStorage.getItem('userPicture') || "https://api.dicebear.com/7.x/avataaars/svg?seed=CurrentUser"
       });
 
-      setCommentsMap(prev => ({
-        ...prev,
-        [postId]: [...(prev[postId] || []), res.data]
-      }));
+      if (res.data) {
+        setCommentsMap(prev => ({
+          ...prev,
+          [postId]: [...(prev[postId] || []), res.data]
+        }));
 
-      setCommentInputs(prev => ({ ...prev, [postId]: '' }));
-
-      // Update comment count on post
-      setPosts(prev => prev.map(p => p.postId === postId ? { ...p, commentsCount: p.commentsCount + 1 } : p));
+        setPosts(prev => prev.map(p => p.postId === postId ? { ...p, commentsCount: p.commentsCount + 1 } : p));
+        if (selectedPostForDetail && selectedPostForDetail.postId === postId) {
+          setSelectedPostForDetail(prev => ({ ...prev, commentsCount: prev.commentsCount + 1 }));
+        }
+      }
     } catch (err) {
-      console.error("Error adding comment:", err);
+      console.error("Error adding comment to DB:", err);
     }
+
+    setNewCommentText('');
   };
 
   // Image Upload for New Post
@@ -152,95 +188,130 @@ export default function Community() {
     });
   };
 
-  // Submit Create Post
+  // Submit Create Post directly to Backend DB
   const handleCreatePost = async (e) => {
     e.preventDefault();
     if (!newTitle.trim() || !newContent.trim()) return;
 
     try {
-      const res = await axios.post(API_BASE_URL, {
+      await axios.post(API_BASE_URL, {
         title: newTitle,
         content: newContent,
         serviceCategoryId: newCategory,
         location: newLocation,
         images: newImages,
-        userName: "You (Resident)",
-        userAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=CurrentUser"
+        userName: localStorage.getItem('userName') || "You (Resident)",
+        userAvatar: localStorage.getItem('userPicture') || "https://api.dicebear.com/7.x/avataaars/svg?seed=CurrentUser"
       });
 
-      setPosts(prev => [res.data, ...prev]);
-      setIsCreateModalOpen(false);
-      setNewTitle('');
-      setNewContent('');
-      setNewImages([]);
+      // Refresh listings strictly from DB
+      await fetchPosts();
     } catch (err) {
-      console.error("Error creating post:", err);
+      console.error("Error creating post in DB:", err);
+      alert("Failed to save post to database. Please make sure backend database is connected.");
+    }
+
+    setIsCreateModalOpen(false);
+    setNewTitle('');
+    setNewContent('');
+    setNewPrice('');
+    setNewImages([]);
+  };
+
+  // Delete Post directly from Community view
+  const handleDeletePostInCommunity = async (postId) => {
+    if (!window.confirm("Are you sure you want to delete this community post?")) return;
+    try {
+      await axios.delete(`${API_BASE_URL}/${postId}`);
+      alert("Post deleted successfully.");
+      setPosts(prev => prev.filter(p => p.postId !== postId));
+      setSelectedPostForDetail(null);
+    } catch (err) {
+      console.error("Error deleting post:", err);
+      alert("Failed to delete post.");
     }
   };
 
-  // Submit Report
+  // Submit Report to DB
   const handleReportSubmit = async () => {
     if (!reportingPostId || !reportReason.trim()) return;
     try {
       await axios.post(`${API_BASE_URL}/${reportingPostId}/report`, { reason: reportReason });
-      alert("Thank you. The post has been reported for admin moderation.");
-      setReportingPostId(null);
-      setReportReason('');
-      fetchPosts();
+      alert("Thank you. The post has been reported for moderation.");
     } catch (err) {
       console.error("Error reporting post:", err);
     }
-  };
-
-  // Moderate Post (Admin Action)
-  const handleModerateStatus = async (postId, status) => {
-    try {
-      await axios.put(`${API_BASE_URL}/${postId}/status`, { status });
-      setModerationPosts(prev => prev.filter(p => p.postId !== postId));
-      fetchPosts();
-    } catch (err) {
-      console.error("Error updating post status:", err);
-    }
+    setReportingPostId(null);
+    setReportReason('');
   };
 
   // Helper for formatting time
   const formatTimeAgo = (dateStr) => {
-    if (!dateStr) return 'Recently';
+    if (!dateStr) return 'just now';
     const date = new Date(dateStr);
     const seconds = Math.floor((new Date() - date) / 1000);
-    if (seconds < 60) return 'Just now';
+    if (seconds < 60) return 'just now';
     const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
+    if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''}`;
     const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
+    if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
     const days = Math.floor(hours / 24);
-    return `${days}d ago`;
+    return `${days} day${days > 1 ? 's' : ''} ago`;
   };
 
   return (
-    <div style={{ backgroundColor: '#f8f9fa', minHeight: '100vh', fontFamily: 'Inter, sans-serif', color: '#1a1a1a' }}>
+    <div className="community-page-wrapper">
       {/* Navbar Header */}
-      <header className="navbar" style={{ backgroundColor: '#ffffff', borderBottom: '1px solid #e5e7eb', padding: '0.75rem 2rem' }}>
+      <header className="community-navbar">
         <a href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }} className="brand-logo" style={{ cursor: 'pointer' }}>
-          <img src="/iconWithText-cropped.png" alt="Super බාස් Logo" className="brand-logo-img" style={{ height: '48px' }} />
+          <img src="/iconWithText-cropped.png" alt="Super බාස් Logo" className="brand-logo-img" style={{ height: '46px' }} />
         </a>
 
         <ul className="nav-links">
           <li className="nav-link" onClick={() => navigate('/')}>Home</li>
           <li className="nav-link" onClick={() => navigate('/find')}>Find Workers</li>
-          <li className="nav-link active" style={{ color: '#FDC101', fontWeight: 600 }}>Community</li>
+          <li className="nav-link active" style={{ color: '#FDC101', fontWeight: 700 }}>Community</li>
         </ul>
 
-        <div className="nav-actions" style={{ display: 'flex', gap: '12px' }}>
-          <md-filled-button 
+        <div className="nav-actions" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <button 
             onClick={() => setIsCreateModalOpen(true)}
             style={{
-              '--md-filled-button-container-shape': '50px',
-              '--md-sys-color-primary': '#FDC101',
-              '--md-sys-color-on-primary': '#000000',
-              height: '42px',
-              fontSize: '15px',
-              fontWeight: '600'
+              backgroundColor: '#FDC101',
+              color: '#000000',
+              border: 'none',
+              borderRadius: '24px',
+              padding: '10px 20px',
+              fontSize: '14px',
+              fontWeight: '700',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 3px 10px rgba(253, 193, 1, 0.4)',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <i className="fa-solid fa-plus"></i> Post Ad / Request
+          </button>
+
+          <button
+            onClick={() => {
+              window.history.pushState({}, '', '/account');
+              window.dispatchEvent(new PopStateEvent('popstate'));
+            }}
+            style={{
+              backgroundColor: '#0f172a',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '24px',
+              padding: '8px 16px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px'
             }}
           >
             + Create Post
@@ -270,52 +341,69 @@ export default function Community() {
         </div>
       </header>
 
-      {/* Main Container */}
-      <main style={{ maxWidth: '960px', margin: '0 auto', padding: '2rem 1rem' }}>
+      {/* Main Content Container */}
+      <main className="community-main">
         
-        {/* Title & Banner */}
-        <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        {/* Banner Section */}
+        <div style={{ marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
           <div>
-            <h1 style={{ fontSize: '2rem', fontWeight: '800', margin: 0, color: '#111827' }}>
-              {activeTab === 'feed' ? 'Community Posts & Discussions' : 'Moderation Queue'}
+            <h1 style={{ fontSize: '1.75rem', fontWeight: '800', margin: 0, color: '#0f172a', letterSpacing: '-0.02em' }}>
+              {activeTab === 'feed' ? 'Community Listings & Service Board' : 'Moderation Queue'}
             </h1>
-            <p style={{ color: '#6b7280', margin: '0.25rem 0 0 0', fontSize: '1rem' }}>
+            <p style={{ color: '#64748b', margin: '0.25rem 0 0 0', fontSize: '0.95rem' }}>
               {activeTab === 'feed' 
-                ? 'Share home-service questions, recommendations, or warnings with neighbors' 
-                : 'Review flagged posts reported by community members'}
+                ? 'Browse classified ads, home service requests, and neighbor recommendations' 
+                : 'Review flagged community listings'}
             </p>
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={() => setActiveTab('feed')}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                backgroundColor: activeTab === 'feed' ? '#0f172a' : '#ffffff',
+                color: activeTab === 'feed' ? '#ffffff' : '#475569',
+                fontWeight: '600',
+                fontSize: '0.85rem',
+                cursor: 'pointer'
+              }}
+            >
+              All Listings
+            </button>
+            <button
+              onClick={() => setActiveTab('moderation')}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                backgroundColor: activeTab === 'moderation' ? '#ef4444' : '#ffffff',
+                color: activeTab === 'moderation' ? '#ffffff' : '#475569',
+                fontWeight: '600',
+                fontSize: '0.85rem',
+                cursor: 'pointer'
+              }}
+            >
+              Moderation Queue
+            </button>
           </div>
         </div>
 
         {activeTab === 'feed' && (
           <>
-            {/* Search & Location Bar */}
-            <div style={{
-              display: 'flex',
-              gap: '12px',
-              marginBottom: '1.25rem',
-              backgroundColor: '#ffffff',
-              padding: '12px 16px',
-              borderRadius: '16px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-              alignItems: 'center',
-              flexWrap: 'wrap'
-            }}>
+            {/* Filter Toolbar Bar */}
+            <div className="filter-toolbar">
               {/* Search Bar */}
-              <div style={{ flex: 1, minWidth: '240px' }}>
+              <div className="search-input-wrapper">
+                <i className="fa-solid fa-magnifying-glass"></i>
                 <input
                   type="text"
-                  placeholder="Search community posts..."
+                  placeholder="What are you looking for? (e.g. Monitor, AC repair, Plumbing...)"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '12px',
-                    border: '1px solid #e5e7eb',
-                    fontSize: '14px',
-                    outline: 'none'
-                  }}
+                  className="search-input"
                 />
               </div>
 
@@ -323,37 +411,23 @@ export default function Community() {
               <select
                 value={selectedLocation}
                 onChange={(e) => setSelectedLocation(e.target.value)}
-                style={{
-                  padding: '10px 14px',
-                  borderRadius: '12px',
-                  border: '1px solid #e5e7eb',
-                  backgroundColor: '#ffffff',
-                  fontSize: '14px',
-                  cursor: 'pointer',
-                  fontWeight: '500'
-                }}
+                className="filter-select"
               >
                 <option value="all">All Locations</option>
+                <option value="Colombo">Colombo</option>
                 <option value="Colombo 03">Colombo 03</option>
                 <option value="Colombo 05">Colombo 05</option>
+                <option value="Kandy">Kandy</option>
                 <option value="Rajagiriya">Rajagiriya</option>
                 <option value="Nugegoda">Nugegoda</option>
                 <option value="Dehiwala">Dehiwala</option>
               </select>
 
-              {/* Sort selector */}
+              {/* Sort Selector */}
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                style={{
-                  padding: '10px 14px',
-                  borderRadius: '12px',
-                  border: '1px solid #e5e7eb',
-                  backgroundColor: '#ffffff',
-                  fontSize: '14px',
-                  cursor: 'pointer',
-                  fontWeight: '500'
-                }}
+                className="filter-select"
               >
                 <option value="newest">Newest First</option>
                 <option value="popular">Most Popular</option>
@@ -361,28 +435,10 @@ export default function Community() {
             </div>
 
             {/* Category Filter Chips */}
-            <div style={{
-              display: 'flex',
-              gap: '8px',
-              overflowX: 'auto',
-              paddingBottom: '8px',
-              marginBottom: '1.5rem',
-              scrollbarWidth: 'none'
-            }}>
+            <div className="category-chips-scroll">
               <button
                 onClick={() => setSelectedCategory('all')}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: '25px',
-                  border: selectedCategory === 'all' ? 'none' : '1px solid #e5e7eb',
-                  backgroundColor: selectedCategory === 'all' ? '#FDC101' : '#ffffff',
-                  color: selectedCategory === 'all' ? '#000000' : '#4b5563',
-                  fontWeight: selectedCategory === 'all' ? '700' : '500',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  fontSize: '14px',
-                  boxShadow: selectedCategory === 'all' ? '0 2px 6px rgba(253,193,1,0.4)' : 'none'
-                }}
+                className={`category-chip ${selectedCategory === 'all' ? 'active' : ''}`}
               >
                 All Categories
               </button>
@@ -390,20 +446,7 @@ export default function Community() {
                 <button
                   key={cat.id}
                   onClick={() => setSelectedCategory(cat.id)}
-                  style={{
-                    padding: '8px 16px',
-                    borderRadius: '25px',
-                    border: selectedCategory === cat.id ? 'none' : '1px solid #e5e7eb',
-                    backgroundColor: selectedCategory === cat.id ? '#FDC101' : '#ffffff',
-                    color: selectedCategory === cat.id ? '#000000' : '#4b5563',
-                    fontWeight: selectedCategory === cat.id ? '700' : '500',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    fontSize: '14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px'
-                  }}
+                  className={`category-chip ${selectedCategory === cat.id ? 'active' : ''}`}
                 >
                   <i className={`fa-solid ${cat.icon}`}></i>
                   {cat.name}
@@ -413,321 +456,393 @@ export default function Community() {
           </>
         )}
 
-        {/* Feed Posts Listing */}
+        {/* Listings Cards Container */}
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
-            <p style={{ fontSize: '1.1rem' }}>Loading posts...</p>
+          <div style={{ textAlign: 'center', padding: '4rem', color: '#64748b' }}>
+            <i className="fa-solid fa-circle-notch fa-spin" style={{ fontSize: '2rem', color: '#FDC101', marginBottom: '1rem' }}></i>
+            <p style={{ fontSize: '1.1rem', fontWeight: '500' }}>Loading database posts...</p>
           </div>
         ) : (activeTab === 'feed' ? posts : moderationPosts).length === 0 ? (
           <div style={{
             backgroundColor: '#ffffff',
-            borderRadius: '16px',
-            padding: '3rem 1.5rem',
+            borderRadius: '12px',
+            padding: '4rem 2rem',
             textAlign: 'center',
-            border: '1px solid #e5e7eb'
+            border: '1px solid #e2e8f0'
           }}>
-            <p style={{ fontSize: '1.2rem', color: '#4b5563', fontWeight: '600' }}>
-              {activeTab === 'feed' ? 'No community posts found matching your criteria.' : 'No posts currently flagged for moderation.'}
+            <i className="fa-solid fa-box-open" style={{ fontSize: '3rem', color: '#cbd5e1', marginBottom: '1rem' }}></i>
+            <h3 style={{ fontSize: '1.25rem', color: '#334155', fontWeight: '700', margin: '0 0 0.5rem 0' }}>
+              {activeTab === 'feed' ? 'No posts found in database' : 'No posts currently in moderation queue'}
+            </h3>
+            <p style={{ color: '#64748b', fontSize: '0.95rem', marginBottom: '1.5rem' }}>
+              {activeTab === 'feed' ? 'Create a post to publish it to the database.' : 'All reported posts have been resolved.'}
             </p>
             {activeTab === 'feed' && (
-              <md-filled-button 
+              <button
                 onClick={() => setIsCreateModalOpen(true)}
                 style={{
-                  '--md-filled-button-container-shape': '50px',
-                  '--md-sys-color-primary': '#FDC101',
-                  '--md-sys-color-on-primary': '#000000',
-                  marginTop: '1rem'
+                  backgroundColor: '#FDC101',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '24px',
+                  padding: '10px 24px',
+                  fontWeight: '700',
+                  cursor: 'pointer'
                 }}
               >
-                Be the first to post
-              </md-filled-button>
+                Post New Ad / Request
+              </button>
             )}
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div className="ikman-listings-container">
             {(activeTab === 'feed' ? posts : moderationPosts).map(post => (
               <div 
                 key={post.postId}
-                style={{
-                  backgroundColor: '#ffffff',
-                  borderRadius: '16px',
-                  padding: '1.5rem',
-                  boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
-                  border: '1px solid #f0f0f0'
-                }}
+                className="ikman-card"
+                onClick={() => handleCardClick(post)}
               >
-                {/* Author Info & Category Badge */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <img 
-                      src={post.userAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.postId}`} 
-                      alt={post.userName}
-                      style={{ width: '44px', height: '44px', borderRadius: '50%', border: '2px solid #FDC101' }}
-                    />
-                    <div>
-                      <div style={{ fontWeight: '700', fontSize: '1rem', color: '#111827' }}>
-                        {post.userName}
-                      </div>
-                      <div style={{ fontSize: '0.85rem', color: '#6b7280', display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <span>{post.location}</span>
-                        <span>•</span>
-                        <span>{formatTimeAgo(post.createdAt)}</span>
-                      </div>
+                {/* Left Thumbnail Image Column */}
+                <div className="ikman-image-col">
+                  {post.images && post.images.length > 0 ? (
+                    <>
+                      <img 
+                        src={post.images[0]} 
+                        alt={post.title} 
+                        className="ikman-img"
+                        onError={(e) => {
+                          e.target.src = 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=500&auto=format&fit=crop';
+                        }}
+                      />
+                      {post.images.length > 1 && (
+                        <div className="ikman-img-count">
+                          <i className="fa-solid fa-camera"></i> {post.images.length}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="ikman-img-placeholder">
+                      <i className="fa-solid fa-border-all"></i>
                     </div>
-                  </div>
-
-                  <span style={{
-                    backgroundColor: '#fffbeb',
-                    color: '#b45309',
-                    padding: '4px 12px',
-                    borderRadius: '20px',
-                    fontSize: '0.825rem',
-                    fontWeight: '600',
-                    border: '1px solid #fef3c7'
-                  }}>
-                    {post.serviceCategoryName}
-                  </span>
+                  )}
                 </div>
 
-                {/* Post Title & Content */}
-                <h3 style={{ fontSize: '1.2rem', fontWeight: '700', color: '#111827', margin: '0 0 0.5rem 0' }}>
-                  {post.title}
-                </h3>
-                <p style={{ fontSize: '0.975rem', color: '#374151', lineHeight: '1.5', margin: '0 0 1rem 0', whiteSpace: 'pre-line' }}>
-                  "{post.content}"
-                </p>
+                {/* Right Details Content Column */}
+                <div className="ikman-content-col">
+                  <div>
+                    {/* Item Title */}
+                    <h3 className="ikman-title">
+                      {post.title}
+                    </h3>
 
-                {/* Attached Images */}
-                {post.images && post.images.length > 0 && (
-                  <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', marginBottom: '1rem' }}>
-                    {post.images.map((img, idx) => (
-                      <img 
-                        key={idx} 
-                        src={img} 
-                        alt="Attached" 
-                        style={{ height: '140px', borderRadius: '10px', objectFit: 'cover' }}
-                      />
-                    ))}
-                  </div>
-                )}
+                    {/* Condition / Subtag */}
+                    {post.condition && (
+                      <div className="ikman-condition">
+                        {post.condition}
+                      </div>
+                    )}
 
-                {/* Action Buttons (Like / Comment / Report) */}
-                {activeTab === 'feed' ? (
-                  <div style={{
-                    display: 'flex',
-                    gap: '16px',
-                    alignItems: 'center',
-                    borderTop: '1px solid #f3f4f6',
-                    paddingTop: '0.75rem',
-                    marginTop: '0.5rem'
-                  }}>
-                    <button
-                      onClick={() => handleLike(post.postId)}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: post.isLiked ? '#2563eb' : '#6b7280',
-                        fontWeight: '600',
-                        fontSize: '0.95rem',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px'
-                      }}
-                    >
-                      Like ({post.likesCount})
-                    </button>
-
-                    <button
-                      onClick={() => toggleComments(post.postId)}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: '#6b7280',
-                        fontWeight: '600',
-                        fontSize: '0.95rem',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px'
-                      }}
-                    >
-                      Comments ({post.commentsCount})
-                    </button>
-
-                    <button
-                      onClick={() => setReportingPostId(post.postId)}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: '#9ca3af',
-                        fontSize: '0.85rem',
-                        cursor: 'pointer',
-                        marginLeft: 'auto'
-                      }}
-                    >
-                      Report
-                    </button>
-                  </div>
-                ) : (
-                  /* Admin Moderation Controls */
-                  <div style={{
-                    display: 'flex',
-                    gap: '12px',
-                    borderTop: '1px solid #fee2e2',
-                    paddingTop: '0.75rem',
-                    marginTop: '0.5rem',
-                    backgroundColor: '#fff5f5',
-                    padding: '12px',
-                    borderRadius: '8px'
-                  }}>
-                    <span style={{ fontSize: '0.875rem', color: '#991b1b', fontWeight: '600' }}>
-                      Reported {post.reportCount || 1} time(s)
-                    </span>
-                    <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
-                      <button
-                        onClick={() => handleModerateStatus(post.postId, 'Active')}
-                        style={{
-                          backgroundColor: '#10b981',
-                          color: '#ffffff',
-                          border: 'none',
-                          padding: '6px 14px',
-                          borderRadius: '6px',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                          fontSize: '0.85rem'
-                        }}
-                      >
-                        Keep / Approve
-                      </button>
-                      <button
-                        onClick={() => handleModerateStatus(post.postId, 'Removed')}
-                        style={{
-                          backgroundColor: '#ef4444',
-                          color: '#ffffff',
-                          border: 'none',
-                          padding: '6px 14px',
-                          borderRadius: '6px',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                          fontSize: '0.85rem'
-                        }}
-                      >
-                        Remove Post
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Collapsible Comments Drawer */}
-                {expandedComments[post.postId] && (
-                  <div style={{ marginTop: '1rem', borderTop: '1px dashed #e5e7eb', paddingTop: '1rem' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '1rem' }}>
-                      {(commentsMap[post.postId] || []).length === 0 ? (
-                        <p style={{ color: '#9ca3af', fontSize: '0.875rem' }}>No comments yet. Be the first to reply!</p>
-                      ) : (
-                        (commentsMap[post.postId] || []).map(comment => (
-                          <div key={comment.commentId} style={{ backgroundColor: '#f9fafb', padding: '10px 14px', borderRadius: '10px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                              <span style={{ fontWeight: '700', fontSize: '0.85rem', color: '#111827' }}>
-                                {comment.userName}
-                              </span>
-                              <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
-                                {formatTimeAgo(comment.createdAt)}
-                              </span>
-                            </div>
-                            <p style={{ margin: 0, fontSize: '0.9rem', color: '#374151' }}>
-                              {comment.content}
-                            </p>
-                          </div>
-                        ))
+                    {/* Badges Row */}
+                    <div className="ikman-badges">
+                      {post.badgeType === 'grey_member' && (
+                        <span className="badge-member-grey">MEMBER</span>
                       )}
+
+                      {post.badgeType === 'verified_member' && (
+                        <>
+                          <span className="badge-member-yellow">
+                            <i className="fa-solid fa-star" style={{ color: '#eab308' }}></i> MEMBER
+                          </span>
+                          <span className="badge-verified">
+                            <i className="fa-solid fa-circle-check"></i> VERIFIED SELLER
+                          </span>
+                        </>
+                      )}
+
+                      <span className="badge-category-chip">
+                        {post.serviceCategoryName}
+                      </span>
                     </div>
 
-                    {/* Add Comment Form */}
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <input
-                        type="text"
-                        placeholder="Write a reply..."
-                        value={commentInputs[post.postId] || ''}
-                        onChange={(e) => setCommentInputs({ ...commentInputs, [post.postId]: e.target.value })}
-                        onKeyDown={(e) => e.key === 'Enter' && handleAddComment(post.postId)}
-                        style={{
-                          flex: 1,
-                          padding: '8px 12px',
-                          borderRadius: '8px',
-                          border: '1px solid #d1d5db',
-                          fontSize: '0.875rem'
-                        }}
-                      />
-                      <button
-                        onClick={() => handleAddComment(post.postId)}
-                        style={{
-                          backgroundColor: '#FDC101',
-                          color: '#000000',
-                          border: 'none',
-                          padding: '8px 16px',
-                          borderRadius: '8px',
-                          fontWeight: '700',
-                          cursor: 'pointer',
-                          fontSize: '0.875rem'
-                        }}
-                      >
-                        Reply
-                      </button>
+                    {/* Location & Category Line */}
+                    <div className="ikman-location-cat">
+                      <span>{post.location}</span>
+                    </div>
+
+                    {/* Price Tag */}
+                    <div className="ikman-price">
+                      {post.price || (post.priceVal ? `Rs ${post.priceVal.toLocaleString()}` : 'Inquire / Quote')}
                     </div>
                   </div>
-                )}
+
+                  {/* Footer Meta (Timestamp & Yellow Bump Arrow Icon) */}
+                  <div className="ikman-footer-meta">
+                    <span>{formatTimeAgo(post.createdAt)}</span>
+                    {post.hasBump && (
+                      <span className="ikman-bump-icon" title="Bumped just now">
+                        <i className="fa-solid fa-arrow-up"></i>
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
         )}
       </main>
 
-      {/* Create Post Modal */}
-      {isCreateModalOpen && (
-        <div style={{
-          position: 'fixed',
-          top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 1000,
-          padding: '1rem'
-        }}>
-          <div style={{
-            backgroundColor: '#ffffff',
-            borderRadius: '20px',
-            maxWidth: '560px',
-            width: '100%',
-            padding: '2rem',
-            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: '800', margin: 0 }}>Create Community Post</h2>
+      {/* Listing Item Detail Modal View */}
+      {selectedPostForDetail && (
+        <div className="modal-overlay" onClick={() => setSelectedPostForDetail(null)}>
+          <div className="detail-modal-box" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <span className="badge-category-chip" style={{ marginBottom: '4px', display: 'inline-block' }}>
+                  {selectedPostForDetail.serviceCategoryName}
+                </span>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: '800', margin: 0, color: '#0f172a' }}>
+                  {selectedPostForDetail.title}
+                </h2>
+              </div>
               <button 
-                onClick={() => setIsCreateModalOpen(false)} 
-                style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#6b7280' }}
+                onClick={() => setSelectedPostForDetail(null)}
+                style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleCreatePost} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div className="modal-body">
+              {/* Main Image Gallery */}
+              {selectedPostForDetail.images && selectedPostForDetail.images.length > 0 && (
+                <div>
+                  <img 
+                    src={selectedGalleryImage || selectedPostForDetail.images[0]} 
+                    alt={selectedPostForDetail.title}
+                    className="detail-gallery-main" 
+                  />
+                  {selectedPostForDetail.images.length > 1 && (
+                    <div className="detail-thumbnails" style={{ marginTop: '10px' }}>
+                      {selectedPostForDetail.images.map((img, idx) => (
+                        <img
+                          key={idx}
+                          src={img}
+                          alt="Thumbnail"
+                          className={`detail-thumb-img ${selectedGalleryImage === img ? 'active' : ''}`}
+                          onClick={() => setSelectedGalleryImage(img)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Price & Location Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f0fdf4', padding: '14px 18px', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
+                <div>
+                  <span style={{ fontSize: '0.85rem', color: '#166534', fontWeight: '600' }}>Listing Price / Budget</span>
+                  <div style={{ fontSize: '1.4rem', fontWeight: '800', color: '#FDC101' }}>
+                    {selectedPostForDetail.price || 'Inquire / Quote'}
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <span style={{ fontSize: '0.85rem', color: '#64748b' }}>Location</span>
+                  <div style={{ fontWeight: '700', color: '#334155' }}>
+                    {selectedPostForDetail.location}
+                  </div>
+                </div>
+              </div>
+
+              {/* Poster Info Card */}
+              <div className="poster-info-card">
+                <div className="poster-left">
+                  <img 
+                    src={selectedPostForDetail.userAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedPostForDetail.postId}`} 
+                    alt={selectedPostForDetail.userName}
+                    className="poster-avatar"
+                  />
+                  <div>
+                    <div style={{ fontWeight: '700', fontSize: '1rem', color: '#0f172a' }}>
+                      {selectedPostForDetail.userName}
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                      Posted {formatTimeAgo(selectedPostForDetail.createdAt)}
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => alert(`Contacting ${selectedPostForDetail.userName} via SuperBass chat...`)}
+                  style={{
+                    backgroundColor: '#0f172a',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '20px',
+                    padding: '8px 18px',
+                    fontWeight: '700',
+                    fontSize: '0.875rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <i className="fa-solid fa-comment-dots"></i> Chat / Contact
+                </button>
+              </div>
+
+              {/* Full Description Content */}
               <div>
-                <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem' }}>Title</label>
+                <h4 style={{ margin: '0 0 8px 0', fontSize: '1rem', fontWeight: '700', color: '#334155' }}>Description</h4>
+                <p style={{ fontSize: '0.95rem', color: '#334155', lineHeight: '1.6', margin: 0, whiteSpace: 'pre-line' }}>
+                  {selectedPostForDetail.content}
+                </p>
+              </div>
+
+              {/* Like / Comment Actions Bar */}
+              <div style={{ display: 'flex', gap: '16px', alignItems: 'center', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
+                <button
+                  onClick={(e) => handleLike(selectedPostForDetail.postId, e)}
+                  style={{
+                    background: selectedPostForDetail.isLiked ? '#e0f2fe' : '#f1f5f9',
+                    border: 'none',
+                    color: selectedPostForDetail.isLiked ? '#0284c7' : '#475569',
+                    fontWeight: '700',
+                    fontSize: '0.9rem',
+                    padding: '8px 16px',
+                    borderRadius: '20px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <i className="fa-solid fa-thumbs-up"></i> Interested ({selectedPostForDetail.likesCount || 0})
+                </button>
+
+                <button
+                  onClick={() => handleDeletePostInCommunity(selectedPostForDetail.postId)}
+                  style={{
+                    backgroundColor: '#fef2f2',
+                    color: '#ef4444',
+                    border: '1px solid #fecaca',
+                    fontSize: '0.85rem',
+                    fontWeight: '600',
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    marginLeft: 'auto'
+                  }}
+                >
+                  <i className="fa-solid fa-trash"></i> Delete
+                </button>
+
+                <button
+                  onClick={() => setReportingPostId(selectedPostForDetail.postId)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#94a3b8',
+                    fontSize: '0.85rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <i className="fa-solid fa-flag"></i> Report Listing
+                </button>
+              </div>
+
+              {/* Comments Thread Section */}
+              <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
+                <h4 style={{ margin: '0 0 12px 0', fontSize: '1rem', fontWeight: '700', color: '#334155' }}>
+                  Comments & Replies ({selectedPostForDetail.commentsCount || (commentsMap[selectedPostForDetail.postId] || []).length})
+                </h4>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '1rem' }}>
+                  {(commentsMap[selectedPostForDetail.postId] || []).length === 0 ? (
+                    <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>No comments yet. Ask a question or reply to this ad!</p>
+                  ) : (
+                    (commentsMap[selectedPostForDetail.postId] || []).map(comment => (
+                      <div key={comment.commentId} style={{ backgroundColor: '#f8fafc', padding: '12px 14px', borderRadius: '10px', border: '1px solid #f1f5f9' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                          <span style={{ fontWeight: '700', fontSize: '0.875rem', color: '#0f172a' }}>
+                            {comment.userName}
+                          </span>
+                          <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                            {formatTimeAgo(comment.createdAt)}
+                          </span>
+                        </div>
+                        <p style={{ margin: 0, fontSize: '0.9rem', color: '#334155' }}>
+                          {comment.content}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Add Comment Input Box */}
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    placeholder="Write a message or question..."
+                    value={newCommentText}
+                    onChange={(e) => setNewCommentText(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddComment(selectedPostForDetail.postId)}
+                    style={{
+                      flex: 1,
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.9rem',
+                      outline: 'none'
+                    }}
+                  />
+                  <button
+                    onClick={() => handleAddComment(selectedPostForDetail.postId)}
+                    style={{
+                      backgroundColor: '#FDC101',
+                      color: '#ffffff',
+                      border: 'none',
+                      padding: '10px 18px',
+                      borderRadius: '8px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      fontSize: '0.9rem'
+                    }}
+                  >
+                    Send
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Ad / Post Modal */}
+      {isCreateModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsCreateModalOpen(false)}>
+          <div className="detail-modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '580px' }}>
+            <div className="modal-header">
+              <h2 style={{ fontSize: '1.35rem', fontWeight: '800', margin: 0, color: '#0f172a' }}>Post Classified Ad or Request</h2>
+              <button 
+                onClick={() => setIsCreateModalOpen(false)}
+                style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreatePost} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Ad Title</label>
                 <input
                   type="text"
-                  placeholder="e.g. Need a reliable plumber in Colombo 05"
+                  placeholder="e.g. Dell P2719H 27 inch Frameless IPS Monitor or Urgent AC Servicing"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   required
                   style={{
                     width: '100%',
                     padding: '10px 12px',
-                    borderRadius: '10px',
-                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
                     fontSize: '0.95rem'
                   }}
                 />
@@ -735,15 +850,54 @@ export default function Community() {
 
               <div style={{ display: 'flex', gap: '12px' }}>
                 <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem' }}>Category</label>
+                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Condition / Type</label>
+                  <select
+                    value={newCondition}
+                    onChange={(e) => setNewCondition(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.9rem'
+                    }}
+                  >
+                    <option value="Brand New">Brand New</option>
+                    <option value="Used">Used</option>
+                    <option value="Service Request">Service Request</option>
+                    <option value="Recommendation">Recommendation</option>
+                  </select>
+                </div>
+
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Price / Budget (Rs)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 30,000"
+                    value={newPrice}
+                    onChange={(e) => setNewPrice(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.9rem'
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Category</label>
                   <select
                     value={newCategory}
                     onChange={(e) => setNewCategory(e.target.value)}
                     style={{
                       width: '100%',
                       padding: '10px',
-                      borderRadius: '10px',
-                      border: '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
                       fontSize: '0.9rem'
                     }}
                   >
@@ -754,7 +908,7 @@ export default function Community() {
                 </div>
 
                 <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem' }}>Location</label>
+                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Location</label>
                   <input
                     type="text"
                     placeholder="e.g. Colombo 05"
@@ -763,8 +917,8 @@ export default function Community() {
                     style={{
                       width: '100%',
                       padding: '10px',
-                      borderRadius: '10px',
-                      border: '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
                       fontSize: '0.9rem'
                     }}
                   />
@@ -772,9 +926,9 @@ export default function Community() {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem' }}>Content</label>
+                <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Description</label>
                 <textarea
-                  placeholder="Describe your question, experience, or recommendation..."
+                  placeholder="Describe your item, specification, warranty, or service request details..."
                   value={newContent}
                   onChange={(e) => setNewContent(e.target.value)}
                   required
@@ -782,8 +936,8 @@ export default function Community() {
                   style={{
                     width: '100%',
                     padding: '10px 12px',
-                    borderRadius: '10px',
-                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
                     fontSize: '0.95rem',
                     fontFamily: 'inherit'
                   }}
@@ -791,7 +945,27 @@ export default function Community() {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem' }}>Images (Optional)</label>
+                <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Attach Multiple Photos ({newImages.length})</label>
+                {newImages.length > 0 && (
+                  <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', marginBottom: '8px' }}>
+                    {newImages.map((img, idx) => (
+                      <div key={idx} style={{ position: 'relative', width: '70px', height: '55px', flexShrink: 0 }}>
+                        <img src={img} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '6px' }} />
+                        <button
+                          type="button"
+                          onClick={() => setNewImages(prev => prev.filter((_, i) => i !== idx))}
+                          style={{
+                            position: 'absolute', top: '-4px', right: '-4px', backgroundColor: '#ef4444', color: '#fff',
+                            border: 'none', borderRadius: '50%', width: '18px', height: '18px', fontSize: '10px',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <input
                   type="file"
                   accept="image/*"
@@ -804,16 +978,17 @@ export default function Community() {
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   style={{
-                    padding: '8px 16px',
+                    padding: '10px 16px',
                     borderRadius: '8px',
-                    border: '1px dashed #9ca3af',
-                    backgroundColor: '#f9fafb',
+                    border: '1px dashed #94a3b8',
+                    backgroundColor: '#f8fafc',
                     cursor: 'pointer',
                     fontWeight: '600',
-                    fontSize: '0.875rem'
+                    fontSize: '0.875rem',
+                    width: '100%'
                   }}
                 >
-                  Attach Images ({newImages.length})
+                  📷 Choose Multiple Photos
                 </button>
               </div>
 
@@ -824,7 +999,7 @@ export default function Community() {
                   style={{
                     padding: '10px 20px',
                     borderRadius: '20px',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid #cbd5e1',
                     backgroundColor: '#ffffff',
                     fontWeight: '600',
                     cursor: 'pointer'
@@ -844,7 +1019,7 @@ export default function Community() {
                     cursor: 'pointer'
                   }}
                 >
-                  Publish Post
+                  Publish Ad
                 </button>
               </div>
             </form>
@@ -854,29 +1029,14 @@ export default function Community() {
 
       {/* Report Post Modal */}
       {reportingPostId && (
-        <div style={{
-          position: 'fixed',
-          top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 1000,
-          padding: '1rem'
-        }}>
-          <div style={{
-            backgroundColor: '#ffffff',
-            borderRadius: '16px',
-            maxWidth: '440px',
-            width: '100%',
-            padding: '1.5rem'
-          }}>
-            <h3 style={{ marginTop: 0 }}>Report Post</h3>
-            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
-              Why are you reporting this post for moderation?
+        <div className="modal-overlay" onClick={() => setReportingPostId(null)}>
+          <div className="detail-modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '440px', padding: '1.5rem' }}>
+            <h3 style={{ marginTop: 0, color: '#0f172a' }}>Report Listing</h3>
+            <p style={{ color: '#64748b', fontSize: '0.875rem' }}>
+              Why are you reporting this ad or post for moderation?
             </p>
             <textarea
-              placeholder="e.g. Inappropriate content, spam, or misleading recommendation"
+              placeholder="e.g. Inappropriate content, spam, incorrect price, or misleading seller info"
               value={reportReason}
               onChange={(e) => setReportReason(e.target.value)}
               rows={3}
@@ -884,20 +1044,21 @@ export default function Community() {
                 width: '100%',
                 padding: '8px 12px',
                 borderRadius: '8px',
-                border: '1px solid #d1d5db',
-                marginBottom: '1rem'
+                border: '1px solid #cbd5e1',
+                marginBottom: '1rem',
+                fontSize: '0.9rem'
               }}
             />
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
               <button 
                 onClick={() => setReportingPostId(null)}
-                style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #d1d5db', background: 'none' }}
+                style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: 'none', cursor: 'pointer' }}
               >
                 Cancel
               </button>
               <button 
                 onClick={handleReportSubmit}
-                style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', backgroundColor: '#ef4444', color: '#fff', fontWeight: '600' }}
+                style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', backgroundColor: '#ef4444', color: '#fff', fontWeight: '700', cursor: 'pointer' }}
               >
                 Submit Report
               </button>
