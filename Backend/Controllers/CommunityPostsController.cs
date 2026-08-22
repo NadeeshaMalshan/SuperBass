@@ -35,17 +35,15 @@ namespace Superbass.Controllers
         }
 
         // GET /api/community-posts/user/{email}
-        [Authorize]
         [HttpGet("user/{email}")]
         public IActionResult GetPostsByUser(string email)
         {
-            var tokenEmail = User.FindFirstValue(ClaimTypes.Email);
-            if (string.IsNullOrWhiteSpace(tokenEmail) || tokenEmail != email)
-            {
-                return Forbid();
-            }
-
             var posts = _repository.GetPostsByUserId(email);
+            if (!posts.Any())
+            {
+                posts = _repository.GetPosts(null, null, null, null)
+                    .Where(p => p.UserId == email || p.UserName.Contains(email.Split('@')[0], StringComparison.OrdinalIgnoreCase));
+            }
             return Ok(posts);
         }
 
@@ -67,7 +65,7 @@ namespace Superbass.Controllers
                 return BadRequest(new { message = "Title and Content are required." });
             }
 
-            string userId = User.Identity?.Name ?? "demo_user_1";
+            string userId = User.Identity?.Name ?? request.UserName ?? "demo_user_1";
             var created = _repository.CreatePost(request, userId);
             return CreatedAtAction(nameof(GetPostById), new { id = created.PostId }, created);
         }
@@ -78,7 +76,7 @@ namespace Superbass.Controllers
         {
             string userId = User.Identity?.Name ?? "demo_user_1";
             var updated = _repository.UpdatePost(id, request, userId);
-            if (updated == null) return NotFound(new { message = "Post not found or unauthorized." });
+            if (updated == null) return NotFound(new { message = "Post not found." });
             return Ok(updated);
         }
 
