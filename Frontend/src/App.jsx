@@ -93,9 +93,6 @@ export default function App() {
         </ul>
 
         <div className="nav-actions">
-
-
-
           {/* Material 3 Filled Button for Primary Action */}
           <md-filled-button class="header-cta-btn" onClick={() => navigate('/find')}>
             Get Started

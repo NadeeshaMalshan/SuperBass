@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -8,35 +7,14 @@ using Superbass.Models;
 
 namespace Superbass.Services
 {
-    public interface ICommunityPostRepository
+    public class EfCommunityPostRepository : ICommunityPostRepository
     {
-        IEnumerable<CommunityPost> GetPosts(string? search, string? categoryId, string? location, string? sort);
-        CommunityPost? GetPostById(int id);
-        CommunityPost CreatePost(CreatePostRequest request, string userId);
-        CommunityPost? UpdatePost(int id, UpdatePostRequest request, string userId);
-        bool DeletePost(int id, string userId);
-        IEnumerable<CommunityComment> GetComments(int postId);
-        CommunityComment AddComment(int postId, CreateCommentRequest request, string userId);
-        (bool Success, bool IsLiked, int LikesCount) ToggleLike(int postId, string userId);
-        bool ReportPost(int postId, ReportPostRequest request, string userId);
-        IEnumerable<CommunityPost> GetModerationQueue();
-        bool UpdatePostStatus(int postId, string status);
-        IEnumerable<ServiceCategory> GetCategories();
-        IEnumerable<CommunityPost> GetPostsByUserId(string userId);
-    }
-
-    public class InMemoryCommunityPostRepository : ICommunityPostRepository
-    {
-        private readonly ConcurrentDictionary<int, CommunityPost> _posts = new();
-        private readonly ConcurrentDictionary<int, List<CommunityComment>> _comments = new();
-        private readonly ConcurrentDictionary<int, List<CommunityReport>> _reports = new();
+        private readonly SuperbassDbContext _context;
         private readonly List<ServiceCategory> _categories = new();
-        private int _nextPostId = 1;
-        private int _nextCommentId = 1;
-        private int _nextReportId = 1;
 
-        public InMemoryCommunityPostRepository()
+        public EfCommunityPostRepository(SuperbassDbContext context)
         {
+            _context = context;
             LoadCategories();
         }
 
@@ -86,7 +64,7 @@ namespace Superbass.Services
 
         public IEnumerable<CommunityPost> GetPosts(string? search, string? categoryId, string? location, string? sort)
         {
-            var query = _posts.Values.Where(p => p.Status != "Removed");
+            var query = _context.CommunityPosts.Where(p => p.Status != "Removed");
 
             if (!string.IsNullOrWhiteSpace(search))
             {
@@ -96,12 +74,13 @@ namespace Superbass.Services
 
             if (!string.IsNullOrWhiteSpace(categoryId) && !categoryId.Equals("all", StringComparison.OrdinalIgnoreCase))
             {
-                query = query.Where(p => p.ServiceCategoryId.Equals(categoryId, StringComparison.OrdinalIgnoreCase));
+                query = query.Where(p => p.ServiceCategoryId == categoryId);
             }
 
             if (!string.IsNullOrWhiteSpace(location) && !location.Equals("all", StringComparison.OrdinalIgnoreCase))
             {
-                query = query.Where(p => p.Location.ToLower().Contains(location.Trim().ToLower()));
+                string locTerm = location.Trim().ToLower();
+                query = query.Where(p => p.Location.ToLower().Contains(locTerm));
             }
 
             if (!string.IsNullOrWhiteSpace(sort) && sort.Equals("popular", StringComparison.OrdinalIgnoreCase))
@@ -118,7 +97,7 @@ namespace Superbass.Services
 
         public CommunityPost? GetPostById(int id)
         {
-            _posts.TryGetValue(id, out var post);
+            var post = _context.CommunityPosts.FirstOrDefault(p => p.PostId == id);
             return (post != null && post.Status != "Removed") ? post : null;
         }
 
@@ -127,10 +106,8 @@ namespace Superbass.Services
             var category = _categories.FirstOrDefault(c => c.Id.Equals(request.ServiceCategoryId, StringComparison.OrdinalIgnoreCase));
             string categoryName = category != null ? category.Name : (request.ServiceCategoryId ?? "General Advice");
 
-            int id = _nextPostId++;
             var post = new CommunityPost
             {
-                PostId = id,
                 UserId = userId,
                 UserName = !string.IsNullOrWhiteSpace(request.UserName) ? request.UserName : "Community Resident",
                 UserAvatar = !string.IsNullOrWhiteSpace(request.UserAvatar) ? request.UserAvatar : $"https://api.dicebear.com/7.x/avataaars/svg?seed={userId}",
@@ -147,15 +124,16 @@ namespace Superbass.Services
                 LikedByUsers = new List<string>()
             };
 
-            _posts[id] = post;
-            _comments[id] = new List<CommunityComment>();
-            _reports[id] = new List<CommunityReport>();
+            _context.CommunityPosts.Add(post);
+            _context.SaveChanges();
+            
             return post;
         }
 
         public CommunityPost? UpdatePost(int id, UpdatePostRequest request, string userId)
         {
-            if (!_posts.TryGetValue(id, out var post)) return null;
+            var post = _context.CommunityPosts.FirstOrDefault(p => p.PostId == id);
+            if (post == null) return null;
 
             var category = _categories.FirstOrDefault(c => c.Id.Equals(request.ServiceCategoryId, StringComparison.OrdinalIgnoreCase));
 
@@ -167,14 +145,18 @@ namespace Superbass.Services
             if (request.Images != null) post.Images = request.Images;
             post.UpdatedAt = DateTime.UtcNow;
 
+            _context.SaveChanges();
+
             return post;
         }
 
         public bool DeletePost(int id, string userId)
         {
-            if (_posts.TryGetValue(id, out var post))
+            var post = _context.CommunityPosts.FirstOrDefault(p => p.PostId == id);
+            if (post != null)
             {
                 post.Status = "Removed";
+                _context.SaveChanges();
                 return true;
             }
             return false;
@@ -182,23 +164,19 @@ namespace Superbass.Services
 
         public IEnumerable<CommunityComment> GetComments(int postId)
         {
-            if (_comments.TryGetValue(postId, out var list))
-            {
-                return list.OrderBy(c => c.CreatedAt).ToList();
-            }
-            return Enumerable.Empty<CommunityComment>();
+            return _context.CommunityComments.Where(c => c.PostId == postId).OrderBy(c => c.CreatedAt).ToList();
         }
 
         public CommunityComment AddComment(int postId, CreateCommentRequest request, string userId)
         {
-            if (!_posts.TryGetValue(postId, out var post))
+            var post = _context.CommunityPosts.FirstOrDefault(p => p.PostId == postId);
+            if (post == null)
             {
                 throw new KeyNotFoundException("Post not found.");
             }
 
             var comment = new CommunityComment
             {
-                CommentId = _nextCommentId++,
                 PostId = postId,
                 UserId = userId,
                 UserName = !string.IsNullOrWhiteSpace(request.UserName) ? request.UserName : "Resident",
@@ -207,44 +185,47 @@ namespace Superbass.Services
                 CreatedAt = DateTime.UtcNow
             };
 
-            if (!_comments.ContainsKey(postId))
-            {
-                _comments[postId] = new List<CommunityComment>();
-            }
-
-            _comments[postId].Add(comment);
-            post.CommentsCount = _comments[postId].Count;
+            _context.CommunityComments.Add(comment);
+            
+            post.CommentsCount = _context.CommunityComments.Count(c => c.PostId == postId) + 1;
+            
+            _context.SaveChanges();
 
             return comment;
         }
 
         public (bool Success, bool IsLiked, int LikesCount) ToggleLike(int postId, string userId)
         {
-            if (!_posts.TryGetValue(postId, out var post)) return (false, false, 0);
+            var post = _context.CommunityPosts.FirstOrDefault(p => p.PostId == postId);
+            if (post == null) return (false, false, 0);
 
             bool isLiked;
-            if (post.LikedByUsers.Contains(userId))
+            var likedUsers = post.LikedByUsers.ToList();
+            if (likedUsers.Contains(userId))
             {
-                post.LikedByUsers.Remove(userId);
+                likedUsers.Remove(userId);
                 isLiked = false;
             }
             else
             {
-                post.LikedByUsers.Add(userId);
+                likedUsers.Add(userId);
                 isLiked = true;
             }
 
-            post.LikesCount = post.LikedByUsers.Count;
+            post.LikedByUsers = likedUsers;
+            post.LikesCount = likedUsers.Count;
+            _context.SaveChanges();
+            
             return (true, isLiked, post.LikesCount);
         }
 
         public bool ReportPost(int postId, ReportPostRequest request, string userId)
         {
-            if (!_posts.TryGetValue(postId, out var post)) return false;
+            var post = _context.CommunityPosts.FirstOrDefault(p => p.PostId == postId);
+            if (post == null) return false;
 
             var report = new CommunityReport
             {
-                ReportId = _nextReportId++,
                 PostId = postId,
                 ReporterUserId = userId,
                 Reason = request.Reason,
@@ -252,31 +233,31 @@ namespace Superbass.Services
                 Status = "Pending"
             };
 
-            if (!_reports.ContainsKey(postId))
-            {
-                _reports[postId] = new List<CommunityReport>();
-            }
-
-            _reports[postId].Add(report);
-            post.ReportCount = _reports[postId].Count;
+            _context.CommunityReports.Add(report);
+            
+            post.ReportCount = _context.CommunityReports.Count(r => r.PostId == postId) + 1;
             if (post.Status == "Active")
             {
                 post.Status = "Reported";
             }
 
+            _context.SaveChanges();
+            
             return true;
         }
 
         public IEnumerable<CommunityPost> GetModerationQueue()
         {
-            return _posts.Values.Where(p => p.Status == "Reported" || p.ReportCount > 0).OrderByDescending(p => p.ReportCount).ToList();
+            return _context.CommunityPosts.Where(p => p.Status == "Reported" || p.ReportCount > 0).OrderByDescending(p => p.ReportCount).ToList();
         }
 
         public bool UpdatePostStatus(int postId, string status)
         {
-            if (_posts.TryGetValue(postId, out var post))
+            var post = _context.CommunityPosts.FirstOrDefault(p => p.PostId == postId);
+            if (post != null)
             {
                 post.Status = status;
+                _context.SaveChanges();
                 return true;
             }
             return false;
@@ -284,7 +265,7 @@ namespace Superbass.Services
 
         public IEnumerable<CommunityPost> GetPostsByUserId(string userId)
         {
-            return _posts.Values.Where(p => p.UserId == userId && p.Status != "Removed").OrderByDescending(p => p.CreatedAt).ToList();
+            return _context.CommunityPosts.Where(p => p.UserId == userId && p.Status != "Removed").OrderByDescending(p => p.CreatedAt).ToList();
         }
     }
 }

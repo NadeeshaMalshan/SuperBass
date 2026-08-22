@@ -10,6 +10,9 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
+using System.Security.Cryptography;
+using Microsoft.EntityFrameworkCore;
+using Superbass.Models;
 
 namespace Superbass.Controllers
 {
@@ -19,11 +22,13 @@ namespace Superbass.Controllers
     {
         private readonly IConfiguration _configuration;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly SuperbassDbContext _dbContext;
 
-        public AuthController(IConfiguration configuration, IHttpClientFactory httpClientFactory)
+        public AuthController(IConfiguration configuration, IHttpClientFactory httpClientFactory, SuperbassDbContext dbContext)
         {
             _configuration = configuration;
             _httpClientFactory = httpClientFactory;
+            _dbContext = dbContext;
         }
 
         [HttpPost("google")]
@@ -110,7 +115,94 @@ namespace Superbass.Controllers
             var token = tokenHandler.CreateToken(tokenDescriptor);
             var jwt = tokenHandler.WriteToken(token);
 
-            return Ok(new { token = jwt, email = email, name = name ?? email, picture = picture });
+            var jwtHash = Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(jwt)));
+
+            bool isNewUser = false;
+            var resident = await _dbContext.Residents.FindAsync(email);
+            if (resident == null)
+            {
+                isNewUser = true;
+                resident = new Resident
+                {
+                    Email = email,
+                    Name = name ?? email,
+                    PasswordHash = jwtHash,
+                    PhoneNo = request.PhoneNo,
+                    Address = request.Address,
+                    LocationLat = request.LocationLat,
+                    LocationLng = request.LocationLng
+                };
+                _dbContext.Residents.Add(resident);
+            }
+            else
+            {
+                resident.PasswordHash = jwtHash;
+                if (request.PhoneNo != null) resident.PhoneNo = request.PhoneNo;
+                if (request.Address != null) resident.Address = request.Address;
+                if (request.LocationLat != null) resident.LocationLat = request.LocationLat;
+                if (request.LocationLng != null) resident.LocationLng = request.LocationLng;
+            }
+            await _dbContext.SaveChangesAsync();
+
+            var worker = await _dbContext.Workers.FirstOrDefaultAsync(w => w.ResidentEmail == email || w.Email == email);
+            bool isWorker = worker != null;
+            string activeRole = isWorker ? "Worker" : "Resident";
+
+            return Ok(new { 
+                token = jwt, 
+                email = email, 
+                name = name ?? email, 
+                picture = picture, 
+                isNewUser = isNewUser,
+                isWorker = isWorker,
+                activeRole = activeRole,
+                workerId = worker?.Id
+            });
+        }
+
+        [HttpPost("onboarding")]
+        public async Task<IActionResult> Onboarding([FromBody] OnboardingRequest request)
+        {
+            var authHeader = Request.Headers["Authorization"].FirstOrDefault();
+            if (authHeader == null || !authHeader.StartsWith("Bearer "))
+                return Unauthorized(new { message = "Missing or invalid Authorization header." });
+
+            var token = authHeader.Substring("Bearer ".Length).Trim();
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var key = Encoding.ASCII.GetBytes(_configuration["Authentication:Jwt:Secret"] ?? "super_secret_key_that_must_be_long_enough_12345");
+            
+            try
+            {
+                tokenHandler.ValidateToken(token, new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(key),
+                    ValidateIssuer = false,
+                    ValidateAudience = false,
+                    ClockSkew = TimeSpan.Zero
+                }, out SecurityToken validatedToken);
+
+                var jwtToken = (JwtSecurityToken)validatedToken;
+                var emailClaim = jwtToken.Claims.FirstOrDefault(x => x.Type == ClaimTypes.Email || x.Type == "email" || x.Type.Contains("emailaddress"));
+                if (emailClaim == null) return Unauthorized(new { message = "Email claim not found in token." });
+                var email = emailClaim.Value;
+
+                var resident = await _dbContext.Residents.FindAsync(email);
+                if (resident == null) return NotFound(new { message = "User not found." });
+
+                resident.PhoneNo = request.PhoneNo;
+                resident.Address = request.Address;
+                resident.LocationLat = request.LocationLat;
+                resident.LocationLng = request.LocationLng;
+
+                await _dbContext.SaveChangesAsync();
+                return Ok(new { message = "Profile updated successfully." });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Token validation failed: {ex.ToString()}");
+                return Unauthorized(new { message = "Invalid token." });
+            }
         }
     }
 
@@ -118,5 +210,17 @@ namespace Superbass.Controllers
     {
         public string? IdToken { get; set; }
         public string? AccessToken { get; set; }
+        public string? PhoneNo { get; set; }
+        public string? Address { get; set; }
+        public double? LocationLat { get; set; }
+        public double? LocationLng { get; set; }
+    }
+
+    public class OnboardingRequest
+    {
+        public string? PhoneNo { get; set; }
+        public string? Address { get; set; }
+        public double? LocationLat { get; set; }
+        public double? LocationLng { get; set; }
     }
 }

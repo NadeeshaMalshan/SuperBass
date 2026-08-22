@@ -74,7 +74,10 @@ export default function Find() {
               </md-filled-button>
               <div style={{ position: 'relative', display: 'inline-block' }}>
                 <md-filled-button
-                  onClick={() => setShowLogoutPopup(!showLogoutPopup)}
+                  onClick={() => {
+                    window.history.pushState({}, '', '/account');
+                    window.dispatchEvent(new PopStateEvent('popstate'));
+                  }}
                   style={{
                     '--md-sys-color-primary': '#000000',
                     '--md-sys-color-on-primary': '#ffffff',

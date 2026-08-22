@@ -986,4 +986,5 @@ md-filled-button:hover .btn-icon {
     width: 170px;
     height: 340px;
   }
-}
+}.fade-in-step { animation: fadeInStep 0.4s ease-in-out; }
+@keyframes fadeInStep { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }

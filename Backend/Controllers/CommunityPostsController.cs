@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using System.Collections.Generic;
+using System.Security.Claims;
 using Superbass.Models;
 using Superbass.Services;
 
@@ -63,7 +65,7 @@ namespace Superbass.Controllers
                 return BadRequest(new { message = "Title and Content are required." });
             }
 
-            string userId = User.Identity?.Name ?? "demo_user_1";
+            string userId = User.Identity?.Name ?? request.UserName ?? "demo_user_1";
             var created = _repository.CreatePost(request, userId);
             return CreatedAtAction(nameof(GetPostById), new { id = created.PostId }, created);
         }
@@ -74,7 +76,7 @@ namespace Superbass.Controllers
         {
             string userId = User.Identity?.Name ?? "demo_user_1";
             var updated = _repository.UpdatePost(id, request, userId);
-            if (updated == null) return NotFound(new { message = "Post not found or unauthorized." });
+            if (updated == null) return NotFound(new { message = "Post not found." });
             return Ok(updated);
         }
 
