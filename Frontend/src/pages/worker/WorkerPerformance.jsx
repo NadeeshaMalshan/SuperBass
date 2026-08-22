@@ -15,13 +15,33 @@ export default function WorkerPerformance() {
     cancellationRate: '3.0%'
   });
 
+  const userEmail = localStorage.getItem('email');
+  const token = localStorage.getItem('token');
+
   useEffect(() => {
-    axios.get('http://localhost:5237/api/workers/1/performance')
-      .then(res => {
-        if (res.data) setMetrics(res.data);
-      })
-      .catch(err => console.log('Loaded mock performance data'));
-  }, []);
+    const fetchPerformance = async () => {
+      if (!userEmail) return;
+      try {
+        const meRes = await axios.get(`http://localhost:5237/api/workers/me?email=${encodeURIComponent(userEmail)}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+
+        if (meRes.data && meRes.data.worker) {
+          const workerId = meRes.data.worker.id;
+          const perfRes = await axios.get(`http://localhost:5237/api/workers/${workerId}/performance`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+          });
+          if (perfRes.data) {
+            setMetrics(perfRes.data);
+          }
+        }
+      } catch (err) {
+        console.log('Using default or fallback performance metrics', err);
+      }
+    };
+
+    fetchPerformance();
+  }, [userEmail, token]);
 
   return (
     <WorkerLayout activeTab="performance">

@@ -16,14 +16,33 @@ export default function WorkerDashboard() {
     window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
+  const userEmail = localStorage.getItem('email');
+  const token = localStorage.getItem('token');
+
   useEffect(() => {
-    // Try fetching performance stats from backend for Worker #1
-    axios.get('http://localhost:5237/api/workers/1/performance')
-      .then(res => {
-        if (res.data) setPerformance(res.data);
-      })
-      .catch(err => console.log('Using default mock stats for worker dashboard'));
-  }, []);
+    const fetchWorkerOverview = async () => {
+      if (!userEmail) return;
+      try {
+        const meRes = await axios.get(`http://localhost:5237/api/workers/me?email=${encodeURIComponent(userEmail)}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+
+        if (meRes.data && meRes.data.worker) {
+          const workerId = meRes.data.worker.id;
+          const perfRes = await axios.get(`http://localhost:5237/api/workers/${workerId}/performance`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+          });
+          if (perfRes.data) {
+            setPerformance(perfRes.data);
+          }
+        }
+      } catch (err) {
+        console.log('Using default mock stats for worker dashboard');
+      }
+    };
+
+    fetchWorkerOverview();
+  }, [userEmail, token]);
 
   return (
     <WorkerLayout activeTab="dashboard">
