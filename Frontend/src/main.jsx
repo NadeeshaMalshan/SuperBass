@@ -7,6 +7,8 @@ import Join from './Join.jsx'
 import Community from './Community.jsx'
 import Onboarding from './Onboarding.jsx'
 
+import WorkerDetail from './WorkerDetail.jsx'
+
 // Worker Pages
 import WorkerRegister from './pages/worker/WorkerRegister.jsx'
 import WorkerLogin from './pages/worker/WorkerLogin.jsx'
@@ -37,6 +39,9 @@ function Router() {
 
   if (path === '/find' || path === '/find.jsx') {
     return <Find />;
+  }
+  if (path === '/worker-detail' || path === '/worker-detail.jsx' || path.startsWith('/worker-detail')) {
+    return <WorkerDetail />;
   }
   if (path === '/join' || path === '/join.jsx') {
     return <Join />;
