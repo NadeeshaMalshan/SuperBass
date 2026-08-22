@@ -5,10 +5,10 @@ import '@material/web/button/filled-button.js';
 import '@material/web/button/outlined-button.js';
 import '@material/web/textfield/filled-text-field.js';
 
-export default function ResidentProfile() {
+export default function ResidentProfile({ defaultTab = 'overview' }) {
   const urlParams = new URLSearchParams(window.location.search);
   const tabParam = urlParams.get('tab');
-  const [activeTab, setActiveTab] = useState(tabParam || 'overview');
+  const [activeTab, setActiveTab] = useState(tabParam || defaultTab || 'overview');
   
   const [profile, setProfile] = useState({
     name: '',
