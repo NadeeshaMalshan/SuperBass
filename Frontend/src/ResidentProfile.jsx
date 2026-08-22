@@ -38,6 +38,28 @@ export default function ResidentProfile() {
   const [submittingWorker, setSubmittingWorker] = useState(false);
   const [workerError, setWorkerError] = useState(null);
 
+  // Post management & modal states
+  const [selectedPostForDetail, setSelectedPostForDetail] = useState(null);
+  const [selectedGalleryImage, setSelectedGalleryImage] = useState(null);
+  const [commentsMap, setCommentsMap] = useState({});
+  const [newCommentText, setNewCommentText] = useState('');
+
+  const [editingPost, setEditingPost] = useState(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editContent, setEditContent] = useState('');
+  const [editCategory, setEditCategory] = useState('plumbing');
+  const [editLocation, setEditLocation] = useState('Colombo 05');
+  const [editImages, setEditImages] = useState([]);
+  const editFileInputRef = useRef(null);
+
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [createTitle, setCreateTitle] = useState('');
+  const [createContent, setCreateContent] = useState('');
+  const [createCategory, setCreateCategory] = useState('plumbing');
+  const [createLocation, setCreateLocation] = useState('Colombo 05');
+  const [createImages, setCreateImages] = useState([]);
+  const fileInputRef = useRef(null);
+
   let userEmail = localStorage.getItem('email');
   const token = localStorage.getItem('token');
   const userPicture = localStorage.getItem('userPicture');
@@ -118,6 +140,19 @@ export default function ResidentProfile() {
     checkWorkerStatus();
   }, [userEmail, token]);
 
+  const fetchUserPosts = async () => {
+    if (!userEmail) return;
+    setLoadingPosts(true);
+    try {
+      const res = await axios.get(`http://localhost:5237/api/community-posts/user/${encodeURIComponent(userEmail)}`);
+      setUserPosts(res.data || []);
+    } catch (err) {
+      console.error("Error fetching user posts:", err);
+    } finally {
+      setLoadingPosts(false);
+    }
+  };
+
   useEffect(() => {
     if (activeTab === 'posts') {
       fetchUserPosts();
@@ -186,7 +221,7 @@ export default function ResidentProfile() {
     }
   };
 
-  const handleUpdate = async (e) => {
+  const handleUpdateProfile = async (e) => {
     e.preventDefault();
     try {
       await axios.put(`http://localhost:5237/api/residents/${encodeURIComponent(userEmail)}`, profile, {
@@ -346,7 +381,10 @@ export default function ResidentProfile() {
         location: createLocation,
         images: createImages,
         userName: userName || "You (Resident)",
-        userAvatar: userPicture || "https://api.dicebear.com/7.x/avataaars/svg?seed=CurrentUser"
+        userAvatar: userPicture || "https://api.dicebear.com/7.x/avataaars/svg?seed=CurrentUser",
+        userEmail: userEmail
+      }, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
 
       alert("Post published successfully!");
