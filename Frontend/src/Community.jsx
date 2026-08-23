@@ -56,6 +56,7 @@ export default function Community() {
 
   const currentUserEmail = localStorage.getItem('email');
   const currentUserName = localStorage.getItem('userName');
+  const activeRole = localStorage.getItem('activeRole') || 'Resident';
 
   const isPostOwner = (post) => {
     if (!post) return false;
@@ -802,27 +803,29 @@ export default function Community() {
                   </div>
                 </div>
 
-                <button
-                  onClick={() => handleOpenChat(selectedPostForDetail)}
-                  style={{
-                    backgroundColor: '#0f172a',
-                    color: '#ffffff',
-                    border: 'none',
-                    borderRadius: '20px',
-                    padding: '8px 18px',
-                    fontWeight: '700',
-                    fontSize: '0.875rem',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0284c7'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#0f172a'}
-                >
-                  <i className="fa-solid fa-comment-dots"></i> Chat / Contact
-                </button>
+                {activeRole === 'Worker' && (
+                  <button
+                    onClick={() => handleOpenChat(selectedPostForDetail)}
+                    style={{
+                      backgroundColor: '#0f172a',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '20px',
+                      padding: '8px 18px',
+                      fontWeight: '700',
+                      fontSize: '0.875rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0284c7'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#0f172a'}
+                  >
+                    <i className="fa-solid fa-comment-dots"></i> Chat / Contact
+                  </button>
+                )}
               </div>
 
               {/* Full Description Content */}
