@@ -54,10 +54,33 @@ namespace Superbass.Services
         public async Task<Worker> CreateWorkerFromResidentAsync(string residentEmail, string? description, string primaryServiceArea, double coverageRadiusKm, string pricingModel, decimal? hourlyRate, decimal? dailyRate, List<WorkerSkill> skills)
         {
             var resident = await _context.Residents.FindAsync(residentEmail);
-            if (resident == null) throw new KeyNotFoundException("Resident profile not found.");
+            if (resident == null)
+            {
+                resident = new Resident
+                {
+                    Email = residentEmail,
+                    Name = residentEmail.Split('@')[0]
+                };
+                _context.Residents.Add(resident);
+                await _context.SaveChangesAsync();
+            }
 
-            var existingWorker = await _context.Workers.FirstOrDefaultAsync(w => w.ResidentEmail == residentEmail || w.Email == residentEmail);
-            if (existingWorker != null) throw new InvalidOperationException("User is already registered as a worker.");
+            var existingWorker = await _context.Workers.Include(w => w.Skills).FirstOrDefaultAsync(w => w.ResidentEmail == residentEmail || w.Email == residentEmail);
+            if (existingWorker != null)
+            {
+                existingWorker.Description = description ?? existingWorker.Description;
+                existingWorker.PrimaryServiceArea = primaryServiceArea ?? existingWorker.PrimaryServiceArea;
+                if (coverageRadiusKm > 0) existingWorker.CoverageRadiusKm = coverageRadiusKm;
+                existingWorker.PricingModel = pricingModel ?? existingWorker.PricingModel;
+                if (hourlyRate != null) existingWorker.HourlyRate = hourlyRate;
+                if (dailyRate != null) existingWorker.DailyRate = dailyRate;
+                if (skills != null && skills.Count > 0)
+                {
+                    existingWorker.Skills = skills;
+                }
+                await _context.SaveChangesAsync();
+                return existingWorker;
+            }
 
             var worker = new Worker
             {
@@ -129,8 +152,9 @@ namespace Superbass.Services
             if (isCompleted)
             {
                 worker.CompletedJobs += 1;
-                // Calculate moving average rating
-                worker.OverallRating = Math.Round(((worker.OverallRating * (worker.CompletedJobs - 1)) + rating) / worker.CompletedJobs, 2);
+                // Calculate moving average rating safely when previous OverallRating might be null
+                var prevRating = worker.OverallRating ?? rating;
+                worker.OverallRating = Math.Round(((prevRating * (worker.CompletedJobs - 1)) + rating) / worker.CompletedJobs, 2);
             }
 
             await _context.SaveChangesAsync();
