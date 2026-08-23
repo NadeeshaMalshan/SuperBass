@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import WorkerLayout from './WorkerLayout.jsx';
+import '@material/web/button/filled-button.js';
+import '@material/web/button/outlined-button.js';
+import '@material/web/progress/circular-progress.js';
+import Loader from '../../components/Loader.jsx';
 
 export default function WorkerJobs() {
   const [activeTab, setActiveTab] = useState('requests'); // 'requests' | 'active' | 'history'
@@ -239,8 +243,9 @@ export default function WorkerJobs() {
       </div>
 
       {loading && (
-        <div style={{ textAlign: 'center', padding: '40px', color: '#64748B' }}>
-          Loading your bookings...
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '40px', color: '#64748B' }}>
+          <Loader />
+          <div>Loading your bookings...</div>
         </div>
       )}
 

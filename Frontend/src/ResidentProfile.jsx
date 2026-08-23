@@ -4,7 +4,10 @@ import categoriesData from './data/categories.json';
 import UserMenu from './components/UserMenu.jsx';
 import '@material/web/button/filled-button.js';
 import '@material/web/button/outlined-button.js';
+import '@material/web/icon/icon.js';
+import '@material/web/progress/circular-progress.js';
 import '@material/web/textfield/filled-text-field.js';
+import Loader from './components/Loader.jsx';
 
 export default function ResidentProfile({ defaultTab = 'overview' }) {
   const urlParams = new URLSearchParams(window.location.search);
@@ -504,7 +507,12 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     }
   };
 
-  if (loading) return <div style={{ padding: '4rem', textAlign: 'center', fontSize: '1.2rem', color: '#6b7280' }}>Loading your dashboard...</div>;
+  if (loading) return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: '#f9fafb', color: '#6b7280' }}>
+      <Loader />
+      <div style={{ fontSize: '1.2rem', fontWeight: 600 }}>Loading your dashboard...</div>
+    </div>
+  );
   if (!userEmail) return <div style={{ padding: '4rem', textAlign: 'center', fontSize: '1.2rem', color: '#6b7280' }}>Please log in to view your dashboard.</div>;
 
   return (
@@ -720,8 +728,9 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
               </div>
 
               {loadingBookings ? (
-                <div style={{ padding: '3rem', textAlign: 'center', color: '#6b7280' }}>
-                  Loading your service bookings...
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', color: '#6b7280' }}>
+                  <Loader />
+                  <p>Loading your service bookings...</p>
                 </div>
               ) : residentBookings.length === 0 ? (
                 <div style={{ padding: '3rem', backgroundColor: '#f9fafb', borderRadius: '16px', border: '1px dashed #cbd5e1', textAlign: 'center' }}>
@@ -1094,7 +1103,8 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
               </div>
               
               {loadingPosts ? (
-                <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', color: '#6b7280' }}>
+                  <Loader />
                   <p>Loading your community posts...</p>
                 </div>
               ) : userPosts.length === 0 ? (

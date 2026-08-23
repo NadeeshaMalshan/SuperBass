@@ -3,8 +3,11 @@ import axios from 'axios';
 import './App.css';
 
 import '@material/web/button/filled-button.js';
+import '@material/web/button/filled-button.js';
 import '@material/web/button/outlined-button.js';
 import '@material/web/icon/icon.js';
+import '@material/web/progress/circular-progress.js';
+import Loader from './components/Loader.jsx';
 
 export default function WorkerDetail() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -13,6 +16,16 @@ export default function WorkerDetail() {
   const [worker, setWorker] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Nav State
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userName, setUserName] = useState('');
+  const [userPicture, setUserPicture] = useState('');
+
+  const getFirstName = (fullName) => {
+    if (!fullName) return 'User';
+    return fullName.split(' ')[0];
+  };
 
   // Hire / Booking Modal State
   const [isHireModalOpen, setIsHireModalOpen] = useState(false);
@@ -39,6 +52,10 @@ export default function WorkerDetail() {
   };
 
   useEffect(() => {
+    setIsLoggedIn(!!localStorage.getItem('token'));
+    setUserName(localStorage.getItem('userName') || '');
+    setUserPicture(localStorage.getItem('userPicture') || '');
+
     const fetchWorkerDetails = async () => {
       if (!workerId) {
         setError('No worker specified.');
@@ -123,7 +140,8 @@ export default function WorkerDetail() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: '#f9fafb', color: '#6b7280' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: '#f9fafb', color: '#6b7280' }}>
+        <Loader />
         <div style={{ fontSize: '1.2rem', fontWeight: 600 }}>Loading worker profile...</div>
       </div>
     );
@@ -142,23 +160,56 @@ export default function WorkerDetail() {
   return (
     <div style={{ backgroundColor: '#f9fafb', minHeight: '100vh', color: '#111827', fontFamily: 'var(--font-body)' }}>
       {/* Top Navbar */}
-      <header className="navbar" style={{ padding: '1rem 2rem', borderBottom: '1px solid #e5e7eb', backgroundColor: '#ffffff' }}>
-        <a href="/find" onClick={(e) => { e.preventDefault(); navigate('/find'); }} className="brand-logo" style={{ cursor: 'pointer' }}>
+      <header className="navbar" style={{ padding: '1rem 2rem', borderBottom: '1px solid #e5e7eb', backgroundColor: '#ffffff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <a href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }} className="brand-logo" style={{ cursor: 'pointer' }}>
           <img src="/iconWithText-cropped.png" alt="Super Bass Logo" className="brand-logo-img" style={{ height: '40px' }} />
         </a>
 
-        <div className="nav-actions">
-          <md-outlined-button 
-            onClick={() => navigate('/find')}
-            style={{
-              '--md-sys-color-outline': '#2563eb',
-              '--md-sys-color-primary': '#2563eb',
-              color: '#2563eb',
-              cursor: 'pointer'
-            }}
-          >
-            ← Back to All Services
-          </md-outlined-button>
+        {/* Nav Actions */}
+        <div className="nav-actions" style={{ display: 'flex', alignItems: 'center' }}>
+          {isLoggedIn ? (
+            <>
+              <md-filled-button
+                onClick={() => navigate('/community')}
+                style={{
+                  '--md-sys-color-primary': '#FDC101',
+                  '--md-sys-color-on-primary': '#000000',
+                  padding: '0 20px',
+                  minWidth: '100px',
+                  margin: '0 8px'
+                }}
+              >
+                Community
+              </md-filled-button>
+              <md-filled-button
+                onClick={() => navigate('/account')}
+                style={{
+                  '--md-sys-color-primary': '#111827',
+                  '--md-sys-color-on-primary': '#ffffff',
+                  padding: '0 16px',
+                  margin: '0 0 0 8px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                {userPicture && <img slot="icon" src={userPicture} alt="User" style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover' }} />}
+                {getFirstName(userName)}
+              </md-filled-button>
+            </>
+          ) : (
+            <md-filled-button
+              onClick={() => navigate('/join')}
+              style={{
+                '--md-sys-color-primary': '#FDC101',
+                '--md-sys-color-on-primary': '#000000',
+                padding: '0 24px',
+                margin: '0 0 0 8px'
+              }}
+            >
+              Join
+            </md-filled-button>
+          )}
         </div>
       </header>
 

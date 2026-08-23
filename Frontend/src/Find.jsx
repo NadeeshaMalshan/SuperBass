@@ -7,6 +7,8 @@ import UserMenu from './components/UserMenu.jsx';
 import '@material/web/button/filled-button.js';
 import '@material/web/button/outlined-button.js';
 import '@material/web/icon/icon.js';
+import '@material/web/progress/circular-progress.js';
+import Loader from './components/Loader.jsx';
 
 export default function Find() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);

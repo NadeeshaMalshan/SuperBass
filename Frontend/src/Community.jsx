@@ -9,6 +9,8 @@ import UserMenu from './components/UserMenu.jsx';
 // Material 3 Web Components
 import '@material/web/button/filled-button.js';
 import '@material/web/button/outlined-button.js';
+import '@material/web/progress/circular-progress.js';
+import Loader from './components/Loader.jsx';
 
 const API_BASE_URL = "http://localhost:5237/api/community-posts";
 
@@ -543,8 +545,8 @@ export default function Community() {
 
         {/* Listings Cards Container */}
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '4rem', color: '#64748b' }}>
-            <i className="fa-solid fa-circle-notch fa-spin" style={{ fontSize: '2rem', color: '#009688', marginBottom: '1rem' }}></i>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '4rem', color: '#64748b' }}>
+            <Loader />
             <p style={{ fontSize: '1.1rem', fontWeight: '500' }}>Loading database posts...</p>
           </div>
         ) : (activeTab === 'feed' ? posts : moderationPosts).length === 0 ? (
