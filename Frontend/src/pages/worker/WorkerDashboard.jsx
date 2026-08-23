@@ -3,6 +3,7 @@ import WorkerLayout from './WorkerLayout.jsx';
 import axios from 'axios';
 
 export default function WorkerDashboard() {
+  const [pendingRequests, setPendingRequests] = useState([]);
   const [performance, setPerformance] = useState({
     overallRating: 4.8,
     completionRate: '97.0%',
@@ -16,14 +17,40 @@ export default function WorkerDashboard() {
     window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
+  const userEmail = localStorage.getItem('workerEmail') || localStorage.getItem('email');
+  const token = localStorage.getItem('token');
+
   useEffect(() => {
-    // Try fetching performance stats from backend for Worker #1
-    axios.get('http://localhost:5237/api/workers/1/performance')
-      .then(res => {
-        if (res.data) setPerformance(res.data);
-      })
-      .catch(err => console.log('Using default mock stats for worker dashboard'));
-  }, []);
+    const fetchWorkerOverview = async () => {
+      if (!userEmail) return;
+      try {
+        const meRes = await axios.get(`http://localhost:5237/api/workers/me?email=${encodeURIComponent(userEmail)}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+
+        if (meRes.data && meRes.data.worker) {
+          const workerId = meRes.data.worker.id;
+          const perfRes = await axios.get(`http://localhost:5237/api/workers/${workerId}/performance`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+          });
+          if (perfRes.data) {
+            setPerformance(perfRes.data);
+          }
+          
+          const bookingsRes = await axios.get(`http://localhost:5237/api/bookings/worker?email=${encodeURIComponent(userEmail)}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+          });
+          if (bookingsRes.data) {
+            setPendingRequests(bookingsRes.data.filter(b => b.status === 'Requested'));
+          }
+        }
+      } catch (err) {
+        console.log('Using default mock stats for worker dashboard');
+      }
+    };
+
+    fetchWorkerOverview();
+  }, [userEmail, token]);
 
   return (
     <WorkerLayout activeTab="dashboard">
@@ -80,67 +107,41 @@ export default function WorkerDashboard() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#111111' }}>
             <i className="fa-solid fa-bell" style={{ color: '#2563EB', marginRight: '8px' }}></i>
-            Pending Booking Requests (2)
+            Pending Booking Requests ({pendingRequests.length})
           </h3>
-          <span className="badge badge-warning">Requires Response</span>
+          {pendingRequests.length > 0 && <span className="badge badge-warning">Requires Response</span>}
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {/* Request Card 1 */}
-          <div style={{
-            padding: '16px',
-            borderRadius: '12px',
-            backgroundColor: '#F8FAFC',
-            border: '1px solid #E2E8F0',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: '1rem', color: '#111111' }}>
-                Leaking Pipe Repair — Colombo 03
+          {pendingRequests.length === 0 ? (
+            <p style={{ color: '#64748B' }}>No pending requests at the moment.</p>
+          ) : (
+            pendingRequests.slice(0, 3).map(req => (
+              <div key={req.id} style={{
+                padding: '16px',
+                borderRadius: '12px',
+                backgroundColor: '#F8FAFC',
+                border: '1px solid #E2E8F0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '1rem', color: '#111111' }}>
+                    {req.jobTitle} — {req.locationAddress}
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: '#64748B', marginTop: '4px' }}>
+                    Resident: <strong style={{ color: '#1E293B' }}>{req.residentName || req.residentEmail}</strong> • Scheduled: {new Date(req.scheduledDate).toLocaleString()}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button className="worker-btn-primary" style={{ padding: '8px 16px', fontSize: '0.85rem' }} onClick={() => navigate('/worker/jobs')}>
+                    View & Accept
+                  </button>
+                </div>
               </div>
-              <div style={{ fontSize: '0.85rem', color: '#64748B', marginTop: '4px' }}>
-                Resident: <strong style={{ color: '#1E293B' }}>Kamal Perera</strong> • Scheduled: Tomorrow, 10:00 AM
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button className="worker-btn-primary" style={{ padding: '8px 16px', fontSize: '0.85rem' }} onClick={() => navigate('/worker/jobs')}>
-                Accept
-              </button>
-              <button className="worker-btn-outlined" style={{ padding: '8px 16px', fontSize: '0.85rem' }}>
-                Decline
-              </button>
-            </div>
-          </div>
-
-          {/* Request Card 2 */}
-          <div style={{
-            padding: '16px',
-            borderRadius: '12px',
-            backgroundColor: '#F8FAFC',
-            border: '1px solid #E2E8F0',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: '1rem', color: '#111111' }}>
-                Main Switch Board Inspection — Rajagiriya
-              </div>
-              <div style={{ fontSize: '0.85rem', color: '#64748B', marginTop: '4px' }}>
-                Resident: <strong style={{ color: '#1E293B' }}>Nimal Silva</strong> • Scheduled: Saturday, 2:00 PM
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button className="worker-btn-primary" style={{ padding: '8px 16px', fontSize: '0.85rem' }} onClick={() => navigate('/worker/jobs')}>
-                Accept
-              </button>
-              <button className="worker-btn-outlined" style={{ padding: '8px 16px', fontSize: '0.85rem' }}>
-                Decline
-              </button>
-            </div>
-          </div>
+            ))
+          )}
         </div>
       </div>
 

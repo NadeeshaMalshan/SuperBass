@@ -6,6 +6,10 @@ import Find from './Find.jsx'
 import Join from './Join.jsx'
 import Community from './Community.jsx'
 import Onboarding from './Onboarding.jsx'
+import Chats from './Chats.jsx'
+import Bookings from './Bookings.jsx'
+
+import WorkerDetail from './WorkerDetail.jsx'
 
 // Worker Pages
 import WorkerRegister from './pages/worker/WorkerRegister.jsx'
@@ -25,12 +29,21 @@ function Router() {
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
+  const activeRole = localStorage.getItem('activeRole') || 'Resident';
+
+  // Role Guard: Active Worker trying to access Resident account profile
   if (path === '/account' || path === '/account.jsx') {
+    if (activeRole === 'Worker') {
+      return <WorkerDashboard />;
+    }
     return <ResidentProfile />;
   }
 
   if (path === '/find' || path === '/find.jsx') {
     return <Find />;
+  }
+  if (path === '/worker-detail' || path === '/worker-detail.jsx' || path.startsWith('/worker-detail')) {
+    return <WorkerDetail />;
   }
   if (path === '/join' || path === '/join.jsx') {
     return <Join />;
@@ -38,8 +51,21 @@ function Router() {
   if (path === '/community' || path === '/community.jsx') {
     return <Community />;
   }
+  if (path === '/chats' || path === '/chats.jsx') {
+    return <Chats />;
+  }
+  if (path === '/bookings' || path === '/bookings.jsx') {
+    return <Bookings />;
+  }
   if (path === '/onboarding' || path === '/onboarding.jsx') {
     return <Onboarding />;
+  }
+
+  // Worker Routes Role Guard: Resident trying to access Worker pages
+  if (path.startsWith('/worker/')) {
+    if (activeRole !== 'Worker' && path !== '/worker/register' && path !== '/worker/login') {
+      return <ResidentProfile defaultTab="become-worker" />;
+    }
   }
 
   // Worker Routes

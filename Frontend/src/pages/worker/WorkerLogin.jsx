@@ -15,6 +15,7 @@ export default function WorkerLogin() {
     // Simulate login and redirect to Worker Dashboard
     localStorage.setItem('workerAuth', 'true');
     localStorage.setItem('workerEmail', email);
+    localStorage.setItem('activeRole', 'Worker');
     navigate('/worker/dashboard');
   };
 
