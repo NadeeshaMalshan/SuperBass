@@ -72,7 +72,74 @@ export default function Find() {
     window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
+<<<<<<< Updated upstream
   // Filter workers based on Category and Search Query
+=======
+  const handleResetFilters = () => {
+    setRateType('Any');
+    setAvailableNowOnly(false);
+    setMinPrice('');
+    setMaxPrice('');
+    setSelectedCategories([]);
+    setMinRating('Any');
+    setSearchQuery('');
+    setSortBy('recommended');
+  };
+
+  const toggleCategory = (catId) => {
+    if (selectedCategories.includes(catId)) {
+      setSelectedCategories(selectedCategories.filter(c => c !== catId));
+    } else {
+      setSelectedCategories([...selectedCategories, catId]);
+    }
+  };
+
+  const toggleFavorite = (e, workerId) => {
+    e.stopPropagation();
+    setFavorites(prev => ({
+      ...prev,
+      [workerId]: !prev[workerId]
+    }));
+  };
+
+  // Helper to calculate effective worker price for filtering & display
+  const getWorkerRate = (w, type) => {
+    const hr = parseFloat(w.hourlyRate || w.HourlyRate || 0);
+    const dr = parseFloat(w.dailyRate || w.DailyRate || 0);
+
+    if (type === 'Per day') {
+      if (dr > 0) return dr;
+      if (hr > 0) return hr * 8;
+      return null;
+    } else {
+      if (hr > 0) return hr;
+      if (dr > 0) return Math.round(dr / 8);
+      return null;
+    }
+  };
+
+  // Helper to compute map position relative to real user location
+  const getWorkerMapPos = (worker) => {
+    if (worker.locationLat && worker.locationLng && worker.locationLat !== 0) {
+      return [worker.locationLat, worker.locationLng];
+    }
+    const latOffset = (((worker.id * 7) % 17) - 8) * 0.005;
+    const lngOffset = (((worker.id * 13) % 19) - 9) * 0.005;
+    return [userLocation[0] + latOffset, userLocation[1] + lngOffset];
+  };
+
+  // Category counts calculation
+  const getCategoryCount = (catId) => {
+    return workers.filter(w => {
+      if (w.skills && w.skills.length > 0) {
+        return w.skills.some(s => s.skillName.toLowerCase().includes(catId.toLowerCase()));
+      }
+      return w.description && w.description.toLowerCase().includes(catId.toLowerCase());
+    }).length;
+  };
+
+  // Filtering Logic
+>>>>>>> Stashed changes
   const filteredWorkers = workers.filter(w => {
     // Category check
     let matchesCategory = selectedCategory === 'All';
@@ -94,9 +161,285 @@ export default function Find() {
       matchesSearch = nameMatch || locationMatch || skillMatch;
     }
 
+<<<<<<< Updated upstream
     return matchesCategory && matchesSearch;
   });
 
+=======
+    // 2. Rate Type
+    if (rateType === 'Per hour') {
+      if (w.pricingModel === 'Daily' && (!w.hourlyRate || w.hourlyRate === 0)) {
+        // valid fallback
+      }
+    } else if (rateType === 'Per day') {
+      if (w.pricingModel === 'Hourly' && (!w.dailyRate || w.dailyRate === 0)) {
+        // valid fallback
+      }
+    }
+
+    // 3. Available Now Only
+    if (availableNowOnly && !w.isAvailable) {
+      return false;
+    }
+
+    // 4. Rate Range Filter
+    const effectivePrice = getWorkerRate(w, rateType);
+    if (effectivePrice != null) {
+      if (minPrice !== '' && !isNaN(parseFloat(minPrice))) {
+        if (effectivePrice < parseFloat(minPrice)) return false;
+      }
+      if (maxPrice !== '' && !isNaN(parseFloat(maxPrice))) {
+        if (effectivePrice > parseFloat(maxPrice)) return false;
+      }
+    }
+
+    // 5. Selected Categories
+    if (selectedCategories.length > 0) {
+      const matchesAnyCategory = selectedCategories.some(catId => {
+        if (w.skills && w.skills.length > 0) {
+          return w.skills.some(s => s.skillName.toLowerCase().includes(catId.toLowerCase()));
+        }
+        return w.description && w.description.toLowerCase().includes(catId.toLowerCase());
+      });
+      if (!matchesAnyCategory) return false;
+    }
+
+    // 6. Rating Filter
+    if (minRating !== 'Any') {
+      const requiredRating = parseFloat(minRating);
+      if ((w.overallRating ?? 0) < requiredRating) return false;
+    }
+
+    return true;
+  }).sort((a, b) => {
+    if (sortBy === 'rating') {
+      return (b.overallRating ?? 0) - (a.overallRating ?? 0);
+    }
+    if (sortBy === 'price_asc') {
+      const rateA = getWorkerRate(a, rateType) ?? 999999;
+      const rateB = getWorkerRate(b, rateType) ?? 999999;
+      return rateA - rateB;
+    }
+    if (sortBy === 'price_desc') {
+      const rateA = getWorkerRate(a, rateType) ?? 0;
+      const rateB = getWorkerRate(b, rateType) ?? 0;
+      return rateB - rateA;
+    }
+    return 0;
+  });
+
+  // Initialize & Update Leaflet Map when showMap is true
+  useEffect(() => {
+    if (!showMap || !mapContainerRef.current) return;
+
+    // Initialize Map if not created
+    if (!mapInstanceRef.current) {
+      const map = L.map(mapContainerRef.current, {
+        zoomControl: false,
+        attributionControl: false
+      }).setView(userLocation, 14);
+
+      // CartoDB Positron sleek light map tile layer
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19,
+        subdomains: 'abcd'
+      }).addTo(map);
+
+      mapInstanceRef.current = map;
+    }
+
+    const map = mapInstanceRef.current;
+
+    // Clear old markers
+    markersRef.current.forEach(m => map.removeLayer(m));
+    markersRef.current = [];
+
+    if (polylineRef.current) {
+      map.removeLayer(polylineRef.current);
+      polylineRef.current = null;
+    }
+
+    // Add Real User Location Marker
+    const userMarkerIcon = L.divIcon({
+      className: 'custom-user-marker',
+      html: `<div style="background:#2563eb; color:white; width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow: 0 4px 14px rgba(37,99,235,0.45); border:3px solid white; position:relative;"><i class="fa-solid fa-location-dot" style="font-size:1.1rem;"></i></div>`,
+      iconSize: [38, 38],
+      iconAnchor: [19, 19]
+    });
+    const userMarker = L.marker(userLocation, { icon: userMarkerIcon })
+      .bindPopup(`<b>You (${locationName})</b>`)
+      .addTo(map);
+    markersRef.current.push(userMarker);
+
+    // Add Worker markers
+    filteredWorkers.forEach((worker, idx) => {
+      const pos = getWorkerMapPos(worker);
+      const isSelected = selectedMapWorker && selectedMapWorker.id === worker.id;
+      
+      const customIcon = L.divIcon({
+        className: 'custom-worker-marker-wrap',
+        html: `<div class="custom-worker-marker ${isSelected ? 'selected' : ''}" style="background:${isSelected ? '#2563eb' : '#0f172a'};">${idx + 1}</div>`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16]
+      });
+
+      const marker = L.marker(pos, { icon: customIcon }).addTo(map);
+      marker.on('click', () => {
+        setSelectedMapWorker(worker);
+        map.panTo(pos);
+      });
+
+      markersRef.current.push(marker);
+    });
+
+    // Draw route line if a worker is selected
+    if (selectedMapWorker) {
+      const workerPos = getWorkerMapPos(selectedMapWorker);
+      const routePolyline = L.polyline([userLocation, workerPos], {
+        color: '#0f172a',
+        weight: 3,
+        dashArray: '6, 8',
+        opacity: 0.85
+      }).addTo(map);
+
+      polylineRef.current = routePolyline;
+    }
+  }, [showMap, filteredWorkers, selectedMapWorker, userLocation]);
+
+  const handleZoomIn = () => {
+    if (mapInstanceRef.current) mapInstanceRef.current.zoomIn();
+  };
+
+  const handleZoomOut = () => {
+    if (mapInstanceRef.current) mapInstanceRef.current.zoomOut();
+  };
+
+  const handleRecenter = () => {
+    getRealUserLocation();
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.setView(userLocation, 14);
+      setSelectedMapWorker(null);
+    }
+  };
+
+  // Histogram calculation values
+  const minValNum = parseFloat(minPrice) || 0;
+  const maxValNum = parseFloat(maxPrice) || 50000;
+
+  // Render Card Sub-Component for Clean Reuse
+  const renderWorkerCard = (worker) => {
+    const isFavorited = !!favorites[worker.id];
+    const isSelectedOnMap = selectedMapWorker && selectedMapWorker.id === worker.id;
+    const displayRating = worker.overallRating != null ? worker.overallRating.toFixed(1) : null;
+    const reviewCount = worker.completedJobs || 0;
+    const distanceMeters = Math.round((worker.id * 85) % 400 + 90);
+    const distanceMins = Math.round((worker.id * 2) % 8 + 3);
+
+    const rateValue = getWorkerRate(worker, rateType);
+    const rateText = rateValue != null ? `Rs. ${rateValue.toLocaleString()}` : 'Negotiable';
+    const unitText = rateValue != null ? (rateType === 'Per day' ? '/ day' : '/ hour') : '';
+
+    const primaryRole = worker.skills && worker.skills.length > 0 
+      ? `${worker.skills[0].skillName} (${worker.skills[0].experienceYears || 1} yrs exp)`
+      : (worker.description || 'Verified Home Craftsman');
+
+    return (
+      <div 
+        key={worker.id}
+        className="sleek-worker-card"
+        style={{
+          borderColor: isSelectedOnMap ? '#2563eb' : '#e2e8f0',
+          boxShadow: isSelectedOnMap ? '0 8px 24px rgba(37,99,235,0.15)' : undefined
+        }}
+        onClick={() => {
+          if (showMap) {
+            setSelectedMapWorker(worker);
+            if (mapInstanceRef.current) {
+              mapInstanceRef.current.panTo(getWorkerMapPos(worker));
+            }
+          } else {
+            navigate(`/worker-detail?id=${worker.id}`);
+          }
+        }}
+      >
+        {/* Favorite Heart Button */}
+        <button 
+          className={`card-heart-btn ${isFavorited ? 'favorited' : ''}`}
+          onClick={(e) => toggleFavorite(e, worker.id)}
+          title="Save to favorites"
+        >
+          <i className={`fa-${isFavorited ? 'solid' : 'regular'} fa-heart`}></i>
+        </button>
+
+        <div>
+          {/* Top Card Meta: Distance & Rating */}
+          <div className="card-top-meta">
+            <div className="card-distance-pill">
+              <i className="fa-solid fa-person-walking" style={{ color: '#64748b' }}></i>
+              <span>{distanceMeters}m ({distanceMins} min)</span>
+            </div>
+
+            <div className="card-rating-pill">
+              <span>{displayRating != null ? `★ ${displayRating}` : 'No rating'}</span>
+              {reviewCount > 0 && <span style={{ color: '#92400e', fontWeight: 500 }}>({reviewCount})</span>}
+            </div>
+          </div>
+
+          {/* Photo Hero Banner Container */}
+          <div className="card-photo-container">
+            {worker.profilePicture || worker.profileImage ? (
+              <img 
+                src={worker.profilePicture || worker.profileImage} 
+                alt={worker.name}
+                className="card-photo-img"
+              />
+            ) : (
+              <div className="card-photo-avatar-placeholder">
+                {worker.name ? worker.name.charAt(0).toUpperCase() : 'W'}
+              </div>
+            )}
+          </div>
+
+          {/* Worker Headline Details */}
+          <h3 className="card-worker-name">{worker.name}</h3>
+          <p className="card-worker-role">{primaryRole}</p>
+
+          {/* Skill Tags */}
+          <div className="card-skills-row">
+            {worker.skills && worker.skills.length > 0 ? (
+              worker.skills.slice(0, 3).map((s, idx) => (
+                <span key={idx} className="card-skill-tag">
+                  {s.skillName}
+                </span>
+              ))
+            ) : (
+              <span className="card-skill-tag">General Handyman</span>
+            )}
+          </div>
+        </div>
+
+        {/* Bottom Row: Price Rate & Action */}
+        <div className="card-bottom-row">
+          <div className="card-price-display">
+            <span className="card-price-amount">{rateText}</span>
+            {unitText && <span className="card-price-unit">{unitText}</span>}
+          </div>
+
+          <div 
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/worker-detail?id=${worker.id}`);
+            }}
+            style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
+          >
+            Profile <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.75rem' }}></i>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+>>>>>>> Stashed changes
   return (
     <div style={{ backgroundColor: '#f9fafb', minHeight: '100vh', color: '#111827', fontFamily: 'Inter, sans-serif' }}>
       {/* Top Navbar */}
