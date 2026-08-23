@@ -1,21 +1,59 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import './worker.css';
 
 export default function WorkerLayout({ children, activeTab = 'dashboard' }) {
   const [isOnline, setIsOnline] = useState(true);
+  const [workerId, setWorkerId] = useState(null);
+  const [toggling, setToggling] = useState(false);
+
+  const userEmail = localStorage.getItem('workerEmail') || localStorage.getItem('email');
+  const token = localStorage.getItem('token');
 
   const navigate = (path) => {
     window.history.pushState({}, '', path);
     window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
-  const toggleStatus = () => {
-    setIsOnline(!isOnline);
+  useEffect(() => {
+    if (!userEmail) return;
+    axios.get(`http://localhost:5237/api/workers/me?email=${encodeURIComponent(userEmail)}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    })
+      .then(res => {
+        if (res.data && res.data.worker) {
+          setWorkerId(res.data.worker.id);
+          setIsOnline(res.data.worker.isAvailable !== false);
+        }
+      })
+      .catch(err => console.log('Could not fetch worker navbar availability'));
+  }, [userEmail, token]);
+
+  const toggleStatus = async () => {
+    if (toggling) return;
+    const newStatus = !isOnline;
+    setIsOnline(newStatus);
+
+    if (workerId) {
+      try {
+        setToggling(true);
+        await axios.put(`http://localhost:5237/api/workers/${workerId}/availability`, {
+          isAvailable: newStatus
+        }, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+      } catch (err) {
+        console.error('Failed to update availability in database:', err);
+      } finally {
+        setToggling(false);
+      }
+    }
   };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('email');
+    localStorage.removeItem('workerEmail');
     localStorage.removeItem('userName');
     localStorage.removeItem('userPicture');
     localStorage.removeItem('activeRole');
@@ -33,7 +71,7 @@ export default function WorkerLayout({ children, activeTab = 'dashboard' }) {
 
         <div className="worker-navbar-actions">
           {/* Live Availability Switch */}
-          <div className="status-toggle-container" onClick={toggleStatus} title="Click to toggle availability">
+          <div className="status-toggle-container" onClick={toggleStatus} title="Click to toggle real database availability">
             <span className={`status-indicator ${isOnline ? 'online' : 'offline'}`}></span>
             <span className="status-text">{isOnline ? 'Available for Work' : 'Currently Offline'}</span>
           </div>
