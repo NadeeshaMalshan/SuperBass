@@ -142,7 +142,6 @@ namespace Superbass.Controllers
             if (!success) return NotFound();
             return Ok(new { message = "Password updated successfully" });
         }
-
         // GET: /api/workers/me
         [HttpGet("me")]
         public async Task<IActionResult> GetMyWorkerProfile([FromQuery] string? email)
@@ -156,7 +155,7 @@ namespace Superbass.Controllers
             var worker = await _workerRepository.GetWorkerByEmailAsync(targetEmail);
             if (worker == null)
             {
-                return NotFound(new { message = "User is not a worker.", activeRole = "Resident" });
+                return Ok(new { worker = (object?)null, activeRole = "Resident", message = "User is not a worker." });
             }
 
             return Ok(new { worker, activeRole = "Worker" });

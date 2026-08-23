@@ -57,41 +57,6 @@ export default function Community() {
   const currentUserEmail = localStorage.getItem('email');
   const currentUserName = localStorage.getItem('userName');
 
-  // Worker status state - Chat option is only available for Workers, hidden for Residents
-  const [isWorker, setIsWorker] = useState(false);
-
-  useEffect(() => {
-    const checkWorkerStatus = async () => {
-      const workerAuth = localStorage.getItem('workerAuth') === 'true';
-      const role = localStorage.getItem('userRole') || localStorage.getItem('role');
-      if (workerAuth || role === 'worker') {
-        setIsWorker(true);
-        return;
-      }
-
-      if (!currentUserEmail) {
-        setIsWorker(false);
-        return;
-      }
-
-      try {
-        const token = localStorage.getItem('token');
-        const res = await axios.get(`http://localhost:5237/api/workers/me?email=${encodeURIComponent(currentUserEmail)}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {}
-        });
-        if (res.data && res.data.worker) {
-          setIsWorker(true);
-        } else {
-          setIsWorker(false);
-        }
-      } catch (err) {
-        setIsWorker(false);
-      }
-    };
-
-    checkWorkerStatus();
-  }, [currentUserEmail]);
-
   const isPostOwner = (post) => {
     if (!post) return false;
     if (!currentUserEmail && !currentUserName) return false;
@@ -128,7 +93,7 @@ export default function Community() {
   const [chatPostContext, setChatPostContext] = useState(null);
 
   const handleOpenChat = (post) => {
-    if (!post || !isWorker) return;
+    if (!post) return;
     setChatRecipient({
       name: post.userName || 'SuperBass Member',
       email: post.userId || post.userEmail || `${post.userName?.toLowerCase().replace(/\s+/g, '') || 'member'}@superbass.lk`,
@@ -837,29 +802,27 @@ export default function Community() {
                   </div>
                 </div>
 
-                {isWorker && (
-                  <button
-                    onClick={() => handleOpenChat(selectedPostForDetail)}
-                    style={{
-                      backgroundColor: '#0f172a',
-                      color: '#ffffff',
-                      border: 'none',
-                      borderRadius: '20px',
-                      padding: '8px 18px',
-                      fontWeight: '700',
-                      fontSize: '0.875rem',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0284c7'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#0f172a'}
-                  >
-                    <i className="fa-solid fa-comment-dots"></i> Chat / Contact
-                  </button>
-                )}
+                <button
+                  onClick={() => handleOpenChat(selectedPostForDetail)}
+                  style={{
+                    backgroundColor: '#0f172a',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '20px',
+                    padding: '8px 18px',
+                    fontWeight: '700',
+                    fontSize: '0.875rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0284c7'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#0f172a'}
+                >
+                  <i className="fa-solid fa-comment-dots"></i> Chat / Contact
+                </button>
               </div>
 
               {/* Full Description Content */}

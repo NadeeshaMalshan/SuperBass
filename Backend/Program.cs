@@ -1,4 +1,9 @@
+using Microsoft.EntityFrameworkCore;
+using Superbass.Models;
 using Superbass.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 // Load .env file
 DotNetEnv.Env.Load();
@@ -10,12 +15,25 @@ builder.WebHost.UseUrls("http://localhost:5237");
 
 // Add services to the container.
 
+var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
+    ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
+builder.Services.AddDbContext<SuperbassDbContext>(options =>
+    options.UseNpgsql(connectionString));
+
 builder.Services.AddControllers();
+builder.Services.AddSignalR();
 builder.Services.AddHttpClient();
-builder.Services.AddSingleton<ICommunityPostRepository, InMemoryCommunityPostRepository>();
+builder.Services.AddScoped<ICommunityPostRepository, EfCommunityPostRepository>();
+builder.Services.AddScoped<WorkerRepository, EfWorkerRepository>();
+builder.Services.AddScoped<IResidentRepository, EfResidentRepository>();
+builder.Services.AddScoped<ICommunicationRepository, EfCommunicationRepository>();
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+// worker
+builder.Services.AddScoped<WorkerRepository, EfWorkerRepository>();
 
 // Configure CORS
 builder.Services.AddCors(options =>
@@ -23,16 +41,44 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend",
         policy =>
         {
-            policy.WithOrigins("http://localhost:5173", "http://localhost:3000") // Adjust as needed
+            policy.WithOrigins("http://localhost:5173", "http://localhost:3000", "http://localhost:5174") // Adjust as needed
                   .AllowAnyHeader()
-                  .AllowAnyMethod();
+                  .AllowAnyMethod()
+                  .AllowCredentials();
         });
 });
 
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        var secretKey = builder.Configuration["Authentication:Jwt:Secret"] ?? "super_secret_key_that_must_be_long_enough_12345";
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(secretKey)),
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            ClockSkew = TimeSpan.Zero
+        };
+
+        // Allow SignalR to receive JWT via query string access_token
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            }
+        };
+    });
+
 var app = builder.Build();
 
-<<<<<<< Updated upstream
-=======
 // Auto-apply pending migrations (which creates missing tables)
 using (var scope = app.Services.CreateScope())
 {
@@ -48,7 +94,6 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
->>>>>>> Stashed changes
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -57,6 +102,7 @@ if (app.Environment.IsDevelopment())
 }
 
 // app.UseHttpsRedirection();
+app.UseStaticFiles();
 
 app.UseCors("AllowFrontend"); // Use CORS
 
@@ -64,5 +110,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<ChatHub>("/hubs/chat");
 
 app.Run();

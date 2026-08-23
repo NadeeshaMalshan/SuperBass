@@ -265,7 +265,17 @@ namespace Superbass.Services
 
         public IEnumerable<CommunityPost> GetPostsByUserId(string userId)
         {
-            return _context.CommunityPosts.Where(p => p.UserId == userId && p.Status != "Removed").OrderByDescending(p => p.CreatedAt).ToList();
+            var cleanUserId = System.Uri.UnescapeDataString(userId).Trim();
+            var namePrefix = cleanUserId.Contains("@") ? cleanUserId.Split('@')[0] : cleanUserId;
+
+            return _context.CommunityPosts
+                .Where(p => p.Status != "Removed" &&
+                    (p.UserId == cleanUserId ||
+                     p.UserId == userId ||
+                     (p.UserId != null && p.UserId.ToLower() == cleanUserId.ToLower()) ||
+                     (p.UserName != null && (p.UserName.ToLower() == cleanUserId.ToLower() || p.UserName.ToLower() == namePrefix.ToLower()))))
+                .OrderByDescending(p => p.CreatedAt)
+                .ToList();
         }
     }
 }

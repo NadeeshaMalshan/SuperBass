@@ -13,6 +13,15 @@ export default function WorkerLayout({ children, activeTab = 'dashboard' }) {
     setIsOnline(!isOnline);
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('email');
+    localStorage.removeItem('userName');
+    localStorage.removeItem('userPicture');
+    localStorage.removeItem('activeRole');
+    navigate('/join');
+  };
+
   return (
     <div className="worker-app-wrapper">
       {/* Top Header Navbar */}
@@ -29,7 +38,7 @@ export default function WorkerLayout({ children, activeTab = 'dashboard' }) {
             <span className="status-text">{isOnline ? 'Available for Work' : 'Currently Offline'}</span>
           </div>
 
-          <button className="worker-btn-outlined" style={{ padding: '8px 16px', fontSize: '0.85rem' }} onClick={() => navigate('/join')}>
+          <button className="worker-btn-outlined" style={{ padding: '8px 16px', fontSize: '0.85rem' }} onClick={handleLogout}>
             <i className="fa-solid fa-right-from-bracket" style={{ marginRight: '6px' }}></i>
             Logout
           </button>
