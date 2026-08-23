@@ -143,7 +143,7 @@ export default function WorkerDetail() {
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#d97706', fontWeight: 700, fontSize: '1.1rem' }}>
-                      ★ {worker.overallRating ? worker.overallRating.toFixed(1) : '5.0'}
+                      {worker.completedJobs > 0 && worker.overallRating ? `★ ${worker.overallRating.toFixed(1)}` : 'No rating yet'}
                     </div>
                     <div style={{ color: '#6b7280', fontSize: '0.9rem' }}>
                       ({worker.completedJobs || 0} jobs completed)
@@ -207,30 +207,36 @@ export default function WorkerDetail() {
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.9rem' }}>
                     <span style={{ color: '#4b5563', fontWeight: 500 }}>Quality & Craftsmanship</span>
-                    <span style={{ color: '#d97706', fontWeight: 700 }}>★ {worker.qualityRating || 5}/5.0</span>
+                    <span style={{ color: '#d97706', fontWeight: 700 }}>
+                      {worker.completedJobs > 0 && worker.qualityRating ? `★ ${worker.qualityRating}/5.0` : 'N/A'}
+                    </span>
                   </div>
                   <div style={{ width: '100%', height: '8px', backgroundColor: '#f3f4f6', borderRadius: '9999px', overflow: 'hidden' }}>
-                    <div style={{ width: `${((worker.qualityRating || 5) / 5) * 100}%`, height: '100%', backgroundColor: '#2563eb' }}></div>
+                    <div style={{ width: worker.completedJobs > 0 && worker.qualityRating ? `${(worker.qualityRating / 5) * 100}%` : '0%', height: '100%', backgroundColor: '#2563eb' }}></div>
                   </div>
                 </div>
 
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.9rem' }}>
                     <span style={{ color: '#4b5563', fontWeight: 500 }}>Punctuality & Timeliness</span>
-                    <span style={{ color: '#d97706', fontWeight: 700 }}>★ {worker.punctualityRating || 5}/5.0</span>
+                    <span style={{ color: '#d97706', fontWeight: 700 }}>
+                      {worker.completedJobs > 0 && worker.punctualityRating ? `★ ${worker.punctualityRating}/5.0` : 'N/A'}
+                    </span>
                   </div>
                   <div style={{ width: '100%', height: '8px', backgroundColor: '#f3f4f6', borderRadius: '9999px', overflow: 'hidden' }}>
-                    <div style={{ width: `${((worker.punctualityRating || 5) / 5) * 100}%`, height: '100%', backgroundColor: '#0284c7' }}></div>
+                    <div style={{ width: worker.completedJobs > 0 && worker.punctualityRating ? `${(worker.punctualityRating / 5) * 100}%` : '0%', height: '100%', backgroundColor: '#0284c7' }}></div>
                   </div>
                 </div>
 
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.9rem' }}>
                     <span style={{ color: '#4b5563', fontWeight: 500 }}>Communication & Professionalism</span>
-                    <span style={{ color: '#d97706', fontWeight: 700 }}>★ {worker.communicationRating || 5}/5.0</span>
+                    <span style={{ color: '#d97706', fontWeight: 700 }}>
+                      {worker.completedJobs > 0 && worker.communicationRating ? `★ ${worker.communicationRating}/5.0` : 'N/A'}
+                    </span>
                   </div>
                   <div style={{ width: '100%', height: '8px', backgroundColor: '#f3f4f6', borderRadius: '9999px', overflow: 'hidden' }}>
-                    <div style={{ width: `${((worker.communicationRating || 5) / 5) * 100}%`, height: '100%', backgroundColor: '#059669' }}></div>
+                    <div style={{ width: worker.completedJobs > 0 && worker.communicationRating ? `${(worker.communicationRating / 5) * 100}%` : '0%', height: '100%', backgroundColor: '#059669' }}></div>
                   </div>
                 </div>
               </div>
