@@ -20,7 +20,7 @@
   --worker-danger: #EF4444;
   --worker-danger-light: #FEF2F2;
 
-  --font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-family: var(--font-body);
 }
 
 /* Worker App Base Wrapper */

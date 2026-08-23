@@ -98,7 +98,13 @@ export default function Find() {
   });
 
   return (
-    <div style={{ backgroundColor: '#f9fafb', minHeight: '100vh', color: '#111827', fontFamily: 'Inter, sans-serif' }}>
+    <div style={{ backgroundColor: '#f9fafb', minHeight: '100vh', color: '#111827', fontFamily: 'var(--font-body)' }}>
+      {/* Global SVG Clip Path for 9-sided Cookie */}
+      <svg width="0" height="0" style={{ position: 'absolute' }}>
+        <clipPath id="cookieClip" clipPathUnits="objectBoundingBox" transform="scale(1.04) translate(0.02, 0.02) rotate(-90, 0.5, 0.5)">
+          <path d="M0.99691 0.5C0.99691 0.51795 0.99072 0.53589 0.97834 0.55042C0.95303 0.58011 0.92773 0.6098 0.90242 0.6395C0.89181 0.65195 0.8854 0.66742 0.8841 0.68373C0.881 0.72262 0.8779 0.76151 0.87479 0.8004C0.87176 0.83845 0.84154 0.86866 0.80349 0.8717C0.7646 0.8748 0.72571 0.8779 0.68683 0.88101C0.67052 0.88231 0.65504 0.88872 0.64259 0.89933C0.6129 0.92463 0.58321 0.94994 0.55351 0.97524C0.52446 1 0.48173 1 0.45268 0.97524C0.42298 0.94994 0.39329 0.92463 0.3636 0.89933C0.35115 0.88872 0.33567 0.88231 0.31936 0.88101C0.28048 0.8779 0.24159 0.8748 0.2027 0.8717C0.16465 0.86866 0.13443 0.83845 0.1314 0.8004C0.12829 0.76151 0.12519 0.72262 0.12209 0.68373C0.12079 0.66742 0.11437 0.65195 0.10377 0.6395C0.07846 0.6098 0.05316 0.58011 0.02785 0.55042C0.00309 0.52137 0.00309 0.47863 0.02785 0.44958C0.05316 0.41989 0.07846 0.3902 0.10377 0.3605C0.11437 0.34805 0.12079 0.33258 0.12209 0.31627C0.12519 0.27738 0.12829 0.23849 0.1314 0.1996C0.13443 0.16155 0.16465 0.13134 0.2027 0.1283C0.24159 0.1252 0.28048 0.1221 0.31936 0.11899C0.33567 0.11769 0.35115 0.11128 0.3636 0.10067C0.39329 0.07537 0.42298 0.05006 0.45268 0.02476C0.48173 0 0.52446 0 0.55351 0.02476C0.58321 0.05006 0.6129 0.07537 0.64259 0.10067C0.65504 0.11128 0.67052 0.11769 0.68683 0.11899C0.72571 0.1221 0.7646 0.1252 0.80349 0.1283C0.84154 0.13134 0.87176 0.16155 0.87479 0.1996C0.8779 0.23849 0.881 0.27738 0.8841 0.31627C0.8854 0.33258 0.89181 0.34805 0.90242 0.3605C0.92773 0.3902 0.95303 0.41989 0.97834 0.44958C0.99072 0.46411 0.99691 0.48205 0.99691 0.5Z" />
+        </clipPath>
+      </svg>
       {/* Top Navbar */}
       <header className="navbar" style={{ padding: '1rem 2rem', borderBottom: '1px solid #e5e7eb', backgroundColor: '#ffffff' }}>
         <a href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }} className="brand-logo" style={{ cursor: 'pointer' }}>
@@ -200,37 +206,79 @@ export default function Find() {
           Browse verified craftsmen by category, view trade skills, experience, rates, and book direct.
         </p>
 
-        {/* Category Filter Pills */}
-        <div style={{
-          display: 'flex',
-          gap: '10px',
-          overflowX: 'auto',
-          paddingBottom: '12px',
-          scrollbarWidth: 'thin'
-        }}>
+        {/* Category Scroll Row */}
+        <div 
+          className="category-scroll-container"
+          style={{
+            display: 'flex',
+            gap: '16px',
+            paddingBottom: '24px',
+            overflowX: 'auto',
+            scrollbarWidth: 'none', // Firefox
+            msOverflowStyle: 'none'  // IE and Edge
+          }}
+        >
+          <style>{`
+            .category-scroll-container::-webkit-scrollbar {
+              display: none; /* Chrome, Safari and Opera */
+            }
+          `}</style>
           {categories.map((cat) => (
-            <button
+            <div
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
               style={{
                 display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
-                gap: '8px',
-                padding: '10px 18px',
-                borderRadius: '30px',
-                border: selectedCategory === cat.id ? '1px solid #FDC101' : '1px solid #e5e7eb',
-                backgroundColor: selectedCategory === cat.id ? '#FDC101' : '#ffffff',
-                color: selectedCategory === cat.id ? '#000000' : '#4b5563',
-                fontWeight: selectedCategory === cat.id ? 700 : 500,
+                gap: '12px',
                 cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                boxShadow: selectedCategory === cat.id ? '0 2px 8px rgba(253,193,1,0.3)' : '0 1px 2px 0 rgba(0,0,0,0.05)',
-                transition: 'all 0.2s'
+                flexShrink: 0,
+                minWidth: '85px',
+                opacity: selectedCategory === cat.id || selectedCategory === 'All' ? 1 : 0.6,
+                transition: 'all 0.2s ease',
+                transform: selectedCategory === cat.id ? 'translateY(-4px)' : 'none'
               }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.opacity = '1'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = selectedCategory === cat.id ? 'translateY(-4px)' : 'none'; e.currentTarget.style.opacity = selectedCategory === cat.id || selectedCategory === 'All' ? '1' : '0.6'; }}
             >
-              <i className={cat.icon}></i>
-              {cat.label}
-            </button>
+               <div style={{
+                  position: 'relative',
+                  width: '68px',
+                  height: '68px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: selectedCategory === cat.id ? '#b45309' : '#4b5563',
+                  fontSize: '1.6rem',
+                  transition: 'all 0.2s ease'
+               }}>
+                  <svg style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    zIndex: 0,
+                    transition: 'all 0.2s ease',
+                    transform: selectedCategory === cat.id ? 'rotate(15deg) scale(1.05)' : 'none'
+                  }} viewBox="0 0 1 1">
+                    <path d="M0.99691 0.5C0.99691 0.51795 0.99072 0.53589 0.97834 0.55042C0.95303 0.58011 0.92773 0.6098 0.90242 0.6395C0.89181 0.65195 0.8854 0.66742 0.8841 0.68373C0.881 0.72262 0.8779 0.76151 0.87479 0.8004C0.87176 0.83845 0.84154 0.86866 0.80349 0.8717C0.7646 0.8748 0.72571 0.8779 0.68683 0.88101C0.67052 0.88231 0.65504 0.88872 0.64259 0.89933C0.6129 0.92463 0.58321 0.94994 0.55351 0.97524C0.52446 1 0.48173 1 0.45268 0.97524C0.42298 0.94994 0.39329 0.92463 0.3636 0.89933C0.35115 0.88872 0.33567 0.88231 0.31936 0.88101C0.28048 0.8779 0.24159 0.8748 0.2027 0.8717C0.16465 0.86866 0.13443 0.83845 0.1314 0.8004C0.12829 0.76151 0.12519 0.72262 0.12209 0.68373C0.12079 0.66742 0.11437 0.65195 0.10377 0.6395C0.07846 0.6098 0.05316 0.58011 0.02785 0.55042C0.00309 0.52137 0.00309 0.47863 0.02785 0.44958C0.05316 0.41989 0.07846 0.3902 0.10377 0.3605C0.11437 0.34805 0.12079 0.33258 0.12209 0.31627C0.12519 0.27738 0.12829 0.23849 0.1314 0.1996C0.13443 0.16155 0.16465 0.13134 0.2027 0.1283C0.24159 0.1252 0.28048 0.1221 0.31936 0.11899C0.33567 0.11769 0.35115 0.11128 0.3636 0.10067C0.39329 0.07537 0.42298 0.05006 0.45268 0.02476C0.48173 0 0.52446 0 0.55351 0.02476C0.58321 0.05006 0.6129 0.07537 0.64259 0.10067C0.65504 0.11128 0.67052 0.11769 0.68683 0.11899C0.72571 0.1221 0.7646 0.1252 0.80349 0.1283C0.84154 0.13134 0.87176 0.16155 0.87479 0.1996C0.8779 0.23849 0.881 0.27738 0.8841 0.31627C0.8854 0.33258 0.89181 0.34805 0.90242 0.3605C0.92773 0.3902 0.95303 0.41989 0.97834 0.44958C0.99072 0.46411 0.99691 0.48205 0.99691 0.5Z" 
+                      fill={selectedCategory === cat.id ? '#fef3c7' : '#ffffff'} 
+                      stroke={selectedCategory === cat.id ? '#fde68a' : '#e2e8f0'} 
+                      strokeWidth="0.035" 
+                      style={{ transition: 'all 0.2s ease' }}
+                    />
+                  </svg>
+                  <i className={cat.icon} style={{ zIndex: 1 }}></i>
+               </div>
+               <span style={{
+                 fontSize: '0.9rem',
+                 fontWeight: selectedCategory === cat.id ? 700 : 500,
+                 color: selectedCategory === cat.id ? '#111827' : '#4b5563',
+                 textAlign: 'center'
+               }}>{cat.label}</span>
+            </div>
           ))}
         </div>
       </section>
@@ -294,18 +342,37 @@ export default function Find() {
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                       <div style={{
+                        position: 'relative',
                         width: '56px',
                         height: '56px',
-                        borderRadius: '50%',
-                        backgroundColor: '#2563eb',
-                        color: '#ffffff',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
+                        color: '#ffffff',
                         fontSize: '1.5rem',
                         fontWeight: 800
                       }}>
-                        {worker.name ? worker.name.charAt(0).toUpperCase() : 'W'}
+                        {worker.profilePicture ? (
+                          <img 
+                            src={worker.profilePicture} 
+                            alt={worker.name}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                              clipPath: 'url(#cookieClip)',
+                              WebkitClipPath: 'url(#cookieClip)',
+                              transform: 'rotate(-90deg)' // If the image needs to follow the shape, but usually images shouldn't rotate. However, we rotate the clipPath via the SVG definition or keep it unrotated. Actually, let's keep the image straight.
+                            }} 
+                          />
+                        ) : (
+                          <>
+                            <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0, transform: 'rotate(-90deg)' }} viewBox="-0.02 -0.02 1.04 1.04">
+                              <path d="M0.99691 0.5C0.99691 0.51795 0.99072 0.53589 0.97834 0.55042C0.95303 0.58011 0.92773 0.6098 0.90242 0.6395C0.89181 0.65195 0.8854 0.66742 0.8841 0.68373C0.881 0.72262 0.8779 0.76151 0.87479 0.8004C0.87176 0.83845 0.84154 0.86866 0.80349 0.8717C0.7646 0.8748 0.72571 0.8779 0.68683 0.88101C0.67052 0.88231 0.65504 0.88872 0.64259 0.89933C0.6129 0.92463 0.58321 0.94994 0.55351 0.97524C0.52446 1 0.48173 1 0.45268 0.97524C0.42298 0.94994 0.39329 0.92463 0.3636 0.89933C0.35115 0.88872 0.33567 0.88231 0.31936 0.88101C0.28048 0.8779 0.24159 0.8748 0.2027 0.8717C0.16465 0.86866 0.13443 0.83845 0.1314 0.8004C0.12829 0.76151 0.12519 0.72262 0.12209 0.68373C0.12079 0.66742 0.11437 0.65195 0.10377 0.6395C0.07846 0.6098 0.05316 0.58011 0.02785 0.55042C0.00309 0.52137 0.00309 0.47863 0.02785 0.44958C0.05316 0.41989 0.07846 0.3902 0.10377 0.3605C0.11437 0.34805 0.12079 0.33258 0.12209 0.31627C0.12519 0.27738 0.12829 0.23849 0.1314 0.1996C0.13443 0.16155 0.16465 0.13134 0.2027 0.1283C0.24159 0.1252 0.28048 0.1221 0.31936 0.11899C0.33567 0.11769 0.35115 0.11128 0.3636 0.10067C0.39329 0.07537 0.42298 0.05006 0.45268 0.02476C0.48173 0 0.52446 0 0.55351 0.02476C0.58321 0.05006 0.6129 0.07537 0.64259 0.10067C0.65504 0.11128 0.67052 0.11769 0.68683 0.11899C0.72571 0.1221 0.7646 0.1252 0.80349 0.1283C0.84154 0.13134 0.87176 0.16155 0.87479 0.1996C0.8779 0.23849 0.881 0.27738 0.8841 0.31627C0.8854 0.33258 0.89181 0.34805 0.90242 0.3605C0.92773 0.3902 0.95303 0.41989 0.97834 0.44958C0.99072 0.46411 0.99691 0.48205 0.99691 0.5Z" fill="#2563eb" />
+                            </svg>
+                            <span style={{ zIndex: 1 }}>{worker.name ? worker.name.charAt(0).toUpperCase() : 'W'}</span>
+                          </>
+                        )}
                       </div>
 
                       <div>
@@ -389,19 +456,17 @@ export default function Find() {
                     )}
                   </div>
 
-                  <button style={{
-                    width: '100%',
-                    padding: '12px',
-                    backgroundColor: '#111827',
-                    color: '#ffffff',
-                    border: 'none',
-                    borderRadius: '10px',
-                    fontWeight: 700,
-                    fontSize: '0.9rem',
-                    cursor: 'pointer'
-                  }}>
+                  <md-filled-button 
+                    style={{
+                      '--md-sys-color-primary': '#111827',
+                      '--md-sys-color-on-primary': '#ffffff',
+                      width: '100%',
+                      marginTop: '8px',
+                      '--md-filled-button-container-shape': '10px'
+                    }}
+                  >
                     View Full Profile & Rates →
-                  </button>
+                  </md-filled-button>
                 </div>
               </div>
             ))}

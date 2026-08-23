@@ -140,7 +140,7 @@ export default function WorkerDetail() {
   }
 
   return (
-    <div style={{ backgroundColor: '#f9fafb', minHeight: '100vh', color: '#111827', fontFamily: 'Inter, sans-serif' }}>
+    <div style={{ backgroundColor: '#f9fafb', minHeight: '100vh', color: '#111827', fontFamily: 'var(--font-body)' }}>
       {/* Top Navbar */}
       <header className="navbar" style={{ padding: '1rem 2rem', borderBottom: '1px solid #e5e7eb', backgroundColor: '#ffffff' }}>
         <a href="/find" onClick={(e) => { e.preventDefault(); navigate('/find'); }} className="brand-logo" style={{ cursor: 'pointer' }}>
@@ -276,9 +276,6 @@ export default function WorkerDetail() {
                     <span style={{ color: '#4b5563', fontWeight: 500 }}>Quality & Craftsmanship</span>
                     <span style={{ color: '#d97706', fontWeight: 700 }}>★ {worker.qualityRating || 5}/5.0</span>
                   </div>
-                  <div style={{ width: '100%', height: '8px', backgroundColor: '#f3f4f6', borderRadius: '9999px', overflow: 'hidden' }}>
-                    <div style={{ width: `${((worker.qualityRating || 5) / 5) * 100}%`, height: '100%', backgroundColor: '#2563eb' }}></div>
-                  </div>
                 </div>
 
                 <div>
@@ -286,18 +283,12 @@ export default function WorkerDetail() {
                     <span style={{ color: '#4b5563', fontWeight: 500 }}>Punctuality & Timeliness</span>
                     <span style={{ color: '#d97706', fontWeight: 700 }}>★ {worker.punctualityRating || 5}/5.0</span>
                   </div>
-                  <div style={{ width: '100%', height: '8px', backgroundColor: '#f3f4f6', borderRadius: '9999px', overflow: 'hidden' }}>
-                    <div style={{ width: `${((worker.punctualityRating || 5) / 5) * 100}%`, height: '100%', backgroundColor: '#0284c7' }}></div>
-                  </div>
                 </div>
 
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.9rem' }}>
                     <span style={{ color: '#4b5563', fontWeight: 500 }}>Communication & Professionalism</span>
                     <span style={{ color: '#d97706', fontWeight: 700 }}>★ {worker.communicationRating || 5}/5.0</span>
-                  </div>
-                  <div style={{ width: '100%', height: '8px', backgroundColor: '#f3f4f6', borderRadius: '9999px', overflow: 'hidden' }}>
-                    <div style={{ width: `${((worker.communicationRating || 5) / 5) * 100}%`, height: '100%', backgroundColor: '#059669' }}></div>
                   </div>
                 </div>
               </div>

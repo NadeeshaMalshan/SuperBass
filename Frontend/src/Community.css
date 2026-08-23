@@ -3,7 +3,7 @@
 .community-page-wrapper {
   background-color: #f4f6f8;
   min-height: 100vh;
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-body);
   color: #1e293b;
   padding-bottom: 3rem;
 }

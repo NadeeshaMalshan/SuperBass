@@ -508,7 +508,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
   if (!userEmail) return <div style={{ padding: '4rem', textAlign: 'center', fontSize: '1.2rem', color: '#6b7280' }}>Please log in to view your dashboard.</div>;
 
   return (
-    <div style={{ backgroundColor: '#f9fafb', minHeight: '100vh', fontFamily: 'Inter, sans-serif', color: '#111827' }}>
+    <div style={{ backgroundColor: '#f9fafb', minHeight: '100vh', fontFamily: 'var(--font-body)', color: '#111827' }}>
       
       {/* Top Navbar */}
       <header style={{ backgroundColor: '#ffffff', borderBottom: '1px solid #e5e7eb', padding: '1rem 2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

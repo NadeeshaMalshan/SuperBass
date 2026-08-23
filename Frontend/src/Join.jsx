@@ -56,7 +56,7 @@ function JoinContent() {
       justifyContent: 'center',
       minHeight: '100vh',
       backgroundColor: '#ffffff', // Match wireframe's white background
-      fontFamily: 'sans-serif'
+      fontFamily: 'var(--font-body)'
     }}>
       {/* Centered Logo */}
       <a href="/" onClick={(e) => { e.preventDefault(); goHome(); }} style={{ cursor: 'pointer', marginBottom: '3rem' }}>
