@@ -71,19 +71,22 @@ namespace Superbass.Controllers
             var worker = await _workerRepository.GetWorkerByIdAsync(id);
             if (worker == null) return NotFound();
 
+            var totalResponded = worker.AcceptedJobs + worker.RejectedJobs;
+            var totalFinished = worker.CompletedJobs + worker.CancelledJobs;
+
             return Ok(new
             {
                 worker.Id,
                 worker.Name,
-                worker.OverallRating,
-                worker.QualityRating,
-                worker.PunctualityRating,
-                worker.CommunicationRating,
+                OverallRating = worker.CompletedJobs > 0 ? worker.OverallRating : (double?)null,
+                QualityRating = worker.CompletedJobs > 0 ? worker.QualityRating : (int?)null,
+                PunctualityRating = worker.CompletedJobs > 0 ? worker.PunctualityRating : (int?)null,
+                CommunicationRating = worker.CompletedJobs > 0 ? worker.CommunicationRating : (int?)null,
                 worker.CompletedJobs,
                 worker.CancelledJobs,
-                AcceptanceRate = $"{worker.AcceptanceRate:F1}%",
-                CompletionRate = $"{worker.CompletionRate:F1}%",
-                CancellationRate = $"{worker.CancellationRate:F1}%" 
+                AcceptanceRate = totalResponded > 0 ? $"{worker.AcceptanceRate:F1}%" : "N/A",
+                CompletionRate = totalFinished > 0 ? $"{worker.CompletionRate:F1}%" : "N/A",
+                CancellationRate = totalFinished > 0 ? $"{worker.CancellationRate:F1}%" : "N/A"
             });
         }
 
