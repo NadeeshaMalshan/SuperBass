@@ -3,20 +3,16 @@ import WorkerLayout from './WorkerLayout.jsx';
 import axios from 'axios';
 
 export default function WorkerDashboard() {
-  const [performance, setPerformance] = useState({
-    overallRating: 4.8,
-    completionRate: '97.0%',
-    acceptanceRate: '94.0%',
-    completedJobs: 33,
-    cancelledJobs: 1
-  });
+  const [performance, setPerformance] = useState(null);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [recentReview, setRecentReview] = useState(null);
 
   const navigate = (path) => {
     window.history.pushState({}, '', path);
     window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
-  const userEmail = localStorage.getItem('email');
+  const userEmail = localStorage.getItem('workerEmail') || localStorage.getItem('email');
   const token = localStorage.getItem('token');
 
   useEffect(() => {
@@ -35,9 +31,20 @@ export default function WorkerDashboard() {
           if (perfRes.data) {
             setPerformance(perfRes.data);
           }
+          
+          const bookingsRes = await axios.get(`http://localhost:5237/api/bookings/worker?email=${encodeURIComponent(userEmail)}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+          });
+          if (bookingsRes.data) {
+            setPendingRequests(bookingsRes.data.filter(b => b.status === 'Requested'));
+            const reviewed = bookingsRes.data.filter(b => b.status === 'Reviewed' && (b.reviewComment || b.reviewRating));
+            if (reviewed.length > 0) {
+              setRecentReview(reviewed[0]);
+            }
+          }
         }
       } catch (err) {
-        console.log('Using default mock stats for worker dashboard');
+        console.log('Worker profile/performance data unavailable');
       }
     };
 
@@ -58,7 +65,9 @@ export default function WorkerDashboard() {
             <i className="fa-solid fa-star"></i>
           </div>
           <div>
-            <div className="metric-val">★ {performance.overallRating || 4.8}</div>
+            <div className="metric-val">
+              {performance?.overallRating != null ? `★ ${performance.overallRating.toFixed(1)}` : 'No rating'}
+            </div>
             <div className="metric-label">Overall Rating</div>
           </div>
         </div>
@@ -68,7 +77,7 @@ export default function WorkerDashboard() {
             <i className="fa-solid fa-circle-check"></i>
           </div>
           <div>
-            <div className="metric-val">{performance.completionRate || '97%'}</div>
+            <div className="metric-val">{performance?.completionRate || 'N/A'}</div>
             <div className="metric-label">Completion Rate</div>
           </div>
         </div>
@@ -78,7 +87,7 @@ export default function WorkerDashboard() {
             <i className="fa-solid fa-briefcase"></i>
           </div>
           <div>
-            <div className="metric-val">{performance.completedJobs || 33}</div>
+            <div className="metric-val">{performance?.completedJobs ?? 0}</div>
             <div className="metric-label">Completed Jobs</div>
           </div>
         </div>
@@ -88,7 +97,7 @@ export default function WorkerDashboard() {
             <i className="fa-solid fa-user-check"></i>
           </div>
           <div>
-            <div className="metric-val">{performance.acceptanceRate || '94%'}</div>
+            <div className="metric-val">{performance?.acceptanceRate || 'N/A'}</div>
             <div className="metric-label">Acceptance Rate</div>
           </div>
         </div>
@@ -99,67 +108,41 @@ export default function WorkerDashboard() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#111111' }}>
             <i className="fa-solid fa-bell" style={{ color: '#2563EB', marginRight: '8px' }}></i>
-            Pending Booking Requests (2)
+            Pending Booking Requests ({pendingRequests.length})
           </h3>
-          <span className="badge badge-warning">Requires Response</span>
+          {pendingRequests.length > 0 && <span className="badge badge-warning">Requires Response</span>}
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {/* Request Card 1 */}
-          <div style={{
-            padding: '16px',
-            borderRadius: '12px',
-            backgroundColor: '#F8FAFC',
-            border: '1px solid #E2E8F0',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: '1rem', color: '#111111' }}>
-                Leaking Pipe Repair — Colombo 03
+          {pendingRequests.length === 0 ? (
+            <p style={{ color: '#64748B', margin: 0 }}>No pending booking requests at the moment.</p>
+          ) : (
+            pendingRequests.slice(0, 3).map(req => (
+              <div key={req.id} style={{
+                padding: '16px',
+                borderRadius: '12px',
+                backgroundColor: '#F8FAFC',
+                border: '1px solid #E2E8F0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '1rem', color: '#111111' }}>
+                    {req.jobTitle} — {req.locationAddress}
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: '#64748B', marginTop: '4px' }}>
+                    Resident: <strong style={{ color: '#1E293B' }}>{req.residentName || req.residentEmail}</strong> • Scheduled: {new Date(req.scheduledDate).toLocaleString()}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button className="worker-btn-primary" style={{ padding: '8px 16px', fontSize: '0.85rem' }} onClick={() => navigate('/worker/jobs')}>
+                    View & Accept
+                  </button>
+                </div>
               </div>
-              <div style={{ fontSize: '0.85rem', color: '#64748B', marginTop: '4px' }}>
-                Resident: <strong style={{ color: '#1E293B' }}>Kamal Perera</strong> • Scheduled: Tomorrow, 10:00 AM
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button className="worker-btn-primary" style={{ padding: '8px 16px', fontSize: '0.85rem' }} onClick={() => navigate('/worker/jobs')}>
-                Accept
-              </button>
-              <button className="worker-btn-outlined" style={{ padding: '8px 16px', fontSize: '0.85rem' }}>
-                Decline
-              </button>
-            </div>
-          </div>
-
-          {/* Request Card 2 */}
-          <div style={{
-            padding: '16px',
-            borderRadius: '12px',
-            backgroundColor: '#F8FAFC',
-            border: '1px solid #E2E8F0',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: '1rem', color: '#111111' }}>
-                Main Switch Board Inspection — Rajagiriya
-              </div>
-              <div style={{ fontSize: '0.85rem', color: '#64748B', marginTop: '4px' }}>
-                Resident: <strong style={{ color: '#1E293B' }}>Nimal Silva</strong> • Scheduled: Saturday, 2:00 PM
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button className="worker-btn-primary" style={{ padding: '8px 16px', fontSize: '0.85rem' }} onClick={() => navigate('/worker/jobs')}>
-                Accept
-              </button>
-              <button className="worker-btn-outlined" style={{ padding: '8px 16px', fontSize: '0.85rem' }}>
-                Decline
-              </button>
-            </div>
-          </div>
+            ))
+          )}
         </div>
       </div>
 
@@ -191,15 +174,23 @@ export default function WorkerDashboard() {
             <i className="fa-solid fa-comment-dots" style={{ color: '#2563EB', marginRight: '8px' }}></i>
             Recent Resident Review
           </h3>
-          <div style={{ backgroundColor: '#F8FAFC', padding: '16px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>Anura Wickramasinghe</span>
-              <span style={{ color: '#F59E0B', fontWeight: 700, fontSize: '0.9rem' }}>★ 5.0</span>
+          {recentReview ? (
+            <div style={{ backgroundColor: '#F8FAFC', padding: '16px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>{recentReview.residentName || recentReview.residentEmail}</span>
+                {recentReview.reviewRating && (
+                  <span style={{ color: '#F59E0B', fontWeight: 700, fontSize: '0.9rem' }}>★ {recentReview.reviewRating.toFixed(1)}</span>
+                )}
+              </div>
+              <p style={{ fontSize: '0.875rem', color: '#475569', fontStyle: 'italic', margin: 0 }}>
+                "{recentReview.reviewComment || 'No written comment.'}"
+              </p>
             </div>
-            <p style={{ fontSize: '0.875rem', color: '#475569', fontStyle: 'italic', margin: 0 }}>
-              "Fixed our bathroom plumbing issue very quickly and cleanly. Arrived right on time!"
-            </p>
-          </div>
+          ) : (
+            <div style={{ backgroundColor: '#F8FAFC', padding: '16px', borderRadius: '12px', border: '1px solid #E2E8F0', color: '#64748B', fontSize: '0.9rem' }}>
+              No resident reviews received yet.
+            </div>
+          )}
         </div>
       </div>
     </WorkerLayout>
