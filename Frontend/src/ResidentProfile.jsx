@@ -13,14 +13,14 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
   const urlParams = new URLSearchParams(window.location.search);
   const tabParam = urlParams.get('tab');
   const [activeTab, setActiveTab] = useState(tabParam || defaultTab || 'overview');
-  
+
   const [profile, setProfile] = useState({
     name: '',
     phoneNo: '',
     address: ''
   });
   const [loading, setLoading] = useState(true);
-  
+
   const [userPosts, setUserPosts] = useState([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
 
@@ -114,7 +114,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
         const response = await axios.get(`http://localhost:5237/api/residents/${encodeURIComponent(userEmail)}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
-        
+
         setProfile({
           name: response.data.name || (userEmail ? userEmail.split('@')[0] : ''),
           phoneNo: response.data.phoneNo || '',
@@ -130,7 +130,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
         setLoading(false);
       }
     };
-    
+
     if (userEmail) {
       fetchProfile();
     } else {
@@ -341,7 +341,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     if (!window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
       return;
     }
-    
+
     try {
       await axios.delete(`http://localhost:5237/api/residents/${encodeURIComponent(userEmail)}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
@@ -517,7 +517,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
 
   return (
     <div style={{ backgroundColor: '#f9fafb', minHeight: '100vh', fontFamily: 'var(--font-body)', color: '#111827' }}>
-      
+
       {/* Top Navbar */}
       <header style={{ backgroundColor: '#ffffff', borderBottom: '1px solid #e5e7eb', padding: '1rem 2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <a href="/" onClick={(e) => { e.preventDefault(); navigateTo('/'); }} style={{ cursor: 'pointer' }}>
@@ -534,10 +534,10 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
           >
             Find Workers
           </md-outlined-button>
-          <md-filled-button 
+          <md-filled-button
             onClick={() => navigateTo('/community')}
-            style={{ 
-              '--md-sys-color-primary': '#FDC101', 
+            style={{
+              '--md-sys-color-primary': '#FDC101',
               '--md-sys-color-on-primary': '#000000',
               padding: '0 16px',
               margin: '0 8px'
@@ -553,42 +553,42 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
 
       {/* Main Dashboard Layout */}
       <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem', display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
-        
+
         {/* Sidebar Navigation */}
         <aside style={{ flex: '1 1 250px', backgroundColor: '#ffffff', borderRadius: '16px', padding: '1.5rem', border: '1px solid #e5e7eb', height: 'fit-content' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem', paddingBottom: '1.5rem', borderBottom: '1px solid #e5e7eb' }}>
-             {userPicture ? (
-                <img src={userPicture} alt="Avatar" style={{ width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover' }} />
-             ) : (
-                <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#009688', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '24px' }}>
-                  {profile.name ? profile.name.charAt(0).toUpperCase() : 'U'}
+            {userPicture ? (
+              <img src={userPicture} alt="Avatar" style={{ width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover' }} />
+            ) : (
+              <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#009688', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '24px' }}>
+                {profile.name ? profile.name.charAt(0).toUpperCase() : 'U'}
+              </div>
+            )}
+            <div style={{ overflow: 'hidden' }}>
+              <h3 style={{ margin: '0 0 0.25rem 0', fontWeight: '700', fontSize: '1.1rem', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                {profile.name || 'User'}
+              </h3>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: '#6b7280', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                {userEmail}
+              </p>
+              {isWorker && (
+                <div style={{ marginTop: '0.25rem' }}>
+                  <span style={{ backgroundColor: '#DBEAFE', color: '#1E40AF', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                    Active Worker
+                  </span>
                 </div>
-             )}
-             <div style={{ overflow: 'hidden' }}>
-               <h3 style={{ margin: '0 0 0.25rem 0', fontWeight: '700', fontSize: '1.1rem', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                 {profile.name || 'User'}
-               </h3>
-               <p style={{ margin: 0, fontSize: '0.85rem', color: '#6b7280', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                 {userEmail}
-               </p>
-               {isWorker && (
-                 <div style={{ marginTop: '0.25rem' }}>
-                   <span style={{ backgroundColor: '#DBEAFE', color: '#1E40AF', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold' }}>
-                     Active Worker
-                   </span>
-                 </div>
-               )}
-             </div>
+              )}
+            </div>
           </div>
 
           <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <button 
+            <button
               onClick={() => setActiveTab('overview')}
               style={{ padding: '12px 16px', textAlign: 'left', borderRadius: '8px', border: 'none', background: activeTab === 'overview' ? '#e0f2fe' : 'transparent', color: activeTab === 'overview' ? '#0284c7' : '#4b5563', fontWeight: activeTab === 'overview' ? '700' : '500', cursor: 'pointer', fontSize: '1rem' }}
             >
               Overview
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('bookings')}
               style={{
                 padding: '12px 16px',
@@ -605,7 +605,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                 justifyContent: 'space-between'
               }}
             >
-              <span>⚡ My Bookings & Hires</span>
+              <span> My Bookings & Hires</span>
               {residentBookings.length > 0 && (
                 <span style={{
                   backgroundColor: '#FDC101',
@@ -619,19 +619,19 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                 </span>
               )}
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('edit')}
               style={{ padding: '12px 16px', textAlign: 'left', borderRadius: '8px', border: 'none', background: activeTab === 'edit' ? '#e0f2fe' : 'transparent', color: activeTab === 'edit' ? '#0284c7' : '#4b5563', fontWeight: activeTab === 'edit' ? '700' : '500', cursor: 'pointer', fontSize: '1rem' }}
             >
               Edit Profile
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('posts')}
               style={{ padding: '12px 16px', textAlign: 'left', borderRadius: '8px', border: 'none', background: activeTab === 'posts' ? '#e0f2fe' : 'transparent', color: activeTab === 'posts' ? '#0284c7' : '#4b5563', fontWeight: activeTab === 'posts' ? '700' : '500', cursor: 'pointer', fontSize: '1rem' }}
             >
               My Community Posts
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('settings')}
               style={{ padding: '12px 16px', textAlign: 'left', borderRadius: '8px', border: 'none', background: activeTab === 'settings' ? '#e0f2fe' : 'transparent', color: activeTab === 'settings' ? '#0284c7' : '#4b5563', fontWeight: activeTab === 'settings' ? '700' : '500', cursor: 'pointer', fontSize: '1rem' }}
             >
@@ -639,20 +639,20 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
             </button>
 
             {isWorker ? (
-              <button 
+              <button
                 onClick={() => {
                   localStorage.setItem('activeRole', 'Worker');
                   navigateTo('/worker/dashboard');
                 }}
-                style={{ 
-                  padding: '12px 16px', 
-                  textAlign: 'left', 
-                  borderRadius: '8px', 
-                  border: 'none', 
-                  background: '#2563eb', 
-                  color: '#ffffff', 
-                  fontWeight: '600', 
-                  cursor: 'pointer', 
+                style={{
+                  padding: '12px 16px',
+                  textAlign: 'left',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: '#2563eb',
+                  color: '#ffffff',
+                  fontWeight: '600',
+                  cursor: 'pointer',
                   fontSize: '1rem',
                   transition: 'all 0.2s ease',
                   marginTop: '0.5rem'
@@ -661,17 +661,17 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                 Worker Dashboard →
               </button>
             ) : (
-              <button 
+              <button
                 onClick={() => setActiveTab('become-worker')}
-                style={{ 
-                  padding: '12px 16px', 
-                  textAlign: 'left', 
-                  borderRadius: '8px', 
-                  border: 'none', 
-                  background: activeTab === 'become-worker' ? '#dbeafe' : '#eff6ff', 
-                  color: '#2563eb', 
-                  fontWeight: '600', 
-                  cursor: 'pointer', 
+                style={{
+                  padding: '12px 16px',
+                  textAlign: 'left',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: activeTab === 'become-worker' ? '#dbeafe' : '#eff6ff',
+                  color: '#2563eb',
+                  fontWeight: '600',
+                  cursor: 'pointer',
                   fontSize: '1rem',
                   transition: 'all 0.2s ease',
                   marginTop: '0.5rem'
@@ -685,7 +685,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
 
         {/* Main Section Area */}
         <section style={{ flex: '3 1 600px', backgroundColor: '#ffffff', borderRadius: '16px', padding: '2rem', border: '1px solid #e5e7eb' }}>
-          
+
           {/* TAB: Overview */}
           {activeTab === 'overview' && (
             <div>
@@ -693,19 +693,19 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                 <div style={{ padding: '1.5rem', backgroundColor: '#f9fafb', borderRadius: '12px', border: '1px solid #f3f4f6' }}>
                   <h4 style={{ margin: '0 0 0.5rem 0', color: '#6b7280', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Display Name</h4>
-                  <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: '600' }}>{profile.name || <span style={{color: '#9ca3af', fontStyle: 'italic'}}>Not provided</span>}</p>
+                  <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: '600' }}>{profile.name || <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>Not provided</span>}</p>
                 </div>
                 <div style={{ padding: '1.5rem', backgroundColor: '#f9fafb', borderRadius: '12px', border: '1px solid #f3f4f6' }}>
                   <h4 style={{ margin: '0 0 0.5rem 0', color: '#6b7280', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Phone Number</h4>
-                  <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: '600' }}>{profile.phoneNo || <span style={{color: '#9ca3af', fontStyle: 'italic'}}>Not provided</span>}</p>
+                  <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: '600' }}>{profile.phoneNo || <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>Not provided</span>}</p>
                 </div>
                 <div style={{ padding: '1.5rem', backgroundColor: '#f9fafb', borderRadius: '12px', border: '1px solid #f3f4f6' }}>
                   <h4 style={{ margin: '0 0 0.5rem 0', color: '#6b7280', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Physical Address</h4>
-                  <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: '600' }}>{profile.address || <span style={{color: '#9ca3af', fontStyle: 'italic'}}>Not provided</span>}</p>
+                  <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: '600' }}>{profile.address || <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>Not provided</span>}</p>
                 </div>
-                
+
                 <div style={{ marginTop: '1rem' }}>
-                  <md-filled-button 
+                  <md-filled-button
                     onClick={() => setActiveTab('edit')}
                     style={{ '--md-sys-color-primary': '#111827', '--md-sys-color-on-primary': '#ffffff', '--md-filled-button-container-shape': '8px' }}
                   >
@@ -765,7 +765,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                   {residentBookings.map((b) => (
                     <div key={b.id} style={{ backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                      
+
                       {/* Top Row: Worker info & Status Badge */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', borderBottom: '1px solid #f1f5f9', paddingBottom: '14px', marginBottom: '16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
@@ -806,20 +806,20 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                         {/* Status Badge */}
                         <div>
                           <span style={{
-                            backgroundColor: 
+                            backgroundColor:
                               b.status === 'Requested' ? '#fef3c7' :
-                              b.status === 'Confirmed' ? '#e0f2fe' :
-                              b.status === 'InProgress' ? '#dbeafe' :
-                              b.status === 'Completed' ? '#d1fae5' :
-                              b.status === 'Reviewed' ? '#fef9c3' :
-                              '#fee2e2',
-                            color: 
+                                b.status === 'Confirmed' ? '#e0f2fe' :
+                                  b.status === 'InProgress' ? '#dbeafe' :
+                                    b.status === 'Completed' ? '#d1fae5' :
+                                      b.status === 'Reviewed' ? '#fef9c3' :
+                                        '#fee2e2',
+                            color:
                               b.status === 'Requested' ? '#92400e' :
-                              b.status === 'Confirmed' ? '#0369a1' :
-                              b.status === 'InProgress' ? '#1e40af' :
-                              b.status === 'Completed' ? '#065f46' :
-                              b.status === 'Reviewed' ? '#854d0e' :
-                              '#991b1b',
+                                b.status === 'Confirmed' ? '#0369a1' :
+                                  b.status === 'InProgress' ? '#1e40af' :
+                                    b.status === 'Completed' ? '#065f46' :
+                                      b.status === 'Reviewed' ? '#854d0e' :
+                                        '#991b1b',
                             padding: '6px 14px',
                             borderRadius: '20px',
                             fontSize: '0.85rem',
@@ -851,11 +851,11 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                         )}
 
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', fontSize: '0.875rem', color: '#64748b' }}>
-                          <div>📍 Address: <strong style={{ color: '#1e293b' }}>{b.locationAddress}</strong></div>
-                          <div>⚡ Urgency: <strong style={{ color: '#1e293b' }}>{b.urgency}</strong></div>
-                          <div>📞 Worker Phone: <strong style={{ color: '#2563eb' }}>{b.workerPhone || 'In chat'}</strong></div>
+                          <div> Address: <strong style={{ color: '#1e293b' }}>{b.locationAddress}</strong></div>
+                          <div> Urgency: <strong style={{ color: '#1e293b' }}>{b.urgency}</strong></div>
+                          <div> Worker Phone: <strong style={{ color: '#2563eb' }}>{b.workerPhone || 'In chat'}</strong></div>
                           {b.estimatedPrice && (
-                            <div>💰 Estimate: <strong style={{ color: '#059669' }}>Rs. {b.estimatedPrice.toLocaleString()}</strong></div>
+                            <div> Estimate: <strong style={{ color: '#059669' }}>Rs. {b.estimatedPrice.toLocaleString()}</strong></div>
                           )}
                         </div>
                       </div>
@@ -863,7 +863,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                       {/* Visual Booking Stepper Bar */}
                       <div style={{ backgroundColor: '#f8fafc', borderRadius: '12px', padding: '14px', marginBottom: '16px', border: '1px solid #f1f5f9' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative' }}>
-                          
+
                           {/* Step 1 */}
                           <div style={{ textAlign: 'center', zIndex: 1 }}>
                             <div style={{
@@ -1061,13 +1061,13 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                   value={profile.name}
                   onInput={(e) => setProfile({ ...profile, name: e.target.value })}
                 ></md-filled-text-field>
-                
+
                 <md-filled-text-field
                   label="Phone Number"
                   value={profile.phoneNo}
                   onInput={(e) => setProfile({ ...profile, phoneNo: e.target.value })}
                 ></md-filled-text-field>
-                
+
                 <md-filled-text-field
                   label="Physical Address"
                   value={profile.address}
@@ -1075,8 +1075,8 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                 ></md-filled-text-field>
 
                 <div style={{ marginTop: '1rem' }}>
-                  <md-filled-button 
-                    type="submit" 
+                  <md-filled-button
+                    type="submit"
                     style={{ '--md-sys-color-primary': '#009688', '--md-sys-color-on-primary': '#ffffff', height: '48px', fontSize: '16px', '--md-filled-button-container-shape': '50px', padding: '0 32px' }}
                   >
                     Save Changes
@@ -1117,7 +1117,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                   + Make New Post
                 </button>
               </div>
-              
+
               {loadingPosts ? (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', color: '#6b7280' }}>
                   <Loader />
@@ -1126,7 +1126,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
               ) : userPosts.length === 0 ? (
                 <div style={{ padding: '3rem', textAlign: 'center', backgroundColor: '#f9fafb', borderRadius: '12px', border: '1px dashed #d1d5db' }}>
                   <p style={{ fontSize: '1.1rem', color: '#4b5563', marginBottom: '1.5rem' }}>You haven't authored any community posts yet.</p>
-                  <button 
+                  <button
                     onClick={() => setIsCreateModalOpen(true)}
                     style={{
                       backgroundColor: '#009688',
@@ -1144,12 +1144,12 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                   {userPosts.map(post => (
-                    <div 
-                      key={post.postId} 
-                      style={{ 
-                        padding: '1.25rem', 
-                        border: '1px solid #e5e7eb', 
-                        borderRadius: '12px', 
+                    <div
+                      key={post.postId}
+                      style={{
+                        padding: '1.25rem',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '12px',
                         backgroundColor: '#ffffff',
                         display: 'flex',
                         gap: '16px',
@@ -1173,9 +1173,9 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                       }}>
                         {post.images && post.images.length > 0 ? (
                           <>
-                            <img 
-                              src={post.images[0]} 
-                              alt={post.title} 
+                            <img
+                              src={post.images[0]}
+                              alt={post.title}
                               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                               onError={(e) => {
                                 e.target.src = 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=500&auto=format&fit=crop';
@@ -1235,7 +1235,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                             >
                               View
                             </button>
-                            
+
                             <button
                               onClick={() => handleOpenEdit(post)}
                               style={{
@@ -1281,7 +1281,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
           {activeTab === 'settings' && (
             <div>
               <h2 style={{ fontSize: '1.5rem', fontWeight: '800', marginTop: 0, marginBottom: '1.5rem', color: '#111827' }}>Account Settings</h2>
-              
+
               <div style={{ marginBottom: '3rem' }}>
                 <h3 style={{ fontSize: '1.2rem', fontWeight: '700', marginBottom: '1rem' }}>Session Options</h3>
                 <p style={{ color: '#4b5563', marginBottom: '1rem' }}>Sign out of your current session on this device.</p>
@@ -1297,11 +1297,11 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
               <div style={{ padding: '1.5rem', border: '1px solid #ef4444', borderRadius: '12px', backgroundColor: '#fef2f2' }}>
                 <h3 style={{ color: '#ef4444', marginTop: 0, fontWeight: '800', fontSize: '1.2rem' }}>Danger Zone</h3>
                 <p style={{ color: '#7f1d1d', marginBottom: '1.5rem', fontSize: '0.95rem' }}>Once you delete your account, there is no going back. All of your profile data will be permanently removed.</p>
-                <md-filled-button 
+                <md-filled-button
                   type="button"
                   onClick={handleDeleteAccount}
-                  style={{ 
-                    '--md-sys-color-primary': '#ef4444', 
+                  style={{
+                    '--md-sys-color-primary': '#ef4444',
                     '--md-sys-color-on-primary': '#ffffff',
                     '--md-filled-button-container-shape': '8px',
                   }}
@@ -1330,7 +1330,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                   <p style={{ color: '#1E3A8A', marginBottom: '1.5rem', fontSize: '0.95rem' }}>
                     Your worker profile is active. You can manage your jobs, skills, and availability in your Worker Dashboard.
                   </p>
-                  <md-filled-button 
+                  <md-filled-button
                     type="button"
                     onClick={() => navigateTo('/worker/dashboard')}
                     style={{ '--md-sys-color-primary': '#2563EB', '--md-sys-color-on-primary': '#ffffff', '--md-filled-button-container-shape': '50px' }}
@@ -1340,7 +1340,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                 </div>
               ) : (
                 <form onSubmit={handleBecomeWorkerSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                  
+
                   {workerError && (
                     <div style={{ padding: '1rem', backgroundColor: '#FEF2F2', border: '1px solid #FCA5A5', color: '#991B1B', borderRadius: '8px', fontSize: '0.9rem' }}>
                       {workerError}
@@ -1505,23 +1505,23 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
 
             {selectedPostForDetail.images && selectedPostForDetail.images.length > 0 && (
               <div>
-                <img 
-                  src={selectedGalleryImage || selectedPostForDetail.images[0]} 
-                  alt="Post" 
-                  style={{ width: '100%', maxHeight: '300px', objectFit: 'cover', borderRadius: '10px', marginBottom: '1rem' }} 
+                <img
+                  src={selectedGalleryImage || selectedPostForDetail.images[0]}
+                  alt="Post"
+                  style={{ width: '100%', maxHeight: '300px', objectFit: 'cover', borderRadius: '10px', marginBottom: '1rem' }}
                 />
                 {selectedPostForDetail.images.length > 1 && (
                   <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', marginBottom: '1rem' }}>
                     {selectedPostForDetail.images.map((img, idx) => (
-                      <img 
-                        key={idx} 
-                        src={img} 
-                        alt="Thumb" 
+                      <img
+                        key={idx}
+                        src={img}
+                        alt="Thumb"
                         onClick={() => setSelectedGalleryImage(img)}
                         style={{
                           width: '65px', height: '50px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer',
                           border: selectedGalleryImage === img ? '2px solid #009688' : '2px solid transparent'
-                        }} 
+                        }}
                       />
                     ))}
                   </div>
@@ -1831,7 +1831,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
             </p>
 
             <form onSubmit={handleSubmitReview} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              
+
               {/* Star Rating 1: Quality */}
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>

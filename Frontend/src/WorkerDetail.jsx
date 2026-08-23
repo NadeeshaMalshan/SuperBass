@@ -67,8 +67,8 @@ export default function WorkerDetail() {
         const res = await axios.get(`http://localhost:5237/api/workers/${workerId}`);
         setWorker(res.data);
         if (res.data) {
-          const defaultTitle = res.data.skills && res.data.skills.length > 0 
-            ? `${res.data.skills[0].skillName} Service / Repair` 
+          const defaultTitle = res.data.skills && res.data.skills.length > 0
+            ? `${res.data.skills[0].skillName} Service / Repair`
             : 'General Home Service';
           setBookingForm(prev => ({
             ...prev,
@@ -215,27 +215,26 @@ export default function WorkerDetail() {
 
       {/* Main Container */}
       <main style={{ maxWidth: '1100px', margin: '0 auto', padding: '2rem 1rem' }}>
-        
+
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
-          
+
           {/* Left Column: Worker Bio & Skills */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            
+
             {/* Main Profile Header Card */}
-            <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '28px', border: '1px solid #e5e7eb', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '20px' }}>
+            <div style={{ backgroundColor: '#ffffff', borderRadius: '28px', padding: '32px', border: '1px solid #f1f5f9', boxShadow: 'none' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '24px', marginBottom: '24px' }}>
                 <div style={{
-                  width: '90px',
-                  height: '90px',
-                  borderRadius: '50%',
-                  backgroundColor: '#2563eb',
-                  color: '#ffffff',
+                  width: '100px',
+                  height: '100px',
+                  borderRadius: '32px',
+                  backgroundColor: '#FDC101',
+                  color: '#0f172a',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '2.5rem',
+                  fontSize: '3rem',
                   fontWeight: 800,
-                  boxShadow: '0 4px 12px rgba(37,99,235,0.2)',
                   overflow: 'hidden'
                 }}>
                   {worker.profileImage ? (
@@ -246,35 +245,38 @@ export default function WorkerDetail() {
                 </div>
 
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <h1 style={{ fontSize: '1.75rem', fontWeight: 800, margin: 0, color: '#111827' }}>{worker.name}</h1>
-                    <span style={{ backgroundColor: '#dbeafe', color: '#1e40af', fontSize: '0.75rem', padding: '4px 10px', borderRadius: '12px', fontWeight: 700 }}>
-                      VERIFIED PRO
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <h1 style={{ fontSize: '2rem', fontWeight: 800, margin: 0, color: '#0f172a', letterSpacing: '-0.02em' }}>{worker.name}</h1>
+                    <span style={{ backgroundColor: '#fffbeb', color: '#b45309', border: '1px solid #fef08a', fontSize: '0.75rem', padding: '6px 12px', borderRadius: '16px', fontWeight: 700 }}>
+                      <i className="fa-solid fa-shield-check" style={{ marginRight: '4px' }}></i> VERIFIED PRO
                     </span>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px', fontSize: '0.95rem', color: '#6b7280' }}>
-                    <span><i className="fa-solid fa-location-dot" style={{ color: '#d97706', marginRight: '6px' }}></i>{worker.primaryServiceArea || 'Colombo'}</span>
-                    <span>•</span>
-                    <span><i className="fa-solid fa-arrows-spin" style={{ color: '#2563eb', marginRight: '6px' }}></i>{worker.coverageRadiusKm || 10} km radius</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px', fontSize: '1rem', color: '#475569' }}>
+                    <span><i className="fa-solid fa-location-dot" style={{ color: '#FDC101', marginRight: '6px' }}></i>{worker.primaryServiceArea || 'Colombo'}</span>
+                    <span style={{ color: '#cbd5e1' }}>•</span>
+                    <span><i className="fa-solid fa-arrows-spin" style={{ color: '#FDC101', marginRight: '6px' }}></i>{worker.coverageRadiusKm || 10} km radius</span>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#d97706', fontWeight: 700, fontSize: '1.1rem' }}>
-                      {worker.completedJobs > 0 && worker.overallRating ? `★ ${worker.overallRating.toFixed(1)}` : 'No rating yet'}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#f8fafc', padding: '6px 12px', borderRadius: '12px', border: '1px solid #f1f5f9' }}>
+                      <span style={{ color: '#ca8a04', fontWeight: 800, fontSize: '1.1rem' }}>
+                        {worker.completedJobs > 0 && worker.overallRating ? `★ ${worker.overallRating.toFixed(1)}` : 'New'}
+                      </span>
+                      <span style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: 600, borderLeft: '1px solid #e2e8f0', paddingLeft: '8px', marginLeft: '4px' }}>
+                        {worker.completedJobs || 0} jobs
+                      </span>
                     </div>
-                    <div style={{ color: '#6b7280', fontSize: '0.9rem' }}>
-                      ({worker.completedJobs || 0} jobs completed)
-                    </div>
+
                     <div style={{
-                      backgroundColor: worker.isAvailable !== false ? '#d1fae5' : '#fee2e2',
-                      color: worker.isAvailable !== false ? '#065f46' : '#991b1b',
-                      padding: '4px 12px',
-                      borderRadius: '20px',
-                      fontSize: '0.8rem',
+                      backgroundColor: worker.isAvailable !== false ? '#ecfccb' : '#fee2e2',
+                      color: worker.isAvailable !== false ? '#4d7c0f' : '#991b1b',
+                      padding: '8px 16px',
+                      borderRadius: '16px',
+                      fontSize: '0.85rem',
                       fontWeight: 700
                     }}>
-                      {worker.isAvailable !== false ? '● Available for Hire' : '○ Currently Unavailable'}
+                      {worker.isAvailable !== false ? '✓ Available for Hire' : '○ Currently Unavailable'}
                     </div>
                   </div>
                 </div>
@@ -282,9 +284,9 @@ export default function WorkerDetail() {
 
               {/* Bio / Description */}
               {worker.description && (
-                <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: '16px', marginTop: '16px' }}>
-                  <h4 style={{ fontSize: '0.85rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px', fontWeight: 700 }}>About {worker.name}</h4>
-                  <p style={{ color: '#4b5563', fontSize: '0.95rem', lineHeight: '1.6', margin: 0 }}>
+                <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '20px', marginTop: '20px' }}>
+                  <h4 style={{ fontSize: '0.9rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px', fontWeight: 800 }}>About {worker.name}</h4>
+                  <p style={{ color: '#334155', fontSize: '1rem', lineHeight: '1.7', margin: 0 }}>
                     {worker.description}
                   </p>
                 </div>
@@ -292,69 +294,69 @@ export default function WorkerDetail() {
             </div>
 
             {/* WHAT HE CAN DO (SKILLS) CARD */}
-            <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '24px', border: '1px solid #e5e7eb', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 16px 0', color: '#111827', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ backgroundColor: '#eff6ff', color: '#2563eb', width: '36px', height: '36px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem' }}>🛠️</span>
+            <div style={{ backgroundColor: '#ffffff', borderRadius: '28px', padding: '32px', border: '1px solid #f1f5f9', boxShadow: 'none' }}>
+              <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: '0 0 20px 0', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ backgroundColor: '#fffbeb', color: '#b45309', width: '40px', height: '40px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>🛠️</span>
                 What He Can Do (Trade Skills)
               </h2>
 
               {worker.skills && worker.skills.length > 0 ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
                   {worker.skills.map((skill, idx) => (
-                    <div key={idx} style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', padding: '14px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div key={idx} style={{ backgroundColor: '#ffffff', border: '1.5px solid #e2e8f0', padding: '16px', borderRadius: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'border-color 0.2s' }}>
                       <div>
-                        <div style={{ fontWeight: 700, color: '#111827', fontSize: '1rem' }}>{skill.skillName}</div>
-                        <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '2px' }}>{skill.experienceYears || 1}+ Years Experience</div>
+                        <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.05rem' }}>{skill.skillName}</div>
+                        <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '4px', fontWeight: 600 }}>{skill.experienceYears || 1}+ Years Experience</div>
                       </div>
-                      <span style={{ color: '#059669', fontSize: '1.2rem', fontWeight: 800 }}>✓</span>
+                      <span style={{ backgroundColor: '#ecfccb', color: '#4d7c0f', width: '32px', height: '32px', clipPath: 'polygon(50% 0%, 82% 12%, 99% 41%, 93% 75%, 67% 97%, 33% 97%, 7% 75%, 1% 41%, 18% 12%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: 800 }}>✓</span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p style={{ color: '#6b7280', margin: 0 }}>General Handyman & Repair Services.</p>
+                <p style={{ color: '#64748b', margin: 0, fontSize: '1rem' }}>General Handyman & Repair Services.</p>
               )}
             </div>
 
             {/* Performance Ratings Breakdown */}
-            <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '24px', border: '1px solid #e5e7eb', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#111827', marginBottom: '16px' }}>
+            <div style={{ backgroundColor: '#ffffff', borderRadius: '28px', padding: '32px', border: '1px solid #f1f5f9', boxShadow: 'none' }}>
+              <h3 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a', marginBottom: '24px' }}>
                 Client Ratings & Reliability
               </h3>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.9rem' }}>
-                    <span style={{ color: '#4b5563', fontWeight: 500 }}>Quality & Craftsmanship</span>
-                    <span style={{ color: '#d97706', fontWeight: 700 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.95rem' }}>
+                    <span style={{ color: '#334155', fontWeight: 700 }}>Quality & Craftsmanship</span>
+                    <span style={{ color: '#b45309', fontWeight: 800 }}>
                       {worker.completedJobs > 0 && worker.qualityRating ? `★ ${worker.qualityRating}/5.0` : 'N/A'}
                     </span>
                   </div>
-                  <div style={{ width: '100%', height: '8px', backgroundColor: '#f3f4f6', borderRadius: '9999px', overflow: 'hidden' }}>
-                    <div style={{ width: worker.completedJobs > 0 && worker.qualityRating ? `${(worker.qualityRating / 5) * 100}%` : '0%', height: '100%', backgroundColor: '#2563eb' }}></div>
+                  <div style={{ width: '100%', height: '10px', backgroundColor: '#f1f5f9', borderRadius: '9999px', overflow: 'hidden' }}>
+                    <div style={{ width: worker.completedJobs > 0 && worker.qualityRating ? `${(worker.qualityRating / 5) * 100}%` : '0%', height: '100%', backgroundColor: '#FDC101', borderRadius: '9999px' }}></div>
                   </div>
                 </div>
 
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.9rem' }}>
-                    <span style={{ color: '#4b5563', fontWeight: 500 }}>Punctuality & Timeliness</span>
-                    <span style={{ color: '#d97706', fontWeight: 700 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.95rem' }}>
+                    <span style={{ color: '#334155', fontWeight: 700 }}>Punctuality & Timeliness</span>
+                    <span style={{ color: '#b45309', fontWeight: 800 }}>
                       {worker.completedJobs > 0 && worker.punctualityRating ? `★ ${worker.punctualityRating}/5.0` : 'N/A'}
                     </span>
                   </div>
-                  <div style={{ width: '100%', height: '8px', backgroundColor: '#f3f4f6', borderRadius: '9999px', overflow: 'hidden' }}>
-                    <div style={{ width: worker.completedJobs > 0 && worker.punctualityRating ? `${(worker.punctualityRating / 5) * 100}%` : '0%', height: '100%', backgroundColor: '#0284c7' }}></div>
+                  <div style={{ width: '100%', height: '10px', backgroundColor: '#f1f5f9', borderRadius: '9999px', overflow: 'hidden' }}>
+                    <div style={{ width: worker.completedJobs > 0 && worker.punctualityRating ? `${(worker.punctualityRating / 5) * 100}%` : '0%', height: '100%', backgroundColor: '#fde047', borderRadius: '9999px' }}></div>
                   </div>
                 </div>
 
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.9rem' }}>
-                    <span style={{ color: '#4b5563', fontWeight: 500 }}>Communication & Professionalism</span>
-                    <span style={{ color: '#d97706', fontWeight: 700 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.95rem' }}>
+                    <span style={{ color: '#334155', fontWeight: 700 }}>Communication & Professionalism</span>
+                    <span style={{ color: '#b45309', fontWeight: 800 }}>
                       {worker.completedJobs > 0 && worker.communicationRating ? `★ ${worker.communicationRating}/5.0` : 'N/A'}
                     </span>
                   </div>
-                  <div style={{ width: '100%', height: '8px', backgroundColor: '#f3f4f6', borderRadius: '9999px', overflow: 'hidden' }}>
-                    <div style={{ width: worker.completedJobs > 0 && worker.communicationRating ? `${(worker.communicationRating / 5) * 100}%` : '0%', height: '100%', backgroundColor: '#059669' }}></div>
+                  <div style={{ width: '100%', height: '10px', backgroundColor: '#f1f5f9', borderRadius: '9999px', overflow: 'hidden' }}>
+                    <div style={{ width: worker.completedJobs > 0 && worker.communicationRating ? `${(worker.communicationRating / 5) * 100}%` : '0%', height: '100%', backgroundColor: '#fef08a', borderRadius: '9999px' }}></div>
                   </div>
                 </div>
               </div>
@@ -364,84 +366,78 @@ export default function WorkerDetail() {
 
           {/* Right Column: Rates, Pricing & Hire CTA Card */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            
+
             {/* RATES & PRICING CARD */}
-            <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '24px', border: '1px solid #e5e7eb', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '0 0 16px 0', color: '#111827', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ backgroundColor: '#fef3c7', color: '#d97706', width: '36px', height: '36px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', fontWeight: 800 }}>LKR</span>
+            <div style={{ backgroundColor: '#ffffff', borderRadius: '28px', padding: '32px', border: '1px solid #f1f5f9', boxShadow: 'none' }}>
+              <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: '0 0 20px 0', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ backgroundColor: '#fef3c7', color: '#b45309', width: '40px', height: '40px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 800 }}>LKR</span>
                 Service Rates & Pricing
               </h2>
 
-              <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '16px' }}>
-                <div style={{ fontSize: '0.8rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px', fontWeight: 600 }}>Pricing Model</div>
-                <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#111827' }}>{worker.pricingModel || 'Hourly / Daily'}</div>
+              <div style={{ backgroundColor: '#f8fafc', padding: '20px', borderRadius: '20px', border: '1px solid #f1f5f9', marginBottom: '20px' }}>
+                <div style={{ fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px', fontWeight: 700 }}>Pricing Model</div>
+                <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a' }}>{worker.pricingModel || 'Hourly / Daily'}</div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
                 {/* Hourly Rate */}
-                <div style={{ backgroundColor: '#fffbebfb', padding: '16px', borderRadius: '12px', border: '1px solid #fef3c7', textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.8rem', color: '#6b7280', marginBottom: '4px' }}>Hourly Rate</div>
-                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#d97706' }}>
+                <div style={{ backgroundColor: '#fffbebfb', padding: '20px', borderRadius: '20px', border: '1px solid #fef3c7', textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '6px', fontWeight: 600 }}>Hourly Rate</div>
+                  <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#b45309' }}>
                     {worker.hourlyRate ? `Rs. ${worker.hourlyRate.toLocaleString()}` : 'Negotiable'}
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '2px' }}>Per Hour</div>
+                  <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '4px', fontWeight: 500 }}>Per Hour</div>
                 </div>
 
                 {/* Daily Rate */}
-                <div style={{ backgroundColor: '#eff6ff', padding: '16px', borderRadius: '12px', border: '1px solid #dbeafe', textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.8rem', color: '#6b7280', marginBottom: '4px' }}>Daily Rate</div>
-                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#2563eb' }}>
+                <div style={{ backgroundColor: '#eff6ff', padding: '20px', borderRadius: '20px', border: '1px solid #dbeafe', textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '6px', fontWeight: 600 }}>Daily Rate</div>
+                  <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#1d4ed8' }}>
                     {worker.dailyRate ? `Rs. ${worker.dailyRate.toLocaleString()}` : 'Negotiable'}
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '2px' }}>Per Full Day</div>
+                  <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '4px', fontWeight: 500 }}>Per Full Day</div>
                 </div>
               </div>
 
               {/* Hire Button */}
-              <button
-                onClick={handleOpenHireModal}
-                style={{
-                  width: '100%',
-                  padding: '16px',
-                  backgroundColor: '#FDC101',
-                  color: '#000000',
-                  border: 'none',
-                  borderRadius: '12px',
-                  fontSize: '1.1rem',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(253,193,1,0.3)',
-                  transition: 'transform 0.2s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px'
-                }}
-              >
-                ⚡ Hire / Request Worker Now
-              </button>
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <md-filled-button
+                  onClick={handleOpenHireModal}
+                  style={{
+                    width: '100%',
+                    '--md-sys-color-primary': '#FDC101',
+                    '--md-sys-color-on-primary': '#000000',
+                    '--md-filled-button-container-height': '56px',
+                    '--md-filled-button-label-text-font': 'inherit',
+                    '--md-filled-button-label-text-size': '1.1rem',
+                    '--md-filled-button-label-text-weight': '800'
+                  }}
+                >
+                  Hire / Request Worker Now
+                </md-filled-button>
+              </div>
             </div>
 
             {/* Service Location Card */}
-            <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '24px', border: '1px solid #e5e7eb', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#111827', marginBottom: '12px' }}>
+            <div style={{ backgroundColor: '#ffffff', borderRadius: '28px', padding: '32px', border: '1px solid #f1f5f9', boxShadow: 'none' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', marginBottom: '20px' }}>
                 Service Location & Area
               </h3>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.95rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#4b5563' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', fontSize: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
                   <span>Primary Location:</span>
-                  <strong style={{ color: '#111827' }}>{worker.primaryServiceArea || 'Colombo'}</strong>
+                  <strong style={{ color: '#0f172a' }}>{worker.primaryServiceArea || 'Colombo'}</strong>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#4b5563' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
                   <span>Travel Radius:</span>
-                  <strong style={{ color: '#111827' }}>Up to {worker.coverageRadiusKm || 10} km</strong>
+                  <strong style={{ color: '#0f172a' }}>Up to {worker.coverageRadiusKm || 10} km</strong>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#4b5563' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
                   <span>Contact Phone:</span>
-                  <strong style={{ color: '#2563eb' }}>{worker.phoneNo || 'Available upon booking'}</strong>
+                  <strong style={{ color: '#1d4ed8' }}>{worker.phoneNo || 'Available upon booking'}</strong>
                 </div>
               </div>
             </div>
@@ -470,7 +466,7 @@ export default function WorkerDetail() {
         }}>
           <div style={{
             backgroundColor: '#ffffff',
-            borderRadius: '20px',
+            borderRadius: '28px',
             maxWidth: '620px',
             width: '100%',
             maxHeight: '90vh',
@@ -479,7 +475,7 @@ export default function WorkerDetail() {
             border: '1px solid #e5e7eb',
             position: 'relative'
           }}>
-            
+
             {/* Modal Header */}
             <div style={{
               padding: '24px 28px',
@@ -490,7 +486,7 @@ export default function WorkerDetail() {
               backgroundColor: '#fafbfc'
             }}>
               <div>
-                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#ca8a04', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   SuperBass Verified Hire
                 </span>
                 <h2 style={{ fontSize: '1.4rem', fontWeight: 800, margin: '4px 0 0 0', color: '#111827' }}>
@@ -515,11 +511,11 @@ export default function WorkerDetail() {
 
             {/* Modal Body */}
             <div style={{ padding: '24px 28px' }}>
-              
+
               {/* STEP 1: FORM */}
               {hireStep === 'form' && (
                 <form onSubmit={handleBookingSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-                  
+
                   {hireError && (
                     <div style={{ backgroundColor: '#fee2e2', color: '#991b1b', padding: '12px 16px', borderRadius: '10px', fontSize: '0.9rem', fontWeight: 600 }}>
                       ⚠ {hireError}
@@ -569,40 +565,28 @@ export default function WorkerDetail() {
                   </div>
 
                   {/* Submit Button */}
-                  <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
-                    <button
+                  <div style={{ display: 'flex', gap: '12px', marginTop: '16px', paddingBottom: '8px' }}>
+                    <md-outlined-button
                       type="button"
                       onClick={() => setIsHireModalOpen(false)}
                       style={{
                         flex: 1,
-                        padding: '14px',
-                        borderRadius: '10px',
-                        border: '1px solid #d1d5db',
-                        backgroundColor: '#ffffff',
-                        color: '#374151',
-                        fontWeight: 700,
-                        cursor: 'pointer'
+                        '--md-sys-color-primary': '#334155'
                       }}
                     >
                       Cancel
-                    </button>
-                    <button
+                    </md-outlined-button>
+                    <md-filled-button
                       type="submit"
                       style={{
                         flex: 2,
-                        padding: '14px',
-                        borderRadius: '10px',
-                        border: 'none',
-                        backgroundColor: '#FDC101',
-                        color: '#000000',
-                        fontWeight: 800,
-                        fontSize: '1rem',
-                        cursor: 'pointer',
-                        boxShadow: '0 4px 12px rgba(253,193,1,0.3)'
+                        '--md-sys-color-primary': '#FDC101',
+                        '--md-sys-color-on-primary': '#000000',
+                        '--md-filled-button-label-text-weight': '800'
                       }}
                     >
-                      Submit Hire Request ⚡
-                    </button>
+                      Submit Hire Request
+                    </md-filled-button>
                   </div>
                 </form>
               )}
@@ -619,11 +603,11 @@ export default function WorkerDetail() {
               {/* STEP: SUCCESS & LIFECYCLE STEPPER */}
               {hireStep === 'success' && createdBooking && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                  
+
                   {/* Top Success Banner */}
                   <div style={{
-                    backgroundColor: '#ecfdf5',
-                    border: '1.5px solid #a7f3d0',
+                    backgroundColor: '#111827',
+                    border: 'none',
                     borderRadius: '14px',
                     padding: '18px 20px',
                     display: 'flex',
@@ -631,11 +615,11 @@ export default function WorkerDetail() {
                     gap: '14px'
                   }}>
                     <div style={{
-                      backgroundColor: '#10b981',
-                      color: '#ffffff',
+                      backgroundColor: '#FDC101',
+                      color: '#000000',
                       width: '40px',
                       height: '40px',
-                      borderRadius: '50%',
+                      clipPath: 'polygon(50% 0%, 82% 12%, 99% 41%, 93% 75%, 67% 97%, 33% 97%, 7% 75%, 1% 41%, 18% 12%)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -645,8 +629,8 @@ export default function WorkerDetail() {
                       ✓
                     </div>
                     <div>
-                      <h4 style={{ margin: 0, color: '#065f46', fontSize: '1.1rem', fontWeight: 800 }}>Booking Request Sent Successfully!</h4>
-                      <p style={{ margin: '4px 0 0 0', color: '#047857', fontSize: '0.875rem' }}>
+                      <h4 style={{ margin: 0, color: '#ffffff', fontSize: '1.1rem', fontWeight: 800 }}>Booking Request Sent Successfully!</h4>
+                      <p style={{ margin: '4px 0 0 0', color: '#cbd5e1', fontSize: '0.875rem' }}>
                         Booking #{createdBooking.id} is now queued for <strong>{worker.name}</strong> to review and accept.
                       </p>
                     </div>
@@ -659,15 +643,15 @@ export default function WorkerDetail() {
                     </h5>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                      
+
                       {/* Step 1: Requested */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                         <div style={{
                           width: '28px',
                           height: '28px',
-                          borderRadius: '50%',
-                          backgroundColor: '#10b981',
-                          color: '#ffffff',
+                          clipPath: 'polygon(50% 0%, 82% 12%, 99% 41%, 93% 75%, 67% 97%, 33% 97%, 7% 75%, 1% 41%, 18% 12%)',
+                          backgroundColor: '#000000',
+                          color: '#FDC101',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -678,7 +662,7 @@ export default function WorkerDetail() {
                         </div>
                         <div style={{ flex: 1 }}>
                           <strong style={{ color: '#111827', fontSize: '0.95rem' }}>1. Booking Requested</strong>
-                          <span style={{ marginLeft: '8px', fontSize: '0.75rem', backgroundColor: '#d1fae5', color: '#065f46', padding: '2px 8px', borderRadius: '10px', fontWeight: 700 }}>Completed</span>
+                          <span style={{ marginLeft: '8px', fontSize: '0.75rem', backgroundColor: '#fef3c7', color: '#000000', padding: '2px 8px', borderRadius: '10px', fontWeight: 700 }}>Completed</span>
                         </div>
                       </div>
 
@@ -687,21 +671,21 @@ export default function WorkerDetail() {
                         <div style={{
                           width: '28px',
                           height: '28px',
-                          borderRadius: '50%',
-                          backgroundColor: '#2563eb',
-                          color: '#ffffff',
+                          clipPath: 'polygon(50% 0%, 82% 12%, 99% 41%, 93% 75%, 67% 97%, 33% 97%, 7% 75%, 1% 41%, 18% 12%)',
+                          backgroundColor: '#FDC101',
+                          color: '#000000',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           fontSize: '0.85rem',
                           fontWeight: 800,
-                          boxShadow: '0 0 0 4px rgba(37,99,235,0.2)'
+                          boxShadow: '0 0 0 4px rgba(253,193,1,0.2)'
                         }}>
                           2
                         </div>
                         <div style={{ flex: 1 }}>
-                          <strong style={{ color: '#2563eb', fontSize: '0.95rem' }}>2. Worker Accepts / Rejects</strong>
-                          <span style={{ marginLeft: '8px', fontSize: '0.75rem', backgroundColor: '#dbeafe', color: '#1e40af', padding: '2px 8px', borderRadius: '10px', fontWeight: 700 }}>In Progress (Worker notified)</span>
+                          <strong style={{ color: '#000000', fontSize: '0.95rem' }}>2. Worker Accepts / Rejects</strong>
+                          <span style={{ marginLeft: '8px', fontSize: '0.75rem', backgroundColor: '#fffbeb', color: '#b45309', padding: '2px 8px', borderRadius: '10px', fontWeight: 700 }}>In Progress (Worker notified)</span>
                         </div>
                       </div>
 
@@ -710,7 +694,7 @@ export default function WorkerDetail() {
                         <div style={{
                           width: '28px',
                           height: '28px',
-                          borderRadius: '50%',
+                          clipPath: 'polygon(50% 0%, 82% 12%, 99% 41%, 93% 75%, 67% 97%, 33% 97%, 7% 75%, 1% 41%, 18% 12%)',
                           backgroundColor: '#cbd5e1',
                           color: '#475569',
                           display: 'flex',
@@ -731,7 +715,7 @@ export default function WorkerDetail() {
                         <div style={{
                           width: '28px',
                           height: '28px',
-                          borderRadius: '50%',
+                          clipPath: 'polygon(50% 0%, 82% 12%, 99% 41%, 93% 75%, 67% 97%, 33% 97%, 7% 75%, 1% 41%, 18% 12%)',
                           backgroundColor: '#cbd5e1',
                           color: '#475569',
                           display: 'flex',
@@ -752,7 +736,7 @@ export default function WorkerDetail() {
                         <div style={{
                           width: '28px',
                           height: '28px',
-                          borderRadius: '50%',
+                          clipPath: 'polygon(50% 0%, 82% 12%, 99% 41%, 93% 75%, 67% 97%, 33% 97%, 7% 75%, 1% 41%, 18% 12%)',
                           backgroundColor: '#cbd5e1',
                           color: '#475569',
                           display: 'flex',
@@ -773,7 +757,7 @@ export default function WorkerDetail() {
                         <div style={{
                           width: '28px',
                           height: '28px',
-                          borderRadius: '50%',
+                          clipPath: 'polygon(50% 0%, 82% 12%, 99% 41%, 93% 75%, 67% 97%, 33% 97%, 7% 75%, 1% 41%, 18% 12%)',
                           backgroundColor: '#cbd5e1',
                           color: '#475569',
                           display: 'flex',
@@ -793,48 +777,36 @@ export default function WorkerDetail() {
                   </div>
 
                   {/* Direct Action Buttons */}
-                  <div style={{ display: 'flex', gap: '12px' }}>
-                    <button
+                  <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                    <md-outlined-button
                       onClick={() => {
                         setIsHireModalOpen(false);
                         navigate('/chats');
                       }}
                       style={{
                         flex: 1,
-                        padding: '14px',
-                        borderRadius: '10px',
-                        border: '1.5px solid #2563eb',
-                        backgroundColor: '#eff6ff',
-                        color: '#2563eb',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '6px'
+                        '--md-sys-color-primary': '#111827'
                       }}
                     >
-                      💬 Chat with {worker.name}
-                    </button>
+                      <i slot="icon" className="fa-regular fa-comment"></i>
+                      Chat
+                    </md-outlined-button>
 
-                    <button
+                    <md-filled-button
                       onClick={() => {
                         setIsHireModalOpen(false);
                         navigate('/account?tab=bookings');
                       }}
                       style={{
                         flex: 1,
-                        padding: '14px',
-                        borderRadius: '10px',
-                        border: 'none',
-                        backgroundColor: '#2563eb',
-                        color: '#ffffff',
-                        fontWeight: 700,
-                        cursor: 'pointer'
+                        '--md-sys-color-primary': '#FDC101',
+                        '--md-sys-color-on-primary': '#000000',
+                        '--md-filled-button-label-text-weight': '800'
                       }}
                     >
-                      📋 View My Bookings
-                    </button>
+                      <i slot="icon" className="fa-solid fa-list-check"></i>
+                      View Bookings
+                    </md-filled-button>
                   </div>
 
                 </div>
