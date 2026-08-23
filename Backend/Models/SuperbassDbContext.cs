@@ -18,9 +18,10 @@ namespace Superbass.Models
         public DbSet<Worker> Workers { get; set; }
         public DbSet<WorkerSkill> WorkerSkills { get; set; }
 
-        // Component 3: Communication
+        // Component 3: Communication & Booking
         public DbSet<Conversation> Conversations { get; set; }
         public DbSet<ChatMessage> ChatMessages { get; set; }
+        public DbSet<Booking> Bookings { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -52,6 +53,30 @@ namespace Superbass.Models
 
             modelBuilder.Entity<ChatMessage>()
                 .HasIndex(m => new { m.ConversationId, m.CreatedAt });
+
+            modelBuilder.Entity<Booking>()
+                .HasOne(b => b.Resident)
+                .WithMany()
+                .HasForeignKey(b => b.ResidentEmail)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Booking>()
+                .HasOne(b => b.Worker)
+                .WithMany()
+                .HasForeignKey(b => b.WorkerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Booking>()
+                .HasOne(b => b.Conversation)
+                .WithMany()
+                .HasForeignKey(b => b.ConversationId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<Booking>()
+                .HasIndex(b => new { b.ResidentEmail, b.Status });
+
+            modelBuilder.Entity<Booking>()
+                .HasIndex(b => new { b.WorkerId, b.Status });
         }
     }
 }

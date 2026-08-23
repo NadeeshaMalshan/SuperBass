@@ -160,6 +160,29 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
+.gm-avatar-wrapper {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.gm-avatar-status-badge {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  background-color: #16a34a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  z-index: 2;
+}
+
+.gm-avatar-status-badge.offline {
+  background-color: #94a3b8;
+}
+
 .gm-worker-avatar img {
   width: 100%;
   height: 100%;

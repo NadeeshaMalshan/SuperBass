@@ -32,9 +32,9 @@ export default function Chats() {
   const [isSending, setIsSending] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [emojiCategory, setEmojiCategory] = useState('smileys');
-
   const [isTyping, setIsTyping] = useState(false);
+  const [isOtherUserOnline, setIsOtherUserOnline] = useState(true);
+  const [otherUserLastSeen, setOtherUserLastSeen] = useState(null);
 
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -55,6 +55,32 @@ export default function Chats() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, isTyping, showEmojiPicker]);
+
+  // Check presence for active chat
+  useEffect(() => {
+    if (!selectedChat) return;
+
+    const targetEmail = selectedChat.workerEmail?.toLowerCase() === currentUserEmail.toLowerCase()
+      ? selectedChat.residentEmail
+      : selectedChat.workerEmail;
+
+    const checkPresence = async () => {
+      if (!targetEmail) return;
+      try {
+        const res = await axios.get(`${API_BASE_URL}/presence`, {
+          params: { userEmail: targetEmail }
+        });
+        if (res.data) {
+          setIsOtherUserOnline(res.data.isOnline ?? true);
+          setOtherUserLastSeen(res.data.lastSeen);
+        }
+      } catch (e) {}
+    };
+
+    checkPresence();
+    const presenceInterval = setInterval(checkPresence, 4000);
+    return () => clearInterval(presenceInterval);
+  }, [selectedChat, currentUserEmail]);
 
   // Fetch all user conversations
   const fetchConversations = async () => {
@@ -318,7 +344,7 @@ export default function Chats() {
                       ) : (
                         <div className="chat-item-avatar">{getInitial(otherName)}</div>
                       )}
-                      <span className="chat-item-online"></span>
+                      <span className={`chat-item-online ${conv.isOnline ? 'online' : 'offline'}`}></span>
                     </div>
 
                     <div className="chat-item-content">
@@ -346,17 +372,20 @@ export default function Chats() {
             {/* Header */}
             <div className="chats-main-header">
               <div className="chats-header-user-info">
-                {selectedChat.workerEmail?.toLowerCase() === currentUserEmail.toLowerCase() ? (
-                  <div className="chats-header-avatar">
-                    {getInitial(selectedChat.residentName || 'Resident')}
-                  </div>
-                ) : selectedChat.workerProfileImage ? (
-                  <img src={selectedChat.workerProfileImage} alt="avatar" className="chats-header-avatar" />
-                ) : (
-                  <div className="chats-header-avatar">
-                    {getInitial(selectedChat.workerName || 'Worker')}
-                  </div>
-                )}
+                <div className="chats-header-avatar-wrapper">
+                  {selectedChat.workerEmail?.toLowerCase() === currentUserEmail.toLowerCase() ? (
+                    <div className="chats-header-avatar">
+                      {getInitial(selectedChat.residentName || 'Resident')}
+                    </div>
+                  ) : selectedChat.workerProfileImage ? (
+                    <img src={selectedChat.workerProfileImage} alt="avatar" className="chats-header-avatar" />
+                  ) : (
+                    <div className="chats-header-avatar">
+                      {getInitial(selectedChat.workerName || 'Worker')}
+                    </div>
+                  )}
+                  <span className={`chats-header-status-badge ${isOtherUserOnline ? 'online' : 'offline'}`}></span>
+                </div>
                 <div>
                   <h3 className="chats-header-name">
                     {selectedChat.workerEmail?.toLowerCase() === currentUserEmail.toLowerCase()
@@ -364,7 +393,21 @@ export default function Chats() {
                       : (selectedChat.workerName || 'SuperBass Worker')}
                   </h3>
                   <span className="chats-header-status">
-                    <i className="fa-solid fa-circle" style={{ fontSize: '0.5rem' }}></i> Active now
+                    {isTyping ? (
+                      <span style={{ color: '#0284c7', fontWeight: 600 }}>✍️ typing...</span>
+                    ) : isOtherUserOnline ? (
+                      <span style={{ color: '#16a34a', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}>
+                        <i className="fa-solid fa-circle" style={{ fontSize: '0.45rem' }}></i> Active now
+                      </span>
+                    ) : otherUserLastSeen ? (
+                      <span style={{ color: '#94a3b8', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <i className="fa-regular fa-circle" style={{ fontSize: '0.45rem' }}></i> Last seen {formatConversationTime(otherUserLastSeen)}
+                      </span>
+                    ) : (
+                      <span style={{ color: '#94a3b8', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <i className="fa-regular fa-circle" style={{ fontSize: '0.45rem' }}></i> Offline
+                      </span>
+                    )}
                   </span>
                 </div>
               </div>
@@ -405,6 +448,13 @@ export default function Chats() {
                     <div className="chats-msg-wrapper">
                       <div className={`chats-bubble ${isOutgoing ? 'resident' : 'worker'}`}>
                         {msg.content && <div>{msg.content}</div>}
+                        {msg.content && msg.content.includes('📋 Booking Requested #') && selectedChat.workerEmail?.toLowerCase() === currentUserEmail.toLowerCase() && (
+                          <div style={{ marginTop: '10px', display: 'flex', gap: '8px' }}>
+                            <button onClick={() => window.location.href='/bookings'} style={{ backgroundColor: '#ffffff', color: '#000', padding: '6px 12px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+                              View in Bookings
+                            </button>
+                          </div>
+                        )}
                         {msg.attachmentUrl && (
                           <img
                             src={msg.attachmentUrl}

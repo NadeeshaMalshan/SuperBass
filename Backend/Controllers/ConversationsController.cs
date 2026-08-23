@@ -207,6 +207,33 @@ namespace Superbass.Controllers
             }
         }
 
+        // GET: /api/conversations/presence?userEmail=test@example.com
+        [HttpGet("presence")]
+        public IActionResult GetPresence([FromQuery] string? userEmail)
+        {
+            if (string.IsNullOrWhiteSpace(userEmail))
+            {
+                return BadRequest(new { message = "User email is required." });
+            }
+
+            var isOnline = ChatHub.IsUserOnline(userEmail);
+            var lastSeen = ChatHub.GetLastSeen(userEmail);
+
+            return Ok(new { userEmail, isOnline, lastSeen });
+        }
+
+        // POST: /api/conversations/heartbeat
+        [HttpPost("heartbeat")]
+        public IActionResult Heartbeat([FromBody] TypingRequest? request)
+        {
+            var email = request?.UserEmail ?? GetCurrentUserEmail();
+            if (!string.IsNullOrWhiteSpace(email))
+            {
+                ChatHub.RecordActivity(email);
+            }
+            return Ok(new { success = true });
+        }
+
         // GET: /api/conversations/unread-count?userEmail=test@example.com
         [HttpGet("unread-count")]
         public async Task<IActionResult> GetUnreadCount([FromQuery] string? userEmail)

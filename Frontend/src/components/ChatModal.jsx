@@ -41,6 +41,7 @@ export default function ChatModal({
   const [inputText, setInputText] = useState('');
   const [conversationId, setConversationId] = useState(null);
   const [isTyping, setIsTyping] = useState(false);
+  const [isOtherUserOnline, setIsOtherUserOnline] = useState(true);
   const [previewImage, setPreviewImage] = useState(null);
   const [isSending, setIsSending] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -53,6 +54,25 @@ export default function ChatModal({
   const currentUserEmail = localStorage.getItem('email') || 'resident@superbass.lk';
   const currentUserName = localStorage.getItem('userName') || 'You';
   const token = localStorage.getItem('token');
+
+  // Check recipient presence
+  useEffect(() => {
+    if (!isOpen) return;
+    const checkPresence = async () => {
+      const targetEmail = recipient.email || `${recipient.name?.toLowerCase().replace(/\s+/g, '') || 'worker'}@superbass.lk`;
+      try {
+        const res = await axios.get(`${API_BASE_URL}/presence`, {
+          params: { userEmail: targetEmail }
+        });
+        if (res.data) {
+          setIsOtherUserOnline(res.data.isOnline ?? true);
+        }
+      } catch (e) {}
+    };
+    checkPresence();
+    const interval = setInterval(checkPresence, 4000);
+    return () => clearInterval(interval);
+  }, [isOpen, recipient.email, recipient.name]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -275,7 +295,34 @@ export default function ChatModal({
         {/* Top Header */}
         <div className="gm-header">
           <div className="gm-header-left">
-            <h2 className="gm-header-title">{recipient.name || 'Jayashan Manodya'}</h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div className="gm-avatar-wrapper">
+                {recipient.avatar ? (
+                  <img src={recipient.avatar} alt="avatar" style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover' }} />
+                ) : (
+                  <div className="gm-worker-avatar" style={{ width: '42px', height: '42px', fontSize: '1.05rem' }}>
+                    {getInitial(recipient.name || 'User')}
+                  </div>
+                )}
+                <span className={`gm-avatar-status-badge ${isOtherUserOnline ? 'online' : 'offline'}`}></span>
+              </div>
+              <div>
+                <h2 className="gm-header-title" style={{ margin: 0, fontSize: '1.05rem', lineHeight: 1.2 }}>{recipient.name || 'Jayashan Manodya'}</h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.75rem', marginTop: '2px' }}>
+                  {isTyping ? (
+                    <span style={{ color: '#0284c7', fontWeight: 600 }}>✍️ typing...</span>
+                  ) : isOtherUserOnline ? (
+                    <span style={{ color: '#16a34a', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}>
+                      <i className="fa-solid fa-circle" style={{ fontSize: '0.45rem' }}></i> Active now
+                    </span>
+                  ) : (
+                    <span style={{ color: '#94a3b8', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      <i className="fa-regular fa-circle" style={{ fontSize: '0.45rem' }}></i> Offline
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="gm-header-actions">
@@ -306,12 +353,15 @@ export default function ChatModal({
                 className={`gm-message-row ${isOutgoing ? 'resident' : 'worker'}`}
               >
                 {!isOutgoing && (
-                  <div className="gm-worker-avatar">
+                  <div className="gm-avatar-wrapper">
                     {recipient.avatar ? (
-                      <img src={recipient.avatar} alt="avatar" />
+                      <img src={recipient.avatar} alt="avatar" style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover' }} />
                     ) : (
-                      getInitial(recipient.name || 'User')
+                      <div className="gm-worker-avatar">
+                        {getInitial(recipient.name || 'User')}
+                      </div>
                     )}
+                    <span className={`gm-avatar-status-badge ${isOtherUserOnline ? 'online' : 'offline'}`}></span>
                   </div>
                 )}
 

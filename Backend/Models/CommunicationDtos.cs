@@ -55,6 +55,8 @@ namespace Superbass.Models
         public string? LastSenderEmail { get; set; }
         public string? LastSenderRole { get; set; }
         public int UnreadCount { get; set; }
+        public bool IsOnline { get; set; }
+        public DateTime? LastSeenAt { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
     }
@@ -90,6 +92,8 @@ namespace Superbass.Models
         public string? WorkerPhone { get; set; }
         public string? WorkerProfileImage { get; set; }
         public int? BookingId { get; set; }
+        public bool IsOnline { get; set; }
+        public DateTime? LastSeenAt { get; set; }
         public DateTime CreatedAt { get; set; }
         public List<ChatMessageDto> Messages { get; set; } = new();
     }

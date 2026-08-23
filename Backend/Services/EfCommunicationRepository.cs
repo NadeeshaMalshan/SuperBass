@@ -205,6 +205,11 @@ namespace Superbass.Services
                 })
                 .ToListAsync();
 
+            var isUserWorker = conv.Worker != null && (
+                string.Equals(conv.Worker.ResidentEmail, userEmail, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(conv.Worker.Email, userEmail, StringComparison.OrdinalIgnoreCase));
+            var otherEmail = isUserWorker ? conv.ResidentEmail : (conv.Worker?.Email ?? conv.Worker?.ResidentEmail ?? string.Empty);
+
             return new ConversationDetailsDto
             {
                 Id = conv.Id,
@@ -217,6 +222,8 @@ namespace Superbass.Services
                 WorkerPhone = conv.Worker?.PhoneNo,
                 WorkerProfileImage = conv.Worker?.ProfileImage,
                 BookingId = conv.BookingId,
+                IsOnline = ChatHub.IsUserOnline(otherEmail),
+                LastSeenAt = ChatHub.GetLastSeen(otherEmail),
                 CreatedAt = conv.CreatedAt,
                 Messages = messages
             };
@@ -393,6 +400,11 @@ namespace Superbass.Services
                 .Where(m => m.ConversationId == conv.Id && !m.IsRead && !m.IsDeleted && m.SenderEmail != currentUserEmail)
                 .CountAsync();
 
+            var isUserWorker = conv.Worker != null && (
+                string.Equals(conv.Worker.ResidentEmail, currentUserEmail, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(conv.Worker.Email, currentUserEmail, StringComparison.OrdinalIgnoreCase));
+            var otherEmail = isUserWorker ? conv.ResidentEmail : (conv.Worker?.Email ?? conv.Worker?.ResidentEmail ?? string.Empty);
+
             return new ConversationSummaryDto
             {
                 Id = conv.Id,
@@ -410,6 +422,8 @@ namespace Superbass.Services
                 LastSenderEmail = conv.LastSenderEmail,
                 LastSenderRole = conv.LastSenderRole,
                 UnreadCount = unreadCount,
+                IsOnline = ChatHub.IsUserOnline(otherEmail),
+                LastSeenAt = ChatHub.GetLastSeen(otherEmail),
                 CreatedAt = conv.CreatedAt,
                 UpdatedAt = conv.UpdatedAt
             };
