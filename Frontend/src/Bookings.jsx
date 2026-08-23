@@ -22,7 +22,9 @@ export default function Bookings() {
   });
 
   const activeRole = localStorage.getItem('activeRole') || 'Resident';
-  const currentUserEmail = localStorage.getItem('email');
+  const currentUserEmail = activeRole === 'Worker' 
+    ? (localStorage.getItem('workerEmail') || localStorage.getItem('email')) 
+    : localStorage.getItem('email');
   const token = localStorage.getItem('token');
 
   const navigate = (newPath) => {

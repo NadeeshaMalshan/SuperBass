@@ -16,7 +16,7 @@ export default function WorkerJobs() {
   const [actionLoading, setActionLoading] = useState(false);
 
   const token = localStorage.getItem('token');
-  const userEmail = localStorage.getItem('email');
+  const userEmail = localStorage.getItem('workerEmail') || localStorage.getItem('email');
 
   const navigate = (path) => {
     window.history.pushState({}, '', path);

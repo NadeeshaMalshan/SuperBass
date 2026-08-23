@@ -616,7 +616,10 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
 
             {isWorker ? (
               <button 
-                onClick={() => navigateTo('/worker/dashboard')}
+                onClick={() => {
+                  localStorage.setItem('activeRole', 'Worker');
+                  navigateTo('/worker/dashboard');
+                }}
                 style={{ 
                   padding: '12px 16px', 
                   textAlign: 'left', 
