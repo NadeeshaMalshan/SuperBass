@@ -6,6 +6,9 @@ namespace Superbass.Models
     public class CreateConversationRequest
     {
         public int WorkerId { get; set; }
+        public string? WorkerEmail { get; set; }
+        public string? WorkerName { get; set; }
+        public string? WorkerAvatar { get; set; }
         public string? ResidentEmail { get; set; }
         public int? BookingId { get; set; }
         public string? InitialMessage { get; set; }
@@ -15,6 +18,8 @@ namespace Superbass.Models
     {
         public string? SenderEmail { get; set; }
         public string? SenderRole { get; set; } // "Resident" or "Worker"
+        public string? ReceiverEmail { get; set; }
+        public string? ReceiverRole { get; set; } // "Resident" or "Worker"
         public string? MessageType { get; set; } = "Text"; // "Text", "Image", "Attachment", "BookingUpdate"
         public string Content { get; set; } = string.Empty;
         public string? AttachmentUrl { get; set; }
@@ -25,6 +30,12 @@ namespace Superbass.Models
     public class MarkReadRequest
     {
         public string? ReaderEmail { get; set; }
+    }
+
+    public class TypingRequest
+    {
+        public string? UserEmail { get; set; }
+        public bool IsTyping { get; set; } = true;
     }
 
     public class ConversationSummaryDto
@@ -44,6 +55,8 @@ namespace Superbass.Models
         public string? LastSenderEmail { get; set; }
         public string? LastSenderRole { get; set; }
         public int UnreadCount { get; set; }
+        public bool IsOnline { get; set; }
+        public DateTime? LastSeenAt { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
     }
@@ -54,6 +67,8 @@ namespace Superbass.Models
         public int ConversationId { get; set; }
         public string SenderEmail { get; set; } = null!;
         public string SenderRole { get; set; } = null!;
+        public string? ReceiverEmail { get; set; }
+        public string? ReceiverRole { get; set; }
         public string MessageType { get; set; } = "Text";
         public string Content { get; set; } = string.Empty;
         public string? AttachmentUrl { get; set; }
@@ -77,6 +92,8 @@ namespace Superbass.Models
         public string? WorkerPhone { get; set; }
         public string? WorkerProfileImage { get; set; }
         public int? BookingId { get; set; }
+        public bool IsOnline { get; set; }
+        public DateTime? LastSeenAt { get; set; }
         public DateTime CreatedAt { get; set; }
         public List<ChatMessageDto> Messages { get; set; } = new();
     }

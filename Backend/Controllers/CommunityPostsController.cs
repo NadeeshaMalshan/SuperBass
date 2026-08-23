@@ -93,22 +93,66 @@ namespace Superbass.Controllers
             return null;
         }
 
+        private bool IsAuthor(CommunityPost post, string? requesterId, string? requesterEmail, string? requesterName)
+        {
+            if (post == null) return false;
+            
+            var cleanEmail = !string.IsNullOrWhiteSpace(requesterEmail) ? System.Uri.UnescapeDataString(requesterEmail).Trim().ToLower() : "";
+            var cleanReqId = !string.IsNullOrWhiteSpace(requesterId) ? System.Uri.UnescapeDataString(requesterId).Trim().ToLower() : "";
+            var cleanReqName = !string.IsNullOrWhiteSpace(requesterName) ? requesterName.Trim().ToLower() : "";
+            var emailPrefix = cleanEmail.Contains("@") ? cleanEmail.Split('@')[0] : cleanEmail;
+
+            var postUserId = post.UserId != null ? post.UserId.Trim().ToLower() : "";
+            var postUserName = post.UserName != null ? post.UserName.Trim().ToLower() : "";
+
+            if (!string.IsNullOrEmpty(cleanEmail) && postUserId == cleanEmail) return true;
+            if (!string.IsNullOrEmpty(cleanReqId) && postUserId == cleanReqId) return true;
+            if (!string.IsNullOrEmpty(cleanEmail) && postUserId == emailPrefix) return true;
+            if (!string.IsNullOrEmpty(cleanReqName) && postUserName == cleanReqName) return true;
+            if (!string.IsNullOrEmpty(emailPrefix) && postUserName == emailPrefix) return true;
+
+            // Allow fallback if no specific user bound during legacy creation
+            if (string.IsNullOrEmpty(post.UserId) || post.UserId == "demo_user_1") return true;
+
+            return false;
+        }
+
         // PUT /api/community-posts/{id}
         [HttpPut("{id}")]
         public IActionResult UpdatePost(int id, [FromBody] UpdatePostRequest request)
         {
-            string userId = User.Identity?.Name ?? "demo_user_1";
-            var updated = _repository.UpdatePost(id, request, userId);
+            var post = _repository.GetPostById(id);
+            if (post == null) return NotFound(new { message = "Post not found." });
+
+            string? requesterEmail = request.UserEmail ?? GetEmailFromRequest();
+            string requesterId = request.UserId ?? requesterEmail ?? User.Identity?.Name ?? "demo_user_1";
+
+            if (!IsAuthor(post, requesterId, requesterEmail, request.UserName))
+            {
+                return StatusCode(403, new { message = "Forbidden: Only the post author can edit this post." });
+            }
+
+            var updated = _repository.UpdatePost(id, request, requesterId);
             if (updated == null) return NotFound(new { message = "Post not found." });
             return Ok(updated);
         }
 
         // DELETE /api/community-posts/{id}
         [HttpDelete("{id}")]
-        public IActionResult DeletePost(int id)
+        public IActionResult DeletePost(int id, [FromQuery] string? requesterEmail, [FromQuery] string? requesterName)
         {
-            string userId = User.Identity?.Name ?? "demo_user_1";
-            bool success = _repository.DeletePost(id, userId);
+            var post = _repository.GetPostById(id);
+            if (post == null) return NotFound(new { message = "Post not found." });
+
+            string? email = requesterEmail ?? GetEmailFromRequest();
+            string requesterId = email ?? User.Identity?.Name ?? "demo_user_1";
+
+            if (!IsAuthor(post, requesterId, email, requesterName))
+            {
+                return StatusCode(403, new { message = "Forbidden: Only the post author can delete this post." });
+            }
+
+            bool success = _repository.DeletePost(id, requesterId);
             if (!success) return NotFound(new { message = "Post not found." });
             return Ok(new { message = "Post deleted successfully." });
         }

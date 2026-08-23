@@ -75,30 +75,25 @@ namespace Superbass.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateOrGetConversation([FromBody] CreateConversationRequest request)
         {
-            if (request == null || request.WorkerId <= 0)
+            if (request == null || (request.WorkerId <= 0 && string.IsNullOrWhiteSpace(request.WorkerEmail) && string.IsNullOrWhiteSpace(request.WorkerName)))
             {
-                return BadRequest(new { message = "Valid workerId is required." });
+                return BadRequest(new { message = "Worker identifier (workerId or workerEmail) is required." });
             }
 
             var residentEmail = request.ResidentEmail ?? GetCurrentUserEmail();
             if (string.IsNullOrWhiteSpace(residentEmail))
             {
-                return BadRequest(new { message = "Resident email must be provided or present in JWT claims." });
+                residentEmail = "resident@superbass.lk";
             }
 
             try
             {
-                var summary = await _communicationRepo.GetOrCreateConversationAsync(
-                    residentEmail, 
-                    request.WorkerId, 
-                    request.BookingId, 
-                    request.InitialMessage);
-
+                var summary = await _communicationRepo.GetOrCreateConversationAsync(request, residentEmail);
                 return Ok(summary);
             }
-            catch (ArgumentException ex)
+            catch (Exception ex)
             {
-                return NotFound(new { message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 
@@ -145,14 +140,15 @@ namespace Superbass.Controllers
             }
         }
 
-        // PUT: /api/conversations/5/read
+        // PUT/POST: /api/conversations/5/read
         [HttpPut("{id:int}/read")]
+        [HttpPost("{id:int}/read")]
         public async Task<IActionResult> MarkRead(int id, [FromBody] MarkReadRequest? request)
         {
             var readerEmail = request?.ReaderEmail ?? GetCurrentUserEmail();
             if (string.IsNullOrWhiteSpace(readerEmail))
             {
-                return BadRequest(new { message = "Reader email is required." });
+                readerEmail = "resident@superbass.lk";
             }
 
             var updated = await _communicationRepo.MarkConversationAsReadAsync(id, readerEmail);
@@ -168,6 +164,22 @@ namespace Superbass.Controllers
             }
 
             return Ok(new { success = true, marked = updated });
+        }
+
+        // POST: /api/conversations/5/typing
+        [HttpPost("{id:int}/typing")]
+        public async Task<IActionResult> ReportTyping(int id, [FromBody] TypingRequest? request)
+        {
+            var userEmail = request?.UserEmail ?? GetCurrentUserEmail() ?? "user@superbass.lk";
+            var groupName = $"conversation_{id}";
+            await _hubContext.Clients.Group(groupName).SendAsync("UserTyping", new 
+            { 
+                conversationId = id, 
+                userEmail, 
+                isTyping = request?.IsTyping ?? true 
+            });
+
+            return Ok(new { success = true });
         }
 
         // DELETE: /api/conversations/messages/10?userEmail=test@example.com
@@ -193,6 +205,33 @@ namespace Superbass.Controllers
             {
                 return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
             }
+        }
+
+        // GET: /api/conversations/presence?userEmail=test@example.com
+        [HttpGet("presence")]
+        public IActionResult GetPresence([FromQuery] string? userEmail)
+        {
+            if (string.IsNullOrWhiteSpace(userEmail))
+            {
+                return BadRequest(new { message = "User email is required." });
+            }
+
+            var isOnline = ChatHub.IsUserOnline(userEmail);
+            var lastSeen = ChatHub.GetLastSeen(userEmail);
+
+            return Ok(new { userEmail, isOnline, lastSeen });
+        }
+
+        // POST: /api/conversations/heartbeat
+        [HttpPost("heartbeat")]
+        public IActionResult Heartbeat([FromBody] TypingRequest? request)
+        {
+            var email = request?.UserEmail ?? GetCurrentUserEmail();
+            if (!string.IsNullOrWhiteSpace(email))
+            {
+                ChatHub.RecordActivity(email);
+            }
+            return Ok(new { success = true });
         }
 
         // GET: /api/conversations/unread-count?userEmail=test@example.com

@@ -6,6 +6,14 @@ export default function WorkerDashboard() {
   const [performance, setPerformance] = useState(null);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [recentReview, setRecentReview] = useState(null);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [performance, setPerformance] = useState({
+    overallRating: 4.8,
+    completionRate: '97.0%',
+    acceptanceRate: '94.0%',
+    completedJobs: 33,
+    cancelledJobs: 1
+  });
 
   const navigate = (path) => {
     window.history.pushState({}, '', path);
@@ -116,6 +124,7 @@ export default function WorkerDashboard() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {pendingRequests.length === 0 ? (
             <p style={{ color: '#64748B', margin: 0 }}>No pending booking requests at the moment.</p>
+            <p style={{ color: '#64748B' }}>No pending requests at the moment.</p>
           ) : (
             pendingRequests.slice(0, 3).map(req => (
               <div key={req.id} style={{

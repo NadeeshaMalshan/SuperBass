@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
+import UserMenu from './components/UserMenu.jsx';
 
 // Google Material 3 Web Components
 import '@material/web/button/filled-button.js';
