@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import './App.css';
-import UserMenu from './components/UserMenu.jsx';
 
 // Google Material 3 Web Components
 import '@material/web/button/filled-button.js';
@@ -10,31 +11,80 @@ import '@material/web/icon/icon.js';
 
 export default function Find() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [showLogoutPopup, setShowLogoutPopup] = useState(false);
   const [userName, setUserName] = useState('');
   const [userPicture, setUserPicture] = useState('');
 
   const [workers, setWorkers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
+
+  // Real User Geolocation State
+  const [userLocation, setUserLocation] = useState([6.9271, 79.8612]); // Default Colombo [lat, lng]
+  const [isLocating, setIsLocating] = useState(false);
+  const [locationName, setLocationName] = useState('My Location');
+
+  // Sidebar Filter States
+  const [rateType, setRateType] = useState('Any'); // 'Any' | 'Per day' | 'Per hour'
+  const [availableNowOnly, setAvailableNowOnly] = useState(false);
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [minRating, setMinRating] = useState('Any');
+  const [sortBy, setSortBy] = useState('recommended');
+  const [favorites, setFavorites] = useState({});
+  const [showMap, setShowMap] = useState(false);
+  const [selectedMapWorker, setSelectedMapWorker] = useState(null);
+
+  const mapContainerRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const markersRef = useRef([]);
+  const polylineRef = useRef(null);
 
   const categories = [
-    { id: 'All', label: 'All Services', icon: 'fa-solid fa-list-check' },
-    { id: 'Plumbing', label: 'Plumbing', icon: 'fa-solid fa-faucet-drip' },
-    { id: 'Electrical', label: 'Electrical', icon: 'fa-solid fa-bolt' },
-    { id: 'Carpentry', label: 'Carpentry', icon: 'fa-solid fa-hammer' },
-    { id: 'Masonry', label: 'Masonry', icon: 'fa-solid fa-trowel-bricks' },
-    { id: 'Painting', label: 'Painting', icon: 'fa-solid fa-paint-roller' },
-    { id: 'AC Repair', label: 'AC Repair', icon: 'fa-solid fa-snowflake' },
-    { id: 'Appliance Repair', label: 'Appliance Repair', icon: 'fa-solid fa-screwdriver-wrench' },
-    { id: 'Roofing', label: 'Roofing', icon: 'fa-solid fa-house-chimney' }
+    { id: 'Plumbing', label: 'Plumbing' },
+    { id: 'Electrical', label: 'Electrical' },
+    { id: 'Carpentry', label: 'Carpentry' },
+    { id: 'Masonry', label: 'Masonry' },
+    { id: 'Painting', label: 'Painting' },
+    { id: 'AC Repair', label: 'AC Repair' },
+    { id: 'Appliance Repair', label: 'Appliance Repair' },
+    { id: 'Roofing', label: 'Roofing' },
+    { id: 'Cleaning', label: 'Cleaning & Maid' },
+    { id: 'Gardening', label: 'Lawn & Gardening' }
   ];
+
+  // Get Real User Location via Geolocation API
+  const getRealUserLocation = () => {
+    if ('geolocation' in navigator) {
+      setIsLocating(true);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          const coords = [lat, lng];
+          setUserLocation(coords);
+          setLocationName('Current Location');
+          setIsLocating(false);
+          if (mapInstanceRef.current) {
+            mapInstanceRef.current.setView(coords, 14);
+          }
+        },
+        (error) => {
+          console.warn('Geolocation error or denied:', error);
+          setIsLocating(false);
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+  };
 
   useEffect(() => {
     setIsLoggedIn(!!localStorage.getItem('token'));
     setUserName(localStorage.getItem('userName') || '');
     setUserPicture(localStorage.getItem('userPicture') || '');
+
+    // Request Real Location on mount
+    getRealUserLocation();
 
     // Fetch workers from backend API
     const fetchWorkers = async () => {
@@ -51,17 +101,6 @@ export default function Find() {
     fetchWorkers();
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userName');
-    localStorage.removeItem('userPicture');
-    localStorage.removeItem('email');
-    localStorage.removeItem('activeRole');
-    setIsLoggedIn(false);
-    setShowLogoutPopup(false);
-    navigate('/');
-  };
-
   const getFirstName = (name) => {
     if (!name) return 'Account';
     return name.split(' ')[0];
@@ -72,9 +111,6 @@ export default function Find() {
     window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
-<<<<<<< Updated upstream
-  // Filter workers based on Category and Search Query
-=======
   const handleResetFilters = () => {
     setRateType('Any');
     setAvailableNowOnly(false);
@@ -139,33 +175,16 @@ export default function Find() {
   };
 
   // Filtering Logic
->>>>>>> Stashed changes
   const filteredWorkers = workers.filter(w => {
-    // Category check
-    let matchesCategory = selectedCategory === 'All';
-    if (!matchesCategory && w.skills && w.skills.length > 0) {
-      matchesCategory = w.skills.some(s => 
-        s.skillName.toLowerCase().includes(selectedCategory.toLowerCase())
-      );
-    } else if (!matchesCategory && w.description) {
-      matchesCategory = w.description.toLowerCase().includes(selectedCategory.toLowerCase());
-    }
-
-    // Search query check
-    let matchesSearch = true;
+    // 1. Search Query
     if (searchQuery.trim() !== '') {
-      const query = searchQuery.toLowerCase();
-      const nameMatch = w.name && w.name.toLowerCase().includes(query);
-      const locationMatch = w.primaryServiceArea && w.primaryServiceArea.toLowerCase().includes(query);
-      const skillMatch = w.skills && w.skills.some(s => s.skillName.toLowerCase().includes(query));
-      matchesSearch = nameMatch || locationMatch || skillMatch;
+      const q = searchQuery.toLowerCase();
+      const nameMatch = w.name && w.name.toLowerCase().includes(q);
+      const locMatch = w.primaryServiceArea && w.primaryServiceArea.toLowerCase().includes(q);
+      const skillMatch = w.skills && w.skills.some(s => s.skillName.toLowerCase().includes(q));
+      if (!nameMatch && !locMatch && !skillMatch) return false;
     }
 
-<<<<<<< Updated upstream
-    return matchesCategory && matchesSearch;
-  });
-
-=======
     // 2. Rate Type
     if (rateType === 'Per hour') {
       if (w.pricingModel === 'Daily' && (!w.hourlyRate || w.hourlyRate === 0)) {
@@ -439,46 +458,45 @@ export default function Find() {
     );
   };
 
->>>>>>> Stashed changes
   return (
-    <div style={{ backgroundColor: '#f9fafb', minHeight: '100vh', color: '#111827', fontFamily: 'Inter, sans-serif' }}>
+    <div className="find-page-container">
       {/* Top Navbar */}
-      <header className="navbar" style={{ padding: '1rem 2rem', borderBottom: '1px solid #e5e7eb', backgroundColor: '#ffffff' }}>
+      <header className="navbar" style={{ padding: '1rem 2rem', borderBottom: '1px solid #e2e8f0', backgroundColor: '#ffffff' }}>
         <a href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }} className="brand-logo" style={{ cursor: 'pointer' }}>
           <img src="/iconWithText-cropped.png" alt="Super Bass Logo" className="brand-logo-img" style={{ height: '40px' }} />
         </a>
 
-        {/* Dynamic Search Input */}
-        <div style={{ flex: 1, maxWidth: '550px', margin: '0 2rem' }}>
+        {/* Search Input Bar */}
+        <div style={{ flex: 1, maxWidth: '580px', margin: '0 2rem' }}>
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            backgroundColor: '#ffffff',
+            backgroundColor: '#f8fafc',
             borderRadius: '24px',
             padding: '8px 20px',
-            border: '1px solid #d1d5db',
-            boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)'
           }}>
-            <i className="fa-solid fa-magnifying-glass" style={{ color: '#6b7280', marginRight: '12px' }}></i>
+            <i className="fa-solid fa-magnifying-glass" style={{ color: '#94a3b8', marginRight: '12px' }}></i>
             <input 
               type="text"
-              placeholder="Search by worker name, skill (e.g. Plumbing), or location..."
+              placeholder="Search by worker name, trade skill (e.g. Plumbing), or city..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
                 width: '100%',
                 background: 'transparent',
                 border: 'none',
-                color: '#111827',
+                color: '#0f172a',
                 outline: 'none',
-                fontSize: '0.95rem'
+                fontSize: '0.925rem'
               }}
             />
             {searchQuery && (
               <i 
                 className="fa-solid fa-xmark" 
                 onClick={() => setSearchQuery('')}
-                style={{ color: '#6b7280', cursor: 'pointer' }}
+                style={{ color: '#94a3b8', cursor: 'pointer' }}
               ></i>
             )}
           </div>
@@ -504,7 +522,7 @@ export default function Find() {
                 <md-filled-button
                   onClick={() => navigate('/account')}
                   style={{
-                    '--md-sys-color-primary': '#111827',
+                    '--md-sys-color-primary': '#0f172a',
                     '--md-sys-color-on-primary': '#ffffff',
                     padding: '0 16px',
                     margin: '0 8px',
@@ -534,223 +552,339 @@ export default function Find() {
         </div>
       </header>
 
-      {/* Main Header Title & Category Tabs */}
-      <section style={{ maxWidth: '1200px', margin: '0 auto', padding: '2.5rem 1.5rem 1rem 1.5rem' }}>
-        <h1 style={{ fontSize: '2.2rem', fontWeight: 800, margin: '0 0 8px 0', color: '#111827' }}>
-          Find Trusted Local Workers & Pros
-        </h1>
-        <p style={{ color: '#6b7280', fontSize: '1.05rem', margin: '0 0 24px 0' }}>
-          Browse verified craftsmen by category, view trade skills, experience, rates, and book direct.
-        </p>
-
-        {/* Category Filter Pills */}
-        <div style={{
-          display: 'flex',
-          gap: '10px',
-          overflowX: 'auto',
-          paddingBottom: '12px',
-          scrollbarWidth: 'thin'
-        }}>
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setSelectedCategory(cat.id)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '10px 18px',
-                borderRadius: '30px',
-                border: selectedCategory === cat.id ? '1px solid #FDC101' : '1px solid #e5e7eb',
-                backgroundColor: selectedCategory === cat.id ? '#FDC101' : '#ffffff',
-                color: selectedCategory === cat.id ? '#000000' : '#4b5563',
-                fontWeight: selectedCategory === cat.id ? 700 : 500,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                boxShadow: selectedCategory === cat.id ? '0 2px 8px rgba(253,193,1,0.3)' : '0 1px 2px 0 rgba(0,0,0,0.05)',
-                transition: 'all 0.2s'
-              }}
-            >
-              <i className={cat.icon}></i>
-              {cat.label}
+      {/* Main Layout Container */}
+      <div className="find-layout" style={showMap ? { maxWidth: '100%', padding: '16px 24px' } : {}}>
+        {/* Left Sidebar Filters */}
+        <aside className="find-sidebar">
+          <div className="find-sidebar-header">
+            <h2 className="find-sidebar-title">Filter by</h2>
+            <button className="find-sidebar-reset" onClick={handleResetFilters}>
+              Reset all <i className="fa-solid fa-xmark"></i>
             </button>
-          ))}
-        </div>
-      </section>
+          </div>
 
-      {/* Workers Cards Grid */}
-      <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '1rem 1.5rem 4rem 1.5rem' }}>
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '60px 0', color: '#6b7280', fontSize: '1.1rem' }}>
-            Loading available workers...
+          {/* Filter Group: Rate / Rental Type */}
+          <div className="filter-group">
+            <div className="filter-group-title">Rate Type</div>
+            <div className="rate-chips-container">
+              {['Any', 'Per day', 'Per hour'].map((type) => (
+                <div 
+                  key={type}
+                  className={`rate-chip ${rateType === type ? 'active' : ''}`}
+                  onClick={() => setRateType(type)}
+                >
+                  {type}
+                </div>
+              ))}
+            </div>
           </div>
-        ) : filteredWorkers.length === 0 ? (
-          <div style={{
-            textAlign: 'center',
-            padding: '60px 20px',
-            backgroundColor: '#ffffff',
-            borderRadius: '20px',
-            border: '1px dashed #d1d5db',
-            marginTop: '20px'
-          }}>
-            <i className="fa-solid fa-user-slash" style={{ fontSize: '3rem', color: '#9ca3af', marginBottom: '16px' }}></i>
-            <h3 style={{ fontSize: '1.4rem', fontWeight: 700, margin: '0 0 8px 0', color: '#111827' }}>No Workers Found</h3>
-            <p style={{ color: '#6b7280', margin: 0 }}>
-              No workers match the selected category "{selectedCategory}" or search query.
-            </p>
+
+          {/* Filter Group: Available Now Only */}
+          <div className="filter-group">
+            <div className="toggle-switch-row">
+              <span className="toggle-switch-label">Available Now Only</span>
+              <label className="toggle-switch">
+                <input 
+                  type="checkbox" 
+                  checked={availableNowOnly} 
+                  onChange={(e) => setAvailableNowOnly(e.target.checked)} 
+                />
+                <span className="toggle-slider"></span>
+              </label>
+            </div>
           </div>
-        ) : (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-            gap: '24px'
-          }}>
-            {filteredWorkers.map((worker) => (
-              <div 
-                key={worker.id}
-                onClick={() => navigate(`/worker-detail?id=${worker.id}`)}
-                style={{
-                  backgroundColor: '#ffffff',
-                  borderRadius: '16px',
-                  border: '1px solid #e5e7eb',
-                  padding: '24px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  transition: 'transform 0.2s, boxShadow 0.2s, borderColor 0.2s',
-                  boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1)'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-4px)';
-                  e.currentTarget.style.boxShadow = '0 10px 20px -5px rgba(0, 0, 0, 0.1)';
-                  e.currentTarget.style.borderColor = '#93c5fd';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1)';
-                  e.currentTarget.style.borderColor = '#e5e7eb';
+
+          {/* Filter Group: Price Range & Histogram */}
+          <div className="filter-group">
+            <div className="filter-group-title">
+              <span>{rateType === 'Per day' ? 'DAILY RATE RANGE' : 'HOURLY RATE RANGE'}</span>
+            </div>
+
+            {/* Interactive Histogram Bars */}
+            <div className="histogram-container">
+              {[500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 5000, 6000, 7500, 9000, 12000, 15000, 20000, 25000].map((stepPrice, idx) => {
+                const isActive = stepPrice >= minValNum && stepPrice <= maxValNum;
+                const heights = [25, 45, 65, 85, 100, 80, 60, 90, 70, 50, 35, 75, 95, 45, 30, 20];
+                return (
+                  <div 
+                    key={idx} 
+                    className={`histogram-bar ${isActive ? 'active' : ''}`}
+                    style={{ height: `${heights[idx]}%`, cursor: 'pointer' }}
+                    title={`Rs. ${stepPrice}`}
+                    onClick={() => {
+                      if (!minPrice || stepPrice < minValNum) {
+                        setMinPrice(stepPrice.toString());
+                      } else {
+                        setMaxPrice(stepPrice.toString());
+                      }
+                    }}
+                  ></div>
+                );
+              })}
+            </div>
+
+            {/* Price Input Range */}
+            <div className="price-inputs-row">
+              <div className="price-input-box">
+                <span className="price-input-label">FROM</span>
+                <input 
+                  type="number" 
+                  className="price-input-val" 
+                  placeholder="Rs. 500" 
+                  value={minPrice}
+                  onChange={(e) => setMinPrice(e.target.value)}
+                />
+              </div>
+              <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>–</span>
+              <div className="price-input-box">
+                <span className="price-input-label">TO</span>
+                <input 
+                  type="number" 
+                  className="price-input-val" 
+                  placeholder="Rs. 10,000" 
+                  value={maxPrice}
+                  onChange={(e) => setMaxPrice(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Filter Group: Service Categories */}
+          <div className="filter-group">
+            <div className="filter-group-title">Service Trade</div>
+            <div className="checkbox-list">
+              {categories.map((cat) => {
+                const count = getCategoryCount(cat.id);
+                const isChecked = selectedCategories.includes(cat.id);
+                return (
+                  <label key={cat.id} className="custom-checkbox-item">
+                    <div className="custom-checkbox-left">
+                      <input 
+                        type="checkbox" 
+                        className="custom-checkbox-input"
+                        checked={isChecked}
+                        onChange={() => toggleCategory(cat.id)}
+                      />
+                      <span>{cat.label}</span>
+                    </div>
+                    <span className="custom-checkbox-count">{count}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Filter Group: Rating */}
+          <div className="filter-group">
+            <div className="filter-group-title">Minimum Rating</div>
+            <div className="checkbox-list">
+              {[
+                { val: 'Any', label: 'Any Rating' },
+                { val: '4.5', label: '★ 4.5 & Above' },
+                { val: '4.0', label: '★ 4.0 & Above' },
+                { val: '3.5', label: '★ 3.5 & Above' }
+              ].map(item => (
+                <label key={item.val} className="custom-checkbox-item">
+                  <div className="custom-checkbox-left">
+                    <input 
+                      type="radio" 
+                      name="minRatingRadio"
+                      className="custom-checkbox-input"
+                      checked={minRating === item.val}
+                      onChange={() => setMinRating(item.val)}
+                    />
+                    <span>{item.label}</span>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+        </aside>
+
+        {/* Right Main Content Area (Spans full width above cards/map) */}
+        <main className="find-main" style={{ flex: 1, minWidth: 0 }}>
+          {/* Main Controls Header - ALWAYS at top right spanning full width */}
+          <div className="find-main-header">
+            <h1 className="find-results-title">
+              {loading ? 'Searching workers...' : `${filteredWorkers.length} workers available`}
+            </h1>
+
+            <div className="find-header-actions">
+              <select 
+                className="find-sort-select"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+              >
+                <option value="recommended">Sort by: Recommended</option>
+                <option value="rating">Highest Rated</option>
+                <option value="price_asc">Price: Low to High</option>
+                <option value="price_desc">Price: High to Low</option>
+              </select>
+
+              <button 
+                className="find-map-toggle-btn"
+                onClick={() => {
+                  setShowMap(!showMap);
+                  setSelectedMapWorker(null);
                 }}
               >
-                {/* Card Top: Avatar, Name & Location */}
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                      <div style={{
-                        width: '56px',
-                        height: '56px',
-                        borderRadius: '50%',
-                        backgroundColor: '#2563eb',
-                        color: '#ffffff',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '1.5rem',
-                        fontWeight: 800
-                      }}>
-                        {worker.name ? worker.name.charAt(0).toUpperCase() : 'W'}
-                      </div>
+                <span>{showMap ? 'Hide map' : 'Show map'}</span>
+                <i className={`fa-solid ${showMap ? 'fa-map' : 'fa-map-location-dot'}`}></i>
+              </button>
+            </div>
+          </div>
 
-                      <div>
-                        <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, color: '#111827' }}>
-                          {worker.name}
-                        </h3>
-                        <div style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '3px' }}>
-                          <i className="fa-solid fa-location-dot" style={{ color: '#d97706', marginRight: '4px' }}></i>
-                          {worker.primaryServiceArea || 'Colombo'}
-                        </div>
-                      </div>
-                    </div>
+          {/* Loading or Empty States */}
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '80px 0', color: '#64748b', fontSize: '1.1rem' }}>
+              <i className="fa-solid fa-circle-notch fa-spin" style={{ fontSize: '2rem', marginBottom: '12px', color: '#0f172a' }}></i>
+              <p>Loading available verified workers...</p>
+            </div>
+          ) : filteredWorkers.length === 0 ? (
+            <div style={{
+              textAlign: 'center',
+              padding: '60px 20px',
+              backgroundColor: '#ffffff',
+              borderRadius: '20px',
+              border: '1px dashed #cbd5e1',
+              marginTop: '10px'
+            }}>
+              <i className="fa-solid fa-user-slash" style={{ fontSize: '3rem', color: '#cbd5e1', marginBottom: '16px' }}></i>
+              <h3 style={{ fontSize: '1.3rem', fontWeight: 800, margin: '0 0 8px 0', color: '#0f172a' }}>No Matching Workers Found</h3>
+              <p style={{ color: '#64748b', margin: '0 0 20px 0', fontSize: '0.95rem' }}>
+                Try adjusting your rate range, price filters, or category selections.
+              </p>
+              <button 
+                onClick={handleResetFilters}
+                style={{
+                  background: '#0f172a',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '12px',
+                  padding: '10px 20px',
+                  fontWeight: 600,
+                  fontSize: '0.875rem',
+                  cursor: 'pointer'
+                }}
+              >
+                Reset All Filters
+              </button>
+            </div>
+          ) : showMap ? (
+            /* Split View Mode: Middle Cards Column + Right Map Pane */
+            <div className="find-split-view-container">
+              {/* Middle Cards Column */}
+              <div className="find-middle-cards-col">
+                <div style={{ display: 'grid', gap: '20px', gridTemplateColumns: '1fr' }}>
+                  {filteredWorkers.map(worker => renderWorkerCard(worker))}
+                </div>
+              </div>
 
-                    {/* Rating Pill */}
-                    <div style={{ backgroundColor: '#fef3c7', color: '#d97706', padding: '4px 10px', borderRadius: '12px', fontWeight: 700, fontSize: '0.85rem' }}>
-                      ★ {worker.overallRating ? worker.overallRating.toFixed(1) : '5.0'}
-                    </div>
-                  </div>
-
-                  {/* Trade Skills Badges ("What He Can Do") */}
-                  <div style={{ marginBottom: '16px' }}>
-                    <div style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px', fontWeight: 600 }}>
-                      Trade Skills
-                    </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                      {worker.skills && worker.skills.length > 0 ? (
-                        worker.skills.map((s, idx) => (
-                          <span key={idx} style={{
-                            backgroundColor: '#eff6ff',
-                            border: '1px solid #dbeafe',
-                            color: '#1d4ed8',
-                            fontSize: '0.8rem',
-                            padding: '4px 10px',
-                            borderRadius: '8px',
-                            fontWeight: 600
-                          }}>
-                            {s.skillName} ({s.experienceYears || 1} yrs)
-                          </span>
-                        ))
-                      ) : (
-                        <span style={{ backgroundColor: '#f3f4f6', color: '#6b7280', fontSize: '0.8rem', padding: '4px 10px', borderRadius: '8px' }}>
-                          General Handyman
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Bio snippet */}
-                  {worker.description && (
-                    <p style={{
-                      fontSize: '0.875rem',
-                      color: '#4b5563',
-                      margin: '0 0 16px 0',
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden'
-                    }}>
-                      {worker.description}
-                    </p>
+              {/* Right Map Pane */}
+              <aside className="find-map-pane">
+                {/* Map Search Input */}
+                <div className="map-search-overlay">
+                  <i className="fa-solid fa-magnifying-glass" style={{ color: '#94a3b8' }}></i>
+                  <input 
+                    type="text"
+                    placeholder="Search address or workers..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    style={{ border: 'none', background: 'transparent', width: '100%', outline: 'none', fontSize: '0.875rem', color: '#0f172a' }}
+                  />
+                  {isLocating && (
+                    <i className="fa-solid fa-spinner fa-spin" style={{ color: '#2563eb', fontSize: '0.9rem' }}></i>
                   )}
                 </div>
 
-                {/* Card Bottom: Rates & View Profile Button */}
-                <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: '16px', marginTop: '12px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                    <div>
-                      <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Hourly Rate</div>
-                      <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#d97706' }}>
-                        {worker.hourlyRate ? `Rs. ${worker.hourlyRate.toLocaleString()}/hr` : 'Negotiable'}
+                {/* Floating Map Worker Card Popup */}
+                {selectedMapWorker && (
+                  <div className="map-floating-worker-card">
+                    <button 
+                      className="map-floating-close-btn" 
+                      onClick={() => setSelectedMapWorker(null)}
+                    >
+                      <i className="fa-solid fa-xmark"></i>
+                    </button>
+
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#b45309', background: '#fffbeb', padding: '2px 8px', borderRadius: '12px' }}>
+                        ★ {selectedMapWorker.overallRating ? selectedMapWorker.overallRating.toFixed(1) : '5.0'} ({Math.round((selectedMapWorker.id * 37) % 150 + 20)})
                       </div>
+                      <button 
+                        onClick={(e) => toggleFavorite(e, selectedMapWorker.id)}
+                        style={{ background: 'none', border: 'none', color: favorites[selectedMapWorker.id] ? '#ef4444' : '#94a3b8', cursor: 'pointer' }}
+                      >
+                        <i className={`fa-${favorites[selectedMapWorker.id] ? 'solid' : 'regular'} fa-heart`}></i>
+                      </button>
                     </div>
 
-                    {worker.dailyRate && (
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Daily Rate</div>
-                        <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#2563eb' }}>
-                          Rs. {worker.dailyRate.toLocaleString()}/day
+                    <div style={{ width: '100%', height: '110px', borderRadius: '12px', background: '#f8fafc', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px' }}>
+                      {selectedMapWorker.profilePicture || selectedMapWorker.profileImage ? (
+                        <img 
+                          src={selectedMapWorker.profilePicture || selectedMapWorker.profileImage} 
+                          alt={selectedMapWorker.name}
+                          style={{ maxHeight: '95px', objectFit: 'contain' }}
+                        />
+                      ) : (
+                        <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: '#0f172a', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', fontWeight: 800 }}>
+                          {selectedMapWorker.name ? selectedMapWorker.name.charAt(0).toUpperCase() : 'W'}
                         </div>
-                      </div>
-                    )}
-                  </div>
+                      )}
+                    </div>
 
-                  <button style={{
-                    width: '100%',
-                    padding: '12px',
-                    backgroundColor: '#111827',
-                    color: '#ffffff',
-                    border: 'none',
-                    borderRadius: '10px',
-                    fontWeight: 700,
-                    fontSize: '0.9rem',
-                    cursor: 'pointer'
-                  }}>
-                    View Full Profile & Rates →
+                    <h4 style={{ margin: '0 0 2px 0', fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>
+                      {selectedMapWorker.name}
+                    </h4>
+                    <p style={{ margin: '0 0 12px 0', fontSize: '0.78rem', color: '#64748b' }}>
+                      {selectedMapWorker.skills && selectedMapWorker.skills.length > 0 ? selectedMapWorker.skills[0].skillName : 'General Pro'}
+                    </p>
+
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                      <button 
+                        onClick={() => navigate(`/worker-detail?id=${selectedMapWorker.id}`)}
+                        style={{
+                          flex: 1,
+                          background: '#0f172a',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '10px',
+                          padding: '8px 12px',
+                          fontWeight: 700,
+                          fontSize: '0.85rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Book
+                      </button>
+                      <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a', whiteSpace: 'nowrap' }}>
+                        Rs. {getWorkerRate(selectedMapWorker, rateType).toLocaleString()}/h
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Leaflet Map Canvas Div */}
+                <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }}></div>
+
+                {/* Map Controls */}
+                <div className="map-controls-group">
+                  <button className="map-control-btn" onClick={handleZoomIn} title="Zoom In">+</button>
+                  <button className="map-control-btn" onClick={handleZoomOut} title="Zoom Out">–</button>
+                  <button className="map-control-btn" onClick={handleRecenter} title="Find My Real Location">
+                    <i className="fa-solid fa-location-crosshairs" style={{ fontSize: '0.85rem', color: isLocating ? '#2563eb' : '#0f172a' }}></i>
                   </button>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </main>
+              </aside>
+            </div>
+          ) : (
+            /* Full Width Grid Mode */
+            <div className="worker-cards-grid">
+              {filteredWorkers.map(worker => renderWorkerCard(worker))}
+            </div>
+          )}
+        </main>
+      </div>
     </div>
   );
 }

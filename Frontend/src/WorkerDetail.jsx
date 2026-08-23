@@ -140,7 +140,7 @@ export default function WorkerDetail() {
   }
 
   return (
-    <div style={{ backgroundColor: '#f9fafb', minHeight: '100vh', color: '#111827', fontFamily: 'Inter, sans-serif' }}>
+    <div style={{ backgroundColor: '#f9fafb', minHeight: '100vh', color: '#111827', fontFamily: 'var(--font-body)' }}>
       {/* Top Navbar */}
       <header className="navbar" style={{ padding: '1rem 2rem', borderBottom: '1px solid #e5e7eb', backgroundColor: '#ffffff' }}>
         <a href="/find" onClick={(e) => { e.preventDefault(); navigate('/find'); }} className="brand-logo" style={{ cursor: 'pointer' }}>
