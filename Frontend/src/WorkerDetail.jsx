@@ -101,8 +101,8 @@ export default function WorkerDetail() {
         description: bookingForm.description,
         urgency: bookingForm.urgency,
         scheduledDate: combinedDateTime.toISOString(),
-        locationAddress: bookingForm.locationAddress || 'Colombo, Sri Lanka',
-        contactPhone: bookingForm.contactPhone || '0771234567',
+        locationAddress: bookingForm.locationAddress || worker?.primaryServiceArea || '',
+        contactPhone: bookingForm.contactPhone || '',
         pricingModel: bookingForm.pricingModel,
         estimatedPrice: bookingForm.estimatedPrice ? parseFloat(bookingForm.estimatedPrice) : null
       };

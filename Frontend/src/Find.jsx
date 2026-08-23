@@ -146,11 +146,11 @@ export default function Find() {
     if (type === 'Per day') {
       if (dr > 0) return dr;
       if (hr > 0) return hr * 8;
-      return 12000;
+      return null;
     } else {
       if (hr > 0) return hr;
       if (dr > 0) return Math.round(dr / 8);
-      return 1500;
+      return null;
     }
   };
 
@@ -203,12 +203,13 @@ export default function Find() {
 
     // 4. Rate Range Filter
     const effectivePrice = getWorkerRate(w, rateType);
-    
-    if (minPrice !== '' && !isNaN(parseFloat(minPrice))) {
-      if (effectivePrice < parseFloat(minPrice)) return false;
-    }
-    if (maxPrice !== '' && !isNaN(parseFloat(maxPrice))) {
-      if (effectivePrice > parseFloat(maxPrice)) return false;
+    if (effectivePrice != null) {
+      if (minPrice !== '' && !isNaN(parseFloat(minPrice))) {
+        if (effectivePrice < parseFloat(minPrice)) return false;
+      }
+      if (maxPrice !== '' && !isNaN(parseFloat(maxPrice))) {
+        if (effectivePrice > parseFloat(maxPrice)) return false;
+      }
     }
 
     // 5. Selected Categories
@@ -225,19 +226,23 @@ export default function Find() {
     // 6. Rating Filter
     if (minRating !== 'Any') {
       const requiredRating = parseFloat(minRating);
-      if ((w.overallRating || 5.0) < requiredRating) return false;
+      if ((w.overallRating ?? 0) < requiredRating) return false;
     }
 
     return true;
   }).sort((a, b) => {
     if (sortBy === 'rating') {
-      return (b.overallRating || 5.0) - (a.overallRating || 5.0);
+      return (b.overallRating ?? 0) - (a.overallRating ?? 0);
     }
     if (sortBy === 'price_asc') {
-      return getWorkerRate(a, rateType) - getWorkerRate(b, rateType);
+      const rateA = getWorkerRate(a, rateType) ?? 999999;
+      const rateB = getWorkerRate(b, rateType) ?? 999999;
+      return rateA - rateB;
     }
     if (sortBy === 'price_desc') {
-      return getWorkerRate(b, rateType) - getWorkerRate(a, rateType);
+      const rateA = getWorkerRate(a, rateType) ?? 0;
+      const rateB = getWorkerRate(b, rateType) ?? 0;
+      return rateB - rateA;
     }
     return 0;
   });
@@ -344,14 +349,14 @@ export default function Find() {
   const renderWorkerCard = (worker) => {
     const isFavorited = !!favorites[worker.id];
     const isSelectedOnMap = selectedMapWorker && selectedMapWorker.id === worker.id;
-    const displayRating = worker.overallRating ? worker.overallRating.toFixed(1) : '5.0';
-    const reviewCount = Math.round((worker.id * 37 + 42) % 150 + 15);
+    const displayRating = worker.overallRating != null ? worker.overallRating.toFixed(1) : null;
+    const reviewCount = worker.completedJobs || 0;
     const distanceMeters = Math.round((worker.id * 85) % 400 + 90);
     const distanceMins = Math.round((worker.id * 2) % 8 + 3);
 
     const rateValue = getWorkerRate(worker, rateType);
-    const rateText = `Rs. ${rateValue.toLocaleString()}`;
-    const unitText = rateType === 'Per day' ? '/ day' : '/ hour';
+    const rateText = rateValue != null ? `Rs. ${rateValue.toLocaleString()}` : 'Negotiable';
+    const unitText = rateValue != null ? (rateType === 'Per day' ? '/ day' : '/ hour') : '';
 
     const primaryRole = worker.skills && worker.skills.length > 0 
       ? `${worker.skills[0].skillName} (${worker.skills[0].experienceYears || 1} yrs exp)`
@@ -394,8 +399,8 @@ export default function Find() {
             </div>
 
             <div className="card-rating-pill">
-              <span>★ {displayRating}</span>
-              <span style={{ color: '#92400e', fontWeight: 500 }}>({reviewCount})</span>
+              <span>{displayRating != null ? `★ ${displayRating}` : 'No rating'}</span>
+              {reviewCount > 0 && <span style={{ color: '#92400e', fontWeight: 500 }}>({reviewCount})</span>}
             </div>
           </div>
 
