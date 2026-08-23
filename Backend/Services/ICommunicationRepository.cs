@@ -6,7 +6,7 @@ namespace Superbass.Services
 {
     public interface ICommunicationRepository
     {
-        Task<ConversationSummaryDto> GetOrCreateConversationAsync(string residentEmail, int workerId, int? bookingId = null, string? initialMessage = null);
+        Task<ConversationSummaryDto> GetOrCreateConversationAsync(CreateConversationRequest request, string residentEmail);
         Task<List<ConversationSummaryDto>> GetUserConversationsAsync(string userEmail);
         Task<ConversationDetailsDto?> GetConversationByIdAsync(int conversationId, string userEmail);
         Task<List<ChatMessageDto>> GetMessagesAsync(int conversationId, string userEmail, int page = 1, int pageSize = 50);

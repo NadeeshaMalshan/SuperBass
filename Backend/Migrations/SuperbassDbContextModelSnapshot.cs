@@ -391,6 +391,12 @@ namespace Superbass.Migrations
                     b.Property<DateTime?>("ReadAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("ReceiverEmail")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ReceiverRole")
+                        .HasColumnType("text");
+
                     b.Property<string>("SenderEmail")
                         .IsRequired()
                         .HasColumnType("text");

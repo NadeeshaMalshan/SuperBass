@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import categoriesData from './data/categories.json';
+import UserMenu from './components/UserMenu.jsx';
 import '@material/web/button/filled-button.js';
 import '@material/web/button/outlined-button.js';
 import '@material/web/textfield/filled-text-field.js';
@@ -59,6 +60,18 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
   const [createLocation, setCreateLocation] = useState('Colombo 05');
   const [createImages, setCreateImages] = useState([]);
   const fileInputRef = useRef(null);
+
+  // Resident Bookings & Reviews state
+  const [residentBookings, setResidentBookings] = useState([]);
+  const [loadingBookings, setLoadingBookings] = useState(false);
+  const [reviewingBooking, setReviewingBooking] = useState(null);
+  const [reviewForm, setReviewForm] = useState({
+    qualityRating: 5,
+    punctualityRating: 5,
+    communicationRating: 5,
+    comment: ''
+  });
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   let userEmail = localStorage.getItem('email');
   const token = localStorage.getItem('token');
@@ -157,11 +170,91 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     }
   };
 
+  const fetchResidentBookings = async () => {
+    if (!userEmail) return;
+    setLoadingBookings(true);
+    try {
+      const res = await axios.get(`http://localhost:5237/api/bookings/resident?email=${encodeURIComponent(userEmail)}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      setResidentBookings(res.data || []);
+    } catch (err) {
+      console.error("Error fetching resident bookings:", err);
+    } finally {
+      setLoadingBookings(false);
+    }
+  };
+
   useEffect(() => {
     if (activeTab === 'posts') {
       fetchUserPosts();
     }
+    if (activeTab === 'bookings') {
+      fetchResidentBookings();
+    }
   }, [activeTab, userEmail]);
+
+  // Initial bookings count fetch
+  useEffect(() => {
+    if (userEmail) {
+      fetchResidentBookings();
+    }
+  }, [userEmail]);
+
+  // Cancel Booking Handler
+  const handleCancelBooking = async (id) => {
+    const reason = window.prompt("Please provide a reason for cancelling this booking (optional):", "Changed plans / Schedule conflict");
+    if (reason === null) return;
+
+    try {
+      const res = await axios.post(`http://localhost:5237/api/bookings/${id}/cancel`, { reason }, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      alert("Booking has been cancelled.");
+      setResidentBookings(prev => prev.map(b => b.id === id ? res.data : b));
+    } catch (err) {
+      console.error("Error cancelling booking:", err);
+      alert(err.response?.data?.message || "Failed to cancel booking.");
+    }
+  };
+
+  // Open Review Modal
+  const handleOpenReviewModal = (booking) => {
+    setReviewingBooking(booking);
+    setReviewForm({
+      qualityRating: 5,
+      punctualityRating: 5,
+      communicationRating: 5,
+      comment: ''
+    });
+  };
+
+  // Submit Review Handler -> transitions to Reviewed
+  const handleSubmitReview = async (e) => {
+    e.preventDefault();
+    if (!reviewingBooking) return;
+
+    setSubmittingReview(true);
+    try {
+      const res = await axios.post(`http://localhost:5237/api/bookings/${reviewingBooking.id}/review`, {
+        qualityRating: parseInt(reviewForm.qualityRating),
+        punctualityRating: parseInt(reviewForm.punctualityRating),
+        communicationRating: parseInt(reviewForm.communicationRating),
+        comment: reviewForm.comment
+      }, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+
+      alert("🎉 Thank you! Your review and rating have been submitted successfully.");
+      setResidentBookings(prev => prev.map(b => b.id === reviewingBooking.id ? res.data : b));
+      setReviewingBooking(null);
+    } catch (err) {
+      console.error("Error submitting review:", err);
+      alert(err.response?.data?.message || "Failed to submit review.");
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
 
   // Skill management handlers
   const handleAddSkill = () => {
@@ -422,7 +515,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
         <a href="/" onClick={(e) => { e.preventDefault(); navigateTo('/'); }} style={{ cursor: 'pointer' }}>
           <img src="/iconWithText-cropped.png" alt="Super බාස් Logo" style={{ height: '40px' }} />
         </a>
-        <div style={{ display: 'flex', gap: '1rem' }}>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           <md-outlined-button onClick={() => navigateTo('/find')}>Find Workers</md-outlined-button>
           <md-filled-button 
             onClick={() => navigateTo('/community')}
@@ -430,6 +523,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
           >
             Community Board
           </md-filled-button>
+          <UserMenu />
         </div>
       </header>
 
@@ -471,6 +565,37 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
               Overview
             </button>
             <button 
+              onClick={() => setActiveTab('bookings')}
+              style={{
+                padding: '12px 16px',
+                textAlign: 'left',
+                borderRadius: '8px',
+                border: 'none',
+                background: activeTab === 'bookings' ? '#fef3c7' : 'transparent',
+                color: activeTab === 'bookings' ? '#b45309' : '#4b5563',
+                fontWeight: activeTab === 'bookings' ? '800' : '500',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}
+            >
+              <span>⚡ My Bookings & Hires</span>
+              {residentBookings.length > 0 && (
+                <span style={{
+                  backgroundColor: '#FDC101',
+                  color: '#000000',
+                  fontSize: '0.75rem',
+                  fontWeight: 800,
+                  padding: '2px 8px',
+                  borderRadius: '10px'
+                }}>
+                  {residentBookings.length}
+                </span>
+              )}
+            </button>
+            <button 
               onClick={() => setActiveTab('edit')}
               style={{ padding: '12px 16px', textAlign: 'left', borderRadius: '8px', border: 'none', background: activeTab === 'edit' ? '#e0f2fe' : 'transparent', color: activeTab === 'edit' ? '#0284c7' : '#4b5563', fontWeight: activeTab === 'edit' ? '700' : '500', cursor: 'pointer', fontSize: '1rem' }}
             >
@@ -491,7 +616,10 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
 
             {isWorker ? (
               <button 
-                onClick={() => navigateTo('/worker/dashboard')}
+                onClick={() => {
+                  localStorage.setItem('activeRole', 'Worker');
+                  navigateTo('/worker/dashboard');
+                }}
                 style={{ 
                   padding: '12px 16px', 
                   textAlign: 'left', 
@@ -561,6 +689,340 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                   </md-filled-button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* TAB: My Bookings & Hires */}
+          {activeTab === 'bookings' && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '12px' }}>
+                <div>
+                  <h2 style={{ fontSize: '1.5rem', fontWeight: '800', margin: 0, color: '#111827' }}>My Bookings & Hires</h2>
+                  <p style={{ color: '#6b7280', margin: '4px 0 0 0', fontSize: '0.95rem' }}>
+                    Track your hired workers, follow job progress live, and review completed home services.
+                  </p>
+                </div>
+                <button
+                  onClick={fetchResidentBookings}
+                  style={{
+                    backgroundColor: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    padding: '8px 14px',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    color: '#475569',
+                    cursor: 'pointer'
+                  }}
+                >
+                  ↻ Refresh
+                </button>
+              </div>
+
+              {loadingBookings ? (
+                <div style={{ padding: '3rem', textAlign: 'center', color: '#6b7280' }}>
+                  Loading your service bookings...
+                </div>
+              ) : residentBookings.length === 0 ? (
+                <div style={{ padding: '3rem', backgroundColor: '#f9fafb', borderRadius: '16px', border: '1px dashed #cbd5e1', textAlign: 'center' }}>
+                  <div style={{ fontSize: '2.5rem', marginBottom: '10px' }}>⚡</div>
+                  <h3 style={{ margin: '0 0 8px 0', fontSize: '1.2rem', fontWeight: 700, color: '#1e293b' }}>
+                    No bookings or hire requests yet
+                  </h3>
+                  <p style={{ color: '#64748b', marginBottom: '20px', fontSize: '0.95rem' }}>
+                    Need home repairs or maintenance? Browse our verified pros and hire one with one click!
+                  </p>
+                  <md-filled-button onClick={() => navigateTo('/find')} style={{ '--md-sys-color-primary': '#2563eb' }}>
+                    Find Verified Workers
+                  </md-filled-button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  {residentBookings.map((b) => (
+                    <div key={b.id} style={{ backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                      
+                      {/* Top Row: Worker info & Status Badge */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', borderBottom: '1px solid #f1f5f9', paddingBottom: '14px', marginBottom: '16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                          <div style={{
+                            width: '50px',
+                            height: '50px',
+                            borderRadius: '50%',
+                            backgroundColor: '#2563eb',
+                            color: '#ffffff',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '1.4rem',
+                            fontWeight: 800,
+                            overflow: 'hidden'
+                          }}>
+                            {b.workerProfileImage ? (
+                              <img src={b.workerProfileImage} alt={b.workerName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              b.workerName ? b.workerName.charAt(0).toUpperCase() : 'W'
+                            )}
+                          </div>
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#111827' }}>
+                                {b.workerName}
+                              </h3>
+                              <span style={{ fontSize: '0.75rem', backgroundColor: '#dbeafe', color: '#1e40af', padding: '2px 8px', borderRadius: '10px', fontWeight: 700 }}>
+                                Pro
+                              </span>
+                            </div>
+                            <p style={{ margin: '2px 0 0 0', fontSize: '0.85rem', color: '#64748b' }}>
+                              Booking #{b.id} • Scheduled for {new Date(b.scheduledDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Status Badge */}
+                        <div>
+                          <span style={{
+                            backgroundColor: 
+                              b.status === 'Requested' ? '#fef3c7' :
+                              b.status === 'Confirmed' ? '#e0f2fe' :
+                              b.status === 'InProgress' ? '#dbeafe' :
+                              b.status === 'Completed' ? '#d1fae5' :
+                              b.status === 'Reviewed' ? '#fef9c3' :
+                              '#fee2e2',
+                            color: 
+                              b.status === 'Requested' ? '#92400e' :
+                              b.status === 'Confirmed' ? '#0369a1' :
+                              b.status === 'InProgress' ? '#1e40af' :
+                              b.status === 'Completed' ? '#065f46' :
+                              b.status === 'Reviewed' ? '#854d0e' :
+                              '#991b1b',
+                            padding: '6px 14px',
+                            borderRadius: '20px',
+                            fontSize: '0.85rem',
+                            fontWeight: 800,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}>
+                            {b.status === 'Requested' && '⏳ Booking Requested'}
+                            {b.status === 'Confirmed' && '✓ Worker Accepted (Confirmed)'}
+                            {b.status === 'InProgress' && '🚀 In Progress'}
+                            {b.status === 'Completed' && '🎉 Job Completed'}
+                            {b.status === 'Reviewed' && '⭐ Reviewed'}
+                            {b.status === 'Rejected' && '✕ Worker Declined'}
+                            {b.status === 'Cancelled' && '○ Cancelled'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Job details */}
+                      <div style={{ marginBottom: '16px' }}>
+                        <h4 style={{ margin: '0 0 6px 0', fontSize: '1.1rem', fontWeight: 700, color: '#1e293b' }}>
+                          {b.jobTitle}
+                        </h4>
+                        {b.description && (
+                          <p style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: '#4b5563' }}>
+                            {b.description}
+                          </p>
+                        )}
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', fontSize: '0.875rem', color: '#64748b' }}>
+                          <div>📍 Address: <strong style={{ color: '#1e293b' }}>{b.locationAddress}</strong></div>
+                          <div>⚡ Urgency: <strong style={{ color: '#1e293b' }}>{b.urgency}</strong></div>
+                          <div>📞 Worker Phone: <strong style={{ color: '#2563eb' }}>{b.workerPhone || 'In chat'}</strong></div>
+                          {b.estimatedPrice && (
+                            <div>💰 Estimate: <strong style={{ color: '#059669' }}>Rs. {b.estimatedPrice.toLocaleString()}</strong></div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Visual Booking Stepper Bar */}
+                      <div style={{ backgroundColor: '#f8fafc', borderRadius: '12px', padding: '14px', marginBottom: '16px', border: '1px solid #f1f5f9' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative' }}>
+                          
+                          {/* Step 1 */}
+                          <div style={{ textAlign: 'center', zIndex: 1 }}>
+                            <div style={{
+                              width: '24px',
+                              height: '24px',
+                              borderRadius: '50%',
+                              backgroundColor: '#10b981',
+                              color: '#fff',
+                              margin: '0 auto 4px auto',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '0.75rem',
+                              fontWeight: 800
+                            }}>✓</div>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#111827' }}>Requested</span>
+                          </div>
+
+                          {/* Step 2 */}
+                          <div style={{ textAlign: 'center', zIndex: 1 }}>
+                            <div style={{
+                              width: '24px',
+                              height: '24px',
+                              borderRadius: '50%',
+                              backgroundColor: ['Confirmed', 'InProgress', 'Completed', 'Reviewed'].includes(b.status) ? '#10b981' : b.status === 'Requested' ? '#2563eb' : '#cbd5e1',
+                              color: '#fff',
+                              margin: '0 auto 4px auto',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '0.75rem',
+                              fontWeight: 800
+                            }}>
+                              {['Confirmed', 'InProgress', 'Completed', 'Reviewed'].includes(b.status) ? '✓' : '2'}
+                            </div>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: ['Confirmed', 'InProgress', 'Completed', 'Reviewed'].includes(b.status) ? '#111827' : '#94a3b8' }}>Accepted</span>
+                          </div>
+
+                          {/* Step 3 */}
+                          <div style={{ textAlign: 'center', zIndex: 1 }}>
+                            <div style={{
+                              width: '24px',
+                              height: '24px',
+                              borderRadius: '50%',
+                              backgroundColor: ['InProgress', 'Completed', 'Reviewed'].includes(b.status) ? '#10b981' : b.status === 'Confirmed' ? '#2563eb' : '#cbd5e1',
+                              color: '#fff',
+                              margin: '0 auto 4px auto',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '0.75rem',
+                              fontWeight: 800
+                            }}>
+                              {['Completed', 'Reviewed'].includes(b.status) ? '✓' : '3'}
+                            </div>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: ['InProgress', 'Completed', 'Reviewed'].includes(b.status) ? '#111827' : '#94a3b8' }}>In Progress</span>
+                          </div>
+
+                          {/* Step 4 */}
+                          <div style={{ textAlign: 'center', zIndex: 1 }}>
+                            <div style={{
+                              width: '24px',
+                              height: '24px',
+                              borderRadius: '50%',
+                              backgroundColor: ['Completed', 'Reviewed'].includes(b.status) ? '#10b981' : '#cbd5e1',
+                              color: '#fff',
+                              margin: '0 auto 4px auto',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '0.75rem',
+                              fontWeight: 800
+                            }}>
+                              {['Reviewed'].includes(b.status) ? '✓' : '4'}
+                            </div>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: ['Completed', 'Reviewed'].includes(b.status) ? '#111827' : '#94a3b8' }}>Completed</span>
+                          </div>
+
+                          {/* Step 5 */}
+                          <div style={{ textAlign: 'center', zIndex: 1 }}>
+                            <div style={{
+                              width: '24px',
+                              height: '24px',
+                              borderRadius: '50%',
+                              backgroundColor: b.status === 'Reviewed' ? '#f59e0b' : '#cbd5e1',
+                              color: '#fff',
+                              margin: '0 auto 4px auto',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '0.75rem',
+                              fontWeight: 800
+                            }}>
+                              {b.status === 'Reviewed' ? '★' : '5'}
+                            </div>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: b.status === 'Reviewed' ? '#d97706' : '#94a3b8' }}>Reviewed</span>
+                          </div>
+
+                        </div>
+                      </div>
+
+                      {/* Review details if already reviewed */}
+                      {b.status === 'Reviewed' && (
+                        <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fef3c7', borderRadius: '10px', padding: '12px 16px', marginBottom: '14px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                            <span style={{ color: '#d97706', fontSize: '1.1rem', fontWeight: 800 }}>★ {b.reviewRating?.toFixed(1)}/5.0</span>
+                            <span style={{ fontSize: '0.8rem', color: '#92400e' }}>(Quality: {b.qualityRating}★, Punctuality: {b.punctualityRating}★, Communication: {b.communicationRating}★)</span>
+                          </div>
+                          {b.reviewComment && (
+                            <p style={{ margin: 0, fontSize: '0.9rem', color: '#78350f', fontStyle: 'italic' }}>
+                              "{b.reviewComment}"
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Action buttons */}
+                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                        <button
+                          onClick={() => navigateTo('/chats')}
+                          style={{
+                            padding: '8px 16px',
+                            borderRadius: '8px',
+                            border: '1.5px solid #2563eb',
+                            backgroundColor: '#eff6ff',
+                            color: '#2563eb',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            fontSize: '0.875rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          💬 Chat with {b.workerName}
+                        </button>
+
+                        {/* Leave Review CTA if Job is Completed */}
+                        {b.status === 'Completed' && (
+                          <button
+                            onClick={() => handleOpenReviewModal(b)}
+                            style={{
+                              padding: '8px 20px',
+                              borderRadius: '8px',
+                              border: 'none',
+                              backgroundColor: '#FDC101',
+                              color: '#000000',
+                              fontWeight: 800,
+                              cursor: 'pointer',
+                              fontSize: '0.9rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              boxShadow: '0 2px 8px rgba(253,193,1,0.4)'
+                            }}
+                          >
+                            ⭐ Leave Rating & Review
+                          </button>
+                        )}
+
+                        {/* Cancel option for pending/confirmed */}
+                        {['Requested', 'Confirmed'].includes(b.status) && (
+                          <button
+                            onClick={() => handleCancelBooking(b.id)}
+                            style={{
+                              padding: '8px 14px',
+                              borderRadius: '8px',
+                              border: '1px solid #cbd5e1',
+                              backgroundColor: '#ffffff',
+                              color: '#64748b',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              fontSize: '0.85rem'
+                            }}
+                          >
+                            Cancel Booking
+                          </button>
+                        )}
+                      </div>
+
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -1291,6 +1753,214 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                   Publish Post
                 </button>
               </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ===================== RESIDENT REVIEW MODAL ===================== */}
+      {reviewingBooking && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.65)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 10000,
+          padding: '16px'
+        }}>
+          <div style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '20px',
+            maxWidth: '520px',
+            width: '100%',
+            padding: '28px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            border: '1px solid #e5e7eb'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#d97706', textTransform: 'uppercase' }}>
+                  Verified Resident Review
+                </span>
+                <h3 style={{ margin: '4px 0 0 0', fontSize: '1.3rem', fontWeight: 800, color: '#111827' }}>
+                  Rate {reviewingBooking.workerName}
+                </h3>
+              </div>
+              <button
+                onClick={() => setReviewingBooking(null)}
+                style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#94a3b8' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '20px' }}>
+              Your feedback helps keep our community safe and rewards reliable pros.
+            </p>
+
+            <form onSubmit={handleSubmitReview} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              
+              {/* Star Rating 1: Quality */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '0.9rem', fontWeight: 700, color: '#374151' }}>
+                    Quality & Craftsmanship
+                  </label>
+                  <span style={{ color: '#d97706', fontWeight: 800 }}>★ {reviewForm.qualityRating}/5</span>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setReviewForm({ ...reviewForm, qualityRating: star })}
+                      style={{
+                        flex: 1,
+                        padding: '8px',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        backgroundColor: reviewForm.qualityRating >= star ? '#fef3c7' : '#f8fafc',
+                        color: reviewForm.qualityRating >= star ? '#d97706' : '#94a3b8',
+                        fontSize: '1.2rem',
+                        fontWeight: 800,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      ★
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Star Rating 2: Punctuality */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '0.9rem', fontWeight: 700, color: '#374151' }}>
+                    Punctuality & Timeliness
+                  </label>
+                  <span style={{ color: '#d97706', fontWeight: 800 }}>★ {reviewForm.punctualityRating}/5</span>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setReviewForm({ ...reviewForm, punctualityRating: star })}
+                      style={{
+                        flex: 1,
+                        padding: '8px',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        backgroundColor: reviewForm.punctualityRating >= star ? '#fef3c7' : '#f8fafc',
+                        color: reviewForm.punctualityRating >= star ? '#d97706' : '#94a3b8',
+                        fontSize: '1.2rem',
+                        fontWeight: 800,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      ★
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Star Rating 3: Communication */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '0.9rem', fontWeight: 700, color: '#374151' }}>
+                    Communication & Professionalism
+                  </label>
+                  <span style={{ color: '#d97706', fontWeight: 800 }}>★ {reviewForm.communicationRating}/5</span>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setReviewForm({ ...reviewForm, communicationRating: star })}
+                      style={{
+                        flex: 1,
+                        padding: '8px',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        backgroundColor: reviewForm.communicationRating >= star ? '#fef3c7' : '#f8fafc',
+                        color: reviewForm.communicationRating >= star ? '#d97706' : '#94a3b8',
+                        fontSize: '1.2rem',
+                        fontWeight: 800,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      ★
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Review text */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700, color: '#374151', marginBottom: '6px' }}>
+                  Your Review / Comments
+                </label>
+                <textarea
+                  rows={3}
+                  required
+                  placeholder="Share details about the work done, punctuality, and overall experience..."
+                  value={reviewForm.comment}
+                  onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.9rem',
+                    boxSizing: 'border-box',
+                    fontFamily: 'inherit'
+                  }}
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+                <button
+                  type="button"
+                  onClick={() => setReviewingBooking(null)}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    borderRadius: '10px',
+                    border: '1px solid #cbd5e1',
+                    backgroundColor: '#fff',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingReview}
+                  style={{
+                    flex: 2,
+                    padding: '12px',
+                    borderRadius: '10px',
+                    border: 'none',
+                    backgroundColor: '#FDC101',
+                    color: '#000000',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(253,193,1,0.3)'
+                  }}
+                >
+                  {submittingReview ? 'Submitting...' : 'Submit Review ⭐'}
+                </button>
+              </div>
+
             </form>
           </div>
         </div>

@@ -17,21 +17,62 @@ namespace Superbass.Services
         }
 
         public async Task<ConversationSummaryDto> GetOrCreateConversationAsync(
-            string residentEmail, 
-            int workerId, 
-            int? bookingId = null, 
-            string? initialMessage = null)
+            CreateConversationRequest request,
+            string residentEmail)
         {
-            var worker = await _context.Workers.FindAsync(workerId);
-            if (worker == null)
+            Worker? worker = null;
+
+            if (request.WorkerId > 0)
             {
-                throw new ArgumentException($"Worker with ID {workerId} not found.");
+                worker = await _context.Workers.FindAsync(request.WorkerId);
             }
 
+            if (worker == null && !string.IsNullOrWhiteSpace(request.WorkerEmail))
+            {
+                worker = await _context.Workers.FirstOrDefaultAsync(w => 
+                    w.Email == request.WorkerEmail || w.ResidentEmail == request.WorkerEmail);
+            }
+
+            if (worker == null)
+            {
+                // Ensure a Resident entry exists for the worker
+                var workerEmail = !string.IsNullOrWhiteSpace(request.WorkerEmail) 
+                    ? request.WorkerEmail 
+                    : $"worker{DateTime.UtcNow.Ticks}@superbass.lk";
+
+                var workerResident = await _context.Residents.FindAsync(workerEmail);
+                if (workerResident == null)
+                {
+                    workerResident = new Resident
+                    {
+                        Email = workerEmail,
+                        Name = request.WorkerName ?? "SuperBass Worker",
+                        PhoneNo = "0771234567"
+                    };
+                    _context.Residents.Add(workerResident);
+                    await _context.SaveChangesAsync();
+                }
+
+                // Create a Worker profile
+                worker = new Worker
+                {
+                    ResidentEmail = workerEmail,
+                    Email = workerEmail,
+                    Name = request.WorkerName ?? workerResident.Name ?? "Worker",
+                    ProfileImage = request.WorkerAvatar,
+                    Description = "Verified Community Service Professional",
+                    PrimaryServiceArea = "Colombo",
+                    IsAvailable = true,
+                    OverallRating = 5.0
+                };
+                _context.Workers.Add(worker);
+                await _context.SaveChangesAsync();
+            }
+
+            // Ensure Resident profile exists for sender
             var resident = await _context.Residents.FindAsync(residentEmail);
             if (resident == null)
             {
-                // If resident not found in Residents table, create a minimal stub
                 resident = new Resident
                 {
                     Email = residentEmail,
@@ -45,11 +86,11 @@ namespace Superbass.Services
             var query = _context.Conversations
                 .Include(c => c.Resident)
                 .Include(c => c.Worker)
-                .Where(c => c.ResidentEmail == residentEmail && c.WorkerId == workerId);
+                .Where(c => c.ResidentEmail == residentEmail && c.WorkerId == worker.Id);
 
-            if (bookingId.HasValue)
+            if (request.BookingId.HasValue)
             {
-                query = query.Where(c => c.BookingId == bookingId);
+                query = query.Where(c => c.BookingId == request.BookingId.Value);
             }
 
             var conversation = await query.FirstOrDefaultAsync();
@@ -59,8 +100,8 @@ namespace Superbass.Services
                 conversation = new Conversation
                 {
                     ResidentEmail = residentEmail,
-                    WorkerId = workerId,
-                    BookingId = bookingId,
+                    WorkerId = worker.Id,
+                    BookingId = request.BookingId,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
@@ -69,15 +110,17 @@ namespace Superbass.Services
                 await _context.SaveChangesAsync();
 
                 // If initial message provided, save it
-                if (!string.IsNullOrWhiteSpace(initialMessage))
+                if (!string.IsNullOrWhiteSpace(request.InitialMessage))
                 {
                     var msg = new ChatMessage
                     {
                         ConversationId = conversation.Id,
                         SenderEmail = residentEmail,
                         SenderRole = "Resident",
+                        ReceiverEmail = worker.Email ?? worker.ResidentEmail,
+                        ReceiverRole = "Worker",
                         MessageType = "Text",
-                        Content = initialMessage.Trim(),
+                        Content = request.InitialMessage.Trim(),
                         CreatedAt = DateTime.UtcNow,
                         IsRead = false
                     };
@@ -148,6 +191,8 @@ namespace Superbass.Services
                     ConversationId = m.ConversationId,
                     SenderEmail = m.SenderEmail,
                     SenderRole = m.SenderRole,
+                    ReceiverEmail = m.ReceiverEmail,
+                    ReceiverRole = m.ReceiverRole,
                     MessageType = m.MessageType,
                     Content = m.Content,
                     AttachmentUrl = m.AttachmentUrl,
@@ -159,6 +204,11 @@ namespace Superbass.Services
                     IsDeleted = m.IsDeleted
                 })
                 .ToListAsync();
+
+            var isUserWorker = conv.Worker != null && (
+                string.Equals(conv.Worker.ResidentEmail, userEmail, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(conv.Worker.Email, userEmail, StringComparison.OrdinalIgnoreCase));
+            var otherEmail = isUserWorker ? conv.ResidentEmail : (conv.Worker?.Email ?? conv.Worker?.ResidentEmail ?? string.Empty);
 
             return new ConversationDetailsDto
             {
@@ -172,6 +222,8 @@ namespace Superbass.Services
                 WorkerPhone = conv.Worker?.PhoneNo,
                 WorkerProfileImage = conv.Worker?.ProfileImage,
                 BookingId = conv.BookingId,
+                IsOnline = ChatHub.IsUserOnline(otherEmail),
+                LastSeenAt = ChatHub.GetLastSeen(otherEmail),
                 CreatedAt = conv.CreatedAt,
                 Messages = messages
             };
@@ -194,6 +246,8 @@ namespace Superbass.Services
                     ConversationId = m.ConversationId,
                     SenderEmail = m.SenderEmail,
                     SenderRole = m.SenderRole,
+                    ReceiverEmail = m.ReceiverEmail,
+                    ReceiverRole = m.ReceiverRole,
                     MessageType = m.MessageType,
                     Content = m.Content,
                     AttachmentUrl = m.AttachmentUrl,
@@ -224,11 +278,31 @@ namespace Superbass.Services
                 throw new KeyNotFoundException($"Conversation with ID {conversationId} not found.");
             }
 
+            // Determine receiver automatically if not provided
+            string receiverEmail = request.ReceiverEmail ?? string.Empty;
+            string receiverRole = request.ReceiverRole ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(receiverEmail))
+            {
+                if (senderEmail.Equals(conversation.ResidentEmail, StringComparison.OrdinalIgnoreCase))
+                {
+                    receiverEmail = conversation.Worker?.Email ?? conversation.Worker?.ResidentEmail ?? "worker@superbass.lk";
+                    receiverRole = "Worker";
+                }
+                else
+                {
+                    receiverEmail = conversation.ResidentEmail;
+                    receiverRole = "Resident";
+                }
+            }
+
             var message = new ChatMessage
             {
                 ConversationId = conversationId,
                 SenderEmail = senderEmail,
                 SenderRole = string.IsNullOrWhiteSpace(senderRole) ? "Resident" : senderRole,
+                ReceiverEmail = receiverEmail,
+                ReceiverRole = string.IsNullOrWhiteSpace(receiverRole) ? (senderRole == "Resident" ? "Worker" : "Resident") : receiverRole,
                 MessageType = string.IsNullOrWhiteSpace(request.MessageType) ? "Text" : request.MessageType,
                 Content = request.Content ?? string.Empty,
                 AttachmentUrl = request.AttachmentUrl,
@@ -258,6 +332,8 @@ namespace Superbass.Services
                 ConversationId = message.ConversationId,
                 SenderEmail = message.SenderEmail,
                 SenderRole = message.SenderRole,
+                ReceiverEmail = message.ReceiverEmail,
+                ReceiverRole = message.ReceiverRole,
                 MessageType = message.MessageType,
                 Content = message.Content,
                 AttachmentUrl = message.AttachmentUrl,
@@ -324,6 +400,11 @@ namespace Superbass.Services
                 .Where(m => m.ConversationId == conv.Id && !m.IsRead && !m.IsDeleted && m.SenderEmail != currentUserEmail)
                 .CountAsync();
 
+            var isUserWorker = conv.Worker != null && (
+                string.Equals(conv.Worker.ResidentEmail, currentUserEmail, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(conv.Worker.Email, currentUserEmail, StringComparison.OrdinalIgnoreCase));
+            var otherEmail = isUserWorker ? conv.ResidentEmail : (conv.Worker?.Email ?? conv.Worker?.ResidentEmail ?? string.Empty);
+
             return new ConversationSummaryDto
             {
                 Id = conv.Id,
@@ -341,6 +422,8 @@ namespace Superbass.Services
                 LastSenderEmail = conv.LastSenderEmail,
                 LastSenderRole = conv.LastSenderRole,
                 UnreadCount = unreadCount,
+                IsOnline = ChatHub.IsUserOnline(otherEmail),
+                LastSeenAt = ChatHub.GetLastSeen(otherEmail),
                 CreatedAt = conv.CreatedAt,
                 UpdatedAt = conv.UpdatedAt
             };

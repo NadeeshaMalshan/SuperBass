@@ -13,7 +13,25 @@ export default function WorkerDetail() {
   const [worker, setWorker] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [bookingSuccess, setBookingSuccess] = useState(false);
+
+  // Hire / Booking Modal State
+  const [isHireModalOpen, setIsHireModalOpen] = useState(false);
+  const [hireStep, setHireStep] = useState('form'); // 'form' | 'submitting' | 'success'
+  const [createdBooking, setCreatedBooking] = useState(null);
+  const [hireError, setHireError] = useState(null);
+
+  // Booking Form State
+  const [bookingForm, setBookingForm] = useState({
+    jobTitle: '',
+    description: '',
+    urgency: 'Medium',
+    scheduledDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+    scheduledTime: '10:00',
+    locationAddress: '',
+    contactPhone: '',
+    pricingModel: 'Hourly',
+    estimatedPrice: ''
+  });
 
   const navigate = (path) => {
     window.history.pushState({}, '', path);
@@ -31,6 +49,17 @@ export default function WorkerDetail() {
       try {
         const res = await axios.get(`http://localhost:5237/api/workers/${workerId}`);
         setWorker(res.data);
+        if (res.data) {
+          const defaultTitle = res.data.skills && res.data.skills.length > 0 
+            ? `${res.data.skills[0].skillName} Service / Repair` 
+            : 'General Home Service';
+          setBookingForm(prev => ({
+            ...prev,
+            jobTitle: defaultTitle,
+            pricingModel: res.data.pricingModel || 'Hourly',
+            estimatedPrice: res.data.hourlyRate || res.data.dailyRate || ''
+          }));
+        }
       } catch (err) {
         console.error('Error loading worker detail:', err);
         setError('Failed to load worker details.');
@@ -42,15 +71,54 @@ export default function WorkerDetail() {
     fetchWorkerDetails();
   }, [workerId]);
 
-  const handleHireClick = () => {
+  const handleOpenHireModal = () => {
     const token = localStorage.getItem('token');
     if (!token) {
-      alert('Please login first to hire or contact workers.');
+      alert('Please sign in or register to hire verified professionals.');
       navigate('/join');
       return;
     }
-    setBookingSuccess(true);
-    setTimeout(() => setBookingSuccess(false), 4000);
+    setHireStep('form');
+    setHireError(null);
+    setIsHireModalOpen(true);
+  };
+
+  const handleBookingSubmit = async (e) => {
+    e.preventDefault();
+    setHireStep('submitting');
+    setHireError(null);
+
+    const token = localStorage.getItem('token');
+    const userEmail = localStorage.getItem('email');
+
+    try {
+      const combinedDateTime = new Date(`${bookingForm.scheduledDate}T${bookingForm.scheduledTime}:00`);
+
+      const payload = {
+        workerId: parseInt(workerId),
+        residentEmail: userEmail,
+        jobTitle: bookingForm.jobTitle,
+        description: bookingForm.description,
+        urgency: bookingForm.urgency,
+        scheduledDate: combinedDateTime.toISOString(),
+        locationAddress: bookingForm.locationAddress || 'Colombo, Sri Lanka',
+        contactPhone: bookingForm.contactPhone || '0771234567',
+        pricingModel: bookingForm.pricingModel,
+        estimatedPrice: bookingForm.estimatedPrice ? parseFloat(bookingForm.estimatedPrice) : null
+      };
+
+      const res = await axios.post('http://localhost:5237/api/bookings', payload, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+
+      setCreatedBooking(res.data);
+      setHireStep('success');
+    } catch (err) {
+      console.error('Error submitting booking request:', err);
+      const msg = err.response?.data?.message || 'Failed to submit booking request. Please try again.';
+      setHireError(msg);
+      setHireStep('form');
+    }
   };
 
   if (loading) {
@@ -97,15 +165,9 @@ export default function WorkerDetail() {
       {/* Main Container */}
       <main style={{ maxWidth: '1100px', margin: '0 auto', padding: '2rem 1rem' }}>
         
-        {bookingSuccess && (
-          <div style={{ backgroundColor: '#10b981', color: '#ffffff', padding: '16px 24px', borderRadius: '12px', marginBottom: '24px', textAlign: 'center', fontWeight: 700 }}>
-            ✓ Hiring Request Sent Successfully! The worker will review and respond to your request.
-          </div>
-        )}
-
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
           
-          {/* Left Column: Worker Bio & What He Can Do */}
+          {/* Left Column: Worker Bio & Skills */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             
             {/* Main Profile Header Card */}
@@ -122,9 +184,14 @@ export default function WorkerDetail() {
                   justifyContent: 'center',
                   fontSize: '2.5rem',
                   fontWeight: 800,
-                  boxShadow: '0 4px 12px rgba(37,99,235,0.2)'
+                  boxShadow: '0 4px 12px rgba(37,99,235,0.2)',
+                  overflow: 'hidden'
                 }}>
-                  {worker.name ? worker.name.charAt(0).toUpperCase() : 'W'}
+                  {worker.profileImage ? (
+                    <img src={worker.profileImage} alt={worker.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    worker.name ? worker.name.charAt(0).toUpperCase() : 'W'
+                  )}
                 </div>
 
                 <div>
@@ -275,7 +342,7 @@ export default function WorkerDetail() {
 
               {/* Hire Button */}
               <button
-                onClick={handleHireClick}
+                onClick={handleOpenHireModal}
                 style={{
                   width: '100%',
                   padding: '16px',
@@ -287,7 +354,11 @@ export default function WorkerDetail() {
                   fontWeight: 800,
                   cursor: 'pointer',
                   boxShadow: '0 4px 12px rgba(253,193,1,0.3)',
-                  transition: 'transform 0.2s'
+                  transition: 'transform 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
                 }}
               >
                 ⚡ Hire / Request Worker Now
@@ -323,6 +394,401 @@ export default function WorkerDetail() {
         </div>
 
       </main>
+
+      {/* ===================== HIRE & BOOKING MODAL ===================== */}
+      {isHireModalOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.65)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 10000,
+          padding: '16px'
+        }}>
+          <div style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '20px',
+            maxWidth: '620px',
+            width: '100%',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            border: '1px solid #e5e7eb',
+            position: 'relative'
+          }}>
+            
+            {/* Modal Header */}
+            <div style={{
+              padding: '24px 28px',
+              borderBottom: '1px solid #f1f5f9',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              backgroundColor: '#fafbfc'
+            }}>
+              <div>
+                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  SuperBass Verified Hire
+                </span>
+                <h2 style={{ fontSize: '1.4rem', fontWeight: 800, margin: '4px 0 0 0', color: '#111827' }}>
+                  Request Service from {worker.name}
+                </h2>
+              </div>
+
+              <button
+                onClick={() => setIsHireModalOpen(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.5rem',
+                  cursor: 'pointer',
+                  color: '#94a3b8',
+                  lineHeight: 1
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '24px 28px' }}>
+              
+              {/* STEP 1: FORM */}
+              {hireStep === 'form' && (
+                <form onSubmit={handleBookingSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                  
+                  {hireError && (
+                    <div style={{ backgroundColor: '#fee2e2', color: '#991b1b', padding: '12px 16px', borderRadius: '10px', fontSize: '0.9rem', fontWeight: 600 }}>
+                      ⚠ {hireError}
+                    </div>
+                  )}
+
+                  {/* Preferred Date & Time */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700, color: '#374151', marginBottom: '6px' }}>
+                        Preferred Date
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        value={bookingForm.scheduledDate}
+                        onChange={(e) => setBookingForm({ ...bookingForm, scheduledDate: e.target.value })}
+                        style={{
+                          width: '100%',
+                          padding: '12px 14px',
+                          borderRadius: '10px',
+                          border: '1.5px solid #d1d5db',
+                          fontSize: '0.95rem',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700, color: '#374151', marginBottom: '6px' }}>
+                        Preferred Time
+                      </label>
+                      <input
+                        type="time"
+                        required
+                        value={bookingForm.scheduledTime}
+                        onChange={(e) => setBookingForm({ ...bookingForm, scheduledTime: e.target.value })}
+                        style={{
+                          width: '100%',
+                          padding: '12px 14px',
+                          borderRadius: '10px',
+                          border: '1.5px solid #d1d5db',
+                          fontSize: '0.95rem',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Submit Button */}
+                  <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setIsHireModalOpen(false)}
+                      style={{
+                        flex: 1,
+                        padding: '14px',
+                        borderRadius: '10px',
+                        border: '1px solid #d1d5db',
+                        backgroundColor: '#ffffff',
+                        color: '#374151',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      style={{
+                        flex: 2,
+                        padding: '14px',
+                        borderRadius: '10px',
+                        border: 'none',
+                        backgroundColor: '#FDC101',
+                        color: '#000000',
+                        fontWeight: 800,
+                        fontSize: '1rem',
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 12px rgba(253,193,1,0.3)'
+                      }}
+                    >
+                      Submit Hire Request ⚡
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* STEP: SUBMITTING */}
+              {hireStep === 'submitting' && (
+                <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                  <div style={{ fontSize: '2rem', marginBottom: '16px' }}>⏳</div>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: '#111827' }}>Sending Hire Request...</h3>
+                  <p style={{ color: '#6b7280', marginTop: '8px' }}>Setting up booking record and direct chat channel with {worker.name}.</p>
+                </div>
+              )}
+
+              {/* STEP: SUCCESS & LIFECYCLE STEPPER */}
+              {hireStep === 'success' && createdBooking && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  
+                  {/* Top Success Banner */}
+                  <div style={{
+                    backgroundColor: '#ecfdf5',
+                    border: '1.5px solid #a7f3d0',
+                    borderRadius: '14px',
+                    padding: '18px 20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '14px'
+                  }}>
+                    <div style={{
+                      backgroundColor: '#10b981',
+                      color: '#ffffff',
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '1.3rem',
+                      fontWeight: 800
+                    }}>
+                      ✓
+                    </div>
+                    <div>
+                      <h4 style={{ margin: 0, color: '#065f46', fontSize: '1.1rem', fontWeight: 800 }}>Booking Request Sent Successfully!</h4>
+                      <p style={{ margin: '4px 0 0 0', color: '#047857', fontSize: '0.875rem' }}>
+                        Booking #{createdBooking.id} is now queued for <strong>{worker.name}</strong> to review and accept.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Interactive Booking Lifecycle Stepper */}
+                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '20px' }}>
+                    <h5 style={{ margin: '0 0 16px 0', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569', fontWeight: 700 }}>
+                      Service Lifecycle Status
+                    </h5>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                      
+                      {/* Step 1: Requested */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                        <div style={{
+                          width: '28px',
+                          height: '28px',
+                          borderRadius: '50%',
+                          backgroundColor: '#10b981',
+                          color: '#ffffff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '0.85rem',
+                          fontWeight: 800
+                        }}>
+                          ✓
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <strong style={{ color: '#111827', fontSize: '0.95rem' }}>1. Booking Requested</strong>
+                          <span style={{ marginLeft: '8px', fontSize: '0.75rem', backgroundColor: '#d1fae5', color: '#065f46', padding: '2px 8px', borderRadius: '10px', fontWeight: 700 }}>Completed</span>
+                        </div>
+                      </div>
+
+                      {/* Step 2: Worker Accepts / Rejects */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                        <div style={{
+                          width: '28px',
+                          height: '28px',
+                          borderRadius: '50%',
+                          backgroundColor: '#2563eb',
+                          color: '#ffffff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '0.85rem',
+                          fontWeight: 800,
+                          boxShadow: '0 0 0 4px rgba(37,99,235,0.2)'
+                        }}>
+                          2
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <strong style={{ color: '#2563eb', fontSize: '0.95rem' }}>2. Worker Accepts / Rejects</strong>
+                          <span style={{ marginLeft: '8px', fontSize: '0.75rem', backgroundColor: '#dbeafe', color: '#1e40af', padding: '2px 8px', borderRadius: '10px', fontWeight: 700 }}>In Progress (Worker notified)</span>
+                        </div>
+                      </div>
+
+                      {/* Step 3: Confirmed */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', opacity: 0.6 }}>
+                        <div style={{
+                          width: '28px',
+                          height: '28px',
+                          borderRadius: '50%',
+                          backgroundColor: '#cbd5e1',
+                          color: '#475569',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '0.85rem',
+                          fontWeight: 700
+                        }}>
+                          3
+                        </div>
+                        <div>
+                          <strong style={{ color: '#475569', fontSize: '0.95rem' }}>3. Confirmed</strong>
+                        </div>
+                      </div>
+
+                      {/* Step 4: In Progress */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', opacity: 0.6 }}>
+                        <div style={{
+                          width: '28px',
+                          height: '28px',
+                          borderRadius: '50%',
+                          backgroundColor: '#cbd5e1',
+                          color: '#475569',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '0.85rem',
+                          fontWeight: 700
+                        }}>
+                          4
+                        </div>
+                        <div>
+                          <strong style={{ color: '#475569', fontSize: '0.95rem' }}>4. In Progress</strong>
+                        </div>
+                      </div>
+
+                      {/* Step 5: Completed */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', opacity: 0.6 }}>
+                        <div style={{
+                          width: '28px',
+                          height: '28px',
+                          borderRadius: '50%',
+                          backgroundColor: '#cbd5e1',
+                          color: '#475569',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '0.85rem',
+                          fontWeight: 700
+                        }}>
+                          5
+                        </div>
+                        <div>
+                          <strong style={{ color: '#475569', fontSize: '0.95rem' }}>5. Completed</strong>
+                        </div>
+                      </div>
+
+                      {/* Step 6: Reviewed */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', opacity: 0.6 }}>
+                        <div style={{
+                          width: '28px',
+                          height: '28px',
+                          borderRadius: '50%',
+                          backgroundColor: '#cbd5e1',
+                          color: '#475569',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '0.85rem',
+                          fontWeight: 700
+                        }}>
+                          6
+                        </div>
+                        <div>
+                          <strong style={{ color: '#475569', fontSize: '0.95rem' }}>6. Reviewed</strong>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+
+                  {/* Direct Action Buttons */}
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <button
+                      onClick={() => {
+                        setIsHireModalOpen(false);
+                        navigate('/chats');
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: '14px',
+                        borderRadius: '10px',
+                        border: '1.5px solid #2563eb',
+                        backgroundColor: '#eff6ff',
+                        color: '#2563eb',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      💬 Chat with {worker.name}
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setIsHireModalOpen(false);
+                        navigate('/account?tab=bookings');
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: '14px',
+                        borderRadius: '10px',
+                        border: 'none',
+                        backgroundColor: '#2563eb',
+                        color: '#ffffff',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      📋 View My Bookings
+                    </button>
+                  </div>
+
+                </div>
+              )}
+
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

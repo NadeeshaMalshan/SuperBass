@@ -2,16 +2,32 @@
 Purpose
 Manage the actual service transaction lifecycle and communication between residents and workers.
 Booking Lifecycle
+Customer
+   ↓
+Select Service / Worker
+   ↓
+Select Date & Time
+   ↓
+Get Location & Requirements from userDB
+   ↓
+Send Hire Request
+   ↓
 Booking Requested
-↓
+   ↓
 Worker Accepts / Rejects
-↓
+   ↓
 Confirmed
-↓
+   ↓
+Worker Arrives / Job Starts
+   ↓
 In Progress
-↓
+   ↓
+Job Completed
+   ↓
 Completed
-↓
+   ↓
+Customer Reviews & Rates Worker
+   ↓
 Reviewed
 CRUD
 Create
