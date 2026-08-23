@@ -520,5 +520,21 @@ namespace Superbass.Controllers
 
             return Ok(MapToDto(booking));
         }
+
+        // DELETE: api/bookings/{id}
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteBooking(int id)
+        {
+            var booking = await _context.Bookings.FindAsync(id);
+            if (booking == null)
+            {
+                return NotFound(new { message = "Booking not found." });
+            }
+
+            _context.Bookings.Remove(booking);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Booking deleted successfully." });
+        }
     }
 }

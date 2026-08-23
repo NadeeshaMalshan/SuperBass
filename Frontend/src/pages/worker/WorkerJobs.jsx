@@ -153,6 +153,25 @@ export default function WorkerJobs() {
     }
   };
 
+  // 6. Delete History Job
+  const handleDeleteHistory = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this job history record? This cannot be undone.')) return;
+
+    try {
+      setActionLoading(true);
+      await axios.delete(`http://localhost:5237/api/bookings/${id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      alert('🗑️ Job history record deleted successfully.');
+      setBookings(prev => prev.filter(b => b.id !== id));
+    } catch (err) {
+      console.error('Error deleting job:', err);
+      alert(err.response?.data?.message || 'Failed to delete job history.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const formatDateTime = (dateStr) => {
     if (!dateStr) return 'Not scheduled';
     const d = new Date(dateStr);
@@ -508,6 +527,14 @@ export default function WorkerJobs() {
                         Awaiting Resident Review
                       </div>
                     ) : null}
+                    
+                    <button 
+                      onClick={() => handleDeleteHistory(item.id)}
+                      disabled={actionLoading}
+                      style={{ marginTop: '12px', background: 'transparent', color: '#ef4444', border: 'none', cursor: 'pointer', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px', width: '100%', fontWeight: 600 }}
+                    >
+                      <i className="fa-solid fa-trash-can"></i> Delete Record
+                    </button>
                   </div>
                 </div>
               </div>
