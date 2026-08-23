@@ -38,10 +38,10 @@ namespace Superbass.Models
         public string? AvailabilityScheduleJson { get; set; } // e.g. Mon-Fri 9am-5pm
         
         // Performance & Ratings (Updated after completed jobs)
-        public double OverallRating { get; set; } = 5.0;
-        public int QualityRating { get; set; } = 5;
-        public int PunctualityRating { get; set; } = 5;
-        public int CommunicationRating { get; set; } = 5;
+        public double? OverallRating { get; set; } = null;
+        public int? QualityRating { get; set; } = null;
+        public int? PunctualityRating { get; set; } = null;
+        public int? CommunicationRating { get; set; } = null;
         
         public int CompletedJobs { get; set; } = 0;
         public int CancelledJobs { get; set; } = 0;
