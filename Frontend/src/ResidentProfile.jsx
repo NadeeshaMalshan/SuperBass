@@ -523,15 +523,31 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
         <a href="/" onClick={(e) => { e.preventDefault(); navigateTo('/'); }} style={{ cursor: 'pointer' }}>
           <img src="/iconWithText-cropped.png" alt="Super බාස් Logo" style={{ height: '40px' }} />
         </a>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <md-outlined-button onClick={() => navigateTo('/find')}>Find Workers</md-outlined-button>
+        <div className="nav-actions" style={{ display: 'flex', alignItems: 'center' }}>
+          <md-outlined-button
+            onClick={() => navigateTo('/find')}
+            style={{
+              '--md-sys-color-primary': '#0f172a',
+              padding: '0 16px',
+              margin: '0 8px'
+            }}
+          >
+            Find Workers
+          </md-outlined-button>
           <md-filled-button 
             onClick={() => navigateTo('/community')}
-            style={{ '--md-sys-color-primary': '#009688', '--md-sys-color-on-primary': '#ffffff' }}
+            style={{ 
+              '--md-sys-color-primary': '#FDC101', 
+              '--md-sys-color-on-primary': '#000000',
+              padding: '0 16px',
+              margin: '0 8px'
+            }}
           >
             Community Board
           </md-filled-button>
-          <UserMenu />
+          <div style={{ marginLeft: '8px' }}>
+            <UserMenu />
+          </div>
         </div>
       </header>
 

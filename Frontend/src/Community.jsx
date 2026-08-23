@@ -389,159 +389,215 @@ export default function Community() {
   };
 
   return (
-    <div className="community-page-wrapper">
-      {/* Navbar Header */}
-      <header className="community-navbar">
+    <div className="find-page-container">
+      {/* Top Navbar */}
+      <header className="navbar" style={{ padding: '1rem 2rem', borderBottom: '1px solid #e2e8f0', backgroundColor: '#ffffff' }}>
         <a href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }} className="brand-logo" style={{ cursor: 'pointer' }}>
-          <img src="/iconWithText-cropped.png" alt="Super බාස් Logo" className="brand-logo-img" style={{ height: '46px' }} />
+          <img src="/iconWithText-cropped.png" alt="Super Bass Logo" className="brand-logo-img" style={{ height: '40px' }} />
         </a>
 
-        <ul className="nav-links">
-          <li className="nav-link" onClick={() => navigate('/')}>Home</li>
-          <li className="nav-link" onClick={() => navigate('/find')}>Find Workers</li>
-          <li className="nav-link active" style={{ color: '#009688', fontWeight: 700 }}>Community</li>
-        </ul>
+        {/* Search Input Bar */}
+        <div style={{ flex: 1, maxWidth: '580px', margin: '0 2rem' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            backgroundColor: '#f8fafc',
+            borderRadius: '24px',
+            padding: '8px 20px',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)'
+          }}>
+            <i className="fa-solid fa-magnifying-glass" style={{ color: '#94a3b8', marginRight: '12px' }}></i>
+            <input 
+              type="text"
+              placeholder="Search community posts, ads, and requests..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{
+                width: '100%',
+                background: 'transparent',
+                border: 'none',
+                color: '#0f172a',
+                outline: 'none',
+                fontSize: '0.925rem'
+              }}
+            />
+            {searchTerm && (
+              <i 
+                className="fa-solid fa-xmark" 
+                onClick={() => setSearchTerm('')}
+                style={{ color: '#94a3b8', cursor: 'pointer' }}
+              ></i>
+            )}
+          </div>
+        </div>
 
-        <div className="nav-actions" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <button 
-            onClick={() => setIsCreateModalOpen(true)}
+        {/* Nav Actions */}
+        <div className="nav-actions" style={{ display: 'flex', alignItems: 'center' }}>
+          <md-filled-button
+            onClick={() => navigate('/find')}
             style={{
-              backgroundColor: '#009688',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '24px',
-              padding: '10px 20px',
-              fontSize: '14px',
-              fontWeight: '700',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              boxShadow: '0 3px 10px rgba(0, 150, 136, 0.3)',
-              transition: 'all 0.2s ease'
+              '--md-sys-color-primary': '#FDC101',
+              '--md-sys-color-on-primary': '#000000',
+              padding: '0 20px',
+              minWidth: '100px',
+              margin: '0 8px'
             }}
           >
-            <i className="fa-solid fa-plus"></i> Post Ad / Request
-          </button>
-
+            Find Workers
+          </md-filled-button>
+          
           <UserMenu />
         </div>
       </header>
 
       {/* Main Content Container */}
-      <main className="community-main">
-        
-        {/* Banner Section */}
-        <div style={{ marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-          <div>
-            <h1 style={{ fontSize: '1.75rem', fontWeight: '800', margin: 0, color: '#0f172a', letterSpacing: '-0.02em' }}>
-              {activeTab === 'feed' ? 'Community Listings & Service Board' : 'Moderation Queue'}
-            </h1>
-            <p style={{ color: '#64748b', margin: '0.25rem 0 0 0', fontSize: '0.95rem' }}>
-              {activeTab === 'feed' 
-                ? 'Browse classified ads, home service requests, and neighbor recommendations' 
-                : 'Review flagged community listings'}
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button
-              onClick={() => setActiveTab('feed')}
-              style={{
-                padding: '6px 14px',
-                borderRadius: '8px',
-                border: '1px solid #cbd5e1',
-                backgroundColor: activeTab === 'feed' ? '#0f172a' : '#ffffff',
-                color: activeTab === 'feed' ? '#ffffff' : '#475569',
-                fontWeight: '600',
-                fontSize: '0.85rem',
-                cursor: 'pointer'
-              }}
-            >
-              All Listings
-            </button>
-            <button
-              onClick={() => setActiveTab('moderation')}
-              style={{
-                padding: '6px 14px',
-                borderRadius: '8px',
-                border: '1px solid #cbd5e1',
-                backgroundColor: activeTab === 'moderation' ? '#ef4444' : '#ffffff',
-                color: activeTab === 'moderation' ? '#ffffff' : '#475569',
-                fontWeight: '600',
-                fontSize: '0.85rem',
-                cursor: 'pointer'
-              }}
-            >
-              Moderation Queue
+      {/* Main Layout Container */}
+      <div className="find-layout">
+        {/* Left Sidebar Filters */}
+        <aside className="find-sidebar">
+          <div className="find-sidebar-header">
+            <h2 className="find-sidebar-title">Filter by</h2>
+            <button className="find-sidebar-reset" onClick={() => {
+              setSearchTerm('');
+              setSelectedCategory('all');
+              setSelectedLocation('all');
+              setSortBy('newest');
+            }}>
+              Reset all <i className="fa-solid fa-xmark"></i>
             </button>
           </div>
-        </div>
 
-        {activeTab === 'feed' && (
-          <>
-            {/* Filter Toolbar Bar */}
-            <div className="filter-toolbar">
-              {/* Search Bar */}
-              <div className="search-input-wrapper">
-                <i className="fa-solid fa-magnifying-glass"></i>
-                <input
-                  type="text"
-                  placeholder="What are you looking for? (e.g. Monitor, AC repair, Plumbing...)"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="search-input"
-                />
-              </div>
+          {/* Filter Group: Location */}
+          <div className="filter-group">
+            <div className="filter-group-title">Location</div>
+            <select
+              value={selectedLocation}
+              onChange={(e) => setSelectedLocation(e.target.value)}
+              style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', fontSize: '0.9rem', color: '#334155', outline: 'none' }}
+            >
+              <option value="all">All Locations</option>
+              <option value="Colombo">Colombo</option>
+              <option value="Colombo 03">Colombo 03</option>
+              <option value="Colombo 05">Colombo 05</option>
+              <option value="Kandy">Kandy</option>
+              <option value="Rajagiriya">Rajagiriya</option>
+              <option value="Nugegoda">Nugegoda</option>
+              <option value="Dehiwala">Dehiwala</option>
+            </select>
+          </div>
 
-              {/* Location Filter */}
-              <select
-                value={selectedLocation}
-                onChange={(e) => setSelectedLocation(e.target.value)}
-                className="filter-select"
-              >
-                <option value="all">All Locations</option>
-                <option value="Colombo">Colombo</option>
-                <option value="Colombo 03">Colombo 03</option>
-                <option value="Colombo 05">Colombo 05</option>
-                <option value="Kandy">Kandy</option>
-                <option value="Rajagiriya">Rajagiriya</option>
-                <option value="Nugegoda">Nugegoda</option>
-                <option value="Dehiwala">Dehiwala</option>
-              </select>
-
-              {/* Sort Selector */}
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="filter-select"
-              >
-                <option value="newest">Newest First</option>
-                <option value="popular">Most Popular</option>
-              </select>
-            </div>
-
-            {/* Category Filter Chips */}
-            <div className="category-chips-scroll">
-              <button
-                onClick={() => setSelectedCategory('all')}
-                className={`category-chip ${selectedCategory === 'all' ? 'active' : ''}`}
-              >
-                All Categories
-              </button>
+          {/* Filter Group: Service Categories */}
+          <div className="filter-group">
+            <div className="filter-group-title">Category</div>
+            <div className="checkbox-list">
+              <label className="custom-checkbox-item">
+                <div className="custom-checkbox-left">
+                  <input 
+                    type="radio" 
+                    name="catRadio"
+                    className="custom-checkbox-input"
+                    checked={selectedCategory === 'all'}
+                    onChange={() => setSelectedCategory('all')}
+                  />
+                  <span>All Categories</span>
+                </div>
+              </label>
               {categoriesData.map(cat => (
-                <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id)}
-                  className={`category-chip ${selectedCategory === cat.id ? 'active' : ''}`}
-                >
-                  <i className={`fa-solid ${cat.icon}`}></i>
-                  {cat.name}
-                </button>
+                <label key={cat.id} className="custom-checkbox-item">
+                  <div className="custom-checkbox-left">
+                    <input 
+                      type="radio" 
+                      name="catRadio"
+                      className="custom-checkbox-input"
+                      checked={selectedCategory === cat.id}
+                      onChange={() => setSelectedCategory(cat.id)}
+                    />
+                    <span>{cat.name}</span>
+                  </div>
+                </label>
               ))}
             </div>
-          </>
-        )}
+          </div>
+        </aside>
+
+        {/* Right Main Content Area */}
+        <main className="find-main" style={{ flex: 1, minWidth: 0 }}>
+          {/* Main Controls Header */}
+          <div className="find-main-header">
+            <div>
+              <h1 className="find-results-title">
+                {activeTab === 'feed' ? 'Community Listings' : 'Moderation Queue'}
+              </h1>
+              <p style={{ color: '#64748b', margin: '0.25rem 0 0 0', fontSize: '0.95rem' }}>
+                {activeTab === 'feed' 
+                  ? 'Browse classified ads, home service requests, and neighbor recommendations' 
+                  : 'Review flagged community listings'}
+              </p>
+            </div>
+
+            <div className="find-header-actions">
+              {/* Tab Toggles */}
+              <div style={{ display: 'flex', gap: '8px', marginRight: '16px' }}>
+                <button
+                  onClick={() => setActiveTab('feed')}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    backgroundColor: activeTab === 'feed' ? '#0f172a' : '#ffffff',
+                    color: activeTab === 'feed' ? '#ffffff' : '#475569',
+                    fontWeight: '600',
+                    fontSize: '0.85rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  All Listings
+                </button>
+                <button
+                  onClick={() => setActiveTab('moderation')}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    backgroundColor: activeTab === 'moderation' ? '#ef4444' : '#ffffff',
+                    color: activeTab === 'moderation' ? '#ffffff' : '#475569',
+                    fontWeight: '600',
+                    fontSize: '0.85rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Moderation Queue
+                </button>
+              </div>
+
+              {activeTab === 'feed' && (
+                <>
+                  <select 
+                    className="find-sort-select"
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                  >
+                    <option value="newest">Sort by: Newest First</option>
+                    <option value="popular">Most Popular</option>
+                  </select>
+
+                  <md-filled-button
+                    onClick={() => setIsCreateModalOpen(true)}
+                    style={{
+                      '--md-sys-color-primary': '#FDC101',
+                      '--md-sys-color-on-primary': '#000000',
+                      padding: '0 24px',
+                      marginLeft: '8px'
+                    }}
+                  >
+                    <i slot="icon" className="fa-solid fa-plus"></i>
+                    Post Ad
+                  </md-filled-button>
+                </>
+              )}
+            </div>
+          </div>
 
         {/* Listings Cards Container */}
         {loading ? (
@@ -582,148 +638,109 @@ export default function Community() {
             )}
           </div>
         ) : (
-          <div className="ikman-listings-container">
-            {(activeTab === 'feed' ? posts : moderationPosts).map(post => (
-              <div 
-                key={post.postId}
-                className="ikman-card"
-                onClick={() => handleCardClick(post)}
-              >
-                {/* Left Thumbnail Image Column */}
-                <div className="ikman-image-col">
-                  {post.images && post.images.length > 0 ? (
-                    <>
+          <div style={{ display: 'grid', gap: '20px', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
+            {(activeTab === 'feed' ? posts : moderationPosts).map(post => {
+              const catObj = categoriesData.find(c => c.id === post.category);
+              return (
+                <div 
+                  key={post.postId}
+                  className="sleek-worker-card"
+                  onClick={() => handleCardClick(post)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  {/* Top Meta */}
+                  <div className="card-top-meta" style={{ justifyContent: 'space-between', padding: '0 16px 12px 16px', borderBottom: '1px solid #f1f5f9' }}>
+                    <div className="card-distance-pill">
+                      <i className={`fa-solid ${catObj?.icon || 'fa-tag'}`} style={{ color: '#64748b' }}></i>
+                      <span>{post.category}</span>
+                    </div>
+                    <div className="card-rating-pill" style={{ background: 'transparent', padding: 0 }}>
+                      <span style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 500 }}>
+                        <i className="fa-solid fa-clock"></i> {formatTimeAgo(post.createdAt)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Photo Banner */}
+                  <div className="card-photo-container" style={{ margin: '16px', height: '180px', borderRadius: '12px' }}>
+                    {post.images && post.images.length > 0 ? (
                       <img 
                         src={post.images[0]} 
                         alt={post.title} 
-                        className="ikman-img"
+                        className="card-photo-img"
                         onError={(e) => {
                           e.target.src = 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=500&auto=format&fit=crop';
                         }}
                       />
-                      {post.images.length > 1 && (
-                        <div className="ikman-img-count">
-                          <i className="fa-solid fa-camera"></i> {post.images.length}
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="ikman-img-placeholder">
-                      <i className="fa-solid fa-image"></i>
-                    </div>
-                  )}
-                </div>
-
-                {/* Right Details Content Column */}
-                <div className="ikman-content-col">
-                  <div>
-                    {/* Item Title & Edit/Delete Action Controls */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-                      <h3 className="ikman-title">
-                        {post.title}
-                      </h3>
-
-                      {/* Card Action Controls: Edit & Delete (Only for Post Author) */}
-                      {isPostOwner(post) && (
-                        <div style={{ display: 'flex', gap: '6px', shrink: 0 }} onClick={(e) => e.stopPropagation()}>
-                          <button
-                            onClick={(e) => handleOpenEdit(post, e)}
-                            title="Edit Post"
-                            style={{
-                              backgroundColor: '#eff6ff',
-                              color: '#2563eb',
-                              border: '1px solid #bfdbfe',
-                              borderRadius: '6px',
-                              padding: '4px 10px',
-                              fontSize: '0.775rem',
-                              fontWeight: '700',
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px'
-                            }}
-                          >
-                            <i className="fa-solid fa-pen"></i> Edit
-                          </button>
-
-                          <button
-                            onClick={(e) => handleDeletePost(post.postId, e)}
-                            title="Delete Post"
-                            style={{
-                              backgroundColor: '#fef2f2',
-                              color: '#ef4444',
-                              border: '1px solid #fecaca',
-                              borderRadius: '6px',
-                              padding: '4px 10px',
-                              fontSize: '0.775rem',
-                              fontWeight: '700',
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px'
-                            }}
-                          >
-                            <i className="fa-solid fa-trash"></i> Delete
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Condition / Subtag */}
-                    {post.condition && (
-                      <div className="ikman-condition">
-                        {post.condition}
+                    ) : (
+                      <div className="card-photo-avatar-placeholder" style={{ borderRadius: '12px', background: '#f1f5f9' }}>
+                        <i className="fa-solid fa-image" style={{ color: '#cbd5e1', fontSize: '3rem' }}></i>
                       </div>
                     )}
+                    {post.images && post.images.length > 1 && (
+                      <div style={{ position: 'absolute', bottom: '8px', right: '8px', background: 'rgba(15, 23, 42, 0.75)', color: '#ffffff', fontSize: '0.75rem', padding: '4px 8px', borderRadius: '6px', fontWeight: 600 }}>
+                        <i className="fa-solid fa-camera"></i> {post.images.length}
+                      </div>
+                    )}
+                  </div>
 
-                    {/* Badges Row */}
-                    <div className="ikman-badges">
-                      {post.badgeType === 'grey_member' && (
-                        <span className="badge-member-grey">MEMBER</span>
-                      )}
+                  <div style={{ padding: '0 16px' }}>
+                    {/* Title and Edit/Delete Actions */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                      <h3 className="card-worker-name" style={{ margin: 0, fontSize: '1.1rem', WebkitLineClamp: 2, display: '-webkit-box', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {post.title}
+                      </h3>
+                    </div>
+                    
+                    <p className="card-worker-role" style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '6px 0 0 0' }}>
+                      <i className="fa-solid fa-location-dot" style={{ color: '#94a3b8' }}></i> {post.location}
+                    </p>
 
+                    <div className="card-skills-row" style={{ marginTop: '12px' }}>
+                      {post.condition && <span className="card-skill-tag">{post.condition}</span>}
                       {post.badgeType === 'verified_member' && (
-                        <>
-                          <span className="badge-member-yellow">
-                            <i className="fa-solid fa-star" style={{ color: '#eab308' }}></i> MEMBER
-                          </span>
-                          <span className="badge-verified">
-                            <i className="fa-solid fa-circle-check"></i> VERIFIED SELLER
-                          </span>
-                        </>
+                        <span className="card-skill-tag" style={{ background: '#e0f2fe', color: '#0284c7', borderColor: '#bae6fd' }}>
+                          <i className="fa-solid fa-circle-check"></i> Verified
+                        </span>
                       )}
-
-                      <span className="badge-category-chip">
-                        {post.serviceCategoryName}
-                      </span>
-                    </div>
-
-                    {/* Location Line */}
-                    <div className="ikman-location-cat">
-                      <span>📍 {post.location}</span>
-                    </div>
-
-                    {/* Price Tag */}
-                    <div className="ikman-price">
-                      {post.price || (post.priceVal ? `Rs ${post.priceVal.toLocaleString()}` : 'Inquire / Quote')}
                     </div>
                   </div>
 
-                  {/* Footer Meta (Timestamp & Yellow Bump Arrow Icon) */}
-                  <div className="ikman-footer-meta">
-                    <span>{formatTimeAgo(post.createdAt)}</span>
-                    {post.hasBump && (
-                      <span className="ikman-bump-icon" title="Bumped just now">
-                        <i className="fa-solid fa-arrow-up"></i>
-                      </span>
+                  <div className="card-bottom-row" style={{ marginTop: '16px', padding: '16px', background: '#f8fafc', borderTop: '1px solid #f1f5f9', borderRadius: '0 0 20px 20px' }}>
+                    <div className="card-price-display">
+                      <span className="card-price-amount" style={{ color: '#0f172a', fontSize: '1.1rem' }}>{post.price || (post.priceVal ? `Rs ${post.priceVal.toLocaleString()}` : 'Inquire / Quote')}</span>
+                    </div>
+
+                    {isPostOwner(post) ? (
+                      <div style={{ display: 'flex', gap: '8px' }} onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={(e) => handleOpenEdit(post, e)}
+                          style={{ padding: '6px 12px', borderRadius: '6px', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem' }}
+                          title="Edit"
+                        >
+                          <i className="fa-solid fa-pen"></i> Edit
+                        </button>
+                        <button
+                          onClick={(e) => handleDeletePost(post.postId, e)}
+                          style={{ padding: '6px 12px', borderRadius: '6px', background: '#fef2f2', color: '#ef4444', border: '1px solid #fecaca', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem' }}
+                          title="Delete"
+                        >
+                          <i className="fa-solid fa-trash"></i> Delete
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        View Ad <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.75rem' }}></i>
+                      </div>
                     )}
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </main>
+      </div>
 
       {/* Listing Item Detail Modal View */}
       {selectedPostForDetail && (
@@ -772,10 +789,10 @@ export default function Community() {
               )}
 
               {/* Price & Location Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f0fdf4', padding: '14px 18px', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fffbeb', padding: '14px 18px', borderRadius: '12px', border: '1px solid #fef08a' }}>
                 <div>
-                  <span style={{ fontSize: '0.85rem', color: '#166534', fontWeight: '600' }}>Listing Price / Budget</span>
-                  <div style={{ fontSize: '1.4rem', fontWeight: '800', color: '#009688' }}>
+                  <span style={{ fontSize: '0.85rem', color: '#b45309', fontWeight: '600' }}>Listing Price / Budget</span>
+                  <div style={{ fontSize: '1.4rem', fontWeight: '800', color: '#0f172a' }}>
                     {selectedPostForDetail.price || 'Inquire / Quote'}
                   </div>
                 </div>
@@ -806,27 +823,15 @@ export default function Community() {
                 </div>
 
                 {activeRole === 'Worker' && (
-                  <button
+                  <md-filled-button
                     onClick={() => handleOpenChat(selectedPostForDetail)}
                     style={{
-                      backgroundColor: '#0f172a',
-                      color: '#ffffff',
-                      border: 'none',
-                      borderRadius: '20px',
-                      padding: '8px 18px',
-                      fontWeight: '700',
-                      fontSize: '0.875rem',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      transition: 'all 0.2s'
+                      '--md-sys-color-primary': '#0f172a',
+                      '--md-sys-color-on-primary': '#ffffff',
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0284c7'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#0f172a'}
                   >
-                    <i className="fa-solid fa-comment-dots"></i> Chat / Contact
-                  </button>
+                    <i slot="icon" className="fa-solid fa-comment-dots"></i> Chat / Contact
+                  </md-filled-button>
                 )}
               </div>
 
@@ -840,59 +845,37 @@ export default function Community() {
 
               {/* Like / Comment / Edit / Delete Actions Bar */}
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center', borderTop: '1px solid #e2e8f0', paddingTop: '1rem', flexWrap: 'wrap' }}>
-                <button
+                <md-filled-button
                   onClick={(e) => handleLike(selectedPostForDetail.postId, e)}
                   style={{
-                    background: selectedPostForDetail.isLiked ? '#e0f2fe' : '#f1f5f9',
-                    border: 'none',
-                    color: selectedPostForDetail.isLiked ? '#0284c7' : '#475569',
-                    fontWeight: '700',
-                    fontSize: '0.875rem',
-                    padding: '8px 16px',
-                    borderRadius: '20px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px'
+                    '--md-sys-color-primary': selectedPostForDetail.isLiked ? '#FDC101' : '#f1f5f9',
+                    '--md-sys-color-on-primary': selectedPostForDetail.isLiked ? '#000000' : '#475569',
                   }}
                 >
-                  <i className="fa-solid fa-thumbs-up"></i> Interested ({selectedPostForDetail.likesCount || 0})
-                </button>
+                  <i slot="icon" className="fa-solid fa-thumbs-up"></i>
+                  Interested ({selectedPostForDetail.likesCount || 0})
+                </md-filled-button>
 
                 {/* Author Controls in Detail Modal */}
                 {isPostOwner(selectedPostForDetail) && (
                   <>
-                    <button
+                    <md-outlined-button
                       onClick={(e) => { setSelectedPostForDetail(null); handleOpenEdit(selectedPostForDetail, e); }}
                       style={{
-                        backgroundColor: '#3b82f6',
-                        color: '#ffffff',
-                        border: 'none',
-                        padding: '8px 16px',
-                        borderRadius: '20px',
-                        fontWeight: '700',
-                        fontSize: '0.875rem',
-                        cursor: 'pointer'
+                        '--md-sys-color-primary': '#3b82f6',
                       }}
                     >
                       Edit Post
-                    </button>
+                    </md-outlined-button>
 
-                    <button
+                    <md-outlined-button
                       onClick={(e) => { handleDeletePost(selectedPostForDetail.postId, e); }}
                       style={{
-                        backgroundColor: '#ef4444',
-                        color: '#ffffff',
-                        border: 'none',
-                        padding: '8px 16px',
-                        borderRadius: '20px',
-                        fontWeight: '700',
-                        fontSize: '0.875rem',
-                        cursor: 'pointer'
+                        '--md-sys-color-primary': '#ef4444',
                       }}
                     >
                       Delete Post
-                    </button>
+                    </md-outlined-button>
                   </>
                 )}
 
@@ -904,7 +887,10 @@ export default function Community() {
                     color: '#94a3b8',
                     fontSize: '0.85rem',
                     cursor: 'pointer',
-                    marginLeft: 'auto'
+                    marginLeft: 'auto',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
                   }}
                 >
                   <i className="fa-solid fa-flag"></i> Report
@@ -956,21 +942,16 @@ export default function Community() {
                       outline: 'none'
                     }}
                   />
-                  <button
+                  <md-filled-button
                     onClick={() => handleAddComment(selectedPostForDetail.postId)}
                     style={{
-                      backgroundColor: '#009688',
-                      color: '#ffffff',
-                      border: 'none',
-                      padding: '10px 18px',
-                      borderRadius: '8px',
-                      fontWeight: '700',
-                      cursor: 'pointer',
-                      fontSize: '0.9rem'
+                      '--md-sys-color-primary': '#FDC101',
+                      '--md-sys-color-on-primary': '#000000',
+                      padding: '0 24px'
                     }}
                   >
                     Send
-                  </button>
+                  </md-filled-button>
                 </div>
               </div>
             </div>
