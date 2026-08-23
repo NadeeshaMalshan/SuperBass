@@ -3,23 +3,14 @@ import WorkerLayout from './WorkerLayout.jsx';
 import axios from 'axios';
 
 export default function WorkerPerformance() {
-  const [metrics, setMetrics] = useState({
-    overallRating: 4.8,
-    qualityRating: 4.9,
-    punctualityRating: 4.7,
-    communicationRating: 4.8,
-    completedJobs: 33,
-    cancelledJobs: 1,
-    acceptanceRate: '94.0%',
-    completionRate: '97.0%',
-    cancellationRate: '3.0%'
-  });
+  const [metrics, setMetrics] = useState(null);
+  const [reviews, setReviews] = useState([]);
 
-  const userEmail = localStorage.getItem('email');
+  const userEmail = localStorage.getItem('workerEmail') || localStorage.getItem('email');
   const token = localStorage.getItem('token');
 
   useEffect(() => {
-    const fetchPerformance = async () => {
+    const fetchPerformanceData = async () => {
       if (!userEmail) return;
       try {
         const meRes = await axios.get(`http://localhost:5237/api/workers/me?email=${encodeURIComponent(userEmail)}`, {
@@ -34,14 +25,27 @@ export default function WorkerPerformance() {
           if (perfRes.data) {
             setMetrics(perfRes.data);
           }
+
+          const bookingsRes = await axios.get(`http://localhost:5237/api/bookings/worker?email=${encodeURIComponent(userEmail)}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+          });
+          if (bookingsRes.data) {
+            const reviewedList = bookingsRes.data.filter(b => b.status === 'Reviewed' || b.reviewRating != null);
+            setReviews(reviewedList);
+          }
         }
       } catch (err) {
-        console.log('Using default or fallback performance metrics', err);
+        console.log('Error fetching performance analytics', err);
       }
     };
 
-    fetchPerformance();
+    fetchPerformanceData();
   }, [userEmail, token]);
+
+  const calcPercent = (val) => {
+    if (!val || val <= 0) return '0%';
+    return `${Math.min(100, Math.round((val / 5) * 100))}%`;
+  };
 
   return (
     <WorkerLayout activeTab="performance">
@@ -57,7 +61,9 @@ export default function WorkerPerformance() {
             <i className="fa-solid fa-star"></i>
           </div>
           <div>
-            <div className="metric-val">★ {metrics.overallRating || 4.8}</div>
+            <div className="metric-val">
+              {metrics?.overallRating != null ? `★ ${metrics.overallRating.toFixed(1)}` : 'No rating'}
+            </div>
             <div className="metric-label">Overall Rating</div>
           </div>
         </div>
@@ -67,7 +73,7 @@ export default function WorkerPerformance() {
             <i className="fa-solid fa-square-check"></i>
           </div>
           <div>
-            <div className="metric-val">{metrics.completionRate || '97.0%'}</div>
+            <div className="metric-val">{metrics?.completionRate || 'N/A'}</div>
             <div className="metric-label">Completion Rate</div>
           </div>
         </div>
@@ -77,7 +83,7 @@ export default function WorkerPerformance() {
             <i className="fa-solid fa-handshake-angle"></i>
           </div>
           <div>
-            <div className="metric-val">{metrics.acceptanceRate || '94.0%'}</div>
+            <div className="metric-val">{metrics?.acceptanceRate || 'N/A'}</div>
             <div className="metric-label">Acceptance Rate</div>
           </div>
         </div>
@@ -87,7 +93,7 @@ export default function WorkerPerformance() {
             <i className="fa-solid fa-circle-xmark"></i>
           </div>
           <div>
-            <div className="metric-val">{metrics.cancellationRate || '3.0%'}</div>
+            <div className="metric-val">{metrics?.cancellationRate || 'N/A'}</div>
             <div className="metric-label">Cancellation Rate</div>
           </div>
         </div>
@@ -104,10 +110,12 @@ export default function WorkerPerformance() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.9rem', fontWeight: 600 }}>
               <span>Work Quality & Craftsmanship</span>
-              <span style={{ color: '#F59E0B' }}>★ {metrics.qualityRating || 4.9} / 5.0</span>
+              <span style={{ color: '#F59E0B' }}>
+                {metrics?.qualityRating != null ? `★ ${metrics.qualityRating.toFixed(1)} / 5.0` : 'N/A'}
+              </span>
             </div>
             <div style={{ width: '100%', height: '10px', backgroundColor: '#F1F5F9', borderRadius: '9999px', overflow: 'hidden' }}>
-              <div style={{ width: '98%', height: '100%', backgroundColor: '#2563EB', borderRadius: '9999px' }}></div>
+              <div style={{ width: calcPercent(metrics?.qualityRating), height: '100%', backgroundColor: '#2563EB', borderRadius: '9999px' }}></div>
             </div>
           </div>
 
@@ -115,10 +123,12 @@ export default function WorkerPerformance() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.9rem', fontWeight: 600 }}>
               <span>Punctuality & Arrival Time</span>
-              <span style={{ color: '#F59E0B' }}>★ {metrics.punctualityRating || 4.7} / 5.0</span>
+              <span style={{ color: '#F59E0B' }}>
+                {metrics?.punctualityRating != null ? `★ ${metrics.punctualityRating.toFixed(1)} / 5.0` : 'N/A'}
+              </span>
             </div>
             <div style={{ width: '100%', height: '10px', backgroundColor: '#F1F5F9', borderRadius: '9999px', overflow: 'hidden' }}>
-              <div style={{ width: '94%', height: '100%', backgroundColor: '#2563EB', borderRadius: '9999px' }}></div>
+              <div style={{ width: calcPercent(metrics?.punctualityRating), height: '100%', backgroundColor: '#2563EB', borderRadius: '9999px' }}></div>
             </div>
           </div>
 
@@ -126,10 +136,12 @@ export default function WorkerPerformance() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.9rem', fontWeight: 600 }}>
               <span>Communication & Professionalism</span>
-              <span style={{ color: '#F59E0B' }}>★ {metrics.communicationRating || 4.8} / 5.0</span>
+              <span style={{ color: '#F59E0B' }}>
+                {metrics?.communicationRating != null ? `★ ${metrics.communicationRating.toFixed(1)} / 5.0` : 'N/A'}
+              </span>
             </div>
             <div style={{ width: '100%', height: '10px', backgroundColor: '#F1F5F9', borderRadius: '9999px', overflow: 'hidden' }}>
-              <div style={{ width: '96%', height: '100%', backgroundColor: '#2563EB', borderRadius: '9999px' }}></div>
+              <div style={{ width: calcPercent(metrics?.communicationRating), height: '100%', backgroundColor: '#2563EB', borderRadius: '9999px' }}></div>
             </div>
           </div>
         </div>
@@ -142,33 +154,28 @@ export default function WorkerPerformance() {
         </h3>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Review 1 */}
-          <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <div>
-                <strong style={{ fontSize: '1rem', color: '#111111' }}>Anura Wickramasinghe</strong>
-                <div style={{ fontSize: '0.8rem', color: '#64748B' }}>Plumbing Repair • 2 days ago</div>
+          {reviews.length === 0 ? (
+            <p style={{ color: '#64748B', margin: 0 }}>No resident reviews received yet.</p>
+          ) : (
+            reviews.map(item => (
+              <div key={item.id} style={{ padding: '16px', borderRadius: '12px', backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <div>
+                    <strong style={{ fontSize: '1rem', color: '#111111' }}>{item.residentName || item.residentEmail}</strong>
+                    <div style={{ fontSize: '0.8rem', color: '#64748B' }}>
+                      {item.jobTitle} • {item.reviewedAt ? new Date(item.reviewedAt).toLocaleDateString() : 'Reviewed'}
+                    </div>
+                  </div>
+                  {item.reviewRating && (
+                    <span style={{ color: '#F59E0B', fontWeight: 700 }}>★ {item.reviewRating.toFixed(1)}</span>
+                  )}
+                </div>
+                <p style={{ fontSize: '0.9rem', color: '#334155', margin: 0 }}>
+                  "{item.reviewComment || 'No written comment provided.'}"
+                </p>
               </div>
-              <span style={{ color: '#F59E0B', fontWeight: 700 }}>★ 5.0</span>
-            </div>
-            <p style={{ fontSize: '0.9rem', color: '#334155', margin: 0 }}>
-              "Fixed our bathroom pipe leak very cleanly and explained the repair process. Excellent work!"
-            </p>
-          </div>
-
-          {/* Review 2 */}
-          <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <div>
-                <strong style={{ fontSize: '1rem', color: '#111111' }}>Dilini Senanayake</strong>
-                <div style={{ fontSize: '0.8rem', color: '#64748B' }}>Electrical Switch Replacement • 1 week ago</div>
-              </div>
-              <span style={{ color: '#F59E0B', fontWeight: 700 }}>★ 4.8</span>
-            </div>
-            <p style={{ fontSize: '0.9rem', color: '#334155', margin: 0 }}>
-              "Punctual and very knowledgeable electrician. Will hire again!"
-            </p>
-          </div>
+            ))
+          )}
         </div>
       </div>
     </WorkerLayout>
