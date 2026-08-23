@@ -75,7 +75,7 @@
   z-index: 10000;
   animation: menuPopupFade 0.18s cubic-bezier(0.1, 0.9, 0.2, 1);
   transform-origin: top right;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-body);
 }
 
 @keyframes menuPopupFade {
