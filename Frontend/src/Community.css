@@ -68,8 +68,8 @@
 }
 
 .search-input:focus {
-  border-color: #009688;
-  box-shadow: 0 0 0 3px rgba(0, 150, 136, 0.15);
+  border-color: #FDC101;
+  box-shadow: 0 0 0 3px rgba(253, 193, 1, 0.15);
 }
 
 .filter-select {
@@ -86,7 +86,7 @@
 }
 
 .filter-select:focus {
-  border-color: #009688;
+  border-color: #FDC101;
 }
 
 /* Category Filter Chips horizontal scroll */
@@ -116,11 +116,11 @@
 }
 
 .category-chip.active {
-  background-color: #009688;
-  color: #ffffff;
-  border-color: #009688;
+  background-color: #FDC101;
+  color: #000000;
+  border-color: #FDC101;
   font-weight: 700;
-  box-shadow: 0 2px 8px rgba(0, 150, 136, 0.3);
+  box-shadow: 0 2px 8px rgba(253, 193, 1, 0.3);
 }
 
 .category-chip:hover:not(.active) {
@@ -237,7 +237,7 @@
 }
 
 .ikman-card:hover .ikman-title {
-  color: #009688;
+  color: #FDC101;
 }
 
 .ikman-condition {
@@ -320,7 +320,7 @@
 .ikman-price {
   font-size: 1.05rem;
   font-weight: 700;
-  color: #009688;
+  color: #FDC101;
   margin-top: 2px;
 }
 
@@ -422,7 +422,7 @@
 }
 
 .detail-thumb-img.active {
-  border-color: #009688;
+  border-color: #FDC101;
 }
 
 /* Poster Card inside Detail */
@@ -447,7 +447,7 @@
   height: 48px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid #009688;
+  border: 2px solid #FDC101;
 }
 
 @media (max-width: 640px) {
