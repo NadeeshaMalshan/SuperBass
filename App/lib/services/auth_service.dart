@@ -63,6 +63,7 @@ class AuthService {
       return await sendTokensToBackend(
         accessToken: accessToken,
         idToken: idToken,
+        fallbackPhotoUrl: googleAccount.photoUrl,
       );
     } catch (e) {
       debugPrint('Error during Google Sign-In: $e');
@@ -74,6 +75,7 @@ class AuthService {
   Future<AuthUser> sendTokensToBackend({
     String? accessToken,
     String? idToken,
+    String? fallbackPhotoUrl,
   }) async {
     final response = await http.post(
       Uri.parse(ApiConfig.googleAuthUrl),
@@ -89,7 +91,22 @@ class AuthService {
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final Map<String, dynamic> data = jsonDecode(response.body);
-      final user = AuthUser.fromJson(data);
+      var user = AuthUser.fromJson(data);
+
+      if ((user.picture == null || user.picture!.isEmpty) &&
+          fallbackPhotoUrl != null &&
+          fallbackPhotoUrl.isNotEmpty) {
+        user = AuthUser(
+          token: user.token,
+          email: user.email,
+          name: user.name,
+          picture: fallbackPhotoUrl,
+          isNewUser: user.isNewUser,
+          isWorker: user.isWorker,
+          activeRole: user.activeRole,
+          workerId: user.workerId,
+        );
+      }
 
       // Save credentials in SharedPreferences (matches Join.jsx localStorage)
       final prefs = await SharedPreferences.getInstance();

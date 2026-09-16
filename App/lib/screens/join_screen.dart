@@ -131,7 +131,6 @@ class _JoinScreenState extends State<JoinScreen> {
         SnackBar(
           content: Text(_errorMessage ?? 'Login failed. Please try again.'),
           backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
           action: SnackBarAction(
             label: 'Dev Mode',
             textColor: Colors.white,
@@ -179,11 +178,11 @@ class _JoinScreenState extends State<JoinScreen> {
   }
 
   void _navigateBasedOnRole(AuthUser user) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Welcome back, ${user.name}!'),
         backgroundColor: AppColors.success,
-        behavior: SnackBarBehavior.floating,
       ),
     );
 
@@ -421,12 +420,16 @@ class _JoinScreenState extends State<JoinScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        'Backend: ${ApiConfig.baseUrl}',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 11,
-                          color: AppColors.onSurfaceVariant,
-                          fontWeight: FontWeight.w500,
+                      Flexible(
+                        child: Text(
+                          'Backend: ${ApiConfig.baseUrl}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.dmSans(
+                            fontSize: 11,
+                            color: AppColors.onSurfaceVariant,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ],

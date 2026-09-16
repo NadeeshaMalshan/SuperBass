@@ -310,6 +310,8 @@ class WorkerCard extends StatelessWidget {
   final int reviewCount;
   final String location;
   final String distance;
+  final String? price;
+  final String? profileImage;
   final VoidCallback onBookTap;
 
   const WorkerCard({
@@ -320,6 +322,8 @@ class WorkerCard extends StatelessWidget {
     required this.reviewCount,
     required this.location,
     required this.distance,
+    this.price,
+    this.profileImage,
     required this.onBookTap,
   });
 
@@ -342,16 +346,42 @@ class WorkerCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            radius: 28,
-            backgroundColor: AppColors.surfaceVariant,
-            child: Text(
-              name.substring(0, 1),
-              style: GoogleFonts.dmSans(
-                fontWeight: FontWeight.w800,
-                fontSize: 20,
-                color: AppColors.onSurface,
-              ),
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.surfaceVariant,
+              border: Border.all(color: AppColors.outlineVariant),
+            ),
+            child: ClipOval(
+              child: (profileImage != null && profileImage!.isNotEmpty)
+                  ? Image.network(
+                      profileImage!,
+                      width: 56,
+                      height: 56,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Center(
+                        child: Text(
+                          name.isNotEmpty ? name[0].toUpperCase() : 'W',
+                          style: GoogleFonts.dmSans(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 20,
+                            color: AppColors.onSurface,
+                          ),
+                        ),
+                      ),
+                    )
+                  : Center(
+                      child: Text(
+                        name.isNotEmpty ? name[0].toUpperCase() : 'W',
+                        style: GoogleFonts.dmSans(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 20,
+                          color: AppColors.onSurface,
+                        ),
+                      ),
+                    ),
             ),
           ),
           const SizedBox(width: 14),
