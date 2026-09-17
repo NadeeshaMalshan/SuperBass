@@ -355,7 +355,7 @@ class WorkerCard extends StatelessWidget {
               border: Border.all(color: AppColors.outlineVariant),
             ),
             child: ClipOval(
-              child: (profileImage != null && profileImage!.isNotEmpty)
+              child: (profileImage != null && profileImage!.isNotEmpty && profileImage != 'null')
                   ? Image.network(
                       profileImage!,
                       width: 56,

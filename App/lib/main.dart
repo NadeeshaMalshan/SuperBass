@@ -11,6 +11,7 @@ import 'services/auth_service.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
 import 'widgets/app_components.dart';
+import 'package:loading_indicator_m3e/loading_indicator_m3e.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -227,7 +228,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
                         color: AppColors.primaryContainer,
                       ),
                       child: ClipOval(
-                        child: (worker.profileImage != null && worker.profileImage!.isNotEmpty)
+                        child: (worker.profileImage != null && worker.profileImage!.isNotEmpty && worker.profileImage != 'null')
                             ? Image.network(
                                 worker.profileImage!,
                                 fit: BoxFit.cover,
@@ -410,7 +411,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
                       shape: const StadiumBorder(),
                     ),
                     child: isSubmitting
-                        ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
+                        ? const SizedBox(width: 22, height: 22, child: LoadingIndicatorM3E())
                         : Text(
                             'Confirm & Send Request',
                             style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 16),
@@ -619,7 +620,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
                     ? const Center(
                         child: Padding(
                           padding: EdgeInsets.all(40.0),
-                          child: CircularProgressIndicator(),
+                          child: LoadingIndicatorM3E(),
                         ),
                       )
                     : _workers.isEmpty
@@ -769,7 +770,7 @@ class _CommunityTabScreenState extends State<CommunityTabScreen> {
               const Center(
                 child: Padding(
                   padding: EdgeInsets.all(40.0),
-                  child: CircularProgressIndicator(),
+                  child: LoadingIndicatorM3E(),
                 ),
               )
             else if (_posts.isEmpty)
@@ -1049,7 +1050,7 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
           : RefreshIndicator(
               onRefresh: _fetchBookings,
               child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const Center(child: LoadingIndicatorM3E())
                   : _bookings.isEmpty
                       ? ListView(
                           children: [
@@ -1275,7 +1276,7 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
           : RefreshIndicator(
               onRefresh: _fetchChats,
               child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const Center(child: LoadingIndicatorM3E())
                   : _conversations.isEmpty
                       ? ListView(
                           children: [
@@ -1319,10 +1320,10 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
                               leading: CircleAvatar(
                                 radius: 26,
                                 backgroundColor: AppColors.surfaceVariant,
-                                backgroundImage: (c['workerProfileImage'] != null && c['workerProfileImage'].toString().isNotEmpty)
+                                backgroundImage: (c['workerProfileImage'] != null && c['workerProfileImage'].toString().isNotEmpty && c['workerProfileImage'].toString() != 'null')
                                     ? NetworkImage(c['workerProfileImage'].toString())
                                     : null,
-                                child: (c['workerProfileImage'] == null || c['workerProfileImage'].toString().isEmpty)
+                                child: (c['workerProfileImage'] == null || c['workerProfileImage'].toString().isEmpty || c['workerProfileImage'].toString() == 'null')
                                     ? Text(
                                         name.isNotEmpty ? name[0].toUpperCase() : 'W',
                                         style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 18, color: AppColors.onSurfaceVariant),
