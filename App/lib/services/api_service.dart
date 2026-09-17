@@ -176,6 +176,23 @@ class ApiService {
     }
   }
 
+  /// 5.5 Fetch conversation details: GET /api/conversations/{id}
+  Future<Map<String, dynamic>?> fetchConversationDetails(int conversationId, String userEmail) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/conversations/$conversationId').replace(
+        queryParameters: {'userEmail': userEmail},
+      );
+      final response = await http.get(uri, headers: _headers);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error fetching conversation details: $e');
+      return null;
+    }
+  }
+
   /// 6. Fetch messages for a conversation: GET /api/conversations/{id}/messages
   Future<List<Map<String, dynamic>>> fetchMessages(int conversationId, String userEmail) async {
     try {
