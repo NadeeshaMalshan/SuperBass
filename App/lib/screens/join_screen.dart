@@ -5,6 +5,7 @@ import '../services/api_config.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
 import '../main.dart';
+import 'package:loading_indicator_m3e/loading_indicator_m3e.dart';
 
 /// Pixel-perfect Google 4-color "G" Logo
 class GoogleLogoIcon extends StatelessWidget {
@@ -353,10 +354,7 @@ class _JoinScreenState extends State<JoinScreen> {
                           ? const SizedBox(
                               height: 24,
                               width: 24,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
-                              ),
+                              child: LoadingIndicatorM3E(),
                             )
                           : Row(
                               mainAxisAlignment: MainAxisAlignment.center,

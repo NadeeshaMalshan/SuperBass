@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_colors.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import 'package:loading_indicator_m3e/loading_indicator_m3e.dart';
 
 class ChatScreen extends StatefulWidget {
   final int conversationId;
@@ -55,8 +56,10 @@ class _ChatScreenState extends State<ChatScreen> {
     String lastSeenStr = '';
     if (convDetails != null) {
       isOnline = convDetails['isOnline'] == true;
-      final lastSeenAt = convDetails['lastSeenAt']?.toString();
-      if (lastSeenAt != null && lastSeenAt.isNotEmpty) {
+      String? lastSeenAt = convDetails['lastSeenAt']?.toString();
+      
+
+      if (lastSeenAt != null && lastSeenAt.isNotEmpty && lastSeenAt != 'null') {
         try {
           final dt = DateTime.parse(lastSeenAt).toLocal();
           final hour = dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
@@ -154,10 +157,10 @@ class _ChatScreenState extends State<ChatScreen> {
             CircleAvatar(
               radius: 18,
               backgroundColor: AppColors.outlineVariant,
-              backgroundImage: widget.profileImage != null && widget.profileImage!.isNotEmpty
+              backgroundImage: widget.profileImage != null && widget.profileImage!.isNotEmpty && widget.profileImage != 'null'
                   ? NetworkImage(widget.profileImage!)
                   : null,
-              child: widget.profileImage == null || widget.profileImage!.isEmpty
+              child: widget.profileImage == null || widget.profileImage!.isEmpty || widget.profileImage == 'null'
                   ? Text(
                       widget.name.isNotEmpty ? widget.name[0].toUpperCase() : 'W',
                       style: GoogleFonts.dmSans(
@@ -181,13 +184,22 @@ class _ChatScreenState extends State<ChatScreen> {
                       color: AppColors.onSurface,
                     ),
                   ),
-                  if (_isOnline || _lastSeenStr.isNotEmpty)
+                  if (_isOnline)
                     Text(
-                      _isOnline ? 'Active now' : _lastSeenStr,
+                      'Active now',
                       style: GoogleFonts.dmSans(
                         fontWeight: FontWeight.w400,
                         fontSize: 12,
-                        color: _isOnline ? AppColors.success : AppColors.onSurfaceVariant.withValues(alpha: 0.7),
+                        color: AppColors.success,
+                      ),
+                    )
+                  else if (_lastSeenStr.isNotEmpty)
+                    Text(
+                      _lastSeenStr,
+                      style: GoogleFonts.dmSans(
+                        fontWeight: FontWeight.w400,
+                        fontSize: 12,
+                        color: AppColors.onSurfaceVariant.withValues(alpha: 0.7),
                       ),
                     ),
                 ],
@@ -213,7 +225,7 @@ class _ChatScreenState extends State<ChatScreen> {
               child: ClipRRect(
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
                 child: _isLoading 
-                  ? const Center(child: CircularProgressIndicator()) 
+                  ? const Center(child: LoadingIndicatorM3E()) 
                   : ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
                   itemCount: _messages.length,
