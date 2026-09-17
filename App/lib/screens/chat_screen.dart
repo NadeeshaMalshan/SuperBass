@@ -26,6 +26,9 @@ class _ChatScreenState extends State<ChatScreen> {
   List<Map<String, dynamic>> _messages = [];
   bool _isLoading = true;
   bool _showEmoji = false;
+  
+  bool _isOnline = false;
+  String _lastSeenStr = '';
 
   void _pickImage() {
     // Open gallery logic goes here
@@ -46,6 +49,31 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     final data = await ApiService().fetchMessages(widget.conversationId, email);
+    final convDetails = await ApiService().fetchConversationDetails(widget.conversationId, email);
+    
+    bool isOnline = false;
+    String lastSeenStr = '';
+    if (convDetails != null) {
+      isOnline = convDetails['isOnline'] == true;
+      final lastSeenAt = convDetails['lastSeenAt']?.toString();
+      if (lastSeenAt != null && lastSeenAt.isNotEmpty) {
+        try {
+          final dt = DateTime.parse(lastSeenAt).toLocal();
+          final hour = dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
+          final minute = dt.minute.toString().padLeft(2, '0');
+          final ampm = dt.hour >= 12 ? 'pm' : 'am';
+          
+          final now = DateTime.now();
+          final diff = now.difference(dt);
+          if (diff.inDays == 0 && now.day == dt.day) {
+            lastSeenStr = 'Last online today at $hour:$minute $ampm';
+          } else {
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            lastSeenStr = 'Last online ${dt.day} ${months[dt.month - 1]} at $hour:$minute $ampm';
+          }
+        } catch (_) {}
+      }
+    }
     
     // Process messages to inject date headers
     final List<Map<String, dynamic>> processed = [];
@@ -58,21 +86,24 @@ class _ChatScreenState extends State<ChatScreen> {
       final isMe = msg['senderEmail'] == email;
       final dtStr = msg['createdAt']?.toString();
       
+      String timeStr = '';
       if (dtStr != null) {
         try {
           final dt = DateTime.parse(dtStr).toLocal();
           final dateKey = '${dt.year}-${dt.month}-${dt.day}';
           
+          final hour = dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
+          final minute = dt.minute.toString().padLeft(2, '0');
+          final ampm = dt.hour >= 12 ? 'pm' : 'am';
+          timeStr = '$hour:$minute $ampm';
+
           if (lastDateStr != dateKey) {
             lastDateStr = dateKey;
             
             // Format header: Thursday, 6 Mar • 11:53 am
             final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
             final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            final hour = dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
-            final minute = dt.minute.toString().padLeft(2, '0');
-            final ampm = dt.hour >= 12 ? 'pm' : 'am';
-            final headerText = '${days[dt.weekday - 1]}, ${dt.day} ${months[dt.month - 1]} • $hour:$minute $ampm';
+            final headerText = '${days[dt.weekday - 1]}, ${dt.day} ${months[dt.month - 1]} • $timeStr';
             
             processed.add({
               'text': headerText,
@@ -85,12 +116,16 @@ class _ChatScreenState extends State<ChatScreen> {
       processed.add({
         'text': msg['content']?.toString() ?? '',
         'isMe': isMe,
+        'isRead': msg['isRead'] == true,
+        'timeStr': timeStr,
       });
     }
 
     if (mounted) {
       setState(() {
         _messages = processed;
+        _isOnline = isOnline;
+        _lastSeenStr = lastSeenStr;
         _isLoading = false;
       });
     }
@@ -134,13 +169,28 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                widget.name,
-                style: GoogleFonts.dmSans(
-                  fontWeight: FontWeight.w400,
-                  fontSize: 18,
-                  color: AppColors.onSurface,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    widget.name,
+                    style: GoogleFonts.dmSans(
+                      fontWeight: FontWeight.w400,
+                      fontSize: 18,
+                      color: AppColors.onSurface,
+                    ),
+                  ),
+                  if (_isOnline || _lastSeenStr.isNotEmpty)
+                    Text(
+                      _isOnline ? 'Active now' : _lastSeenStr,
+                      style: GoogleFonts.dmSans(
+                        fontWeight: FontWeight.w400,
+                        fontSize: 12,
+                        color: _isOnline ? AppColors.success : AppColors.onSurfaceVariant.withValues(alpha: 0.7),
+                      ),
+                    ),
+                ],
               ),
             ),
           ],
@@ -186,28 +236,57 @@ class _ChatScreenState extends State<ChatScreen> {
                     }
 
                     final isMe = msg['isMe'] == true;
+                    final isRead = msg['isRead'] == true;
+                    final timeStr = msg['timeStr'] ?? '';
+
                     return Align(
                       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: isMe ? myBubbleColor : otherBubbleColor,
-                          borderRadius: BorderRadius.only(
-                            topLeft: const Radius.circular(24),
-                            topRight: const Radius.circular(24),
-                            bottomLeft: Radius.circular(isMe ? 24 : 8),
-                            bottomRight: Radius.circular(isMe ? 8 : 24),
+                      child: Column(
+                        crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: isMe ? myBubbleColor : otherBubbleColor,
+                              borderRadius: BorderRadius.only(
+                                topLeft: const Radius.circular(24),
+                                topRight: const Radius.circular(24),
+                                bottomLeft: Radius.circular(isMe ? 24 : 8),
+                                bottomRight: Radius.circular(isMe ? 8 : 24),
+                              ),
+                            ),
+                            child: Text(
+                              msg['text'],
+                              style: GoogleFonts.dmSans(
+                                fontSize: 15,
+                                color: const Color(0xFF1C1B1F),
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
                           ),
-                        ),
-                        child: Text(
-                          msg['text'],
-                          style: GoogleFonts.dmSans(
-                            fontSize: 15,
-                            color: const Color(0xFF1C1B1F),
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
+                          if (timeStr.toString().isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 12, right: 4, left: 4),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    timeStr,
+                                    style: GoogleFonts.dmSans(fontSize: 11, color: AppColors.onSurfaceVariant.withValues(alpha: 0.8)),
+                                  ),
+                                  if (isMe) ...[
+                                    const SizedBox(width: 4),
+                                    Icon(
+                                      isRead ? Icons.done_all : Icons.check,
+                                      size: 14,
+                                      color: isRead ? AppColors.brandYellowHover : AppColors.onSurfaceVariant.withValues(alpha: 0.8),
+                                    ),
+                                  ]
+                                ],
+                              ),
+                            )
+                        ],
                       ),
                     );
                   },
