@@ -4,6 +4,7 @@ import 'models/auth_user.dart';
 import 'models/booking_model.dart';
 import 'models/community_post_model.dart';
 import 'models/worker_model.dart';
+import 'screens/chat_screen.dart';
 import 'screens/join_screen.dart';
 import 'services/api_service.dart';
 import 'services/auth_service.dart';
@@ -180,7 +181,8 @@ class _FindTabScreenState extends State<FindTabScreen> {
     final titleController = TextEditingController(text: 'Need help with ${worker.skills.isNotEmpty ? worker.skills.first : "home service"}');
     final descController = TextEditingController();
     final phoneController = TextEditingController(text: '0771234567');
-    String urgency = 'Medium';
+    DateTime? selectedDate = DateTime.now().add(const Duration(days: 1));
+    TimeOfDay? selectedTime = TimeOfDay.now();
     bool isSubmitting = false;
 
     showModalBottomSheet(
@@ -296,25 +298,60 @@ class _FindTabScreenState extends State<FindTabScreen> {
                 ),
                 const SizedBox(height: 14),
                 Text(
-                  'Urgency',
+                  'Schedule Date & Time',
                   style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 14),
                 ),
                 const SizedBox(height: 6),
                 Row(
-                  children: ['Low', 'Medium', 'High'].map((level) {
-                    final isSel = urgency == level;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
-                      child: ChoiceChip(
-                        label: Text(level),
-                        selected: isSel,
-                        selectedColor: AppColors.brandYellow,
-                        onSelected: (val) {
-                          if (val) setModalState(() => urgency = level);
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.calendar_today, size: 18),
+                        label: Text(
+                          selectedDate == null 
+                            ? 'Select Date' 
+                            : '${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}',
+                          style: GoogleFonts.dmSans(),
+                        ),
+                        onPressed: () async {
+                          final d = await showDatePicker(
+                            context: context, 
+                            initialDate: selectedDate ?? DateTime.now(), 
+                            firstDate: DateTime.now(), 
+                            lastDate: DateTime.now().add(const Duration(days: 365))
+                          );
+                          if (d != null) setModalState(() => selectedDate = d);
                         },
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          foregroundColor: AppColors.onSurface,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
                       ),
-                    );
-                  }).toList(),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.access_time, size: 18),
+                        label: Text(
+                          selectedTime == null ? 'Select Time' : selectedTime!.format(context),
+                          style: GoogleFonts.dmSans(),
+                        ),
+                        onPressed: () async {
+                          final t = await showTimePicker(
+                            context: context, 
+                            initialTime: selectedTime ?? TimeOfDay.now()
+                          );
+                          if (t != null) setModalState(() => selectedTime = t);
+                        },
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          foregroundColor: AppColors.onSurface,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 24),
                 SizedBox(
@@ -325,11 +362,25 @@ class _FindTabScreenState extends State<FindTabScreen> {
                         ? null
                         : () async {
                             setModalState(() => isSubmitting = true);
+                            
+                            DateTime? finalDate;
+                            if (selectedDate != null) {
+                              final time = selectedTime ?? TimeOfDay.now();
+                              finalDate = DateTime(
+                                selectedDate!.year, 
+                                selectedDate!.month, 
+                                selectedDate!.day, 
+                                time.hour, 
+                                time.minute
+                              );
+                            }
+
                             final booking = await ApiService().createBooking(
                               workerId: worker.id,
                               jobTitle: titleController.text.trim(),
                               description: descController.text.trim(),
-                              urgency: urgency,
+                              urgency: 'Medium', // Default to medium backend requirement
+                              scheduledDate: finalDate,
                               contactPhone: phoneController.text.trim(),
                               estimatedPrice: worker.hourlyRate > 0 ? worker.hourlyRate : 2500.0,
                             );
@@ -1174,6 +1225,29 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
     }
   }
 
+  String _formatMessageTime(String? dateStr) {
+    if (dateStr == null) return '';
+    try {
+      final dt = DateTime.parse(dateStr).toLocal();
+      final now = DateTime.now();
+      final diff = now.difference(dt);
+      if (diff.inDays == 0 && now.day == dt.day) {
+        final hour = dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
+        final minute = dt.minute.toString().padLeft(2, '0');
+        final ampm = dt.hour >= 12 ? 'pm' : 'am';
+        return '$hour:$minute $ampm';
+      } else if (diff.inDays < 7 && diff.inDays >= 0) {
+        const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        return days[dt.weekday - 1];
+      } else {
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return '${dt.day} ${months[dt.month - 1]}';
+      }
+    } catch (_) {
+      return '';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = AuthService().currentUser;
@@ -1231,41 +1305,64 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
                             ),
                           ],
                         )
-                      : ListView.separated(
+                      : ListView.builder(
                           itemCount: _conversations.length,
-                          separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.outlineVariant),
                           itemBuilder: (context, index) {
                             final c = _conversations[index];
                             final name = c['workerName']?.toString() ?? c['otherPartyName']?.toString() ?? 'Worker';
                             final lastMsg = c['lastMessage']?.toString() ?? 'Conversation started';
                             final unread = c['unreadCount'] is int ? c['unreadCount'] as int : 0;
+                            final timeStr = _formatMessageTime(c['updatedAt']?.toString() ?? c['lastMessageAt']?.toString());
 
                             return ListTile(
                               contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                               leading: CircleAvatar(
-                                radius: 24,
+                                radius: 26,
                                 backgroundColor: AppColors.surfaceVariant,
-                                child: Text(
-                                  name.isNotEmpty ? name[0].toUpperCase() : 'W',
-                                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 16),
-                                ),
+                                backgroundImage: (c['workerProfileImage'] != null && c['workerProfileImage'].toString().isNotEmpty)
+                                    ? NetworkImage(c['workerProfileImage'].toString())
+                                    : null,
+                                child: (c['workerProfileImage'] == null || c['workerProfileImage'].toString().isEmpty)
+                                    ? Text(
+                                        name.isNotEmpty ? name[0].toUpperCase() : 'W',
+                                        style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 18, color: AppColors.onSurfaceVariant),
+                                      )
+                                    : null,
                               ),
                               title: Text(
                                 name,
-                                style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 15),
+                                style: GoogleFonts.dmSans(fontWeight: FontWeight.w500, fontSize: 16),
                               ),
-                              subtitle: Text(
-                                lastMsg,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 13,
-                                  color: AppColors.onSurfaceVariant,
+                              subtitle: Padding(
+                                padding: const EdgeInsets.only(top: 4.0),
+                                child: Text(
+                                  lastMsg,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 14,
+                                    color: AppColors.onSurfaceVariant,
+                                    fontWeight: unread > 0 ? FontWeight.w700 : FontWeight.w400,
+                                  ),
                                 ),
                               ),
-                              trailing: unread > 0
-                                  ? Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                              trailing: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  if (timeStr.isNotEmpty)
+                                    Text(
+                                      timeStr,
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 12,
+                                        color: unread > 0 ? AppColors.onSurface : AppColors.onSurfaceVariant,
+                                        fontWeight: unread > 0 ? FontWeight.w700 : FontWeight.w400,
+                                      ),
+                                    ),
+                                  if (unread > 0) ...[
+                                    const SizedBox(height: 6),
+                                    Container(
+                                      padding: const EdgeInsets.all(6),
                                       decoration: const BoxDecoration(
                                         color: AppColors.brandYellow,
                                         shape: BoxShape.circle,
@@ -1273,14 +1370,28 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
                                       child: Text(
                                         '$unread',
                                         style: GoogleFonts.dmSans(
-                                          fontSize: 11,
+                                          fontSize: 10,
                                           fontWeight: FontWeight.w800,
                                           color: AppColors.onPrimary,
                                         ),
                                       ),
-                                    )
-                                  : null,
-                              onTap: () {},
+                                    ),
+                                  ]
+                                ],
+                              ),
+                              onTap: () async {
+                                await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ChatScreen(
+                                      conversationId: c['id'] is int ? c['id'] as int : int.tryParse(c['id']?.toString() ?? '0') ?? 0,
+                                      name: name,
+                                      profileImage: c['workerProfileImage']?.toString(),
+                                    ),
+                                  ),
+                                );
+                                _fetchChats();
+                              },
                             );
                           },
                         ),
