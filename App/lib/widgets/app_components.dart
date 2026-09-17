@@ -450,6 +450,17 @@ class WorkerCard extends StatelessWidget {
                     ),
                   ],
                 ),
+                if (price != null && price!.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    price!,
+                    style: GoogleFonts.dmSans(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: AppColors.onSurface,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 Row(
                   children: [

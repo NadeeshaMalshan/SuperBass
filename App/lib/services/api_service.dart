@@ -175,4 +175,54 @@ class ApiService {
       return [];
     }
   }
+
+  /// 6. Fetch messages for a conversation: GET /api/conversations/{id}/messages
+  Future<List<Map<String, dynamic>>> fetchMessages(int conversationId, String userEmail) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/conversations/$conversationId/messages').replace(
+        queryParameters: {'userEmail': userEmail},
+      );
+
+      final response = await http.get(uri, headers: _headers);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final dynamic data = jsonDecode(response.body);
+        if (data is List) {
+          return List<Map<String, dynamic>>.from(data);
+        }
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error fetching messages: $e');
+      return [];
+    }
+  }
+
+  /// 7. Send a message to a conversation
+  Future<Map<String, dynamic>?> sendMessage({
+    required int conversationId,
+    required String content,
+    required String senderEmail,
+    String senderRole = 'Resident',
+  }) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/conversations/$conversationId/messages');
+      final body = jsonEncode({
+        'senderEmail': senderEmail,
+        'senderRole': senderRole,
+        'content': content,
+      });
+
+      final response = await http.post(uri, headers: _headers, body: body);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        debugPrint('Failed to send message: ${response.statusCode} - ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('Error sending message: $e');
+      return null;
+    }
+  }
 }
+
