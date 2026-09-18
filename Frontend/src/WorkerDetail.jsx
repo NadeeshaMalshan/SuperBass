@@ -399,8 +399,8 @@ export default function WorkerDetail() {
                 </div>
               </div>
 
-              {/* Hire Button */}
-              <div style={{ display: 'flex', justifyContent: 'center' }}>
+              {/* Hire and Chat Buttons */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', justifyContent: 'center' }}>
                 <md-filled-button
                   onClick={handleOpenHireModal}
                   style={{
@@ -415,6 +415,21 @@ export default function WorkerDetail() {
                 >
                   Hire / Request Worker Now
                 </md-filled-button>
+
+                <md-outlined-button
+                  onClick={() => navigate('/chats')}
+                  style={{
+                    width: '100%',
+                    '--md-sys-color-primary': '#111827',
+                    '--md-outlined-button-container-height': '56px',
+                    '--md-outlined-button-label-text-font': 'inherit',
+                    '--md-outlined-button-label-text-size': '1.1rem',
+                    '--md-outlined-button-label-text-weight': '800'
+                  }}
+                >
+                  <i slot="icon" className="fa-regular fa-comment" style={{ marginRight: '8px' }}></i>
+                  Chat with {getFirstName(worker.name)}
+                </md-outlined-button>
               </div>
             </div>
 

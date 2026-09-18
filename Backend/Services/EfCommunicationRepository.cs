@@ -148,7 +148,7 @@ namespace Superbass.Services
             var conversations = await _context.Conversations
                 .Include(c => c.Resident)
                 .Include(c => c.Worker)
-                .Where(c => c.ResidentEmail == userEmail || (workerId.HasValue && c.WorkerId == workerId.Value))
+                .Where(c => (c.ResidentEmail == userEmail && !c.IsDeletedByResident) || (workerId.HasValue && c.WorkerId == workerId.Value && !c.IsDeletedByWorker))
                 .OrderByDescending(c => c.UpdatedAt)
                 .ToListAsync();
 
@@ -159,6 +159,37 @@ namespace Superbass.Services
             }
 
             return summaries;
+        }
+
+        public async Task<bool> SoftDeleteConversationAsync(int conversationId, string userEmail)
+        {
+            var conv = await _context.Conversations
+                .Include(c => c.Worker)
+                .FirstOrDefaultAsync(c => c.Id == conversationId);
+
+            if (conv == null) return false;
+
+            var isResident = string.Equals(conv.ResidentEmail, userEmail, StringComparison.OrdinalIgnoreCase);
+            var isWorker = conv.Worker != null && (
+                string.Equals(conv.Worker.ResidentEmail, userEmail, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(conv.Worker.Email, userEmail, StringComparison.OrdinalIgnoreCase));
+
+            if (!isResident && !isWorker)
+            {
+                return false;
+            }
+
+            if (isResident)
+            {
+                conv.IsDeletedByResident = true;
+            }
+            if (isWorker)
+            {
+                conv.IsDeletedByWorker = true;
+            }
+
+            await _context.SaveChangesAsync();
+            return true;
         }
 
         public async Task<ConversationDetailsDto?> GetConversationByIdAsync(int conversationId, string userEmail)
@@ -377,6 +408,71 @@ namespace Superbass.Services
 
             message.IsDeleted = true;
             await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> DeleteMessagesAsync(List<int> messageIds, string userEmail)
+        {
+            if (messageIds == null || !messageIds.Any()) return false;
+
+            var messages = await _context.ChatMessages
+                .Where(m => messageIds.Contains(m.Id))
+                .ToListAsync();
+
+            if (!messages.Any()) return false;
+
+            var now = DateTime.UtcNow;
+
+            var conversationIds = messages.Select(m => m.ConversationId).Distinct().ToList();
+
+            foreach (var message in messages)
+            {
+                if (!string.Equals(message.SenderEmail, userEmail, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new UnauthorizedAccessException("You can only delete your own messages.");
+                }
+
+                if ((now - message.CreatedAt).TotalHours > 24)
+                {
+                    throw new InvalidOperationException("Messages older than 24 hours cannot be deleted.");
+                }
+            }
+
+            // Hard delete as requested
+            _context.ChatMessages.RemoveRange(messages);
+            await _context.SaveChangesAsync();
+
+            // Recalculate LastMessage for affected conversations
+            foreach (var cid in conversationIds)
+            {
+                var conv = await _context.Conversations.FindAsync(cid);
+                if (conv != null)
+                {
+                    var lastMsg = await _context.ChatMessages
+                        .Where(m => m.ConversationId == cid && !m.IsDeleted)
+                        .OrderByDescending(m => m.CreatedAt)
+                        .FirstOrDefaultAsync();
+
+                    if (lastMsg != null)
+                    {
+                        conv.LastMessage = lastMsg.MessageType == "Image" 
+                            ? "📷 [Image]" 
+                            : (lastMsg.MessageType == "Attachment" ? "📎 [Attachment]" : lastMsg.Content);
+                        conv.LastMessageAt = lastMsg.CreatedAt;
+                        conv.LastSenderEmail = lastMsg.SenderEmail;
+                        conv.LastSenderRole = lastMsg.SenderRole;
+                    }
+                    else
+                    {
+                        conv.LastMessage = "No messages yet";
+                        conv.LastMessageAt = conv.CreatedAt; 
+                        conv.LastSenderEmail = null;
+                        conv.LastSenderRole = null;
+                    }
+                }
+            }
+            await _context.SaveChangesAsync();
+            
             return true;
         }
 

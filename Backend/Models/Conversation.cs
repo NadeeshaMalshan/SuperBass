@@ -32,6 +32,9 @@ namespace Superbass.Models
         public string? LastSenderEmail { get; set; }
         public string? LastSenderRole { get; set; } // "Resident" or "Worker"
 
+        public bool IsDeletedByResident { get; set; } = false;
+        public bool IsDeletedByWorker { get; set; } = false;
+
         public List<ChatMessage> Messages { get; set; } = new();
     }
 }
