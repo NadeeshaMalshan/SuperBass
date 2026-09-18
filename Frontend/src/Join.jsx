@@ -34,7 +34,7 @@ function JoinContent() {
 
         // Redirect based on user role and status
         if (activeRole === 'Worker') {
-          window.history.pushState({}, '', '/worker/dashboard');
+          window.history.pushState({}, '', '/find');
         } else if (res.data.isNewUser) {
           window.history.pushState({}, '', '/onboarding');
         } else {

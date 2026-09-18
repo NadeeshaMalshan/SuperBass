@@ -354,6 +354,10 @@ namespace Superbass.Services
             conversation.LastSenderEmail = message.SenderEmail;
             conversation.LastSenderRole = message.SenderRole;
             conversation.UpdatedAt = message.CreatedAt;
+            
+            // Restore visibility for both parties if it was deleted
+            conversation.IsDeletedByResident = false;
+            conversation.IsDeletedByWorker = false;
 
             await _context.SaveChangesAsync();
 

@@ -11,6 +11,7 @@ export default function UserMenu() {
   const userName = localStorage.getItem('userName') || 'Resident User';
   const userEmail = localStorage.getItem('email') || 'resident@superbass.lk';
   const userPicture = localStorage.getItem('userPicture');
+  const activeRole = localStorage.getItem('activeRole');
 
   const navigate = (newPath) => {
     setIsOpen(false);
@@ -103,6 +104,17 @@ export default function UserMenu() {
 
           {/* Action Items */}
           <div className="user-menu-items">
+            {activeRole === 'Worker' && (
+              <button
+                type="button"
+                className="user-menu-item"
+                onClick={() => navigate('/worker/dashboard')}
+              >
+                <i className="fa-solid fa-chart-pie user-menu-item-icon"></i>
+                <span>Worker Dashboard</span>
+              </button>
+            )}
+
             <button
               type="button"
               className="user-menu-item"
