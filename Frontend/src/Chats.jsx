@@ -159,13 +159,7 @@ export default function Chats() {
       });
       if (res.data && Array.isArray(res.data)) {
         setConversations(res.data);
-        // If no chat selected, select the first one by default
-        setSelectedChat(prev => {
-          if (!prev && res.data.length > 0) {
-            return res.data[0];
-          }
-          return prev;
-        });
+
       }
     } catch (err) {
       console.warn('Error loading conversations:', err.message);
