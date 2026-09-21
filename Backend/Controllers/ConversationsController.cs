@@ -207,6 +207,65 @@ namespace Superbass.Controllers
             }
         }
 
+        // POST: /api/conversations/messages/delete?userEmail=test@example.com
+        [HttpPost("messages/delete")]
+        public async Task<IActionResult> DeleteMessages([FromBody] List<int> messageIds, [FromQuery] string? userEmail)
+        {
+            var email = userEmail ?? GetCurrentUserEmail();
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                return BadRequest(new { message = "User email is required." });
+            }
+
+            if (messageIds == null || !messageIds.Any())
+            {
+                return BadRequest(new { message = "No message IDs provided." });
+            }
+
+            try
+            {
+                var result = await _communicationRepo.DeleteMessagesAsync(messageIds, email);
+                if (!result)
+                {
+                    return NotFound(new { message = "Messages not found or could not be deleted." });
+                }
+                return Ok(new { success = true, message = "Messages deleted successfully." });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        // DELETE: /api/conversations/10?userEmail=test@example.com
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> DeleteConversation(int id, [FromQuery] string? userEmail)
+        {
+            var email = userEmail ?? GetCurrentUserEmail();
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                return BadRequest(new { message = "User email is required." });
+            }
+
+            try
+            {
+                var result = await _communicationRepo.SoftDeleteConversationAsync(id, email);
+                if (!result)
+                {
+                    return NotFound(new { message = "Conversation not found or access denied." });
+                }
+                return Ok(new { success = true, message = "Conversation deleted successfully." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         // GET: /api/conversations/presence?userEmail=test@example.com
         [HttpGet("presence")]
         public IActionResult GetPresence([FromQuery] string? userEmail)

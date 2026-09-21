@@ -16,7 +16,7 @@ export default function WorkerLogin() {
     localStorage.setItem('workerAuth', 'true');
     localStorage.setItem('workerEmail', email);
     localStorage.setItem('activeRole', 'Worker');
-    navigate('/worker/dashboard');
+    navigate('/find');
   };
 
   return (
