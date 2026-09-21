@@ -726,21 +726,13 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                     Track your hired workers, follow job progress live, and review completed home services.
                   </p>
                 </div>
-                <button
+                <md-text-button
                   onClick={fetchResidentBookings}
-                  style={{
-                    backgroundColor: '#f8fafc',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '8px',
-                    padding: '8px 14px',
-                    fontSize: '0.85rem',
-                    fontWeight: 600,
-                    color: '#475569',
-                    cursor: 'pointer'
-                  }}
+                  style={{ '--md-sys-color-primary': '#0f172a' }}
                 >
-                  ↻ Refresh
-                </button>
+                  <md-icon slot="icon">refresh</md-icon>
+                  Refresh
+                </md-text-button>
               </div>
 
               {loadingBookings ? (
@@ -757,7 +749,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                   <p style={{ color: '#64748b', marginBottom: '20px', fontSize: '0.95rem' }}>
                     Need home repairs or maintenance? Browse our verified pros and hire one with one click!
                   </p>
-                  <md-filled-button onClick={() => navigateTo('/find')} style={{ '--md-sys-color-primary': '#2563eb' }}>
+                  <md-filled-button onClick={() => navigateTo('/find')} style={{ '--md-sys-color-primary': '#FDC101', '--md-sys-color-on-primary': '#000000' }}>
                     Find Verified Workers
                   </md-filled-button>
                 </div>
@@ -807,18 +799,18 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                         <div>
                           <span style={{
                             backgroundColor:
-                              b.status === 'Requested' ? '#fef3c7' :
-                                b.status === 'Confirmed' ? '#e0f2fe' :
-                                  b.status === 'InProgress' ? '#dbeafe' :
-                                    b.status === 'Completed' ? '#d1fae5' :
-                                      b.status === 'Reviewed' ? '#fef9c3' :
-                                        '#fee2e2',
+                              b.status === 'Requested' ? '#fefce8' :
+                                b.status === 'Confirmed' ? '#f8fafc' :
+                                  b.status === 'InProgress' ? '#f1f5f9' :
+                                    b.status === 'Completed' ? '#f0fdf4' :
+                                      b.status === 'Reviewed' ? '#fffbeb' :
+                                        '#fef2f2',
                             color:
-                              b.status === 'Requested' ? '#92400e' :
-                                b.status === 'Confirmed' ? '#0369a1' :
-                                  b.status === 'InProgress' ? '#1e40af' :
-                                    b.status === 'Completed' ? '#065f46' :
-                                      b.status === 'Reviewed' ? '#854d0e' :
+                              b.status === 'Requested' ? '#a16207' :
+                                b.status === 'Confirmed' ? '#334155' :
+                                  b.status === 'InProgress' ? '#0f172a' :
+                                    b.status === 'Completed' ? '#166534' :
+                                      b.status === 'Reviewed' ? '#b45309' :
                                         '#991b1b',
                             padding: '6px 14px',
                             borderRadius: '20px',
@@ -826,6 +818,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                             fontWeight: 800,
                             display: 'inline-flex',
                             alignItems: 'center',
+                            border: `1px solid ${b.status === 'Requested' ? '#fef08a' : b.status === 'Confirmed' ? '#e2e8f0' : b.status === 'InProgress' ? '#cbd5e1' : b.status === 'Completed' ? '#bbf7d0' : b.status === 'Reviewed' ? '#fde68a' : '#fecaca'}`,
                             gap: '6px'
                           }}>
                             {b.status === 'Requested' && '⏳ Booking Requested'}
@@ -888,8 +881,8 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                               width: '24px',
                               height: '24px',
                               borderRadius: '50%',
-                              backgroundColor: ['Confirmed', 'InProgress', 'Completed', 'Reviewed'].includes(b.status) ? '#10b981' : b.status === 'Requested' ? '#2563eb' : '#cbd5e1',
-                              color: '#fff',
+                              backgroundColor: ['Confirmed', 'InProgress', 'Completed', 'Reviewed'].includes(b.status) ? '#10b981' : b.status === 'Requested' ? '#FDC101' : '#cbd5e1',
+                              color: b.status === 'Requested' ? '#000000' : '#fff',
                               margin: '0 auto 4px auto',
                               display: 'flex',
                               alignItems: 'center',
@@ -908,8 +901,8 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                               width: '24px',
                               height: '24px',
                               borderRadius: '50%',
-                              backgroundColor: ['InProgress', 'Completed', 'Reviewed'].includes(b.status) ? '#10b981' : b.status === 'Confirmed' ? '#2563eb' : '#cbd5e1',
-                              color: '#fff',
+                              backgroundColor: ['InProgress', 'Completed', 'Reviewed'].includes(b.status) ? '#10b981' : b.status === 'Confirmed' ? '#FDC101' : '#cbd5e1',
+                              color: b.status === 'Confirmed' ? '#000000' : '#fff',
                               margin: '0 auto 4px auto',
                               display: 'flex',
                               alignItems: 'center',
@@ -928,8 +921,8 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                               width: '24px',
                               height: '24px',
                               borderRadius: '50%',
-                              backgroundColor: ['Completed', 'Reviewed'].includes(b.status) ? '#10b981' : '#cbd5e1',
-                              color: '#fff',
+                              backgroundColor: ['Completed', 'Reviewed'].includes(b.status) ? '#10b981' : b.status === 'InProgress' ? '#FDC101' : '#cbd5e1',
+                              color: b.status === 'InProgress' ? '#000000' : '#fff',
                               margin: '0 auto 4px auto',
                               display: 'flex',
                               alignItems: 'center',
@@ -948,8 +941,8 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                               width: '24px',
                               height: '24px',
                               borderRadius: '50%',
-                              backgroundColor: b.status === 'Reviewed' ? '#f59e0b' : '#cbd5e1',
-                              color: '#fff',
+                              backgroundColor: b.status === 'Reviewed' ? '#FDC101' : b.status === 'Completed' ? '#0f172a' : '#cbd5e1',
+                              color: b.status === 'Reviewed' ? '#000000' : '#fff',
                               margin: '0 auto 4px auto',
                               display: 'flex',
                               alignItems: 'center',
@@ -982,65 +975,34 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
 
                       {/* Action buttons */}
                       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
-                        <button
+                        <md-outlined-button
                           onClick={() => navigateTo('/chats')}
-                          style={{
-                            padding: '8px 16px',
-                            borderRadius: '8px',
-                            border: '1.5px solid #2563eb',
-                            backgroundColor: '#eff6ff',
-                            color: '#2563eb',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            fontSize: '0.875rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px'
-                          }}
+                          style={{ '--md-sys-color-primary': '#0f172a' }}
                         >
-                          💬 Chat with {b.workerName}
-                        </button>
+                          <md-icon slot="icon">chat</md-icon>
+                          Chat with {b.workerName}
+                        </md-outlined-button>
 
                         {/* Leave Review CTA if Job is Completed */}
                         {b.status === 'Completed' && (
-                          <button
+                          <md-filled-button
                             onClick={() => handleOpenReviewModal(b)}
-                            style={{
-                              padding: '8px 20px',
-                              borderRadius: '8px',
-                              border: 'none',
-                              backgroundColor: '#FDC101',
-                              color: '#000000',
-                              fontWeight: 800,
-                              cursor: 'pointer',
-                              fontSize: '0.9rem',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                              boxShadow: '0 2px 8px rgba(253,193,1,0.4)'
-                            }}
+                            style={{ '--md-sys-color-primary': '#FDC101', '--md-sys-color-on-primary': '#000000' }}
                           >
-                            ⭐ Leave Rating & Review
-                          </button>
+                            <md-icon slot="icon">star</md-icon>
+                            Leave Rating & Review
+                          </md-filled-button>
                         )}
 
                         {/* Cancel option for pending/confirmed */}
                         {['Requested', 'Confirmed'].includes(b.status) && (
-                          <button
+                          <md-outlined-button
                             onClick={() => handleCancelBooking(b.id)}
-                            style={{
-                              padding: '8px 14px',
-                              borderRadius: '8px',
-                              border: '1px solid #cbd5e1',
-                              backgroundColor: '#ffffff',
-                              color: '#64748b',
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                              fontSize: '0.85rem'
-                            }}
+                            style={{ '--md-sys-color-primary': '#dc2626' }}
                           >
+                            <md-icon slot="icon">cancel</md-icon>
                             Cancel Booking
-                          </button>
+                          </md-outlined-button>
                         )}
                       </div>
 

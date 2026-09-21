@@ -10,8 +10,23 @@ DotNetEnv.Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Explicitly lock Backend server URL to http://localhost:5237
-builder.WebHost.UseUrls("http://localhost:5237");
+// Configure listening port and host:
+// In production / Docker / Render, listen on 0.0.0.0 with $PORT or container default port (8080).
+// In development, default to http://localhost:5237.
+var port = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrEmpty(port))
+{
+    builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+}
+else if (!builder.Environment.IsDevelopment())
+{
+    var httpPort = Environment.GetEnvironmentVariable("ASPNETCORE_HTTP_PORTS") ?? "8080";
+    builder.WebHost.UseUrls($"http://0.0.0.0:{httpPort}");
+}
+else
+{
+    builder.WebHost.UseUrls("http://localhost:5237");
+}
 
 // Add services to the container.
 
@@ -41,7 +56,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend",
         policy =>
         {
-            policy.WithOrigins("http://localhost:5173", "http://localhost:3000", "http://localhost:5174") // Adjust as needed
+            policy.SetIsOriginAllowed(_ => true)
                   .AllowAnyHeader()
                   .AllowAnyMethod()
                   .AllowCredentials();
@@ -95,7 +110,7 @@ using (var scope = app.Services.CreateScope())
 }
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || Environment.GetEnvironmentVariable("ENABLE_SWAGGER") == "true")
 {
     app.UseSwagger();
     app.UseSwaggerUI();
