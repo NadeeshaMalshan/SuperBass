@@ -14,6 +14,7 @@ class BookingModel {
   final String pricingModel;
   final double estimatedPrice;
   final String status;
+  final String? rejectionReason;
   final DateTime createdAt;
 
   BookingModel({
@@ -32,6 +33,7 @@ class BookingModel {
     this.pricingModel = 'Hourly',
     this.estimatedPrice = 0.0,
     this.status = 'Pending',
+    this.rejectionReason,
     required this.createdAt,
   });
 
@@ -52,7 +54,30 @@ class BookingModel {
       pricingModel: json['pricingModel'] as String? ?? 'Hourly',
       estimatedPrice: (json['estimatedPrice'] as num?)?.toDouble() ?? 0.0,
       status: json['status'] as String? ?? 'Pending',
+      rejectionReason: json['rejectionReason'] as String?,
       createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now() : DateTime.now(),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'residentEmail': residentEmail,
+      'residentName': residentName,
+      'workerId': workerId,
+      'workerName': workerName,
+      'workerPhone': workerPhone,
+      'workerProfileImage': workerProfileImage,
+      'jobTitle': jobTitle,
+      'description': description,
+      'urgency': urgency,
+      'scheduledDate': scheduledDate?.toIso8601String(),
+      'locationAddress': locationAddress,
+      'pricingModel': pricingModel,
+      'estimatedPrice': estimatedPrice,
+      'status': status,
+      'rejectionReason': rejectionReason,
+      'createdAt': createdAt.toIso8601String(),
+    };
   }
 }

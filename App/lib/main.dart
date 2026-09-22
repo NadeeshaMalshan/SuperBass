@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'models/app_notification_model.dart';
 import 'models/auth_user.dart';
 import 'models/booking_model.dart';
 import 'models/community_post_model.dart';
@@ -9,9 +11,12 @@ import 'screens/chat_screen.dart';
 import 'screens/join_screen.dart';
 import 'services/api_service.dart';
 import 'services/auth_service.dart';
+import 'services/notification_service.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
 import 'widgets/app_components.dart';
+import 'widgets/in_app_notification_overlay.dart';
+import 'widgets/notifications_sheet.dart';
 import 'package:loading_indicator_m3e/loading_indicator_m3e.dart';
 
 void main() async {
@@ -22,6 +27,7 @@ void main() async {
     debugPrint('Note: .env file loading: $e');
   }
   await AuthService().init();
+  await NotificationService().initialize();
   runApp(const SuperBassApp());
 }
 
@@ -53,6 +59,79 @@ class MainNavigationShell extends StatefulWidget {
 
 class _MainNavigationShellState extends State<MainNavigationShell> {
   int _currentIndex = 0;
+  StreamSubscription<AppNotification>? _notificationSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _initNotifications();
+  }
+
+  void _initNotifications() {
+    final user = AuthService().currentUser;
+    if (user != null) {
+      NotificationService().startListening(
+        user.email,
+        isWorker: user.isWorker,
+      );
+    }
+
+    AuthService().currentUserNotifier.addListener(_onAuthChanged);
+
+    _notificationSub = NotificationService().onNotificationReceived.listen((notification) {
+      if (!mounted) return;
+      InAppNotificationOverlay.show(
+        context,
+        notification,
+        onTap: () => _handleNotificationTap(notification),
+      );
+    });
+  }
+
+  void _onAuthChanged() {
+    final user = AuthService().currentUser;
+    if (user != null) {
+      NotificationService().startListening(
+        user.email,
+        isWorker: user.isWorker,
+      );
+    } else {
+      NotificationService().stopListening();
+    }
+  }
+
+  void _handleNotificationTap(AppNotification notification) {
+    if (!mounted) return;
+
+    if (notification.type == NotificationType.chat) {
+      final convId = notification.referenceId;
+      if (convId != null) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ChatScreen(
+              conversationId: convId,
+              name: notification.metadata?['name']?.toString() ?? 'Conversation',
+              profileImage: notification.metadata?['profileImage']?.toString(),
+            ),
+          ),
+        );
+      }
+    } else if (notification.type.name.startsWith('booking')) {
+      final user = AuthService().currentUser;
+      if (user != null) {
+        setState(() {
+          _currentIndex = 2; // Bookings tab index
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    AuthService().currentUserNotifier.removeListener(_onAuthChanged);
+    _notificationSub?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -437,17 +516,23 @@ class _FindTabScreenState extends State<FindTabScreen> {
     return Scaffold(
       appBar: AppBar(
         actions: [
-          IconButton.filledTonal(
-            onPressed: () => _fetchWorkers(),
-            icon: const Icon(Icons.refresh_rounded, size: 22),
-            style: IconButton.styleFrom(
-              backgroundColor: AppColors.surfaceVariant,
-              foregroundColor: AppColors.onSurface,
-            ),
+          NotificationBellButton(
+            onNotificationTap: (n) {
+              if (n.type == NotificationType.chat && n.referenceId != null) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ChatScreen(
+                      conversationId: n.referenceId!,
+                      name: n.metadata?['name']?.toString() ?? 'Conversation',
+                      profileImage: n.metadata?['profileImage']?.toString(),
+                    ),
+                  ),
+                );
+              }
+            },
           ),
-          const SizedBox(width: 8),
           Padding(
-            padding: const EdgeInsets.only(right: 16.0),
+            padding: const EdgeInsets.only(right: 16.0, left: 4.0),
             child: ValueListenableBuilder<AuthUser?>(
               valueListenable: AuthService().currentUserNotifier,
               builder: (context, user, _) {
@@ -719,9 +804,20 @@ class _CommunityTabScreenState extends State<CommunityTabScreen> {
           style: GoogleFonts.dmSans(fontWeight: FontWeight.w800),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: _fetchPosts,
+          NotificationBellButton(
+            onNotificationTap: (n) {
+              if (n.type == NotificationType.chat && n.referenceId != null) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ChatScreen(
+                      conversationId: n.referenceId!,
+                      name: n.metadata?['name']?.toString() ?? 'Conversation',
+                      profileImage: n.metadata?['profileImage']?.toString(),
+                    ),
+                  ),
+                );
+              }
+            },
           ),
         ],
       ),
@@ -1016,6 +1112,378 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
     }
   }
 
+  void _showBookingDetails(BookingModel b) {
+    final color = _getStatusColor(b.status);
+    final scheduledDateStr = b.scheduledDate != null
+        ? '${b.scheduledDate!.day}/${b.scheduledDate!.month}/${b.scheduledDate!.year} at ${b.scheduledDate!.hour.toString().padLeft(2, '0')}:${b.scheduledDate!.minute.toString().padLeft(2, '0')}'
+        : 'Flexible / ASAP';
+    final requestedDateStr = '${b.createdAt.day}/${b.createdAt.month}/${b.createdAt.year}';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.only(left: 24, right: 24, top: 20, bottom: 32),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.outlineVariant,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Booking Details',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Booking #${b.id}',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      b.status,
+                      style: GoogleFonts.dmSans(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        color: color,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // Worker Card
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceVariant.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.outlineVariant),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.primaryContainer,
+                      ),
+                      child: Center(
+                        child: Text(
+                          b.workerName.isNotEmpty ? b.workerName[0].toUpperCase() : 'W',
+                          style: GoogleFonts.dmSans(
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.onPrimaryContainer,
+                            fontSize: 18,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            b.workerName,
+                            style: GoogleFonts.dmSans(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                            ),
+                          ),
+                          if (b.workerPhone != null && b.workerPhone!.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              b.workerPhone!,
+                              style: GoogleFonts.dmSans(
+                                fontSize: 13,
+                                color: AppColors.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+
+              // Job Info
+              Text(
+                'Job Information',
+                style: GoogleFonts.dmSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.onSurfaceVariant,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                b.jobTitle,
+                style: GoogleFonts.dmSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.onSurface,
+                ),
+              ),
+              if (b.description.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(
+                  b.description,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 14,
+                    color: AppColors.onSurfaceVariant,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
+
+              // Info items
+              _buildDetailItem(
+                Icons.calendar_today_outlined,
+                'Scheduled Date',
+                scheduledDateStr,
+              ),
+              const SizedBox(height: 12),
+              _buildDetailItem(
+                Icons.location_on_outlined,
+                'Location',
+                b.locationAddress,
+              ),
+              const SizedBox(height: 12),
+              _buildDetailItem(
+                Icons.speed_outlined,
+                'Urgency',
+                b.urgency,
+              ),
+              const SizedBox(height: 12),
+              _buildDetailItem(
+                Icons.history_outlined,
+                'Requested On',
+                requestedDateStr,
+              ),
+              const Divider(height: 28, color: AppColors.outlineVariant),
+
+              // Price Breakdown
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Estimated Price (${b.pricingModel})',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                  ),
+                  Text(
+                    'Rs. ${b.estimatedPrice.toStringAsFixed(0)}',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.onSurface,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              if (b.status.toLowerCase() == 'requested' || b.status.toLowerCase() == 'pending') ...[
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      _confirmCancelBooking(b);
+                    },
+                    icon: const Icon(Icons.cancel_outlined, color: AppColors.error),
+                    label: Text(
+                      'Cancel Booking Request',
+                      style: GoogleFonts.dmSans(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        color: AppColors.error,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppColors.error, width: 1.5),
+                      foregroundColor: AppColors.error,
+                      backgroundColor: AppColors.error.withValues(alpha: 0.05),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+
+              // Close Button
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: FilledButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.onPrimary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    'Close',
+                    style: GoogleFonts.dmSans(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailItem(IconData icon, String title, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 18, color: AppColors.onSurfaceVariant),
+        const SizedBox(width: 10),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: GoogleFonts.dmSans(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppColors.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 1),
+            Text(
+              value,
+              style: GoogleFonts.dmSans(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.onSurface,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Future<void> _confirmCancelBooking(BookingModel b) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: Text(
+          'Cancel Booking Request?',
+          style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          'Are you sure you want to cancel your request for "${b.jobTitle}" with ${b.workerName}?',
+          style: GoogleFonts.dmSans(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(false),
+            child: Text(
+              'Keep Booking',
+              style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
+            ),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(
+              'Yes, Cancel',
+              style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cancelling booking...')),
+      );
+
+      final success = await ApiService().cancelBooking(b.id);
+      if (mounted) {
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Booking request cancelled successfully.'),
+              backgroundColor: AppColors.onPrimary,
+            ),
+          );
+          _fetchBookings();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to cancel booking. Please try again.'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = AuthService().currentUser;
@@ -1027,9 +1495,20 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
           style: GoogleFonts.dmSans(fontWeight: FontWeight.w800),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: _fetchBookings,
+          NotificationBellButton(
+            onNotificationTap: (n) {
+              if (n.type == NotificationType.chat && n.referenceId != null) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ChatScreen(
+                      conversationId: n.referenceId!,
+                      name: n.metadata?['name']?.toString() ?? 'Conversation',
+                      profileImage: n.metadata?['profileImage']?.toString(),
+                    ),
+                  ),
+                );
+              }
+            },
           ),
         ],
       ),
@@ -1184,6 +1663,69 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                                       ),
                                     ],
                                   ),
+                                  const SizedBox(height: 14),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        flex: (b.status.toLowerCase() == 'requested' || b.status.toLowerCase() == 'pending') ? 3 : 1,
+                                        child: SizedBox(
+                                          height: 40,
+                                          child: OutlinedButton.icon(
+                                            onPressed: () => _showBookingDetails(b),
+                                            icon: const Icon(Icons.visibility_outlined, size: 16),
+                                            label: Text(
+                                              'View Booking',
+                                              style: GoogleFonts.dmSans(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                            style: OutlinedButton.styleFrom(
+                                              minimumSize: const Size(0, 40),
+                                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                              side: const BorderSide(color: AppColors.outlineVariant, width: 1.5),
+                                              foregroundColor: AppColors.onSurface,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(10),
+                                              ),
+                                              backgroundColor: AppColors.surfaceVariant.withValues(alpha: 0.4),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      if (b.status.toLowerCase() == 'requested' || b.status.toLowerCase() == 'pending') ...[
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          flex: 2,
+                                          child: SizedBox(
+                                            height: 40,
+                                            child: OutlinedButton.icon(
+                                              onPressed: () => _confirmCancelBooking(b),
+                                              icon: const Icon(Icons.cancel_outlined, size: 16, color: AppColors.error),
+                                              label: Text(
+                                                'Cancel',
+                                                style: GoogleFonts.dmSans(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: AppColors.error,
+                                                ),
+                                              ),
+                                              style: OutlinedButton.styleFrom(
+                                                minimumSize: const Size(0, 40),
+                                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                                side: const BorderSide(color: AppColors.error, width: 1.2),
+                                                foregroundColor: AppColors.error,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(10),
+                                                ),
+                                                backgroundColor: AppColors.error.withValues(alpha: 0.05),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
                                 ],
                               ),
                             );
@@ -1265,11 +1807,8 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
           'Messages',
           style: GoogleFonts.dmSans(fontWeight: FontWeight.w800),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: _fetchChats,
-          ),
+        actions: const [
+          NotificationBellButton(),
         ],
       ),
       body: user == null
