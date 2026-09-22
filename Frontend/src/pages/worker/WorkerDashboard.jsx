@@ -1,16 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import WorkerLayout from './WorkerLayout.jsx';
 import axios from 'axios';
+import { API_BASE_URL } from '../../config.js';
 
 export default function WorkerDashboard() {
+  const [performance, setPerformance] = useState(null);
   const [pendingRequests, setPendingRequests] = useState([]);
-  const [performance, setPerformance] = useState({
-    overallRating: 4.8,
-    completionRate: '97.0%',
-    acceptanceRate: '94.0%',
-    completedJobs: 33,
-    cancelledJobs: 1
-  });
+  const [recentReview, setRecentReview] = useState(null);
 
   const navigate = (path) => {
     window.history.pushState({}, '', path);
@@ -24,28 +20,32 @@ export default function WorkerDashboard() {
     const fetchWorkerOverview = async () => {
       if (!userEmail) return;
       try {
-        const meRes = await axios.get(`http://localhost:5237/api/workers/me?email=${encodeURIComponent(userEmail)}`, {
+        const meRes = await axios.get(`${API_BASE_URL}/workers/me?email=${encodeURIComponent(userEmail)}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
 
         if (meRes.data && meRes.data.worker) {
           const workerId = meRes.data.worker.id;
-          const perfRes = await axios.get(`http://localhost:5237/api/workers/${workerId}/performance`, {
+          const perfRes = await axios.get(`${API_BASE_URL}/workers/${workerId}/performance`, {
             headers: token ? { Authorization: `Bearer ${token}` } : {}
           });
           if (perfRes.data) {
             setPerformance(perfRes.data);
           }
-          
-          const bookingsRes = await axios.get(`http://localhost:5237/api/bookings/worker?email=${encodeURIComponent(userEmail)}`, {
+
+          const bookingsRes = await axios.get(`${API_BASE_URL}/bookings/worker?email=${encodeURIComponent(userEmail)}`, {
             headers: token ? { Authorization: `Bearer ${token}` } : {}
           });
           if (bookingsRes.data) {
             setPendingRequests(bookingsRes.data.filter(b => b.status === 'Requested'));
+            const reviewed = bookingsRes.data.filter(b => b.status === 'Reviewed' && (b.reviewComment || b.reviewRating));
+            if (reviewed.length > 0) {
+              setRecentReview(reviewed[0]);
+            }
           }
         }
       } catch (err) {
-        console.log('Using default mock stats for worker dashboard');
+        console.log('Worker profile/performance data unavailable');
       }
     };
 
@@ -66,7 +66,9 @@ export default function WorkerDashboard() {
             <i className="fa-solid fa-star"></i>
           </div>
           <div>
-            <div className="metric-val">★ {performance.overallRating || 4.8}</div>
+            <div className="metric-val">
+              {performance?.overallRating != null ? `★ ${performance.overallRating.toFixed(1)}` : 'No rating'}
+            </div>
             <div className="metric-label">Overall Rating</div>
           </div>
         </div>
@@ -76,7 +78,7 @@ export default function WorkerDashboard() {
             <i className="fa-solid fa-circle-check"></i>
           </div>
           <div>
-            <div className="metric-val">{performance.completionRate || '97%'}</div>
+            <div className="metric-val">{performance?.completionRate || 'N/A'}</div>
             <div className="metric-label">Completion Rate</div>
           </div>
         </div>
@@ -86,7 +88,7 @@ export default function WorkerDashboard() {
             <i className="fa-solid fa-briefcase"></i>
           </div>
           <div>
-            <div className="metric-val">{performance.completedJobs || 33}</div>
+            <div className="metric-val">{performance?.completedJobs ?? 0}</div>
             <div className="metric-label">Completed Jobs</div>
           </div>
         </div>
@@ -96,7 +98,7 @@ export default function WorkerDashboard() {
             <i className="fa-solid fa-user-check"></i>
           </div>
           <div>
-            <div className="metric-val">{performance.acceptanceRate || '94%'}</div>
+            <div className="metric-val">{performance?.acceptanceRate || 'N/A'}</div>
             <div className="metric-label">Acceptance Rate</div>
           </div>
         </div>
@@ -114,7 +116,7 @@ export default function WorkerDashboard() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {pendingRequests.length === 0 ? (
-            <p style={{ color: '#64748B' }}>No pending requests at the moment.</p>
+            <p style={{ color: '#64748B', margin: 0 }}>No pending booking requests at the moment.</p>
           ) : (
             pendingRequests.slice(0, 3).map(req => (
               <div key={req.id} style={{
@@ -173,15 +175,23 @@ export default function WorkerDashboard() {
             <i className="fa-solid fa-comment-dots" style={{ color: '#2563EB', marginRight: '8px' }}></i>
             Recent Resident Review
           </h3>
-          <div style={{ backgroundColor: '#F8FAFC', padding: '16px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>Anura Wickramasinghe</span>
-              <span style={{ color: '#F59E0B', fontWeight: 700, fontSize: '0.9rem' }}>★ 5.0</span>
+          {recentReview ? (
+            <div style={{ backgroundColor: '#F8FAFC', padding: '16px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>{recentReview.residentName || recentReview.residentEmail}</span>
+                {recentReview.reviewRating && (
+                  <span style={{ color: '#F59E0B', fontWeight: 700, fontSize: '0.9rem' }}>★ {recentReview.reviewRating.toFixed(1)}</span>
+                )}
+              </div>
+              <p style={{ fontSize: '0.875rem', color: '#475569', fontStyle: 'italic', margin: 0 }}>
+                "{recentReview.reviewComment || 'No written comment.'}"
+              </p>
             </div>
-            <p style={{ fontSize: '0.875rem', color: '#475569', fontStyle: 'italic', margin: 0 }}>
-              "Fixed our bathroom plumbing issue very quickly and cleanly. Arrived right on time!"
-            </p>
-          </div>
+          ) : (
+            <div style={{ backgroundColor: '#F8FAFC', padding: '16px', borderRadius: '12px', border: '1px solid #E2E8F0', color: '#64748B', fontSize: '0.9rem' }}>
+              No resident reviews received yet.
+            </div>
+          )}
         </div>
       </div>
     </WorkerLayout>

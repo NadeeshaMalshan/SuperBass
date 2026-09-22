@@ -38,31 +38,31 @@ namespace Superbass.Controllers
             return email;
         }
 
-        // GET: /api/conversations?userEmail=test@example.com
+        // GET: /api/conversations?userEmail=test@example.com or ?email=test@example.com
         [HttpGet]
-        public async Task<IActionResult> GetConversations([FromQuery] string? userEmail)
+        public async Task<IActionResult> GetConversations([FromQuery] string? userEmail, [FromQuery] string? email)
         {
-            var email = userEmail ?? GetCurrentUserEmail();
-            if (string.IsNullOrWhiteSpace(email))
+            var targetEmail = userEmail ?? email ?? GetCurrentUserEmail();
+            if (string.IsNullOrWhiteSpace(targetEmail))
             {
                 return BadRequest(new { message = "User email must be provided or present in JWT claims." });
             }
 
-            var conversations = await _communicationRepo.GetUserConversationsAsync(email);
+            var conversations = await _communicationRepo.GetUserConversationsAsync(targetEmail);
             return Ok(conversations);
         }
 
-        // GET: /api/conversations/5?userEmail=test@example.com
+        // GET: /api/conversations/5?userEmail=test@example.com or ?email=test@example.com
         [HttpGet("{id:int}")]
-        public async Task<IActionResult> GetConversationById(int id, [FromQuery] string? userEmail)
+        public async Task<IActionResult> GetConversationById(int id, [FromQuery] string? userEmail, [FromQuery] string? email)
         {
-            var email = userEmail ?? GetCurrentUserEmail();
-            if (string.IsNullOrWhiteSpace(email))
+            var targetEmail = userEmail ?? email ?? GetCurrentUserEmail();
+            if (string.IsNullOrWhiteSpace(targetEmail))
             {
                 return BadRequest(new { message = "User email must be provided or present in JWT claims." });
             }
 
-            var conversation = await _communicationRepo.GetConversationByIdAsync(id, email);
+            var conversation = await _communicationRepo.GetConversationByIdAsync(id, targetEmail);
             if (conversation == null)
             {
                 return NotFound(new { message = "Conversation not found or access denied." });
@@ -204,6 +204,65 @@ namespace Superbass.Controllers
             catch (UnauthorizedAccessException ex)
             {
                 return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+            }
+        }
+
+        // POST: /api/conversations/messages/delete?userEmail=test@example.com
+        [HttpPost("messages/delete")]
+        public async Task<IActionResult> DeleteMessages([FromBody] List<int> messageIds, [FromQuery] string? userEmail)
+        {
+            var email = userEmail ?? GetCurrentUserEmail();
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                return BadRequest(new { message = "User email is required." });
+            }
+
+            if (messageIds == null || !messageIds.Any())
+            {
+                return BadRequest(new { message = "No message IDs provided." });
+            }
+
+            try
+            {
+                var result = await _communicationRepo.DeleteMessagesAsync(messageIds, email);
+                if (!result)
+                {
+                    return NotFound(new { message = "Messages not found or could not be deleted." });
+                }
+                return Ok(new { success = true, message = "Messages deleted successfully." });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        // DELETE: /api/conversations/10?userEmail=test@example.com
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> DeleteConversation(int id, [FromQuery] string? userEmail)
+        {
+            var email = userEmail ?? GetCurrentUserEmail();
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                return BadRequest(new { message = "User email is required." });
+            }
+
+            try
+            {
+                var result = await _communicationRepo.SoftDeleteConversationAsync(id, email);
+                if (!result)
+                {
+                    return NotFound(new { message = "Conversation not found or access denied." });
+                }
+                return Ok(new { success = true, message = "Conversation deleted successfully." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
         }
 

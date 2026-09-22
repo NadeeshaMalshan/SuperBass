@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import WorkerLayout from './WorkerLayout.jsx';
 import axios from 'axios';
+import { API_BASE_URL } from '../../config.js';
 
 export default function WorkerProfile() {
   const [activeTab, setActiveTab] = useState('bio'); // 'bio' | 'skills' | 'location' | 'availability' | 'security'
@@ -8,25 +9,25 @@ export default function WorkerProfile() {
 
   // Profile Form States
   const [bio, setBio] = useState({
-    name: 'David Perera',
-    email: 'david@example.com',
-    phone: '+94 77 123 4567',
-    location: 'Colombo, Sri Lanka',
-    experience: '7+ Years',
-    description: 'Experienced master plumber & electrician specializing in home repairs, pipe fixing, and electrical diagnostics.',
+    name: '',
+    email: '',
+    phone: '',
+    location: '',
+    experience: '',
+    description: '',
     isVerified: true
   });
 
   // Skills & Pricing State
-  const [skills, setSkills] = useState(['Plumbing', 'Pipe Repair', 'Electrical Wiring', 'Appliance Repair']);
+  const [skills, setSkills] = useState([]);
   const [newSkill, setNewSkill] = useState('');
   const [pricingModel, setPricingModel] = useState('Hourly');
-  const [hourlyRate, setHourlyRate] = useState(1800);
-  const [dailyRate, setDailyRate] = useState(12000);
+  const [hourlyRate, setHourlyRate] = useState('');
+  const [dailyRate, setDailyRate] = useState('');
 
   // Service Area State
-  const [serviceArea, setServiceArea] = useState('Colombo & Western Province');
-  const [radiusKm, setRadiusKm] = useState(15);
+  const [serviceArea, setServiceArea] = useState('');
+  const [radiusKm, setRadiusKm] = useState(10);
 
   // Availability State
   const [availability, setAvailability] = useState({
@@ -44,38 +45,39 @@ export default function WorkerProfile() {
   });
 
   const [currentWorkerId, setCurrentWorkerId] = useState(null);
-  const userEmail = localStorage.getItem('email');
+  const userEmail = localStorage.getItem('workerEmail') || localStorage.getItem('email');
   const token = localStorage.getItem('token');
 
   // Load existing worker data if available
   useEffect(() => {
     if (!userEmail) return;
-    axios.get(`http://localhost:5237/api/workers/me?email=${encodeURIComponent(userEmail)}`, {
+    axios.get(`${API_BASE_URL}/workers/me?email=${encodeURIComponent(userEmail)}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {}
     })
       .then(res => {
         if (res.data && res.data.worker) {
           const w = res.data.worker;
           setCurrentWorkerId(w.id);
-          setBio(prev => ({
-            ...prev,
-            name: w.name || prev.name,
-            email: w.email || prev.email,
-            phone: w.phoneNo || prev.phone,
-            location: w.primaryServiceArea || prev.location,
-            description: w.description || prev.description
-          }));
+          setBio({
+            name: w.name || '',
+            email: w.email || w.residentEmail || userEmail || '',
+            phone: w.phoneNo || '',
+            location: w.primaryServiceArea || '',
+            experience: w.completedJobs > 0 ? `${w.completedJobs} Jobs Completed` : 'Registered Worker',
+            description: w.description || '',
+            isVerified: true
+          });
           if (w.pricingModel) setPricingModel(w.pricingModel);
-          if (w.hourlyRate) setHourlyRate(w.hourlyRate);
-          if (w.dailyRate) setDailyRate(w.dailyRate);
+          if (w.hourlyRate != null) setHourlyRate(w.hourlyRate);
+          if (w.dailyRate != null) setDailyRate(w.dailyRate);
           if (w.primaryServiceArea) setServiceArea(w.primaryServiceArea);
           if (w.coverageRadiusKm) setRadiusKm(w.coverageRadiusKm);
-          if (w.skills && w.skills.length > 0) {
+          if (w.skills && Array.isArray(w.skills)) {
             setSkills(w.skills.map(s => s.skillName));
           }
         }
       })
-      .catch(err => console.log('Loaded default worker profile state'));
+      .catch(err => console.log('Worker profile state loaded'));
   }, [userEmail, token]);
 
   const handleAddSkill = () => {
@@ -85,7 +87,7 @@ export default function WorkerProfile() {
       setNewSkill('');
 
       if (currentWorkerId) {
-        axios.post(`http://localhost:5237/api/workers/${currentWorkerId}/skills`, { skillName: newSkill.trim() }, {
+        axios.post(`${API_BASE_URL}/workers/${currentWorkerId}/skills`, { skillName: newSkill.trim() }, {
           headers: token ? { Authorization: `Bearer ${token}` } : {}
         }).catch(err => console.log('Skill saved locally'));
       }
@@ -97,12 +99,13 @@ export default function WorkerProfile() {
   };
 
   const handleSavePricing = async () => {
+    if (!currentWorkerId) return;
     try {
       const wId = currentWorkerId || 1;
-      await axios.put(`http://localhost:5237/api/workers/${wId}/pricing`, {
+      await axios.put(`${API_BASE_URL}/workers/${wId}/pricing`, {
         pricingModel,
-        hourlyRate: parseFloat(hourlyRate),
-        dailyRate: parseFloat(dailyRate)
+        hourlyRate: hourlyRate ? parseFloat(hourlyRate) : null,
+        dailyRate: dailyRate ? parseFloat(dailyRate) : null
       }, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
@@ -115,9 +118,10 @@ export default function WorkerProfile() {
   };
 
   const handleSaveServiceArea = async () => {
+    if (!currentWorkerId) return;
     try {
       const wId = currentWorkerId || 1;
-      await axios.put(`http://localhost:5237/api/workers/${wId}/service-area`, {
+      await axios.put(`${API_BASE_URL}/workers/${wId}/service-area`, {
         serviceArea,
         radiusKm: parseFloat(radiusKm)
       }, {
@@ -132,9 +136,10 @@ export default function WorkerProfile() {
   };
 
   const handleSaveAvailability = async () => {
+    if (!currentWorkerId) return;
     try {
       const wId = currentWorkerId || 1;
-      await axios.put(`http://localhost:5237/api/workers/${wId}/availability`, {
+      await axios.put(`${API_BASE_URL}/workers/${wId}/availability`, {
         isAvailable: availability.isAvailable,
         scheduleJson: JSON.stringify({ workDays: availability.workDays, startTime: availability.startTime, endTime: availability.endTime })
       }, {
@@ -150,6 +155,7 @@ export default function WorkerProfile() {
 
   const handleSavePassword = async (e) => {
     e.preventDefault();
+    if (!currentWorkerId) return;
     if (passwords.newPassword !== passwords.confirmPassword) {
       alert('New password and confirm password do not match!');
       return;
@@ -157,7 +163,7 @@ export default function WorkerProfile() {
 
     try {
       const wId = currentWorkerId || 1;
-      await axios.put(`http://localhost:5237/api/workers/${wId}/password`, {
+      await axios.put(`${API_BASE_URL}/workers/${wId}/password`, {
         newPassword: passwords.newPassword
       }, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
@@ -178,7 +184,7 @@ export default function WorkerProfile() {
     }
 
     try {
-      await axios.delete(`http://localhost:5237/api/workers/revert-to-resident?email=${encodeURIComponent(userEmail)}`, {
+      await axios.delete(`${API_BASE_URL}/workers/revert-to-resident?email=${encodeURIComponent(userEmail)}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       localStorage.setItem('activeRole', 'Resident');
@@ -263,19 +269,19 @@ export default function WorkerProfile() {
               fontSize: '2rem',
               fontWeight: 800
             }}>
-              {bio.name.charAt(0)}
+              {bio.name ? bio.name.charAt(0).toUpperCase() : 'W'}
             </div>
 
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#111111' }}>{bio.name}</h3>
+                <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#111111' }}>{bio.name || 'Worker Profile'}</h3>
                 {bio.isVerified && (
                   <span className="badge badge-success" style={{ gap: '4px' }}>
                     <i className="fa-solid fa-shield-check"></i> Verified Worker
                   </span>
                 )}
               </div>
-              <p style={{ fontSize: '0.9rem', color: '#64748B', marginTop: '2px' }}>{bio.location} • Experience: {bio.experience}</p>
+              <p style={{ fontSize: '0.9rem', color: '#64748B', marginTop: '2px' }}>{bio.location || 'Location not set'} • Experience: {bio.experience || 'Verified Professional'}</p>
             </div>
           </div>
 

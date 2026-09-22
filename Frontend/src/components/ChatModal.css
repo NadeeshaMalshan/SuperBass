@@ -35,7 +35,7 @@
   flex-direction: column;
   overflow: hidden;
   position: relative;
-  font-family: 'Google Sans', 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: var(--font-body);
   animation: gmSlideUp 0.2s cubic-bezier(0.1, 0.9, 0.2, 1);
 }
 

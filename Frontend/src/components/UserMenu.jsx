@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import './UserMenu.css';
+import { API_BASE_URL } from '../config.js';
 
 export default function UserMenu() {
   const [isOpen, setIsOpen] = useState(false);
@@ -11,6 +12,7 @@ export default function UserMenu() {
   const userName = localStorage.getItem('userName') || 'Resident User';
   const userEmail = localStorage.getItem('email') || 'resident@superbass.lk';
   const userPicture = localStorage.getItem('userPicture');
+  const activeRole = localStorage.getItem('activeRole');
 
   const navigate = (newPath) => {
     setIsOpen(false);
@@ -54,7 +56,7 @@ export default function UserMenu() {
   useEffect(() => {
     const fetchUnread = async () => {
       try {
-        const res = await axios.get('http://localhost:5237/api/conversations/unread-count', {
+        const res = await axios.get(`${API_BASE_URL}/conversations/unread-count`, {
           params: { userEmail }
         });
         if (res.data && typeof res.data.unreadCount === 'number') {
@@ -103,6 +105,17 @@ export default function UserMenu() {
 
           {/* Action Items */}
           <div className="user-menu-items">
+            {activeRole === 'Worker' && (
+              <button
+                type="button"
+                className="user-menu-item"
+                onClick={() => navigate('/worker/dashboard')}
+              >
+                <i className="fa-solid fa-chart-pie user-menu-item-icon"></i>
+                <span>Worker Dashboard</span>
+              </button>
+            )}
+
             <button
               type="button"
               className="user-menu-item"

@@ -4,20 +4,24 @@ import categoriesData from './data/categories.json';
 import UserMenu from './components/UserMenu.jsx';
 import '@material/web/button/filled-button.js';
 import '@material/web/button/outlined-button.js';
+import '@material/web/icon/icon.js';
+import '@material/web/progress/circular-progress.js';
 import '@material/web/textfield/filled-text-field.js';
+import Loader from './components/Loader.jsx';
+import { API_BASE_URL } from './config.js';
 
 export default function ResidentProfile({ defaultTab = 'overview' }) {
   const urlParams = new URLSearchParams(window.location.search);
   const tabParam = urlParams.get('tab');
   const [activeTab, setActiveTab] = useState(tabParam || defaultTab || 'overview');
-  
+
   const [profile, setProfile] = useState({
     name: '',
     phoneNo: '',
     address: ''
   });
   const [loading, setLoading] = useState(true);
-  
+
   const [userPosts, setUserPosts] = useState([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
 
@@ -108,10 +112,10 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const response = await axios.get(`http://localhost:5237/api/residents/${encodeURIComponent(userEmail)}`, {
+        const response = await axios.get(`${API_BASE_URL}/residents/${encodeURIComponent(userEmail)}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
-        
+
         setProfile({
           name: response.data.name || (userEmail ? userEmail.split('@')[0] : ''),
           phoneNo: response.data.phoneNo || '',
@@ -127,7 +131,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
         setLoading(false);
       }
     };
-    
+
     if (userEmail) {
       fetchProfile();
     } else {
@@ -140,7 +144,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     const checkWorkerStatus = async () => {
       if (!userEmail) return;
       try {
-        const res = await axios.get(`http://localhost:5237/api/workers/me?email=${encodeURIComponent(userEmail)}`, {
+        const res = await axios.get(`${API_BASE_URL}/workers/me?email=${encodeURIComponent(userEmail)}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (res.data && res.data.worker) {
@@ -161,7 +165,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     if (!userEmail) return;
     setLoadingPosts(true);
     try {
-      const res = await axios.get(`http://localhost:5237/api/community-posts/user/${encodeURIComponent(userEmail)}`);
+      const res = await axios.get(`${API_BASE_URL}/community-posts/user/${encodeURIComponent(userEmail)}`);
       setUserPosts(res.data || []);
     } catch (err) {
       console.error("Error fetching user posts:", err);
@@ -174,7 +178,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     if (!userEmail) return;
     setLoadingBookings(true);
     try {
-      const res = await axios.get(`http://localhost:5237/api/bookings/resident?email=${encodeURIComponent(userEmail)}`, {
+      const res = await axios.get(`${API_BASE_URL}/bookings/resident?email=${encodeURIComponent(userEmail)}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       setResidentBookings(res.data || []);
@@ -207,7 +211,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     if (reason === null) return;
 
     try {
-      const res = await axios.post(`http://localhost:5237/api/bookings/${id}/cancel`, { reason }, {
+      const res = await axios.post(`${API_BASE_URL}/bookings/${id}/cancel`, { reason }, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       alert("Booking has been cancelled.");
@@ -236,7 +240,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
 
     setSubmittingReview(true);
     try {
-      const res = await axios.post(`http://localhost:5237/api/bookings/${reviewingBooking.id}/review`, {
+      const res = await axios.post(`${API_BASE_URL}/bookings/${reviewingBooking.id}/review`, {
         qualityRating: parseInt(reviewForm.qualityRating),
         punctualityRating: parseInt(reviewForm.punctualityRating),
         communicationRating: parseInt(reviewForm.communicationRating),
@@ -289,8 +293,15 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
           experienceYears: parseInt(s.experienceYears) || 1
         }));
 
+      const activeEmail = userEmail || profile?.email || localStorage.getItem('email');
+      if (!activeEmail) {
+        setWorkerError('User email could not be determined. Please sign in again.');
+        setSubmittingWorker(false);
+        return;
+      }
+
       const payload = {
-        email: userEmail,
+        email: activeEmail,
         description: workerForm.description,
         primaryServiceArea: workerForm.primaryServiceArea || 'Default Area',
         coverageRadiusKm: parseFloat(workerForm.coverageRadiusKm) || 10,
@@ -300,7 +311,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
         skills: validSkills
       };
 
-      const res = await axios.post('http://localhost:5237/api/workers/become-worker', payload, {
+      const res = await axios.post(`${API_BASE_URL}/workers/become-worker`, payload, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -321,7 +332,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(`http://localhost:5237/api/residents/${encodeURIComponent(userEmail)}`, profile, {
+      await axios.put(`${API_BASE_URL}/residents/${encodeURIComponent(userEmail)}`, profile, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       alert('Profile updated successfully!');
@@ -338,9 +349,9 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     if (!window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
       return;
     }
-    
+
     try {
-      await axios.delete(`http://localhost:5237/api/residents/${encodeURIComponent(userEmail)}`, {
+      await axios.delete(`${API_BASE_URL}/residents/${encodeURIComponent(userEmail)}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       handleLogout();
@@ -358,7 +369,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     setSelectedGalleryImage(post.images && post.images.length > 0 ? post.images[0] : null);
 
     try {
-      const res = await axios.get(`http://localhost:5237/api/community-posts/${post.postId}/comments`);
+      const res = await axios.get(`${API_BASE_URL}/community-posts/${post.postId}/comments`);
       setCommentsMap(prev => ({ ...prev, [post.postId]: res.data || [] }));
     } catch (err) {
       console.error("Error fetching comments:", err);
@@ -370,7 +381,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     if (!newCommentText || !newCommentText.trim()) return;
 
     try {
-      const res = await axios.post(`http://localhost:5237/api/community-posts/${postId}/comments`, {
+      const res = await axios.post(`${API_BASE_URL}/community-posts/${postId}/comments`, {
         content: newCommentText,
         userName: userName || "You (Resident)",
         userAvatar: userPicture || "https://api.dicebear.com/7.x/avataaars/svg?seed=CurrentUser"
@@ -419,7 +430,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     if (!editingPost || !editTitle.trim() || !editContent.trim()) return;
 
     try {
-      await axios.put(`http://localhost:5237/api/community-posts/${editingPost.postId}`, {
+      await axios.put(`${API_BASE_URL}/community-posts/${editingPost.postId}`, {
         title: editTitle,
         content: editContent,
         serviceCategoryId: editCategory,
@@ -446,7 +457,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     if (!window.confirm("Are you sure you want to delete this community post?")) return;
 
     try {
-      await axios.delete(`http://localhost:5237/api/community-posts/${postId}?requesterEmail=${encodeURIComponent(userEmail || '')}&requesterName=${encodeURIComponent(userName || '')}`, {
+      await axios.delete(`${API_BASE_URL}/community-posts/${postId}?requesterEmail=${encodeURIComponent(userEmail || '')}&requesterName=${encodeURIComponent(userName || '')}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       alert("Post deleted successfully.");
@@ -479,7 +490,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     if (!createTitle.trim() || !createContent.trim()) return;
 
     try {
-      await axios.post('http://localhost:5237/api/community-posts', {
+      await axios.post(`${API_BASE_URL}/community-posts`, {
         title: createTitle,
         content: createContent,
         serviceCategoryId: createCategory,
@@ -504,67 +515,88 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     }
   };
 
-  if (loading) return <div style={{ padding: '4rem', textAlign: 'center', fontSize: '1.2rem', color: '#6b7280' }}>Loading your dashboard...</div>;
+  if (loading) return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: '#f9fafb', color: '#6b7280' }}>
+      <Loader />
+      <div style={{ fontSize: '1.2rem', fontWeight: 600 }}>Loading your dashboard...</div>
+    </div>
+  );
   if (!userEmail) return <div style={{ padding: '4rem', textAlign: 'center', fontSize: '1.2rem', color: '#6b7280' }}>Please log in to view your dashboard.</div>;
 
   return (
-    <div style={{ backgroundColor: '#f9fafb', minHeight: '100vh', fontFamily: 'Inter, sans-serif', color: '#111827' }}>
-      
+    <div style={{ backgroundColor: '#f9fafb', minHeight: '100vh', fontFamily: 'var(--font-body)', color: '#111827' }}>
+
       {/* Top Navbar */}
       <header style={{ backgroundColor: '#ffffff', borderBottom: '1px solid #e5e7eb', padding: '1rem 2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <a href="/" onClick={(e) => { e.preventDefault(); navigateTo('/'); }} style={{ cursor: 'pointer' }}>
           <img src="/iconWithText-cropped.png" alt="Super බාස් Logo" style={{ height: '40px' }} />
         </a>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <md-outlined-button onClick={() => navigateTo('/find')}>Find Workers</md-outlined-button>
-          <md-filled-button 
+        <div className="nav-actions" style={{ display: 'flex', alignItems: 'center' }}>
+          <md-outlined-button
+            onClick={() => navigateTo('/find')}
+            style={{
+              '--md-sys-color-primary': '#0f172a',
+              padding: '0 16px',
+              margin: '0 8px'
+            }}
+          >
+            Find Workers
+          </md-outlined-button>
+          <md-filled-button
             onClick={() => navigateTo('/community')}
-            style={{ '--md-sys-color-primary': '#009688', '--md-sys-color-on-primary': '#ffffff' }}
+            style={{
+              '--md-sys-color-primary': '#FDC101',
+              '--md-sys-color-on-primary': '#000000',
+              padding: '0 16px',
+              margin: '0 8px'
+            }}
           >
             Community Board
           </md-filled-button>
-          <UserMenu />
+          <div style={{ marginLeft: '8px' }}>
+            <UserMenu />
+          </div>
         </div>
       </header>
 
       {/* Main Dashboard Layout */}
       <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem', display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
-        
+
         {/* Sidebar Navigation */}
         <aside style={{ flex: '1 1 250px', backgroundColor: '#ffffff', borderRadius: '16px', padding: '1.5rem', border: '1px solid #e5e7eb', height: 'fit-content' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem', paddingBottom: '1.5rem', borderBottom: '1px solid #e5e7eb' }}>
-             {userPicture ? (
-                <img src={userPicture} alt="Avatar" style={{ width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover' }} />
-             ) : (
-                <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#009688', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '24px' }}>
-                  {profile.name ? profile.name.charAt(0).toUpperCase() : 'U'}
+            {userPicture ? (
+              <img src={userPicture} alt="Avatar" style={{ width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover' }} />
+            ) : (
+              <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#009688', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '24px' }}>
+                {profile.name ? profile.name.charAt(0).toUpperCase() : 'U'}
+              </div>
+            )}
+            <div style={{ overflow: 'hidden' }}>
+              <h3 style={{ margin: '0 0 0.25rem 0', fontWeight: '700', fontSize: '1.1rem', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                {profile.name || 'User'}
+              </h3>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: '#6b7280', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                {userEmail}
+              </p>
+              {isWorker && (
+                <div style={{ marginTop: '0.25rem' }}>
+                  <span style={{ backgroundColor: '#DBEAFE', color: '#1E40AF', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                    Active Worker
+                  </span>
                 </div>
-             )}
-             <div style={{ overflow: 'hidden' }}>
-               <h3 style={{ margin: '0 0 0.25rem 0', fontWeight: '700', fontSize: '1.1rem', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                 {profile.name || 'User'}
-               </h3>
-               <p style={{ margin: 0, fontSize: '0.85rem', color: '#6b7280', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                 {userEmail}
-               </p>
-               {isWorker && (
-                 <div style={{ marginTop: '0.25rem' }}>
-                   <span style={{ backgroundColor: '#DBEAFE', color: '#1E40AF', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold' }}>
-                     Active Worker
-                   </span>
-                 </div>
-               )}
-             </div>
+              )}
+            </div>
           </div>
 
           <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <button 
+            <button
               onClick={() => setActiveTab('overview')}
               style={{ padding: '12px 16px', textAlign: 'left', borderRadius: '8px', border: 'none', background: activeTab === 'overview' ? '#e0f2fe' : 'transparent', color: activeTab === 'overview' ? '#0284c7' : '#4b5563', fontWeight: activeTab === 'overview' ? '700' : '500', cursor: 'pointer', fontSize: '1rem' }}
             >
               Overview
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('bookings')}
               style={{
                 padding: '12px 16px',
@@ -581,7 +613,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                 justifyContent: 'space-between'
               }}
             >
-              <span>⚡ My Bookings & Hires</span>
+              <span> My Bookings & Hires</span>
               {residentBookings.length > 0 && (
                 <span style={{
                   backgroundColor: '#FDC101',
@@ -595,19 +627,19 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                 </span>
               )}
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('edit')}
               style={{ padding: '12px 16px', textAlign: 'left', borderRadius: '8px', border: 'none', background: activeTab === 'edit' ? '#e0f2fe' : 'transparent', color: activeTab === 'edit' ? '#0284c7' : '#4b5563', fontWeight: activeTab === 'edit' ? '700' : '500', cursor: 'pointer', fontSize: '1rem' }}
             >
               Edit Profile
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('posts')}
               style={{ padding: '12px 16px', textAlign: 'left', borderRadius: '8px', border: 'none', background: activeTab === 'posts' ? '#e0f2fe' : 'transparent', color: activeTab === 'posts' ? '#0284c7' : '#4b5563', fontWeight: activeTab === 'posts' ? '700' : '500', cursor: 'pointer', fontSize: '1rem' }}
             >
               My Community Posts
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('settings')}
               style={{ padding: '12px 16px', textAlign: 'left', borderRadius: '8px', border: 'none', background: activeTab === 'settings' ? '#e0f2fe' : 'transparent', color: activeTab === 'settings' ? '#0284c7' : '#4b5563', fontWeight: activeTab === 'settings' ? '700' : '500', cursor: 'pointer', fontSize: '1rem' }}
             >
@@ -615,20 +647,20 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
             </button>
 
             {isWorker ? (
-              <button 
+              <button
                 onClick={() => {
                   localStorage.setItem('activeRole', 'Worker');
                   navigateTo('/worker/dashboard');
                 }}
-                style={{ 
-                  padding: '12px 16px', 
-                  textAlign: 'left', 
-                  borderRadius: '8px', 
-                  border: 'none', 
-                  background: '#2563eb', 
-                  color: '#ffffff', 
-                  fontWeight: '600', 
-                  cursor: 'pointer', 
+                style={{
+                  padding: '12px 16px',
+                  textAlign: 'left',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: '#2563eb',
+                  color: '#ffffff',
+                  fontWeight: '600',
+                  cursor: 'pointer',
                   fontSize: '1rem',
                   transition: 'all 0.2s ease',
                   marginTop: '0.5rem'
@@ -637,17 +669,17 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                 Worker Dashboard →
               </button>
             ) : (
-              <button 
+              <button
                 onClick={() => setActiveTab('become-worker')}
-                style={{ 
-                  padding: '12px 16px', 
-                  textAlign: 'left', 
-                  borderRadius: '8px', 
-                  border: 'none', 
-                  background: activeTab === 'become-worker' ? '#dbeafe' : '#eff6ff', 
-                  color: '#2563eb', 
-                  fontWeight: '600', 
-                  cursor: 'pointer', 
+                style={{
+                  padding: '12px 16px',
+                  textAlign: 'left',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: activeTab === 'become-worker' ? '#dbeafe' : '#eff6ff',
+                  color: '#2563eb',
+                  fontWeight: '600',
+                  cursor: 'pointer',
                   fontSize: '1rem',
                   transition: 'all 0.2s ease',
                   marginTop: '0.5rem'
@@ -661,7 +693,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
 
         {/* Main Section Area */}
         <section style={{ flex: '3 1 600px', backgroundColor: '#ffffff', borderRadius: '16px', padding: '2rem', border: '1px solid #e5e7eb' }}>
-          
+
           {/* TAB: Overview */}
           {activeTab === 'overview' && (
             <div>
@@ -669,19 +701,19 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                 <div style={{ padding: '1.5rem', backgroundColor: '#f9fafb', borderRadius: '12px', border: '1px solid #f3f4f6' }}>
                   <h4 style={{ margin: '0 0 0.5rem 0', color: '#6b7280', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Display Name</h4>
-                  <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: '600' }}>{profile.name || <span style={{color: '#9ca3af', fontStyle: 'italic'}}>Not provided</span>}</p>
+                  <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: '600' }}>{profile.name || <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>Not provided</span>}</p>
                 </div>
                 <div style={{ padding: '1.5rem', backgroundColor: '#f9fafb', borderRadius: '12px', border: '1px solid #f3f4f6' }}>
                   <h4 style={{ margin: '0 0 0.5rem 0', color: '#6b7280', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Phone Number</h4>
-                  <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: '600' }}>{profile.phoneNo || <span style={{color: '#9ca3af', fontStyle: 'italic'}}>Not provided</span>}</p>
+                  <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: '600' }}>{profile.phoneNo || <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>Not provided</span>}</p>
                 </div>
                 <div style={{ padding: '1.5rem', backgroundColor: '#f9fafb', borderRadius: '12px', border: '1px solid #f3f4f6' }}>
                   <h4 style={{ margin: '0 0 0.5rem 0', color: '#6b7280', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Physical Address</h4>
-                  <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: '600' }}>{profile.address || <span style={{color: '#9ca3af', fontStyle: 'italic'}}>Not provided</span>}</p>
+                  <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: '600' }}>{profile.address || <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>Not provided</span>}</p>
                 </div>
-                
+
                 <div style={{ marginTop: '1rem' }}>
-                  <md-filled-button 
+                  <md-filled-button
                     onClick={() => setActiveTab('edit')}
                     style={{ '--md-sys-color-primary': '#111827', '--md-sys-color-on-primary': '#ffffff', '--md-filled-button-container-shape': '8px' }}
                   >
@@ -702,26 +734,19 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                     Track your hired workers, follow job progress live, and review completed home services.
                   </p>
                 </div>
-                <button
+                <md-text-button
                   onClick={fetchResidentBookings}
-                  style={{
-                    backgroundColor: '#f8fafc',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '8px',
-                    padding: '8px 14px',
-                    fontSize: '0.85rem',
-                    fontWeight: 600,
-                    color: '#475569',
-                    cursor: 'pointer'
-                  }}
+                  style={{ '--md-sys-color-primary': '#0f172a' }}
                 >
-                  ↻ Refresh
-                </button>
+                  <md-icon slot="icon">refresh</md-icon>
+                  Refresh
+                </md-text-button>
               </div>
 
               {loadingBookings ? (
-                <div style={{ padding: '3rem', textAlign: 'center', color: '#6b7280' }}>
-                  Loading your service bookings...
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', color: '#6b7280' }}>
+                  <Loader />
+                  <p>Loading your service bookings...</p>
                 </div>
               ) : residentBookings.length === 0 ? (
                 <div style={{ padding: '3rem', backgroundColor: '#f9fafb', borderRadius: '16px', border: '1px dashed #cbd5e1', textAlign: 'center' }}>
@@ -732,7 +757,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                   <p style={{ color: '#64748b', marginBottom: '20px', fontSize: '0.95rem' }}>
                     Need home repairs or maintenance? Browse our verified pros and hire one with one click!
                   </p>
-                  <md-filled-button onClick={() => navigateTo('/find')} style={{ '--md-sys-color-primary': '#2563eb' }}>
+                  <md-filled-button onClick={() => navigateTo('/find')} style={{ '--md-sys-color-primary': '#FDC101', '--md-sys-color-on-primary': '#000000' }}>
                     Find Verified Workers
                   </md-filled-button>
                 </div>
@@ -740,7 +765,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                   {residentBookings.map((b) => (
                     <div key={b.id} style={{ backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                      
+
                       {/* Top Row: Worker info & Status Badge */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', borderBottom: '1px solid #f1f5f9', paddingBottom: '14px', marginBottom: '16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
@@ -781,26 +806,27 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                         {/* Status Badge */}
                         <div>
                           <span style={{
-                            backgroundColor: 
-                              b.status === 'Requested' ? '#fef3c7' :
-                              b.status === 'Confirmed' ? '#e0f2fe' :
-                              b.status === 'InProgress' ? '#dbeafe' :
-                              b.status === 'Completed' ? '#d1fae5' :
-                              b.status === 'Reviewed' ? '#fef9c3' :
-                              '#fee2e2',
-                            color: 
-                              b.status === 'Requested' ? '#92400e' :
-                              b.status === 'Confirmed' ? '#0369a1' :
-                              b.status === 'InProgress' ? '#1e40af' :
-                              b.status === 'Completed' ? '#065f46' :
-                              b.status === 'Reviewed' ? '#854d0e' :
-                              '#991b1b',
+                            backgroundColor:
+                              b.status === 'Requested' ? '#fefce8' :
+                                b.status === 'Confirmed' ? '#f8fafc' :
+                                  b.status === 'InProgress' ? '#f1f5f9' :
+                                    b.status === 'Completed' ? '#f0fdf4' :
+                                      b.status === 'Reviewed' ? '#fffbeb' :
+                                        '#fef2f2',
+                            color:
+                              b.status === 'Requested' ? '#a16207' :
+                                b.status === 'Confirmed' ? '#334155' :
+                                  b.status === 'InProgress' ? '#0f172a' :
+                                    b.status === 'Completed' ? '#166534' :
+                                      b.status === 'Reviewed' ? '#b45309' :
+                                        '#991b1b',
                             padding: '6px 14px',
                             borderRadius: '20px',
                             fontSize: '0.85rem',
                             fontWeight: 800,
                             display: 'inline-flex',
                             alignItems: 'center',
+                            border: `1px solid ${b.status === 'Requested' ? '#fef08a' : b.status === 'Confirmed' ? '#e2e8f0' : b.status === 'InProgress' ? '#cbd5e1' : b.status === 'Completed' ? '#bbf7d0' : b.status === 'Reviewed' ? '#fde68a' : '#fecaca'}`,
                             gap: '6px'
                           }}>
                             {b.status === 'Requested' && '⏳ Booking Requested'}
@@ -826,11 +852,11 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                         )}
 
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', fontSize: '0.875rem', color: '#64748b' }}>
-                          <div>📍 Address: <strong style={{ color: '#1e293b' }}>{b.locationAddress}</strong></div>
-                          <div>⚡ Urgency: <strong style={{ color: '#1e293b' }}>{b.urgency}</strong></div>
-                          <div>📞 Worker Phone: <strong style={{ color: '#2563eb' }}>{b.workerPhone || 'In chat'}</strong></div>
+                          <div> Address: <strong style={{ color: '#1e293b' }}>{b.locationAddress}</strong></div>
+                          <div> Urgency: <strong style={{ color: '#1e293b' }}>{b.urgency}</strong></div>
+                          <div> Worker Phone: <strong style={{ color: '#2563eb' }}>{b.workerPhone || 'In chat'}</strong></div>
                           {b.estimatedPrice && (
-                            <div>💰 Estimate: <strong style={{ color: '#059669' }}>Rs. {b.estimatedPrice.toLocaleString()}</strong></div>
+                            <div> Estimate: <strong style={{ color: '#059669' }}>Rs. {b.estimatedPrice.toLocaleString()}</strong></div>
                           )}
                         </div>
                       </div>
@@ -838,7 +864,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                       {/* Visual Booking Stepper Bar */}
                       <div style={{ backgroundColor: '#f8fafc', borderRadius: '12px', padding: '14px', marginBottom: '16px', border: '1px solid #f1f5f9' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative' }}>
-                          
+
                           {/* Step 1 */}
                           <div style={{ textAlign: 'center', zIndex: 1 }}>
                             <div style={{
@@ -863,8 +889,8 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                               width: '24px',
                               height: '24px',
                               borderRadius: '50%',
-                              backgroundColor: ['Confirmed', 'InProgress', 'Completed', 'Reviewed'].includes(b.status) ? '#10b981' : b.status === 'Requested' ? '#2563eb' : '#cbd5e1',
-                              color: '#fff',
+                              backgroundColor: ['Confirmed', 'InProgress', 'Completed', 'Reviewed'].includes(b.status) ? '#10b981' : b.status === 'Requested' ? '#FDC101' : '#cbd5e1',
+                              color: b.status === 'Requested' ? '#000000' : '#fff',
                               margin: '0 auto 4px auto',
                               display: 'flex',
                               alignItems: 'center',
@@ -883,8 +909,8 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                               width: '24px',
                               height: '24px',
                               borderRadius: '50%',
-                              backgroundColor: ['InProgress', 'Completed', 'Reviewed'].includes(b.status) ? '#10b981' : b.status === 'Confirmed' ? '#2563eb' : '#cbd5e1',
-                              color: '#fff',
+                              backgroundColor: ['InProgress', 'Completed', 'Reviewed'].includes(b.status) ? '#10b981' : b.status === 'Confirmed' ? '#FDC101' : '#cbd5e1',
+                              color: b.status === 'Confirmed' ? '#000000' : '#fff',
                               margin: '0 auto 4px auto',
                               display: 'flex',
                               alignItems: 'center',
@@ -903,8 +929,8 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                               width: '24px',
                               height: '24px',
                               borderRadius: '50%',
-                              backgroundColor: ['Completed', 'Reviewed'].includes(b.status) ? '#10b981' : '#cbd5e1',
-                              color: '#fff',
+                              backgroundColor: ['Completed', 'Reviewed'].includes(b.status) ? '#10b981' : b.status === 'InProgress' ? '#FDC101' : '#cbd5e1',
+                              color: b.status === 'InProgress' ? '#000000' : '#fff',
                               margin: '0 auto 4px auto',
                               display: 'flex',
                               alignItems: 'center',
@@ -923,8 +949,8 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                               width: '24px',
                               height: '24px',
                               borderRadius: '50%',
-                              backgroundColor: b.status === 'Reviewed' ? '#f59e0b' : '#cbd5e1',
-                              color: '#fff',
+                              backgroundColor: b.status === 'Reviewed' ? '#FDC101' : b.status === 'Completed' ? '#0f172a' : '#cbd5e1',
+                              color: b.status === 'Reviewed' ? '#000000' : '#fff',
                               margin: '0 auto 4px auto',
                               display: 'flex',
                               alignItems: 'center',
@@ -957,65 +983,34 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
 
                       {/* Action buttons */}
                       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
-                        <button
+                        <md-outlined-button
                           onClick={() => navigateTo('/chats')}
-                          style={{
-                            padding: '8px 16px',
-                            borderRadius: '8px',
-                            border: '1.5px solid #2563eb',
-                            backgroundColor: '#eff6ff',
-                            color: '#2563eb',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            fontSize: '0.875rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px'
-                          }}
+                          style={{ '--md-sys-color-primary': '#0f172a' }}
                         >
-                          💬 Chat with {b.workerName}
-                        </button>
+                          <md-icon slot="icon">chat</md-icon>
+                          Chat with {b.workerName}
+                        </md-outlined-button>
 
                         {/* Leave Review CTA if Job is Completed */}
                         {b.status === 'Completed' && (
-                          <button
+                          <md-filled-button
                             onClick={() => handleOpenReviewModal(b)}
-                            style={{
-                              padding: '8px 20px',
-                              borderRadius: '8px',
-                              border: 'none',
-                              backgroundColor: '#FDC101',
-                              color: '#000000',
-                              fontWeight: 800,
-                              cursor: 'pointer',
-                              fontSize: '0.9rem',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                              boxShadow: '0 2px 8px rgba(253,193,1,0.4)'
-                            }}
+                            style={{ '--md-sys-color-primary': '#FDC101', '--md-sys-color-on-primary': '#000000' }}
                           >
-                            ⭐ Leave Rating & Review
-                          </button>
+                            <md-icon slot="icon">star</md-icon>
+                            Leave Rating & Review
+                          </md-filled-button>
                         )}
 
                         {/* Cancel option for pending/confirmed */}
                         {['Requested', 'Confirmed'].includes(b.status) && (
-                          <button
+                          <md-outlined-button
                             onClick={() => handleCancelBooking(b.id)}
-                            style={{
-                              padding: '8px 14px',
-                              borderRadius: '8px',
-                              border: '1px solid #cbd5e1',
-                              backgroundColor: '#ffffff',
-                              color: '#64748b',
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                              fontSize: '0.85rem'
-                            }}
+                            style={{ '--md-sys-color-primary': '#dc2626' }}
                           >
+                            <md-icon slot="icon">cancel</md-icon>
                             Cancel Booking
-                          </button>
+                          </md-outlined-button>
                         )}
                       </div>
 
@@ -1036,13 +1031,13 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                   value={profile.name}
                   onInput={(e) => setProfile({ ...profile, name: e.target.value })}
                 ></md-filled-text-field>
-                
+
                 <md-filled-text-field
                   label="Phone Number"
                   value={profile.phoneNo}
                   onInput={(e) => setProfile({ ...profile, phoneNo: e.target.value })}
                 ></md-filled-text-field>
-                
+
                 <md-filled-text-field
                   label="Physical Address"
                   value={profile.address}
@@ -1050,8 +1045,8 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                 ></md-filled-text-field>
 
                 <div style={{ marginTop: '1rem' }}>
-                  <md-filled-button 
-                    type="submit" 
+                  <md-filled-button
+                    type="submit"
                     style={{ '--md-sys-color-primary': '#009688', '--md-sys-color-on-primary': '#ffffff', height: '48px', fontSize: '16px', '--md-filled-button-container-shape': '50px', padding: '0 32px' }}
                   >
                     Save Changes
@@ -1092,15 +1087,16 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                   + Make New Post
                 </button>
               </div>
-              
+
               {loadingPosts ? (
-                <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', color: '#6b7280' }}>
+                  <Loader />
                   <p>Loading your community posts...</p>
                 </div>
               ) : userPosts.length === 0 ? (
                 <div style={{ padding: '3rem', textAlign: 'center', backgroundColor: '#f9fafb', borderRadius: '12px', border: '1px dashed #d1d5db' }}>
                   <p style={{ fontSize: '1.1rem', color: '#4b5563', marginBottom: '1.5rem' }}>You haven't authored any community posts yet.</p>
-                  <button 
+                  <button
                     onClick={() => setIsCreateModalOpen(true)}
                     style={{
                       backgroundColor: '#009688',
@@ -1118,12 +1114,12 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                   {userPosts.map(post => (
-                    <div 
-                      key={post.postId} 
-                      style={{ 
-                        padding: '1.25rem', 
-                        border: '1px solid #e5e7eb', 
-                        borderRadius: '12px', 
+                    <div
+                      key={post.postId}
+                      style={{
+                        padding: '1.25rem',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '12px',
                         backgroundColor: '#ffffff',
                         display: 'flex',
                         gap: '16px',
@@ -1147,9 +1143,9 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                       }}>
                         {post.images && post.images.length > 0 ? (
                           <>
-                            <img 
-                              src={post.images[0]} 
-                              alt={post.title} 
+                            <img
+                              src={post.images[0]}
+                              alt={post.title}
                               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                               onError={(e) => {
                                 e.target.src = 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=500&auto=format&fit=crop';
@@ -1209,7 +1205,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                             >
                               View
                             </button>
-                            
+
                             <button
                               onClick={() => handleOpenEdit(post)}
                               style={{
@@ -1255,7 +1251,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
           {activeTab === 'settings' && (
             <div>
               <h2 style={{ fontSize: '1.5rem', fontWeight: '800', marginTop: 0, marginBottom: '1.5rem', color: '#111827' }}>Account Settings</h2>
-              
+
               <div style={{ marginBottom: '3rem' }}>
                 <h3 style={{ fontSize: '1.2rem', fontWeight: '700', marginBottom: '1rem' }}>Session Options</h3>
                 <p style={{ color: '#4b5563', marginBottom: '1rem' }}>Sign out of your current session on this device.</p>
@@ -1271,11 +1267,11 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
               <div style={{ padding: '1.5rem', border: '1px solid #ef4444', borderRadius: '12px', backgroundColor: '#fef2f2' }}>
                 <h3 style={{ color: '#ef4444', marginTop: 0, fontWeight: '800', fontSize: '1.2rem' }}>Danger Zone</h3>
                 <p style={{ color: '#7f1d1d', marginBottom: '1.5rem', fontSize: '0.95rem' }}>Once you delete your account, there is no going back. All of your profile data will be permanently removed.</p>
-                <md-filled-button 
+                <md-filled-button
                   type="button"
                   onClick={handleDeleteAccount}
-                  style={{ 
-                    '--md-sys-color-primary': '#ef4444', 
+                  style={{
+                    '--md-sys-color-primary': '#ef4444',
                     '--md-sys-color-on-primary': '#ffffff',
                     '--md-filled-button-container-shape': '8px',
                   }}
@@ -1304,7 +1300,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                   <p style={{ color: '#1E3A8A', marginBottom: '1.5rem', fontSize: '0.95rem' }}>
                     Your worker profile is active. You can manage your jobs, skills, and availability in your Worker Dashboard.
                   </p>
-                  <md-filled-button 
+                  <md-filled-button
                     type="button"
                     onClick={() => navigateTo('/worker/dashboard')}
                     style={{ '--md-sys-color-primary': '#2563EB', '--md-sys-color-on-primary': '#ffffff', '--md-filled-button-container-shape': '50px' }}
@@ -1314,7 +1310,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                 </div>
               ) : (
                 <form onSubmit={handleBecomeWorkerSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                  
+
                   {workerError && (
                     <div style={{ padding: '1rem', backgroundColor: '#FEF2F2', border: '1px solid #FCA5A5', color: '#991B1B', borderRadius: '8px', fontSize: '0.9rem' }}>
                       {workerError}
@@ -1479,23 +1475,23 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
 
             {selectedPostForDetail.images && selectedPostForDetail.images.length > 0 && (
               <div>
-                <img 
-                  src={selectedGalleryImage || selectedPostForDetail.images[0]} 
-                  alt="Post" 
-                  style={{ width: '100%', maxHeight: '300px', objectFit: 'cover', borderRadius: '10px', marginBottom: '1rem' }} 
+                <img
+                  src={selectedGalleryImage || selectedPostForDetail.images[0]}
+                  alt="Post"
+                  style={{ width: '100%', maxHeight: '300px', objectFit: 'cover', borderRadius: '10px', marginBottom: '1rem' }}
                 />
                 {selectedPostForDetail.images.length > 1 && (
                   <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', marginBottom: '1rem' }}>
                     {selectedPostForDetail.images.map((img, idx) => (
-                      <img 
-                        key={idx} 
-                        src={img} 
-                        alt="Thumb" 
+                      <img
+                        key={idx}
+                        src={img}
+                        alt="Thumb"
                         onClick={() => setSelectedGalleryImage(img)}
                         style={{
                           width: '65px', height: '50px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer',
                           border: selectedGalleryImage === img ? '2px solid #009688' : '2px solid transparent'
-                        }} 
+                        }}
                       />
                     ))}
                   </div>
@@ -1805,7 +1801,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
             </p>
 
             <form onSubmit={handleSubmitReview} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              
+
               {/* Star Rating 1: Quality */}
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>

@@ -1,9 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import axios from 'axios';
+import EmojiPicker from 'emoji-picker-react';
 import './Chats.css';
+import '@material/web/progress/circular-progress.js';
+import '@material/web/progress/linear-progress.js';
+import '@material/web/dialog/dialog.js';
+import '@material/web/button/text-button.js';
+import '@material/web/button/filled-button.js';
+import '@material/web/textfield/outlined-text-field.js';
+import '@material/web/icon/icon.js';
+import '@material/web/iconbutton/icon-button.js';
+import '@material/web/menu/menu.js';
+import '@material/web/menu/menu-item.js';
+import '@material/web/list/list.js';
+import '@material/web/list/list-item.js';
+import Loader from './components/Loader.jsx';
 import UserMenu from './components/UserMenu.jsx';
+import { BACKEND_URL } from './config.js';
 
-const API_BASE_URL = 'http://localhost:5237/api/conversations';
+const API_BASE_URL = `${BACKEND_URL}/api/conversations`;
 
 const EMOJI_CATEGORIES = {
   smileys: [
@@ -32,6 +48,57 @@ export default function Chats() {
   const [isSending, setIsSending] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const dialogRef = useRef(null);
+
+  const [dialogConfig, setDialogConfig] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'alert',
+    onConfirm: null
+  });
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    const handleClose = () => {
+      setDialogConfig(prev => prev.isOpen ? { ...prev, isOpen: false } : prev);
+    };
+
+    dialog.addEventListener('close', handleClose);
+    return () => dialog.removeEventListener('close', handleClose);
+  }, []);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (dialog) {
+      if (dialogConfig.isOpen) {
+        dialog.show();
+      } else {
+        dialog.close();
+      }
+    }
+  }, [dialogConfig.isOpen]);
+
+  const showAlert = (title, message) => {
+    setDialogConfig({ isOpen: true, title, message, type: 'alert', onConfirm: null });
+  };
+
+  const showConfirm = (title, message, onConfirm) => {
+    setDialogConfig({ isOpen: true, title, message, type: 'confirm', onConfirm });
+  };
+
+  // New UI states for Search and Menu
+  const [isSearchActive, setIsSearchActive] = useState(false);
+  const [searchMessageKeyword, setSearchMessageKeyword] = useState('');
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isSelectModeActive, setIsSelectModeActive] = useState(false);
+  const [selectedMessageIds, setSelectedMessageIds] = useState([]);
+
+  const [isMessagesLoading, setIsMessagesLoading] = useState(false);
+
   const [isTyping, setIsTyping] = useState(false);
   const [isOtherUserOnline, setIsOtherUserOnline] = useState(true);
   const [otherUserLastSeen, setOtherUserLastSeen] = useState(null);
@@ -55,6 +122,8 @@ export default function Chats() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, isTyping, showEmojiPicker]);
+
+
 
   // Check presence for active chat
   useEffect(() => {
@@ -91,14 +160,12 @@ export default function Chats() {
       });
       if (res.data && Array.isArray(res.data)) {
         setConversations(res.data);
-        // If no chat selected, select the first one by default
-        if (!selectedChat && res.data.length > 0) {
-          setSelectedChat(res.data[0]);
-          loadMessages(res.data[0].id);
-        }
+
       }
     } catch (err) {
       console.warn('Error loading conversations:', err.message);
+    } finally {
+      setIsDataLoaded(true);
     }
   };
 
@@ -109,8 +176,9 @@ export default function Chats() {
   }, [currentUserEmail]);
 
   // Load messages for selected chat
-  const loadMessages = async (conversationId) => {
+  const loadMessages = async (conversationId, isInitialLoad = false) => {
     if (!conversationId) return;
+    if (isInitialLoad) setIsMessagesLoading(true);
     try {
       const res = await axios.get(`${API_BASE_URL}/${conversationId}/messages`, {
         params: { userEmail: currentUserEmail, page: 1, pageSize: 60 },
@@ -128,13 +196,15 @@ export default function Chats() {
       } catch (e) {}
     } catch (err) {
       console.error('Error fetching messages:', err);
+    } finally {
+      if (isInitialLoad) setIsMessagesLoading(false);
     }
   };
 
   useEffect(() => {
     if (selectedChat) {
-      loadMessages(selectedChat.id);
-      const msgInterval = setInterval(() => loadMessages(selectedChat.id), 3500);
+      loadMessages(selectedChat.id, true);
+      const msgInterval = setInterval(() => loadMessages(selectedChat.id, false), 3500);
       return () => clearInterval(msgInterval);
     }
   }, [selectedChat]);
@@ -252,6 +322,84 @@ export default function Chats() {
     return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
   };
 
+  const handleDeleteSelectedMessages = () => {
+    if (!selectedMessageIds.length) return;
+    
+    const selectedMsgs = messages.filter(m => selectedMessageIds.includes(m.id));
+    const now = new Date();
+    
+    const invalidMsgs = selectedMsgs.filter(m => {
+      const isOutgoing = m.senderEmail?.toLowerCase() === currentUserEmail.toLowerCase();
+      if (!isOutgoing) return true; // Can't delete received messages
+      
+      const msgDate = new Date(m.createdAt);
+      const diffHours = (now - msgDate) / (1000 * 60 * 60);
+      return diffHours > 24; // Can't delete messages older than 24 hours
+    });
+
+    if (invalidMsgs.length > 0) {
+      showAlert("Action Blocked", "You can only delete your own messages sent within the last 24 hours.");
+      return;
+    }
+
+    showConfirm("Delete Messages", `Are you sure you want to permanently delete ${selectedMessageIds.length} message(s)?`, async () => {
+      try {
+        await axios.post(`${API_BASE_URL}/messages/delete?userEmail=${currentUserEmail}`, selectedMessageIds, {
+          headers: token ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' }
+        });
+        
+        const remainingMsgs = messages.filter(m => !selectedMessageIds.includes(m.id));
+        setMessages(remainingMsgs);
+        setSelectedMessageIds([]);
+        setIsSelectModeActive(false);
+
+        // Update the sidebar preview
+        setConversations(prev => prev.map(c => {
+          if (selectedChat && c.id === selectedChat.id) {
+            if (remainingMsgs.length > 0) {
+              const newLastMsg = remainingMsgs[remainingMsgs.length - 1];
+              let previewText = newLastMsg.content;
+              if (!previewText && newLastMsg.attachmentUrl) {
+                previewText = "Attachment";
+              }
+              return {
+                ...c,
+                lastMessage: previewText,
+                lastMessageAt: newLastMsg.createdAt,
+                lastSenderEmail: newLastMsg.senderEmail
+              };
+            } else {
+              return {
+                ...c,
+                lastMessage: 'No messages yet',
+                lastMessageAt: null
+              };
+            }
+          }
+          return c;
+        }));
+      } catch (err) {
+        console.error('Error deleting messages:', err);
+        showAlert("Error", err.response?.data?.message || 'Failed to delete messages.');
+      }
+    });
+  };
+
+  const handleDeleteChat = () => {
+    if (!selectedChat) return;
+    showConfirm("Delete Chat", "Are you sure you want to permanently delete this chat?", async () => {
+      try {
+        await axios.delete(`${API_BASE_URL}/${selectedChat.id}?userEmail=${currentUserEmail}`);
+        setConversations(prev => prev.filter(c => c.id !== selectedChat.id));
+        setSelectedChat(null);
+        setIsMenuOpen(false);
+      } catch (error) {
+        console.error('Error deleting chat:', error);
+        showAlert("Error", "Failed to delete chat.");
+      }
+    });
+  };
+
   // Filter conversations by search term
   const filteredConversations = conversations.filter(c => {
     const term = searchTerm.toLowerCase();
@@ -263,7 +411,8 @@ export default function Chats() {
   const hasContentToSend = inputText.trim().length > 0 || previewImage !== null;
 
   return (
-    <div className="chats-page-container">
+    <>
+      <div className="chats-page-container">
       {/* App Header Navbar */}
       <header className="chats-navbar">
         <div className="chats-nav-left">
@@ -274,7 +423,7 @@ export default function Chats() {
             <li className="chats-nav-link" onClick={() => navigate('/')}>Home</li>
             <li className="chats-nav-link" onClick={() => navigate('/find')}>Find Workers</li>
             <li className="chats-nav-link" onClick={() => navigate('/community')}>Community</li>
-            <li className="chats-nav-link active" style={{ color: '#00d26a', fontWeight: 600 }}>Messages</li>
+            <li className="chats-nav-link active">Messages</li>
           </ul>
         </div>
 
@@ -291,20 +440,23 @@ export default function Chats() {
             <h2>Messages</h2>
           </div>
 
-          <div className="chats-search-wrapper">
-            <div className="chats-search-input-box">
-              <i className="fa-solid fa-magnifying-glass"></i>
-              <input
-                type="text"
-                placeholder="Search conversations..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
+          <div className="chats-search-wrapper" style={{ padding: '0 16px 12px 16px' }}>
+            <md-outlined-text-field
+              placeholder="Search conversations..."
+              value={searchTerm}
+              onInput={(e) => setSearchTerm(e.target.value)}
+              style={{ width: '100%', '--md-sys-color-primary': '#FDC101' }}
+            >
+              <i slot="leading-icon" className="fa-solid fa-magnifying-glass" style={{ color: '#64748b' }}></i>
+            </md-outlined-text-field>
           </div>
 
           <div className="chats-conversations-list">
-            {filteredConversations.length === 0 ? (
+            {!isDataLoaded ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem 1rem', color: '#64748b' }}>
+                <Loader size={40} />
+              </div>
+            ) : filteredConversations.length === 0 ? (
               <div style={{ padding: '2rem 1.5rem', textAlign: 'center', color: '#64748b' }}>
                 <i className="fa-regular fa-comment-dots" style={{ fontSize: '2rem', marginBottom: '10px', color: '#cbd5e1' }}></i>
                 <p style={{ margin: 0, fontSize: '0.9rem' }}>No conversations found</p>
@@ -326,42 +478,57 @@ export default function Chats() {
                 </button>
               </div>
             ) : (
-              filteredConversations.map(conv => {
-                const isUserWorker = conv.workerEmail?.toLowerCase() === currentUserEmail.toLowerCase();
-                const otherName = (isUserWorker ? conv.residentName : conv.workerName) || 'SuperBass Member';
-                const otherAvatar = isUserWorker ? null : conv.workerProfileImage;
-                const isSelected = selectedChat?.id === conv.id;
+              <md-list style={{ background: 'transparent' }}>
+                {filteredConversations.map(conv => {
+                  const isUserWorker = conv.workerEmail?.toLowerCase() === currentUserEmail.toLowerCase();
+                  const otherName = (isUserWorker ? conv.residentName : conv.workerName) || 'SuperBass Member';
+                  
+                  const getValidAvatar = (url) => {
+                    if (!url || url === 'null' || url.trim() === '') return null;
+                    if (url.startsWith('http')) return url;
+                    return `${BACKEND_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+                  };
+                  const otherAvatar = isUserWorker ? null : getValidAvatar(conv.workerProfileImage);
+                  const isSelected = selectedChat?.id === conv.id;
 
-                return (
-                  <div
-                    key={conv.id}
-                    className={`chat-item-card ${isSelected ? 'active' : ''}`}
-                    onClick={() => handleSelectConversation(conv)}
-                  >
-                    <div className="chat-item-avatar-wrapper">
-                      {otherAvatar ? (
-                        <img src={otherAvatar} alt="avatar" className="chat-item-avatar" />
-                      ) : (
-                        <div className="chat-item-avatar">{getInitial(otherName)}</div>
-                      )}
-                      <span className={`chat-item-online ${conv.isOnline ? 'online' : 'offline'}`}></span>
-                    </div>
-
-                    <div className="chat-item-content">
-                      <div className="chat-item-top">
-                        <span className="chat-item-name">{otherName}</span>
-                        <span className="chat-item-time">{formatConversationTime(conv.lastMessageAt || conv.updatedAt)}</span>
+                  return (
+                    <md-list-item
+                      type="button"
+                      key={conv.id}
+                      onClick={() => handleSelectConversation(conv)}
+                      style={isSelected ? { '--md-list-item-container-color': '#fffbeb', borderLeft: '4px solid #FDC101' } : {}}
+                    >
+                      <div slot="start" style={{ position: 'relative' }}>
+                        {otherAvatar ? (
+                          <img src={otherAvatar} alt="avatar" className="chat-item-avatar" onError={(e) => e.target.style.display='none'} />
+                        ) : (
+                          <div className="chat-item-avatar">
+                            {getInitial(otherName)}
+                          </div>
+                        )}
+                        <div className={`chat-item-online ${conv.isOnline ? 'online' : 'offline'}`}></div>
                       </div>
-                      <div className="chat-item-bottom">
-                        <span className="chat-item-preview">{conv.lastMessage || 'No messages yet'}</span>
+                      
+                      <div slot="headline" style={{ fontWeight: '600', color: '#0f172a' }}>
+                        {otherName}
+                      </div>
+                      
+                      <div slot="supporting-text" style={{ color: isSelected ? '#b45309' : '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>
+                        {conv.lastMessage || 'No messages yet'}
+                      </div>
+
+                      <div slot="end" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                          {formatConversationTime(conv.lastMessageAt || conv.updatedAt)}
+                        </span>
                         {conv.unreadCount > 0 && (
                           <span className="chat-item-badge">{conv.unreadCount}</span>
                         )}
                       </div>
-                    </div>
-                  </div>
-                );
-              })
+                    </md-list-item>
+                  );
+                })}
+              </md-list>
             )}
           </div>
         </aside>
@@ -377,13 +544,18 @@ export default function Chats() {
                     <div className="chats-header-avatar">
                       {getInitial(selectedChat.residentName || 'Resident')}
                     </div>
-                  ) : selectedChat.workerProfileImage ? (
-                    <img src={selectedChat.workerProfileImage} alt="avatar" className="chats-header-avatar" />
-                  ) : (
-                    <div className="chats-header-avatar">
-                      {getInitial(selectedChat.workerName || 'Worker')}
-                    </div>
-                  )}
+                  ) : (() => {
+                      const validHeaderAvatar = !selectedChat.workerProfileImage || selectedChat.workerProfileImage === 'null' || selectedChat.workerProfileImage.trim() === '' ? null 
+                        : (selectedChat.workerProfileImage.startsWith('http') ? selectedChat.workerProfileImage : `${BACKEND_URL}${selectedChat.workerProfileImage.startsWith('/') ? '' : '/'}${selectedChat.workerProfileImage}`);
+                      
+                      return validHeaderAvatar ? (
+                        <img src={validHeaderAvatar} alt="avatar" className="chats-header-avatar" onError={(e) => e.target.style.display='none'} />
+                      ) : (
+                        <div className="chats-header-avatar">
+                          {getInitial(selectedChat.workerName || 'Worker')}
+                        </div>
+                      )
+                  })()}
                   <span className={`chats-header-status-badge ${isOtherUserOnline ? 'online' : 'offline'}`}></span>
                 </div>
                 <div>
@@ -403,98 +575,206 @@ export default function Chats() {
                       <span style={{ color: '#94a3b8', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                         <i className="fa-regular fa-circle" style={{ fontSize: '0.45rem' }}></i> Last seen {formatConversationTime(otherUserLastSeen)}
                       </span>
-                    ) : (
-                      <span style={{ color: '#94a3b8', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                        <i className="fa-regular fa-circle" style={{ fontSize: '0.45rem' }}></i> Offline
-                      </span>
-                    )}
+                    ) : null}
                   </span>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  type="button"
-                  className="chats-pill-icon-btn"
-                  title="Call"
-                  onClick={() => alert(`Calling ${selectedChat.workerEmail?.toLowerCase() === currentUserEmail.toLowerCase() ? (selectedChat.residentName || 'Client') : (selectedChat.workerName || 'Worker')}...`)}
-                >
-                  <i className="fa-solid fa-phone"></i>
-                </button>
+              <div style={{ display: 'flex', gap: '8px', position: 'relative', alignItems: 'center' }}>
+                {isSearchActive ? (
+                  <div className="chats-search-header">
+                    <input 
+                      type="text" 
+                      placeholder="Search in chat..." 
+                      value={searchMessageKeyword}
+                      onChange={(e) => setSearchMessageKeyword(e.target.value)}
+                      autoFocus
+                    />
+                    <button type="button" onClick={() => { setIsSearchActive(false); setSearchMessageKeyword(''); }}>
+                      <i className="fa-solid fa-times"></i>
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    {isSelectModeActive && selectedMessageIds.length > 0 && (
+                      <md-icon-button
+                        title="Delete Selected"
+                        onClick={handleDeleteSelectedMessages}
+                        style={{ '--md-sys-color-on-surface-variant': '#ef4444' }}
+                      >
+                        <i className="fa-solid fa-trash"></i>
+                      </md-icon-button>
+                    )}
+                    <md-icon-button
+                      title="Search Chat"
+                      onClick={() => setIsSearchActive(true)}
+                    >
+                      <i className="fa-solid fa-search"></i>
+                    </md-icon-button>
+                    <md-icon-button
+                      id="chat-menu-anchor"
+                      title="Menu"
+                      onClick={() => setIsMenuOpen(!isMenuOpen)}
+                    >
+                      <i className="fa-solid fa-ellipsis-vertical"></i>
+                    </md-icon-button>
+                  </>
+                )}
+
+                <md-menu anchor="chat-menu-anchor" open={isMenuOpen} onClosed={() => setIsMenuOpen(false)} style={{ zIndex: 9999 }}>
+                  <md-menu-item onClick={() => {
+                      setIsMenuOpen(false);
+                      const isUserWorker = selectedChat.workerEmail?.toLowerCase() === currentUserEmail.toLowerCase();
+                      if (!isUserWorker) {
+                          navigate(`/worker-detail?id=${selectedChat.workerId}`);
+                      }
+                  }}>
+                    <div slot="headline">View Info</div>
+                    <i slot="end" className="fa-solid fa-circle-info" style={{ color: '#64748b' }}></i>
+                  </md-menu-item>
+                  <md-menu-item onClick={() => {
+                      setIsMenuOpen(false);
+                      setIsSelectModeActive(!isSelectModeActive);
+                      setSelectedMessageIds([]);
+                  }}>
+                    <div slot="headline">{isSelectModeActive ? 'Cancel Selection' : 'Select Messages'}</div>
+                    <i slot="end" className="fa-solid fa-check-square" style={{ color: '#64748b' }}></i>
+                  </md-menu-item>
+                  <md-menu-item onClick={() => { setIsMenuOpen(false); handleDeleteChat(); }}>
+                    <div slot="headline" style={{ color: '#ef4444' }}>Delete Chat</div>
+                    <i slot="end" className="fa-solid fa-trash" style={{ color: '#ef4444' }}></i>
+                  </md-menu-item>
+                </md-menu>
               </div>
             </div>
 
             {/* Messages Stream */}
             <div className="chats-messages-stream" onClick={() => setShowEmojiPicker(false)}>
-              <div className="chats-stream-date">Today</div>
+              {isMessagesLoading ? (
+                <div className="chats-messages-loader-container">
+                  <Loader size={50} />
+                </div>
+              ) : (
+                <>
+                  {messages.filter(msg => {
+                    if (!isSearchActive || !searchMessageKeyword) return true;
+                    return msg.content?.toLowerCase().includes(searchMessageKeyword.toLowerCase());
+                  }).map((msg, idx, arr) => {
+                    const isOutgoing = msg.senderEmail?.toLowerCase() === currentUserEmail.toLowerCase();
+                    const otherPartyName = selectedChat.workerEmail?.toLowerCase() === currentUserEmail.toLowerCase()
+                      ? (selectedChat.residentName || 'Resident')
+                      : (selectedChat.workerName || 'Worker');
 
-              {messages.map((msg, idx) => {
-                const isOutgoing = msg.senderEmail?.toLowerCase() === currentUserEmail.toLowerCase();
-                const otherPartyName = selectedChat.workerEmail?.toLowerCase() === currentUserEmail.toLowerCase()
-                  ? (selectedChat.residentName || 'Resident')
-                  : (selectedChat.workerName || 'Worker');
+                    const isSelected = selectedMessageIds.includes(msg.id);
 
-                return (
-                  <div
-                    key={msg.id || idx}
-                    className={`chats-bubble-row ${isOutgoing ? 'resident' : 'worker'}`}
-                  >
-                    {!isOutgoing && (
-                      <div className="chats-msg-avatar">
-                        {getInitial(otherPartyName)}
-                      </div>
-                    )}
+                    let showDateDivider = false;
+                    let dateDividerText = '';
+                    
+                    if (idx === 0) {
+                      showDateDivider = true;
+                    } else {
+                      const prevMsg = arr[idx - 1];
+                      const prevDate = new Date(prevMsg.createdAt).toDateString();
+                      const currDate = new Date(msg.createdAt).toDateString();
+                      if (prevDate !== currDate) {
+                        showDateDivider = true;
+                      }
+                    }
 
-                    <div className="chats-msg-wrapper">
-                      <div className={`chats-bubble ${isOutgoing ? 'resident' : 'worker'}`}>
-                        {msg.content && <div>{msg.content}</div>}
-                        {msg.content && msg.content.includes('📋 Booking Requested #') && selectedChat.workerEmail?.toLowerCase() === currentUserEmail.toLowerCase() && (
-                          <div style={{ marginTop: '10px', display: 'flex', gap: '8px' }}>
-                            <button onClick={() => window.location.href='/bookings'} style={{ backgroundColor: '#ffffff', color: '#000', padding: '6px 12px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
-                              View in Bookings
-                            </button>
+                    if (showDateDivider) {
+                      const msgDate = new Date(msg.createdAt);
+                      const today = new Date();
+                      const yesterday = new Date(today);
+                      yesterday.setDate(yesterday.getDate() - 1);
+
+                      if (msgDate.toDateString() === today.toDateString()) {
+                        dateDividerText = 'Today';
+                      } else if (msgDate.toDateString() === yesterday.toDateString()) {
+                        dateDividerText = 'Yesterday';
+                      } else {
+                        dateDividerText = msgDate.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+                      }
+                    }
+
+                    return (
+                      <React.Fragment key={msg.id || idx}>
+                        {showDateDivider && (
+                          <div className="chats-stream-date">{dateDividerText}</div>
+                        )}
+                        <div
+                          className={`chats-bubble-row ${isOutgoing ? 'resident' : 'worker'}`}
+                        onClick={() => {
+                            if (isSelectModeActive && msg.id) {
+                                setSelectedMessageIds(prev => 
+                                    prev.includes(msg.id) ? prev.filter(id => id !== msg.id) : [...prev, msg.id]
+                                );
+                            }
+                        }}
+                      >
+                        {isSelectModeActive && (
+                            <div className="chats-msg-checkbox">
+                                <input type="checkbox" checked={isSelected} readOnly />
+                            </div>
+                        )}
+                        {!isOutgoing && (
+                          <div className="chats-msg-avatar">
+                            {getInitial(otherPartyName)}
                           </div>
                         )}
-                        {msg.attachmentUrl && (
-                          <img
-                            src={msg.attachmentUrl}
-                            alt="attachment"
-                            style={{ maxWidth: '100%', maxHeight: '220px', borderRadius: '12px', marginTop: '6px', objectFit: 'cover' }}
-                            onClick={() => window.open(msg.attachmentUrl, '_blank')}
-                          />
-                        )}
+
+                        <div className="chats-msg-wrapper">
+                          <div className={`chats-bubble ${isOutgoing ? 'resident' : 'worker'}`}>
+                            {msg.content && <div>{msg.content}</div>}
+                            {msg.content && msg.content.includes('📋 Booking Requested #') && selectedChat.workerEmail?.toLowerCase() === currentUserEmail.toLowerCase() && (
+                              <div style={{ marginTop: '10px', display: 'flex', gap: '8px' }}>
+                                <button onClick={() => window.location.href='/bookings'} style={{ backgroundColor: '#ffffff', color: '#000', padding: '6px 12px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+                                  View in Bookings
+                                </button>
+                              </div>
+                            )}
+                            {msg.attachmentUrl && (
+                              <img
+                                src={msg.attachmentUrl}
+                                alt="attachment"
+                                style={{ maxWidth: '100%', maxHeight: '220px', borderRadius: '12px', marginTop: '6px', objectFit: 'cover' }}
+                                onClick={() => window.open(msg.attachmentUrl, '_blank')}
+                              />
+                            )}
+                          </div>
+                          <span className="chats-msg-time">
+                            {formatMessageTime(msg.createdAt)}
+                            {isOutgoing && (
+                              msg.id && msg.id.toString().startsWith('local-') ? (
+                                <i className="fa-solid fa-check" title="Sent" style={{ fontSize: '0.7rem', color: '#94a3b8' }}></i>
+                              ) : msg.isRead ? (
+                                <i className="fa-solid fa-check-double" title="Read" style={{ fontSize: '0.7rem', color: '#0284c7' }}></i>
+                              ) : (
+                                <i className="fa-solid fa-check-double" title="Delivered" style={{ fontSize: '0.7rem', color: '#94a3b8' }}></i>
+                              )
+                            )}
+                          </span>
+                        </div>
                       </div>
-                      <span className="chats-msg-time">
-                        {formatMessageTime(msg.createdAt)}
-                        {isOutgoing && (
-                          msg.id && msg.id.toString().startsWith('local-') ? (
-                            <i className="fa-solid fa-check" title="Sent" style={{ fontSize: '0.7rem', color: '#94a3b8' }}></i>
-                          ) : msg.isRead ? (
-                            <i className="fa-solid fa-check-double" title="Read" style={{ fontSize: '0.7rem', color: '#0284c7' }}></i>
-                          ) : (
-                            <i className="fa-solid fa-check-double" title="Delivered" style={{ fontSize: '0.7rem', color: '#94a3b8' }}></i>
-                          )
-                        )}
-                      </span>
+                    </React.Fragment>
+                    );
+                  })}
+
+                  {isTyping && (
+                    <div className="chats-bubble-row worker">
+                      <div className="chats-msg-avatar">
+                        {getInitial(selectedChat.workerEmail?.toLowerCase() === currentUserEmail.toLowerCase() ? (selectedChat.residentName || 'R') : (selectedChat.workerName || 'W'))}
+                      </div>
+                      <div className="chats-typing-bubble">
+                        <span className="chats-typing-dot"></span>
+                        <span className="chats-typing-dot"></span>
+                        <span className="chats-typing-dot"></span>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  )}
 
-              {isTyping && (
-                <div className="chats-bubble-row worker">
-                  <div className="chats-msg-avatar">
-                    {getInitial(selectedChat.workerEmail?.toLowerCase() === currentUserEmail.toLowerCase() ? (selectedChat.residentName || 'R') : (selectedChat.workerName || 'W'))}
-                  </div>
-                  <div className="chats-typing-bubble">
-                    <span className="chats-typing-dot"></span>
-                    <span className="chats-typing-dot"></span>
-                    <span className="chats-typing-dot"></span>
-                  </div>
-                </div>
+                  <div ref={messagesEndRef} />
+                </>
               )}
-
-              <div ref={messagesEndRef} />
             </div>
 
             {/* Image Preview Bar if attached */}
@@ -513,54 +793,30 @@ export default function Chats() {
 
             {/* Emoji Picker */}
             {showEmojiPicker && (
-              <div style={{ background: '#ffffff', borderTop: '1px solid #e2e8f0', padding: '10px 18px', height: '200px', display: 'flex', flexDirection: 'column' }}>
-                <div style={{ display: 'flex', gap: '8px', paddingBottom: '8px', borderBottom: '1px solid #f1f5f9' }}>
-                  <button
-                    onClick={() => setEmojiCategory('smileys')}
-                    style={{ background: emojiCategory === 'smileys' ? '#e0f2fe' : 'none', border: 'none', padding: '4px 8px', borderRadius: '8px', cursor: 'pointer', fontSize: '1.1rem' }}
-                  >
-                    😊
-                  </button>
-                  <button
-                    onClick={() => setEmojiCategory('tools')}
-                    style={{ background: emojiCategory === 'tools' ? '#e0f2fe' : 'none', border: 'none', padding: '4px 8px', borderRadius: '8px', cursor: 'pointer', fontSize: '1.1rem' }}
-                  >
-                    🔧
-                  </button>
-                  <button
-                    onClick={() => setEmojiCategory('reactions')}
-                    style={{ background: emojiCategory === 'reactions' ? '#e0f2fe' : 'none', border: 'none', padding: '4px 8px', borderRadius: '8px', cursor: 'pointer', fontSize: '1.1rem' }}
-                  >
-                    ✨
-                  </button>
-                </div>
-                <div style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: '6px', paddingTop: '8px' }}>
-                  {EMOJI_CATEGORIES[emojiCategory].map((emoji, i) => (
-                    <button
-                      key={i}
-                      onClick={() => handleEmojiClick(emoji)}
-                      style={{ background: 'none', border: 'none', fontSize: '1.4rem', cursor: 'pointer', borderRadius: '6px', padding: '4px' }}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
+              <div style={{ position: 'absolute', bottom: '80px', right: '20px', zIndex: 10 }}>
+                <EmojiPicker onEmojiClick={(emojiData) => handleEmojiClick(emojiData.emoji)} />
               </div>
             )}
 
             {/* Bottom Input Area */}
-            <div className="chats-input-bar-area">
-              <div className="chats-pill-input">
-                <input
+            <div className="chats-input-bar-area" style={{ gap: '12px', padding: '12px 20px', alignItems: 'center' }}>
+              <div style={{ flex: 1 }}>
+                <md-outlined-text-field
                   type="text"
-                  ref={textInputRef}
-                  className="chats-pill-text-input"
-                  placeholder="Chat message..."
+                  placeholder="Text message"
                   value={inputText}
-                  onChange={handleInputChange}
+                  onInput={handleInputChange}
                   onKeyDown={handleKeyDown}
                   disabled={isSending}
-                />
+                  style={{ width: '100%', '--md-sys-color-primary': '#FDC101', '--md-outlined-text-field-container-shape': '24px' }}
+                >
+                  <md-icon-button slot="leading-icon" onClick={() => fileInputRef.current?.click()}>
+                    <i className="fa-solid fa-circle-plus" style={{ color: '#64748b' }}></i>
+                  </md-icon-button>
+                  <md-icon-button slot="trailing-icon" onClick={() => setShowEmojiPicker(prev => !prev)}>
+                    <i className="fa-regular fa-face-smile" style={{ color: '#64748b' }}></i>
+                  </md-icon-button>
+                </md-outlined-text-field>
 
                 <input
                   type="file"
@@ -569,24 +825,6 @@ export default function Chats() {
                   accept="image/*"
                   onChange={handleImageSelected}
                 />
-
-                <button
-                  type="button"
-                  className="chats-pill-icon-btn"
-                  title="Emoji"
-                  onClick={() => setShowEmojiPicker(prev => !prev)}
-                >
-                  <i className="fa-regular fa-face-smile"></i>
-                </button>
-
-                <button
-                  type="button"
-                  className="chats-pill-icon-btn"
-                  title="Attach photo"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <i className="fa-regular fa-image"></i>
-                </button>
               </div>
 
               <button
@@ -614,5 +852,48 @@ export default function Chats() {
         )}
       </div>
     </div>
+
+    {/* Material 3 Dialog Overlay via Portal */}
+    {createPortal(
+      <md-dialog ref={dialogRef} style={{ 
+        '--md-dialog-container-color': '#ffffff',
+        '--md-dialog-container-shape': '28px',
+        position: 'fixed',
+        inset: 0,
+        margin: 'auto',
+        zIndex: 9999,
+        minWidth: '320px',
+        maxWidth: '90vw'
+      }}>
+        <div slot="headline" style={{ color: '#000000', fontWeight: 'bold', padding: '24px 24px 16px 24px', fontSize: '1.25rem' }}>
+          {dialogConfig.title}
+        </div>
+        <form slot="content" id="dialog-form" method="dialog" style={{ color: '#000000', padding: '0 24px 24px 24px', fontSize: '1rem', lineHeight: '1.5' }}>
+          {dialogConfig.message}
+        </form>
+        <div slot="actions" style={{ padding: '0 24px 24px 24px', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+          {dialogConfig.type === 'confirm' && (
+            <md-text-button 
+              onClick={() => setDialogConfig(prev => ({ ...prev, isOpen: false }))}
+              style={{ '--md-sys-color-primary': '#475569', padding: '0 16px', minWidth: '80px' }}
+            >
+              Cancel
+            </md-text-button>
+          )}
+          <md-filled-button
+            onClick={() => {
+              setDialogConfig(prev => ({ ...prev, isOpen: false }));
+              if (dialogConfig.onConfirm) dialogConfig.onConfirm();
+            }}
+            style={{ '--md-sys-color-primary': '#eab308', '--md-sys-color-on-primary': '#000000', padding: '0 24px', minWidth: '100px' }}
+          >
+            {dialogConfig.type === 'confirm' ? 'Delete' : 'OK'}
+          </md-filled-button>
+        </div>
+      </md-dialog>,
+      document.body
+    )}
+
+    </>
   );
 }

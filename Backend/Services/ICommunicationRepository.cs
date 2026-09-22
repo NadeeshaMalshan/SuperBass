@@ -13,6 +13,8 @@ namespace Superbass.Services
         Task<ChatMessageDto> SendMessageAsync(int conversationId, string senderEmail, string senderRole, SendMessageRequest request);
         Task<bool> MarkConversationAsReadAsync(int conversationId, string readerEmail);
         Task<bool> DeleteMessageAsync(int messageId, string userEmail);
+        Task<bool> DeleteMessagesAsync(List<int> messageIds, string userEmail);
+        Task<bool> SoftDeleteConversationAsync(int conversationId, string userEmail);
         Task<int> GetTotalUnreadCountAsync(string userEmail);
     }
 }
