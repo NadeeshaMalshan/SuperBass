@@ -3,9 +3,7 @@ import './App.css';
 import '@material/web/button/filled-button.js';
 import { GoogleOAuthProvider, useGoogleLogin } from '@react-oauth/google';
 import axios from 'axios';
-
-// IMPORTANT: Replace with your actual Google Client ID from Google Cloud Console
-const GOOGLE_CLIENT_ID = "918768879306-9tv31jo0ot00ogc496h13e6tccfv63qe.apps.googleusercontent.com";
+import { GOOGLE_CLIENT_ID, API_BASE_URL } from './config.js';
 
 function JoinContent() {
   const goHome = () => {
@@ -18,7 +16,7 @@ function JoinContent() {
       try {
         console.log("Google Token:", tokenResponse);
         // Send to our backend
-        const res = await axios.post("http://localhost:5237/api/auth/google", {
+        const res = await axios.post(`${API_BASE_URL}/auth/google`, {
           accessToken: tokenResponse.access_token,
           idToken: tokenResponse.id_token
         });
