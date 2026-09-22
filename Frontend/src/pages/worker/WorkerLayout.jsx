@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './worker.css';
+import { API_BASE_URL } from '../../config.js';
 
 export default function WorkerLayout({ children, activeTab = 'dashboard' }) {
   const [isOnline, setIsOnline] = useState(true);
@@ -17,7 +18,7 @@ export default function WorkerLayout({ children, activeTab = 'dashboard' }) {
 
   useEffect(() => {
     if (!userEmail) return;
-    axios.get(`http://localhost:5237/api/workers/me?email=${encodeURIComponent(userEmail)}`, {
+    axios.get(`${API_BASE_URL}/workers/me?email=${encodeURIComponent(userEmail)}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {}
     })
       .then(res => {
@@ -37,7 +38,7 @@ export default function WorkerLayout({ children, activeTab = 'dashboard' }) {
     if (workerId) {
       try {
         setToggling(true);
-        await axios.put(`http://localhost:5237/api/workers/${workerId}/availability`, {
+        await axios.put(`${API_BASE_URL}/workers/${workerId}/availability`, {
           isAvailable: newStatus
         }, {
           headers: token ? { Authorization: `Bearer ${token}` } : {}

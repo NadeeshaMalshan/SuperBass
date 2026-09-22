@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css'; // Leveraging existing App.css for styles
 import UserMenu from './components/UserMenu.jsx';
+import { API_BASE_URL } from './config.js';
 
 import '@material/web/button/filled-button.js';
 import '@material/web/button/outlined-button.js';
@@ -42,8 +43,8 @@ export default function Bookings() {
     try {
       setLoading(true);
       const endpoint = activeRole === 'Worker' 
-        ? `http://localhost:5237/api/bookings/worker?email=${encodeURIComponent(currentUserEmail)}`
-        : `http://localhost:5237/api/bookings/resident?email=${encodeURIComponent(currentUserEmail)}`;
+        ? `${API_BASE_URL}/bookings/worker?email=${encodeURIComponent(currentUserEmail)}`
+        : `${API_BASE_URL}/bookings/resident?email=${encodeURIComponent(currentUserEmail)}`;
 
       const res = await axios.get(endpoint, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
@@ -64,7 +65,7 @@ export default function Bookings() {
 
   const handleAction = async (bookingId, action) => {
     try {
-      await axios.post(`http://localhost:5237/api/bookings/${bookingId}/${action}`, {}, {
+      await axios.post(`${API_BASE_URL}/bookings/${bookingId}/${action}`, {}, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       fetchBookings(); // Refresh list after action
@@ -90,7 +91,7 @@ export default function Bookings() {
     if (!selectedBooking) return;
 
     try {
-      await axios.post(`http://localhost:5237/api/bookings/${selectedBooking.id}/review`, reviewForm, {
+      await axios.post(`${API_BASE_URL}/bookings/${selectedBooking.id}/review`, reviewForm, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       setReviewModalOpen(false);

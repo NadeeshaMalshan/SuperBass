@@ -8,6 +8,7 @@ import '@material/web/icon/icon.js';
 import '@material/web/progress/circular-progress.js';
 import '@material/web/textfield/filled-text-field.js';
 import Loader from './components/Loader.jsx';
+import { API_BASE_URL } from './config.js';
 
 export default function ResidentProfile({ defaultTab = 'overview' }) {
   const urlParams = new URLSearchParams(window.location.search);
@@ -111,7 +112,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const response = await axios.get(`http://localhost:5237/api/residents/${encodeURIComponent(userEmail)}`, {
+        const response = await axios.get(`${API_BASE_URL}/residents/${encodeURIComponent(userEmail)}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
 
@@ -143,7 +144,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     const checkWorkerStatus = async () => {
       if (!userEmail) return;
       try {
-        const res = await axios.get(`http://localhost:5237/api/workers/me?email=${encodeURIComponent(userEmail)}`, {
+        const res = await axios.get(`${API_BASE_URL}/workers/me?email=${encodeURIComponent(userEmail)}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (res.data && res.data.worker) {
@@ -164,7 +165,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     if (!userEmail) return;
     setLoadingPosts(true);
     try {
-      const res = await axios.get(`http://localhost:5237/api/community-posts/user/${encodeURIComponent(userEmail)}`);
+      const res = await axios.get(`${API_BASE_URL}/community-posts/user/${encodeURIComponent(userEmail)}`);
       setUserPosts(res.data || []);
     } catch (err) {
       console.error("Error fetching user posts:", err);
@@ -177,7 +178,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     if (!userEmail) return;
     setLoadingBookings(true);
     try {
-      const res = await axios.get(`http://localhost:5237/api/bookings/resident?email=${encodeURIComponent(userEmail)}`, {
+      const res = await axios.get(`${API_BASE_URL}/bookings/resident?email=${encodeURIComponent(userEmail)}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       setResidentBookings(res.data || []);
@@ -210,7 +211,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     if (reason === null) return;
 
     try {
-      const res = await axios.post(`http://localhost:5237/api/bookings/${id}/cancel`, { reason }, {
+      const res = await axios.post(`${API_BASE_URL}/bookings/${id}/cancel`, { reason }, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       alert("Booking has been cancelled.");
@@ -239,7 +240,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
 
     setSubmittingReview(true);
     try {
-      const res = await axios.post(`http://localhost:5237/api/bookings/${reviewingBooking.id}/review`, {
+      const res = await axios.post(`${API_BASE_URL}/bookings/${reviewingBooking.id}/review`, {
         qualityRating: parseInt(reviewForm.qualityRating),
         punctualityRating: parseInt(reviewForm.punctualityRating),
         communicationRating: parseInt(reviewForm.communicationRating),
@@ -303,7 +304,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
         skills: validSkills
       };
 
-      const res = await axios.post('http://localhost:5237/api/workers/become-worker', payload, {
+      const res = await axios.post(`${API_BASE_URL}/workers/become-worker`, payload, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -324,7 +325,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(`http://localhost:5237/api/residents/${encodeURIComponent(userEmail)}`, profile, {
+      await axios.put(`${API_BASE_URL}/residents/${encodeURIComponent(userEmail)}`, profile, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       alert('Profile updated successfully!');
@@ -343,7 +344,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     }
 
     try {
-      await axios.delete(`http://localhost:5237/api/residents/${encodeURIComponent(userEmail)}`, {
+      await axios.delete(`${API_BASE_URL}/residents/${encodeURIComponent(userEmail)}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       handleLogout();
@@ -361,7 +362,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     setSelectedGalleryImage(post.images && post.images.length > 0 ? post.images[0] : null);
 
     try {
-      const res = await axios.get(`http://localhost:5237/api/community-posts/${post.postId}/comments`);
+      const res = await axios.get(`${API_BASE_URL}/community-posts/${post.postId}/comments`);
       setCommentsMap(prev => ({ ...prev, [post.postId]: res.data || [] }));
     } catch (err) {
       console.error("Error fetching comments:", err);
@@ -373,7 +374,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     if (!newCommentText || !newCommentText.trim()) return;
 
     try {
-      const res = await axios.post(`http://localhost:5237/api/community-posts/${postId}/comments`, {
+      const res = await axios.post(`${API_BASE_URL}/community-posts/${postId}/comments`, {
         content: newCommentText,
         userName: userName || "You (Resident)",
         userAvatar: userPicture || "https://api.dicebear.com/7.x/avataaars/svg?seed=CurrentUser"
@@ -422,7 +423,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     if (!editingPost || !editTitle.trim() || !editContent.trim()) return;
 
     try {
-      await axios.put(`http://localhost:5237/api/community-posts/${editingPost.postId}`, {
+      await axios.put(`${API_BASE_URL}/community-posts/${editingPost.postId}`, {
         title: editTitle,
         content: editContent,
         serviceCategoryId: editCategory,
@@ -449,7 +450,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     if (!window.confirm("Are you sure you want to delete this community post?")) return;
 
     try {
-      await axios.delete(`http://localhost:5237/api/community-posts/${postId}?requesterEmail=${encodeURIComponent(userEmail || '')}&requesterName=${encodeURIComponent(userName || '')}`, {
+      await axios.delete(`${API_BASE_URL}/community-posts/${postId}?requesterEmail=${encodeURIComponent(userEmail || '')}&requesterName=${encodeURIComponent(userName || '')}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       alert("Post deleted successfully.");
@@ -482,7 +483,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     if (!createTitle.trim() || !createContent.trim()) return;
 
     try {
-      await axios.post('http://localhost:5237/api/community-posts', {
+      await axios.post(`${API_BASE_URL}/community-posts`, {
         title: createTitle,
         content: createContent,
         serviceCategoryId: createCategory,

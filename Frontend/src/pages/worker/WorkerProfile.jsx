@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import WorkerLayout from './WorkerLayout.jsx';
 import axios from 'axios';
+import { API_BASE_URL } from '../../config.js';
 
 export default function WorkerProfile() {
   const [activeTab, setActiveTab] = useState('bio'); // 'bio' | 'skills' | 'location' | 'availability' | 'security'
@@ -50,7 +51,7 @@ export default function WorkerProfile() {
   // Load existing worker data if available
   useEffect(() => {
     if (!userEmail) return;
-    axios.get(`http://localhost:5237/api/workers/me?email=${encodeURIComponent(userEmail)}`, {
+    axios.get(`${API_BASE_URL}/workers/me?email=${encodeURIComponent(userEmail)}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {}
     })
       .then(res => {
@@ -86,7 +87,7 @@ export default function WorkerProfile() {
       setNewSkill('');
 
       if (currentWorkerId) {
-        axios.post(`http://localhost:5237/api/workers/${currentWorkerId}/skills`, { skillName: newSkill.trim() }, {
+        axios.post(`${API_BASE_URL}/workers/${currentWorkerId}/skills`, { skillName: newSkill.trim() }, {
           headers: token ? { Authorization: `Bearer ${token}` } : {}
         }).catch(err => console.log('Skill saved locally'));
       }
@@ -100,7 +101,7 @@ export default function WorkerProfile() {
   const handleSavePricing = async () => {
     try {
       const wId = currentWorkerId || 1;
-      await axios.put(`http://localhost:5237/api/workers/${wId}/pricing`, {
+      await axios.put(`${API_BASE_URL}/workers/${wId}/pricing`, {
         pricingModel,
         hourlyRate: parseFloat(hourlyRate),
         dailyRate: parseFloat(dailyRate)
@@ -118,7 +119,7 @@ export default function WorkerProfile() {
   const handleSaveServiceArea = async () => {
     try {
       const wId = currentWorkerId || 1;
-      await axios.put(`http://localhost:5237/api/workers/${wId}/service-area`, {
+      await axios.put(`${API_BASE_URL}/workers/${wId}/service-area`, {
         serviceArea,
         radiusKm: parseFloat(radiusKm)
       }, {
@@ -135,7 +136,7 @@ export default function WorkerProfile() {
   const handleSaveAvailability = async () => {
     try {
       const wId = currentWorkerId || 1;
-      await axios.put(`http://localhost:5237/api/workers/${wId}/availability`, {
+      await axios.put(`${API_BASE_URL}/workers/${wId}/availability`, {
         isAvailable: availability.isAvailable,
         scheduleJson: JSON.stringify({ workDays: availability.workDays, startTime: availability.startTime, endTime: availability.endTime })
       }, {
@@ -158,7 +159,7 @@ export default function WorkerProfile() {
 
     try {
       const wId = currentWorkerId || 1;
-      await axios.put(`http://localhost:5237/api/workers/${wId}/password`, {
+      await axios.put(`${API_BASE_URL}/workers/${wId}/password`, {
         newPassword: passwords.newPassword
       }, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
@@ -179,7 +180,7 @@ export default function WorkerProfile() {
     }
 
     try {
-      await axios.delete(`http://localhost:5237/api/workers/revert-to-resident?email=${encodeURIComponent(userEmail)}`, {
+      await axios.delete(`${API_BASE_URL}/workers/revert-to-resident?email=${encodeURIComponent(userEmail)}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       localStorage.setItem('activeRole', 'Resident');

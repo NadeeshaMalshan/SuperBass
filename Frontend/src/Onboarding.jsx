@@ -5,6 +5,7 @@ import '@material/web/button/outlined-button.js';
 import '@material/web/textfield/filled-text-field.js';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import axios from 'axios';
+import { API_BASE_URL } from './config.js';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -187,7 +188,7 @@ export default function Onboarding() {
     
     try {
       const token = localStorage.getItem('token');
-      await axios.post('http://localhost:5237/api/auth/onboarding', {
+      await axios.post(`${API_BASE_URL}/auth/onboarding`, {
         phoneNo,
         address: fullAddress,
         locationLat: lat,

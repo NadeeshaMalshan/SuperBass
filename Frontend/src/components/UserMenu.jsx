@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import './UserMenu.css';
+import { API_BASE_URL } from '../config.js';
 
 export default function UserMenu() {
   const [isOpen, setIsOpen] = useState(false);
@@ -55,7 +56,7 @@ export default function UserMenu() {
   useEffect(() => {
     const fetchUnread = async () => {
       try {
-        const res = await axios.get('http://localhost:5237/api/conversations/unread-count', {
+        const res = await axios.get(`${API_BASE_URL}/conversations/unread-count`, {
           params: { userEmail }
         });
         if (res.data && typeof res.data.unreadCount === 'number') {
