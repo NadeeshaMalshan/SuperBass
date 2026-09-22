@@ -75,6 +75,22 @@ export default function Bookings() {
     }
   };
 
+  const handleCancelBooking = async (bookingId) => {
+    if (!window.confirm('Are you sure you want to cancel this booking request?')) return;
+    try {
+      await axios.post(`${API_BASE_URL}/bookings/${bookingId}/cancel`, {
+        reason: 'Cancelled by resident'
+      }, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      alert('Booking request has been cancelled.');
+      fetchBookings();
+    } catch (err) {
+      console.error('Error cancelling booking:', err);
+      alert(err.response?.data?.message || 'Failed to cancel booking.');
+    }
+  };
+
   const openReviewModal = (booking) => {
     setSelectedBooking(booking);
     setReviewForm({
@@ -198,6 +214,15 @@ export default function Bookings() {
                 {/* Actions Row */}
                 <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '8px' }}>
                   <md-outlined-button onClick={() => navigate('/chats')}>Message</md-outlined-button>
+
+                  {activeRole === 'Resident' && ['Requested', 'Pending'].includes(booking.status) && (
+                    <md-outlined-button 
+                      onClick={() => handleCancelBooking(booking.id)} 
+                      style={{ '--md-sys-color-primary': '#dc2626' }}
+                    >
+                      Cancel Booking
+                    </md-outlined-button>
+                  )}
 
                   {activeRole === 'Worker' && booking.status === 'Requested' && (
                     <>
