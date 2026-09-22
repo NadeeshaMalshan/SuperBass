@@ -114,15 +114,15 @@ class AppTheme {
           fontSize: 15,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(9999),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.outlineVariant),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(9999),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.outlineVariant),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(9999),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.brandYellow, width: 2),
         ),
       ),
