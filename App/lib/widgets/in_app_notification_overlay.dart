@@ -4,42 +4,16 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/app_notification_model.dart';
 
 class InAppNotificationOverlay {
-  static OverlayEntry? _currentEntry;
-  static Timer? _dismissTimer;
-
   static void show(
     BuildContext context,
     AppNotification notification, {
     VoidCallback? onTap,
   }) {
-    // Dismiss any existing overlay first
-    hide();
-
-    final overlay = Overlay.of(context, rootOverlay: true);
-
-    _currentEntry = OverlayEntry(
-      builder: (context) => _InAppNotificationWidget(
-        notification: notification,
-        onTap: () {
-          hide();
-          onTap?.call();
-        },
-        onDismiss: hide,
-      ),
-    );
-
-    overlay.insert(_currentEntry!);
-
-    _dismissTimer = Timer(const Duration(milliseconds: 4800), () {
-      hide();
-    });
+    // In-app floating popup banner disabled as requested.
   }
 
   static void hide() {
-    _dismissTimer?.cancel();
-    _dismissTimer = null;
-    _currentEntry?.remove();
-    _currentEntry = null;
+    // No-op
   }
 }
 

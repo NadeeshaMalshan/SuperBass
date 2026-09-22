@@ -9,13 +9,15 @@ import 'models/worker_model.dart';
 import 'screens/chat_screen.dart';
 import 'screens/community_screen.dart';
 import 'screens/join_screen.dart';
+import 'package:flutter/foundation.dart';
+import 'package:onesignal_flutter/onesignal_flutter.dart';
+import 'services/api_config.dart';
 import 'services/api_service.dart';
 import 'services/auth_service.dart';
 import 'services/notification_service.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
 import 'widgets/app_components.dart';
-import 'widgets/in_app_notification_overlay.dart';
 import 'widgets/notifications_sheet.dart';
 import 'package:loading_indicator_m3e/loading_indicator_m3e.dart';
 
@@ -26,6 +28,21 @@ void main() async {
   } catch (e) {
     debugPrint('Note: .env file loading: $e');
   }
+
+  // Initialize OneSignal Push Notifications (Android/iOS)
+  if (!kIsWeb) {
+    try {
+      final appId = ApiConfig.onesignalAppId;
+      if (appId.isNotEmpty) {
+        OneSignal.Debug.setLogLevel(kDebugMode ? OSLogLevel.verbose : OSLogLevel.none);
+        OneSignal.initialize(appId);
+        OneSignal.Notifications.requestPermission(true);
+      }
+    } catch (e) {
+      debugPrint('OneSignal initialization error: $e');
+    }
+  }
+
   await AuthService().init();
   await NotificationService().initialize();
   runApp(const SuperBassApp());
@@ -59,7 +76,6 @@ class MainNavigationShell extends StatefulWidget {
 
 class _MainNavigationShellState extends State<MainNavigationShell> {
   int _currentIndex = 0;
-  StreamSubscription<AppNotification>? _notificationSub;
 
   @override
   void initState() {
@@ -77,15 +93,6 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
     }
 
     AuthService().currentUserNotifier.addListener(_onAuthChanged);
-
-    _notificationSub = NotificationService().onNotificationReceived.listen((notification) {
-      if (!mounted) return;
-      InAppNotificationOverlay.show(
-        context,
-        notification,
-        onTap: () => _handleNotificationTap(notification),
-      );
-    });
   }
 
   void _onAuthChanged() {
@@ -100,36 +107,9 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
     }
   }
 
-  void _handleNotificationTap(AppNotification notification) {
-    if (!mounted) return;
-
-    if (notification.type == NotificationType.chat) {
-      final convId = notification.referenceId;
-      if (convId != null) {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => ChatScreen(
-              conversationId: convId,
-              name: notification.metadata?['name']?.toString() ?? 'Conversation',
-              profileImage: notification.metadata?['profileImage']?.toString(),
-            ),
-          ),
-        );
-      }
-    } else if (notification.type.name.startsWith('booking')) {
-      final user = AuthService().currentUser;
-      if (user != null) {
-        setState(() {
-          _currentIndex = 2; // Bookings tab index
-        });
-      }
-    }
-  }
-
   @override
   void dispose() {
     AuthService().currentUserNotifier.removeListener(_onAuthChanged);
-    _notificationSub?.cancel();
     super.dispose();
   }
 

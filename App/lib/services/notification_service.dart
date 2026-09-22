@@ -58,8 +58,8 @@ class NotificationService {
     // Perform first fetch immediately
     _checkForUpdates();
 
-    // Poll every 6 seconds while the app is active
-    _pollingTimer = Timer.periodic(const Duration(seconds: 6), (_) {
+    // Poll every 30 seconds while the app is active
+    _pollingTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       _checkForUpdates();
     });
   }
