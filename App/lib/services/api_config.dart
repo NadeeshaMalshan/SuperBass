@@ -1,50 +1,38 @@
-import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ApiConfig {
-  /// Compile-time environment variable passed via:
-  /// flutter run --dart-define-from-file=.env
-  static const String _envBaseUrl = String.fromEnvironment('BACKEND_URL');
-  static const String _envGoogleClientId =
-      String.fromEnvironment('GOOGLE_CLIENT_ID');
-
   /// Optional runtime override if dynamic reconfiguration is needed
   static String? customBaseUrl;
 
-  /// Default backend base URL depending on environment or platform.
-  /// 1. Uses customBaseUrl if set programmatically.
-  /// 2. Uses BACKEND_URL from .env (--dart-define-from-file=.env) if provided.
-  /// 3. Falls back to platform-specific localhost defaults:
-  ///    - Web / iOS / Desktop: http://localhost:5237
-  ///    - Android Emulator:    http://10.0.2.2:5237
+  /// Retrieves backend base URL dynamically:
+  /// 1. Programmatic override (customBaseUrl)
+  /// 2. Value from .env file via flutter_dotenv
+  /// 3. Fallback to compile-time environment variable (--dart-define)
   static String get baseUrl {
     if (customBaseUrl != null && customBaseUrl!.trim().isNotEmpty) {
       return customBaseUrl!.trim();
     }
-    if (_envBaseUrl.isNotEmpty) {
-      return _envBaseUrl.trim();
+    final envUrl = dotenv.env['BACKEND_URL'];
+    if (envUrl != null && envUrl.trim().isNotEmpty) {
+      return envUrl.trim();
     }
-    if (kIsWeb) {
-      return 'http://localhost:5237';
+    const defineUrl = String.fromEnvironment('BACKEND_URL');
+    if (defineUrl.isNotEmpty) {
+      return defineUrl.trim();
     }
-    try {
-      if (Platform.isAndroid) {
-        return 'http://10.0.2.2:5237';
-      }
-    } catch (_) {
-      // Fallback if Platform is not supported
-    }
-    return 'http://localhost:5237';
+    return '';
   }
 
   // Endpoints
   static String get googleAuthUrl => '$baseUrl/api/auth/google';
   static String get onboardingUrl => '$baseUrl/api/auth/onboarding';
 
-  // Google OAuth Web Client ID (from .env or default fallback)
-  static const String _defaultGoogleClientId =
-      '918768879306-9tv31jo0ot00ogc496h13e6tccfv63qe.apps.googleusercontent.com';
-
-  static String get googleClientId =>
-      _envGoogleClientId.isNotEmpty ? _envGoogleClientId : _defaultGoogleClientId;
+  /// Google OAuth Client ID loaded dynamically from .env or compile-time define
+  static String get googleClientId {
+    final envClientId = dotenv.env['GOOGLE_CLIENT_ID'];
+    if (envClientId != null && envClientId.trim().isNotEmpty) {
+      return envClientId.trim();
+    }
+    return const String.fromEnvironment('GOOGLE_CLIENT_ID');
+  }
 }

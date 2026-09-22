@@ -11,8 +11,9 @@ import '@material/web/button/filled-button.js';
 import '@material/web/button/outlined-button.js';
 import '@material/web/progress/circular-progress.js';
 import Loader from './components/Loader.jsx';
+import { BACKEND_URL } from './config.js';
 
-const API_BASE_URL = "http://localhost:5237/api/community-posts";
+const API_BASE_URL = `${BACKEND_URL}/api/community-posts`;
 
 export default function Community() {
   const navigate = (newPath) => {

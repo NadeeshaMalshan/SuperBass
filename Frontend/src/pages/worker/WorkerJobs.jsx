@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import WorkerLayout from './WorkerLayout.jsx';
+import { API_BASE_URL } from '../../config.js';
 import '@material/web/button/filled-button.js';
 import '@material/web/button/outlined-button.js';
 import '@material/web/progress/circular-progress.js';
@@ -35,7 +36,7 @@ export default function WorkerJobs() {
 
     try {
       setLoading(true);
-      const res = await axios.get(`http://localhost:5237/api/bookings/worker?email=${encodeURIComponent(userEmail)}`, {
+      const res = await axios.get(`${API_BASE_URL}/bookings/worker?email=${encodeURIComponent(userEmail)}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       setBookings(res.data || []);
@@ -60,7 +61,7 @@ export default function WorkerJobs() {
   const handleAcceptRequest = async (id) => {
     try {
       setActionLoading(true);
-      const res = await axios.post(`http://localhost:5237/api/bookings/${id}/accept`, {}, {
+      const res = await axios.post(`${API_BASE_URL}/bookings/${id}/accept`, {}, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       alert('✓ Job Request Accepted! Status is now Confirmed.');
@@ -81,7 +82,7 @@ export default function WorkerJobs() {
 
     try {
       setActionLoading(true);
-      const res = await axios.post(`http://localhost:5237/api/bookings/${id}/reject`, { reason }, {
+      const res = await axios.post(`${API_BASE_URL}/bookings/${id}/reject`, { reason }, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       alert('Booking request has been declined.');
@@ -98,7 +99,7 @@ export default function WorkerJobs() {
   const handleStartJob = async (id) => {
     try {
       setActionLoading(true);
-      const res = await axios.post(`http://localhost:5237/api/bookings/${id}/start`, {}, {
+      const res = await axios.post(`${API_BASE_URL}/bookings/${id}/start`, {}, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       alert('🚀 Job marked as In Progress!');
@@ -117,7 +118,7 @@ export default function WorkerJobs() {
 
     try {
       setActionLoading(true);
-      const res = await axios.post(`http://localhost:5237/api/bookings/${id}/complete`, {}, {
+      const res = await axios.post(`${API_BASE_URL}/bookings/${id}/complete`, {}, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       alert('🎉 Job marked as Completed! Resident has been requested for review.');
@@ -139,7 +140,7 @@ export default function WorkerJobs() {
     try {
       setActionLoading(true);
       const combinedDateTime = new Date(`${newDate}T${newTime}:00`);
-      const res = await axios.post(`http://localhost:5237/api/bookings/${rescheduleBooking.id}/reschedule`, {
+      const res = await axios.post(`${API_BASE_URL}/bookings/${rescheduleBooking.id}/reschedule`, {
         scheduledDate: combinedDateTime.toISOString(),
         note: rescheduleNote
       }, {
@@ -163,7 +164,7 @@ export default function WorkerJobs() {
 
     try {
       setActionLoading(true);
-      await axios.delete(`http://localhost:5237/api/bookings/${id}`, {
+      await axios.delete(`${API_BASE_URL}/bookings/${id}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       alert('🗑️ Job history record deleted successfully.');

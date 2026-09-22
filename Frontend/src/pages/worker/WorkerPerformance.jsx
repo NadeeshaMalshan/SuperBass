@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import WorkerLayout from './WorkerLayout.jsx';
 import axios from 'axios';
+import { API_BASE_URL } from '../../config.js';
 
 export default function WorkerPerformance() {
   const [metrics, setMetrics] = useState(null);
@@ -13,20 +14,20 @@ export default function WorkerPerformance() {
     const fetchPerformanceData = async () => {
       if (!userEmail) return;
       try {
-        const meRes = await axios.get(`http://localhost:5237/api/workers/me?email=${encodeURIComponent(userEmail)}`, {
+        const meRes = await axios.get(`${API_BASE_URL}/workers/me?email=${encodeURIComponent(userEmail)}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
 
         if (meRes.data && meRes.data.worker) {
           const workerId = meRes.data.worker.id;
-          const perfRes = await axios.get(`http://localhost:5237/api/workers/${workerId}/performance`, {
+          const perfRes = await axios.get(`${API_BASE_URL}/workers/${workerId}/performance`, {
             headers: token ? { Authorization: `Bearer ${token}` } : {}
           });
           if (perfRes.data) {
             setMetrics(perfRes.data);
           }
 
-          const bookingsRes = await axios.get(`http://localhost:5237/api/bookings/worker?email=${encodeURIComponent(userEmail)}`, {
+          const bookingsRes = await axios.get(`${API_BASE_URL}/bookings/worker?email=${encodeURIComponent(userEmail)}`, {
             headers: token ? { Authorization: `Bearer ${token}` } : {}
           });
           if (bookingsRes.data) {

@@ -17,8 +17,9 @@ import '@material/web/list/list.js';
 import '@material/web/list/list-item.js';
 import Loader from './components/Loader.jsx';
 import UserMenu from './components/UserMenu.jsx';
+import { BACKEND_URL } from './config.js';
 
-const API_BASE_URL = 'http://localhost:5237/api/conversations';
+const API_BASE_URL = `${BACKEND_URL}/api/conversations`;
 
 const EMOJI_CATEGORIES = {
   smileys: [
@@ -388,7 +389,7 @@ export default function Chats() {
     if (!selectedChat) return;
     showConfirm("Delete Chat", "Are you sure you want to permanently delete this chat?", async () => {
       try {
-        await axios.delete(`http://localhost:5237/api/conversations/${selectedChat.id}?userEmail=${currentUserEmail}`);
+        await axios.delete(`${API_BASE_URL}/${selectedChat.id}?userEmail=${currentUserEmail}`);
         setConversations(prev => prev.filter(c => c.id !== selectedChat.id));
         setSelectedChat(null);
         setIsMenuOpen(false);
@@ -485,7 +486,7 @@ export default function Chats() {
                   const getValidAvatar = (url) => {
                     if (!url || url === 'null' || url.trim() === '') return null;
                     if (url.startsWith('http')) return url;
-                    return `http://localhost:5237${url.startsWith('/') ? '' : '/'}${url}`;
+                    return `${BACKEND_URL}${url.startsWith('/') ? '' : '/'}${url}`;
                   };
                   const otherAvatar = isUserWorker ? null : getValidAvatar(conv.workerProfileImage);
                   const isSelected = selectedChat?.id === conv.id;
@@ -545,7 +546,7 @@ export default function Chats() {
                     </div>
                   ) : (() => {
                       const validHeaderAvatar = !selectedChat.workerProfileImage || selectedChat.workerProfileImage === 'null' || selectedChat.workerProfileImage.trim() === '' ? null 
-                        : (selectedChat.workerProfileImage.startsWith('http') ? selectedChat.workerProfileImage : `http://localhost:5237${selectedChat.workerProfileImage.startsWith('/') ? '' : '/'}${selectedChat.workerProfileImage}`);
+                        : (selectedChat.workerProfileImage.startsWith('http') ? selectedChat.workerProfileImage : `${BACKEND_URL}${selectedChat.workerProfileImage.startsWith('/') ? '' : '/'}${selectedChat.workerProfileImage}`);
                       
                       return validHeaderAvatar ? (
                         <img src={validHeaderAvatar} alt="avatar" className="chats-header-avatar" onError={(e) => e.target.style.display='none'} />

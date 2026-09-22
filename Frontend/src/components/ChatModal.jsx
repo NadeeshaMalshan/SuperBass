@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import './ChatModal.css';
+import { BACKEND_URL } from '../config.js';
 
-const API_BASE_URL = 'http://localhost:5237/api/conversations';
+const API_BASE_URL = `${BACKEND_URL}/api/conversations`;
 
 const EMOJI_CATEGORIES = {
   smileys: [

@@ -10,6 +10,7 @@ import '@material/web/button/outlined-button.js';
 import '@material/web/icon/icon.js';
 import '@material/web/progress/circular-progress.js';
 import Loader from './components/Loader.jsx';
+import { API_BASE_URL } from './config.js';
 
 export default function Find() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -91,7 +92,7 @@ export default function Find() {
     // Fetch workers from backend API
     const fetchWorkers = async () => {
       try {
-        const res = await axios.get('http://localhost:5237/api/workers');
+        const res = await axios.get(`${API_BASE_URL}/workers`);
         setWorkers(res.data || []);
       } catch (err) {
         console.error('Error fetching workers:', err);

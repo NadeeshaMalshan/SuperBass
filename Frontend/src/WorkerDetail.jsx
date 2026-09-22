@@ -14,6 +14,7 @@ import '@material/web/textfield/outlined-text-field.js';
 import '@material/web/select/outlined-select.js';
 import '@material/web/select/select-option.js';
 import Loader from './components/Loader.jsx';
+import { API_BASE_URL } from './config.js';
 
 export default function WorkerDetail() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -94,7 +95,7 @@ export default function WorkerDetail() {
       }
 
       try {
-        const res = await axios.get(`http://localhost:5237/api/workers/${workerId}`);
+        const res = await axios.get(`${API_BASE_URL}/workers/${workerId}`);
         setWorker(res.data);
         if (res.data) {
           setBookingForm(prev => ({
@@ -150,7 +151,7 @@ export default function WorkerDetail() {
         estimatedPrice: bookingForm.estimatedPrice ? parseFloat(bookingForm.estimatedPrice) : null
       };
 
-      const res = await axios.post('http://localhost:5237/api/bookings', payload, {
+      const res = await axios.post(`${API_BASE_URL}/bookings`, payload, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
 

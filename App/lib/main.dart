@@ -1,3 +1,4 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'models/auth_user.dart';
@@ -15,6 +16,11 @@ import 'package:loading_indicator_m3e/loading_indicator_m3e.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    debugPrint('Note: .env file loading: $e');
+  }
   await AuthService().init();
   runApp(const SuperBassApp());
 }
