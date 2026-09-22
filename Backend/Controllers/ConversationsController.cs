@@ -19,15 +19,18 @@ namespace Superbass.Controllers
         private readonly ICommunicationRepository _communicationRepo;
         private readonly IHubContext<ChatHub> _hubContext;
         private readonly IWebHostEnvironment _environment;
+        private readonly IPushNotificationService _pushNotificationService;
 
         public ConversationsController(
             ICommunicationRepository communicationRepo,
             IHubContext<ChatHub> hubContext,
-            IWebHostEnvironment environment)
+            IWebHostEnvironment environment,
+            IPushNotificationService pushNotificationService)
         {
             _communicationRepo = communicationRepo;
             _hubContext = hubContext;
             _environment = environment;
+            _pushNotificationService = pushNotificationService;
         }
 
         private string? GetCurrentUserEmail()
@@ -131,6 +134,21 @@ namespace Superbass.Controllers
                 // Broadcast via SignalR to room
                 var groupName = $"conversation_{id}";
                 await _hubContext.Clients.Group(groupName).SendAsync("ReceiveMessage", messageDto);
+
+                // Send Push Notification via OneSignal
+                if (!string.IsNullOrWhiteSpace(messageDto.ReceiverEmail))
+                {
+                    _ = _pushNotificationService.SendPushNotificationAsync(
+                        recipientEmail: messageDto.ReceiverEmail,
+                        title: $"New Message from {senderRole} 💬",
+                        message: !string.IsNullOrWhiteSpace(messageDto.Content) ? messageDto.Content : "Sent an attachment",
+                        data: new Dictionary<string, string>
+                        {
+                            { "conversationId", id.ToString() },
+                            { "type", "chat" }
+                        }
+                    );
+                }
 
                 return Ok(messageDto);
             }

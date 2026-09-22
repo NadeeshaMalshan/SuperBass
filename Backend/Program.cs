@@ -43,6 +43,7 @@ builder.Services.AddScoped<ICommunityPostRepository, EfCommunityPostRepository>(
 builder.Services.AddScoped<WorkerRepository, EfWorkerRepository>();
 builder.Services.AddScoped<IResidentRepository, EfResidentRepository>();
 builder.Services.AddScoped<ICommunicationRepository, EfCommunicationRepository>();
+builder.Services.AddHttpClient<IPushNotificationService, PushNotificationService>();
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
