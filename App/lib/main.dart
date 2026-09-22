@@ -1033,7 +1033,6 @@ class CommunityTabScreen extends StatelessWidget {
     if (diff.inMinutes > 0) return '${diff.inMinutes}m ago';
     return 'Just now';
   }
-  }
 }
 
 /// 3. BOOKINGS TAB
