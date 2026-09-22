@@ -301,6 +301,9 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                                 final imagesList = imageUrl.isNotEmpty ? [imageUrl] : <String>[];
 
                                 CommunityPostModel? result;
+                                final scaffoldMessenger = ScaffoldMessenger.of(context);
+                                final navigator = Navigator.of(modalCtx);
+
                                 if (isEditing) {
                                   result = await ApiService().updateCommunityPost(
                                     id: postToEdit.postId,
@@ -320,10 +323,12 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                                   );
                                 }
 
+                                if (modalCtx.mounted) {
+                                  navigator.pop();
+                                }
                                 if (mounted) {
-                                  Navigator.pop(modalCtx);
                                   if (result != null) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
+                                    scaffoldMessenger.showSnackBar(
                                       SnackBar(
                                         content: Text(
                                           isEditing ? 'Post updated successfully!' : 'Post created successfully!',
@@ -333,7 +338,7 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                                     );
                                     _fetchPosts();
                                   } else {
-                                    ScaffoldMessenger.of(context).showSnackBar(
+                                    scaffoldMessenger.showSnackBar(
                                       const SnackBar(
                                         content: Text('Failed to save post. Please try again.'),
                                         backgroundColor: AppColors.error,
@@ -743,7 +748,7 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                           width: 36,
                           height: 36,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Text(
+                          errorBuilder: (_, _, _) => Text(
                             post.userName.isNotEmpty ? post.userName[0].toUpperCase() : 'U',
                             style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: AppColors.onPrimaryContainer),
                           ),
@@ -855,7 +860,7 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                 height: 200,
                 width: double.infinity,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                errorBuilder: (_, _, _) => const SizedBox.shrink(),
               ),
             ),
           ],
@@ -1063,7 +1068,7 @@ class _PostCommentsSheetState extends State<PostCommentsSheet> {
                       : ListView.separated(
                           padding: const EdgeInsets.all(20),
                           itemCount: _comments.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 14),
+                          separatorBuilder: (_, _) => const SizedBox(height: 14),
                           itemBuilder: (context, index) {
                             final c = _comments[index];
                             return Row(

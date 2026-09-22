@@ -133,7 +133,6 @@ class _FindTabScreenState extends State<FindTabScreen> {
   int _selectedCategoryIndex = 0;
   List<WorkerModel> _workers = [];
   bool _isLoading = true;
-  String? _error;
 
   final List<Map<String, dynamic>> _categories = [
     {'name': 'All Pros', 'skill': null, 'icon': Icons.apps_rounded},
@@ -154,7 +153,6 @@ class _FindTabScreenState extends State<FindTabScreen> {
   Future<void> _fetchWorkers() async {
     setState(() {
       _isLoading = true;
-      _error = null;
     });
 
     try {
@@ -169,7 +167,6 @@ class _FindTabScreenState extends State<FindTabScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.toString();
           _isLoading = false;
         });
       }
@@ -238,7 +235,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
                             ? Image.network(
                                 worker.profileImage!,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Center(
+                                errorBuilder: (_, _, _) => Center(
                                   child: Text(
                                     worker.name.isNotEmpty ? worker.name[0].toUpperCase() : 'W',
                                     style: GoogleFonts.dmSans(fontWeight: FontWeight.w800, fontSize: 18),
@@ -382,6 +379,9 @@ class _FindTabScreenState extends State<FindTabScreen> {
                               );
                             }
 
+                            final scaffoldMessenger = ScaffoldMessenger.of(context);
+                            final navigator = Navigator.of(sheetContext);
+
                             final booking = await ApiService().createBooking(
                               workerId: worker.id,
                               jobTitle: titleController.text.trim(),
@@ -392,17 +392,19 @@ class _FindTabScreenState extends State<FindTabScreen> {
                               estimatedPrice: worker.hourlyRate > 0 ? worker.hourlyRate : 2500.0,
                             );
 
+                            if (sheetContext.mounted) {
+                              navigator.pop();
+                            }
                             if (mounted) {
-                              Navigator.pop(sheetContext);
                               if (booking != null) {
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                scaffoldMessenger.showSnackBar(
                                   SnackBar(
                                     content: Text('Booking #${booking.id} created with ${worker.name}!'),
                                     backgroundColor: AppColors.success,
                                   ),
                                 );
                               } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                scaffoldMessenger.showSnackBar(
                                   const SnackBar(
                                     content: Text('Failed to create booking. Check backend connection.'),
                                     backgroundColor: AppColors.error,
@@ -475,7 +477,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
                               width: 36,
                               height: 36,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Center(
+                              errorBuilder: (_, _, _) => Center(
                                 child: Text(
                                   initial,
                                   style: GoogleFonts.dmSans(
@@ -818,7 +820,7 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                       : ListView.separated(
                           padding: const EdgeInsets.all(20),
                           itemCount: _bookings.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 14),
+                          separatorBuilder: (_, _) => const SizedBox(height: 14),
                           itemBuilder: (context, index) {
                             final b = _bookings[index];
                             final color = _getStatusColor(b.status);
