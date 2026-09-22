@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:onesignal_flutter/onesignal_flutter.dart';
 import '../models/auth_user.dart';
 import 'api_config.dart';
 
@@ -37,9 +38,23 @@ class AuthService {
         isWorker: prefs.getBool('isWorker') ?? false,
       );
       currentUserNotifier.value = user;
+      _syncOneSignalUser(user.email);
       return user;
     }
     return null;
+  }
+
+  Future<void> _syncOneSignalUser(String? email) async {
+    if (kIsWeb) return;
+    try {
+      if (email != null && email.isNotEmpty) {
+        await OneSignal.login(email);
+      } else {
+        await OneSignal.logout();
+      }
+    } catch (e) {
+      debugPrint('OneSignal user sync error: $e');
+    }
   }
 
   /// Perform Google Sign-In and authenticate with the SuperBass backend
@@ -135,6 +150,7 @@ class AuthService {
       await prefs.setBool('isWorker', user.isWorker);
 
       currentUserNotifier.value = user;
+      _syncOneSignalUser(user.email);
       return user;
     } else {
       String errorMessage = 'Backend authentication failed (${response.statusCode})';
@@ -172,6 +188,7 @@ class AuthService {
       isWorker: isWorker,
     );
     currentUserNotifier.value = user;
+    _syncOneSignalUser(user.email);
     return user;
   }
 
@@ -189,6 +206,7 @@ class AuthService {
     await prefs.remove('activeRole');
     await prefs.remove('isWorker');
 
+    _syncOneSignalUser(null);
     currentUserNotifier.value = null;
   }
 }
