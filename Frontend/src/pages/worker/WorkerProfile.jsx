@@ -63,7 +63,7 @@ export default function WorkerProfile() {
             email: w.email || w.residentEmail || userEmail || '',
             phone: w.phoneNo || '',
             location: w.primaryServiceArea || '',
-            experience: 'Verified Professional',
+            experience: w.completedJobs > 0 ? `${w.completedJobs} Jobs Completed` : 'Registered Worker',
             description: w.description || '',
             isVerified: true
           });
@@ -99,12 +99,13 @@ export default function WorkerProfile() {
   };
 
   const handleSavePricing = async () => {
+    if (!currentWorkerId) return;
     try {
       const wId = currentWorkerId || 1;
       await axios.put(`${API_BASE_URL}/workers/${wId}/pricing`, {
         pricingModel,
-        hourlyRate: parseFloat(hourlyRate),
-        dailyRate: parseFloat(dailyRate)
+        hourlyRate: hourlyRate ? parseFloat(hourlyRate) : null,
+        dailyRate: dailyRate ? parseFloat(dailyRate) : null
       }, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
@@ -117,6 +118,7 @@ export default function WorkerProfile() {
   };
 
   const handleSaveServiceArea = async () => {
+    if (!currentWorkerId) return;
     try {
       const wId = currentWorkerId || 1;
       await axios.put(`${API_BASE_URL}/workers/${wId}/service-area`, {
@@ -134,6 +136,7 @@ export default function WorkerProfile() {
   };
 
   const handleSaveAvailability = async () => {
+    if (!currentWorkerId) return;
     try {
       const wId = currentWorkerId || 1;
       await axios.put(`${API_BASE_URL}/workers/${wId}/availability`, {
@@ -152,6 +155,7 @@ export default function WorkerProfile() {
 
   const handleSavePassword = async (e) => {
     e.preventDefault();
+    if (!currentWorkerId) return;
     if (passwords.newPassword !== passwords.confirmPassword) {
       alert('New password and confirm password do not match!');
       return;

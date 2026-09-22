@@ -483,22 +483,21 @@ namespace Superbass.Controllers
             booking.Status = "Reviewed";
             booking.UpdatedAt = DateTime.UtcNow;
 
-            // Recalculate Worker ratings
+            // Recalculate Worker ratings based on real reviews
             if (booking.Worker != null)
             {
                 var reviewedBookings = await _context.Bookings
-                    .Where(b => b.WorkerId == booking.WorkerId && b.ReviewRating.HasValue)
+                    .Where(b => b.WorkerId == booking.WorkerId && b.Id != booking.Id && b.ReviewRating.HasValue)
                     .ToListAsync();
 
-                var totalQuality = reviewedBookings.Sum(b => b.QualityRating ?? 5) + q;
-                var totalPunc = reviewedBookings.Sum(b => b.PunctualityRating ?? 5) + p;
-                var totalComm = reviewedBookings.Sum(b => b.CommunicationRating ?? 5) + c;
-                var count = reviewedBookings.Count + 1;
+                var allQuality = reviewedBookings.Where(b => b.QualityRating.HasValue).Select(b => b.QualityRating!.Value).Concat(new[] { q }).ToList();
+                var allPunc = reviewedBookings.Where(b => b.PunctualityRating.HasValue).Select(b => b.PunctualityRating!.Value).Concat(new[] { p }).ToList();
+                var allComm = reviewedBookings.Where(b => b.CommunicationRating.HasValue).Select(b => b.CommunicationRating!.Value).Concat(new[] { c }).ToList();
 
-                booking.Worker.QualityRating = (int)Math.Round((double)totalQuality / count);
-                booking.Worker.PunctualityRating = (int)Math.Round((double)totalPunc / count);
-                booking.Worker.CommunicationRating = (int)Math.Round((double)totalComm / count);
-                booking.Worker.OverallRating = Math.Round(((double)totalQuality / count + (double)totalPunc / count + (double)totalComm / count) / 3.0, 1);
+                booking.Worker.QualityRating = (int)Math.Round(allQuality.Average());
+                booking.Worker.PunctualityRating = (int)Math.Round(allPunc.Average());
+                booking.Worker.CommunicationRating = (int)Math.Round(allComm.Average());
+                booking.Worker.OverallRating = Math.Round((allQuality.Average() + allPunc.Average() + allComm.Average()) / 3.0, 1);
             }
 
             await _context.SaveChangesAsync();

@@ -38,31 +38,31 @@ namespace Superbass.Controllers
             return email;
         }
 
-        // GET: /api/conversations?userEmail=test@example.com
+        // GET: /api/conversations?userEmail=test@example.com or ?email=test@example.com
         [HttpGet]
-        public async Task<IActionResult> GetConversations([FromQuery] string? userEmail)
+        public async Task<IActionResult> GetConversations([FromQuery] string? userEmail, [FromQuery] string? email)
         {
-            var email = userEmail ?? GetCurrentUserEmail();
-            if (string.IsNullOrWhiteSpace(email))
+            var targetEmail = userEmail ?? email ?? GetCurrentUserEmail();
+            if (string.IsNullOrWhiteSpace(targetEmail))
             {
                 return BadRequest(new { message = "User email must be provided or present in JWT claims." });
             }
 
-            var conversations = await _communicationRepo.GetUserConversationsAsync(email);
+            var conversations = await _communicationRepo.GetUserConversationsAsync(targetEmail);
             return Ok(conversations);
         }
 
-        // GET: /api/conversations/5?userEmail=test@example.com
+        // GET: /api/conversations/5?userEmail=test@example.com or ?email=test@example.com
         [HttpGet("{id:int}")]
-        public async Task<IActionResult> GetConversationById(int id, [FromQuery] string? userEmail)
+        public async Task<IActionResult> GetConversationById(int id, [FromQuery] string? userEmail, [FromQuery] string? email)
         {
-            var email = userEmail ?? GetCurrentUserEmail();
-            if (string.IsNullOrWhiteSpace(email))
+            var targetEmail = userEmail ?? email ?? GetCurrentUserEmail();
+            if (string.IsNullOrWhiteSpace(targetEmail))
             {
                 return BadRequest(new { message = "User email must be provided or present in JWT claims." });
             }
 
-            var conversation = await _communicationRepo.GetConversationByIdAsync(id, email);
+            var conversation = await _communicationRepo.GetConversationByIdAsync(id, targetEmail);
             if (conversation == null)
             {
                 return NotFound(new { message = "Conversation not found or access denied." });

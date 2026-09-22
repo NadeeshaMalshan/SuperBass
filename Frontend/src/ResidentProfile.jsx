@@ -293,8 +293,15 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
           experienceYears: parseInt(s.experienceYears) || 1
         }));
 
+      const activeEmail = userEmail || profile?.email || localStorage.getItem('email');
+      if (!activeEmail) {
+        setWorkerError('User email could not be determined. Please sign in again.');
+        setSubmittingWorker(false);
+        return;
+      }
+
       const payload = {
-        email: userEmail,
+        email: activeEmail,
         description: workerForm.description,
         primaryServiceArea: workerForm.primaryServiceArea || 'Default Area',
         coverageRadiusKm: parseFloat(workerForm.coverageRadiusKm) || 10,
