@@ -124,19 +124,36 @@ class _JoinScreenState extends State<JoinScreen> {
     } catch (e) {
       if (!mounted) return;
       debugPrint('Login exception: $e');
+      final msg = e.toString().replaceAll('Exception: ', '');
       setState(() {
-        _errorMessage = e.toString().replaceAll('Exception: ', '');
+        _errorMessage = msg;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_errorMessage ?? 'Login failed. Please try again.'),
-          backgroundColor: AppColors.error,
-          action: SnackBarAction(
-            label: 'Dev Mode',
-            textColor: Colors.white,
-            onPressed: _showDevLoginDialog,
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.error_outline, color: AppColors.error),
+              SizedBox(width: 8),
+              Text('Sign-In Issue'),
+            ],
           ),
+          content: Text(msg),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Close'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _showDevLoginDialog();
+              },
+              child: const Text('Use Dev Sign In'),
+            ),
+          ],
         ),
       );
     } finally {

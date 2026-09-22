@@ -13,7 +13,8 @@ class AuthService {
   AuthService._internal();
 
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    clientId: ApiConfig.googleClientId,
+    serverClientId: kIsWeb ? null : ApiConfig.googleClientId,
+    clientId: kIsWeb ? ApiConfig.googleClientId : null,
     scopes: ['email', 'profile'],
   );
 
@@ -67,6 +68,12 @@ class AuthService {
       );
     } catch (e) {
       debugPrint('Error during Google Sign-In: $e');
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('sign_in_failed') || errStr.contains('10') || errStr.contains('developer_error')) {
+        throw Exception(
+          'Google Sign-In failed (ApiException 10). The APK SHA-1 fingerprint needs to be registered in Google Cloud Console under an Android OAuth Client ID.',
+        );
+      }
       rethrow;
     }
   }
@@ -77,14 +84,22 @@ class AuthService {
     String? idToken,
     String? fallbackPhotoUrl,
   }) async {
-    final response = await http.post(
-      Uri.parse(ApiConfig.googleAuthUrl),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'accessToken': accessToken,
-        'idToken': idToken,
-      }),
-    );
+    final http.Response response;
+    try {
+      response = await http.post(
+        Uri.parse(ApiConfig.googleAuthUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'accessToken': accessToken,
+          'idToken': idToken,
+        }),
+      ).timeout(const Duration(seconds: 15));
+    } catch (e) {
+      debugPrint('Network error connecting to backend: $e');
+      throw Exception(
+        'Cannot connect to backend server at ${ApiConfig.baseUrl}. Please verify BACKEND_URL in .env (ensure it uses your live Render URL or PC Wi-Fi IP, not localhost on physical phones).',
+      );
+    }
 
     debugPrint('Backend response status: ${response.statusCode}');
     debugPrint('Backend response body: ${response.body}');
