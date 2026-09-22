@@ -99,7 +99,6 @@ class JoinScreen extends StatefulWidget {
 class _JoinScreenState extends State<JoinScreen> {
   final AuthService _authService = AuthService();
   bool _isLoading = false;
-  String? _errorMessage;
 
   void _goHome() {
     if (Navigator.of(context).canPop()) {
@@ -114,7 +113,6 @@ class _JoinScreenState extends State<JoinScreen> {
   Future<void> _handleGoogleLogin() async {
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
     });
 
     try {
@@ -125,9 +123,6 @@ class _JoinScreenState extends State<JoinScreen> {
       if (!mounted) return;
       debugPrint('Login exception: $e');
       final msg = e.toString().replaceAll('Exception: ', '');
-      setState(() {
-        _errorMessage = msg;
-      });
 
       showDialog(
         context: context,
@@ -169,7 +164,6 @@ class _JoinScreenState extends State<JoinScreen> {
   Future<void> _handleDevLogin({String role = 'Resident'}) async {
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
     });
 
     try {
@@ -183,9 +177,6 @@ class _JoinScreenState extends State<JoinScreen> {
       _navigateBasedOnRole(user);
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _errorMessage = e.toString();
-      });
     } finally {
       if (mounted) {
         setState(() {

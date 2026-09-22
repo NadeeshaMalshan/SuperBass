@@ -240,7 +240,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             style: GoogleFonts.dmSans(
                               fontSize: 11,
                               fontWeight: FontWeight.w500,
-                              color: AppColors.onSurfaceVariant.withOpacity(0.8),
+                              color: AppColors.onSurfaceVariant.withValues(alpha: 0.8),
                             ),
                           ),
                         ),

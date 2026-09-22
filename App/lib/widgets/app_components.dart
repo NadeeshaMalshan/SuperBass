@@ -361,7 +361,7 @@ class WorkerCard extends StatelessWidget {
                       width: 56,
                       height: 56,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Center(
+                      errorBuilder: (_, _, _) => Center(
                         child: Text(
                           name.isNotEmpty ? name[0].toUpperCase() : 'W',
                           style: GoogleFonts.dmSans(
