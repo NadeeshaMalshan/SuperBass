@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/app_notification_model.dart';
 import '../models/booking_model.dart';
 import 'api_service.dart';
+import 'system_notification_service.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -39,6 +40,7 @@ class NotificationService {
     if (_initialized) return;
     _initialized = true;
     await _loadPersistedNotifications();
+    await SystemNotificationService.initialize();
   }
 
   /// Start monitoring for notifications for the given user email
@@ -253,11 +255,24 @@ class NotificationService {
     _updateUnreadCount();
     _savePersistedNotifications();
     _notificationStreamController.add(notification);
+
+    // Trigger OS / Browser level system notification
+    SystemNotificationService.show(
+      id: notification.id.hashCode,
+      title: notification.title,
+      body: notification.body,
+      payload: notification.referenceId?.toString(),
+    );
   }
 
   /// Manually dispatch a notification (useful for local triggers)
   void dispatchNotification(AppNotification notification) {
     _addAndBroadcastNotification(notification);
+  }
+
+  /// Request system notification permission from OS or Browser
+  Future<bool> requestSystemNotificationPermission() async {
+    return await SystemNotificationService.requestPermission();
   }
 
   void markAsRead(String notificationId) {

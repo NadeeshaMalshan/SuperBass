@@ -47,6 +47,7 @@ class NotificationBellButton extends StatelessWidget {
             ],
           ),
           onPressed: () {
+            service.requestSystemNotificationPermission();
             NotificationsSheet.show(
               context,
               onNotificationTap: (n) {
@@ -193,6 +194,61 @@ class _NotificationsSheetState extends State<NotificationsSheet> {
             ),
           ),
 
+          // System notification banner
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.brandYellow.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.brandYellow.withValues(alpha: 0.35)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.notifications_active_rounded, size: 20, color: AppColors.brandYellow),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Get OS alerts even when minimized',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.onSurface,
+                    ),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final granted = await _service.requestSystemNotificationPermission();
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(granted
+                              ? 'System notifications enabled!'
+                              : 'Please allow notification permission in your browser or device settings.'),
+                          duration: const Duration(seconds: 3),
+                        ),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.brandYellow,
+                    foregroundColor: const Color(0xFF111827),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: Text(
+                    'Enable',
+                    style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 6),
           const Divider(height: 1, color: AppColors.outlineVariant),
 
           // List
