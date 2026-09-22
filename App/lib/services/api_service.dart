@@ -377,6 +377,29 @@ class ApiService {
     }
   }
 
+  /// 3b. Fetch Bookings for worker from /api/bookings/worker?email=...
+  Future<List<BookingModel>> fetchWorkerBookings(String workerEmail) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/bookings/worker').replace(
+        queryParameters: {'email': workerEmail},
+      );
+
+      debugPrint('Fetching worker bookings from: $uri');
+      final response = await http.get(uri, headers: _headers);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final dynamic data = jsonDecode(response.body);
+        if (data is List) {
+          return data.map((json) => BookingModel.fromJson(json as Map<String, dynamic>)).toList();
+        }
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error fetching worker bookings: $e');
+      return [];
+    }
+  }
+
   /// 4. Create a new Booking: POST /api/bookings
   Future<BookingModel?> createBooking({
     required int workerId,
@@ -418,6 +441,26 @@ class ApiService {
     } catch (e) {
       debugPrint('Error creating booking: $e');
       return null;
+    }
+  }
+
+  /// 4b. Cancel a booking: POST /api/bookings/{id}/cancel
+  Future<bool> cancelBooking(int bookingId, {String reason = 'Cancelled by resident'}) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/bookings/$bookingId/cancel');
+      final response = await http.post(
+        uri,
+        headers: _headers,
+        body: jsonEncode({'reason': reason}),
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return true;
+      }
+      debugPrint('Failed to cancel booking (${response.statusCode}): ${response.body}');
+      return false;
+    } catch (e) {
+      debugPrint('Error cancelling booking: $e');
+      return false;
     }
   }
 

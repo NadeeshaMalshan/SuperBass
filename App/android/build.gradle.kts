@@ -25,7 +25,7 @@ subprojects {
                 val android = project.extensions.getByName("android")
                 try {
                     val method = android.javaClass.getMethod("setNdkVersion", String::class.java)
-                    method.invoke(android, "27.1.12297006")
+                    method.invoke(android, "28.2.13676358")
                 } catch (_: Exception) {}
             }
         }
