@@ -1,0 +1,80 @@
+name: SuperBass CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  # -------------------------------------------------------------
+  # 1. NET BACKEND BUILD & TEST JOB
+  # -------------------------------------------------------------
+  backend-ci:
+    name: Backend (.NET API) CI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore Backend Dependencies
+        run: dotnet restore Backend/Superbass.csproj
+
+      - name: Build Backend API
+        run: dotnet build Backend/Superbass.csproj --configuration Release --no-restore
+
+  # -------------------------------------------------------------
+  # 2. FLUTTER APP BUILD & ANALYZE JOB
+  # -------------------------------------------------------------
+  flutter-ci:
+    name: Flutter App CI & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java (Required for Android & Gradle)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Create Dummy .env File
+        run: |
+          cd App
+          echo "API_URL=http://localhost:5237" > .env
+          echo "GOOGLE_CLIENT_ID=dummy_google_client_id" >> .env
+
+      - name: Install Flutter Dependencies
+        run: |
+          cd App
+          flutter pub get
+
+      - name: Analyze Flutter Code
+        run: |
+          cd App
+          flutter analyze
+
+      - name: Build Flutter Web Bundle
+        run: |
+          cd App
+          flutter build web --release
+
+      - name: Upload Web Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-web-build
+          path: App/build/web

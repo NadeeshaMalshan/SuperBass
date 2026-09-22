@@ -5,9 +5,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'models/app_notification_model.dart';
 import 'models/auth_user.dart';
 import 'models/booking_model.dart';
-import 'models/community_post_model.dart';
 import 'models/worker_model.dart';
 import 'screens/chat_screen.dart';
+import 'screens/community_screen.dart';
 import 'screens/join_screen.dart';
 import 'services/api_service.dart';
 import 'services/auth_service.dart';
@@ -212,7 +212,6 @@ class _FindTabScreenState extends State<FindTabScreen> {
   int _selectedCategoryIndex = 0;
   List<WorkerModel> _workers = [];
   bool _isLoading = true;
-  String? _error;
 
   final List<Map<String, dynamic>> _categories = [
     {'name': 'All Pros', 'skill': null, 'icon': Icons.apps_rounded},
@@ -233,7 +232,6 @@ class _FindTabScreenState extends State<FindTabScreen> {
   Future<void> _fetchWorkers() async {
     setState(() {
       _isLoading = true;
-      _error = null;
     });
 
     try {
@@ -248,7 +246,6 @@ class _FindTabScreenState extends State<FindTabScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.toString();
           _isLoading = false;
         });
       }
@@ -317,7 +314,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
                             ? Image.network(
                                 worker.profileImage!,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Center(
+                                errorBuilder: (_, _, _) => Center(
                                   child: Text(
                                     worker.name.isNotEmpty ? worker.name[0].toUpperCase() : 'W',
                                     style: GoogleFonts.dmSans(fontWeight: FontWeight.w800, fontSize: 18),
@@ -461,6 +458,9 @@ class _FindTabScreenState extends State<FindTabScreen> {
                               );
                             }
 
+                            final scaffoldMessenger = ScaffoldMessenger.of(context);
+                            final navigator = Navigator.of(sheetContext);
+
                             final booking = await ApiService().createBooking(
                               workerId: worker.id,
                               jobTitle: titleController.text.trim(),
@@ -471,17 +471,19 @@ class _FindTabScreenState extends State<FindTabScreen> {
                               estimatedPrice: worker.hourlyRate > 0 ? worker.hourlyRate : 2500.0,
                             );
 
+                            if (sheetContext.mounted) {
+                              navigator.pop();
+                            }
                             if (mounted) {
-                              Navigator.pop(sheetContext);
                               if (booking != null) {
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                scaffoldMessenger.showSnackBar(
                                   SnackBar(
                                     content: Text('Booking #${booking.id} created with ${worker.name}!'),
                                     backgroundColor: AppColors.success,
                                   ),
                                 );
                               } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                scaffoldMessenger.showSnackBar(
                                   const SnackBar(
                                     content: Text('Failed to create booking. Check backend connection.'),
                                     backgroundColor: AppColors.error,
@@ -560,7 +562,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
                               width: 36,
                               height: 36,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Center(
+                              errorBuilder: (_, _, _) => Center(
                                 child: Text(
                                   initial,
                                   style: GoogleFonts.dmSans(
@@ -767,33 +769,8 @@ class _FindTabScreenState extends State<FindTabScreen> {
 }
 
 /// 2. COMMUNITY TAB
-class CommunityTabScreen extends StatefulWidget {
+class CommunityTabScreen extends StatelessWidget {
   const CommunityTabScreen({super.key});
-
-  @override
-  State<CommunityTabScreen> createState() => _CommunityTabScreenState();
-}
-
-class _CommunityTabScreenState extends State<CommunityTabScreen> {
-  List<CommunityPostModel> _posts = [];
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchPosts();
-  }
-
-  Future<void> _fetchPosts() async {
-    setState(() => _isLoading = true);
-    final posts = await ApiService().fetchCommunityPosts();
-    if (mounted) {
-      setState(() {
-        _posts = posts;
-        _isLoading = false;
-      });
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1055,6 +1032,7 @@ class _CommunityTabScreenState extends State<CommunityTabScreen> {
     if (diff.inHours > 0) return '${diff.inHours}h ago';
     if (diff.inMinutes > 0) return '${diff.inMinutes}m ago';
     return 'Just now';
+  }
   }
 }
 
@@ -1568,7 +1546,7 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                       : ListView.separated(
                           padding: const EdgeInsets.all(20),
                           itemCount: _bookings.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 14),
+                          separatorBuilder: (_, _) => const SizedBox(height: 14),
                           itemBuilder: (context, index) {
                             final b = _bookings[index];
                             final color = _getStatusColor(b.status);
