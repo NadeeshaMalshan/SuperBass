@@ -1,6 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:loading_indicator_m3e/loading_indicator_m3e.dart';
+import '../data/sri_lanka_locations.dart';
 import '../models/auth_user.dart';
 import '../models/community_post_model.dart';
 import '../services/api_service.dart';
@@ -107,11 +110,32 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
     final isEditing = postToEdit != null;
     final titleController = TextEditingController(text: postToEdit?.title ?? '');
     final contentController = TextEditingController(text: postToEdit?.content ?? '');
-    final locationController = TextEditingController(text: postToEdit?.location ?? 'Colombo');
     final imageController = TextEditingController(
       text: (postToEdit?.images != null && postToEdit!.images.isNotEmpty) ? postToEdit.images.first : '',
     );
     String selectedCatId = postToEdit?.serviceCategoryId.isNotEmpty == true ? postToEdit!.serviceCategoryId : 'general';
+
+    // Parse existing location into District & DS Division
+    String? selectedDistrict;
+    String? selectedDsDivision;
+    if (postToEdit?.location != null && postToEdit!.location.isNotEmpty) {
+      final parts = postToEdit.location.split(',').map((e) => e.trim()).toList();
+      if (parts.length >= 2) {
+        final potentialDs = parts[0];
+        final potentialDist = parts[1];
+        if (SriLankaLocations.districts.contains(potentialDist)) {
+          selectedDistrict = potentialDist;
+          if (SriLankaLocations.getDsDivisions(potentialDist).contains(potentialDs)) {
+            selectedDsDivision = potentialDs;
+          }
+        }
+      } else if (parts.length == 1) {
+        if (SriLankaLocations.districts.contains(parts[0])) {
+          selectedDistrict = parts[0];
+        }
+      }
+    }
+    selectedDistrict ??= 'Colombo';
 
     bool isSubmitting = false;
 
@@ -121,6 +145,9 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
         builder: (modalCtx, setModalState) {
+          final currentDistrictDsList = SriLankaLocations.getDsDivisions(selectedDistrict);
+          final hasImage = imageController.text.trim().isNotEmpty;
+
           return Padding(
             padding: EdgeInsets.only(
               bottom: MediaQuery.of(modalCtx).viewInsets.bottom,
@@ -219,24 +246,68 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                     TextField(
                       controller: titleController,
                       decoration: InputDecoration(
-                        hintText: 'e.g., Looking for a reliable electrician in Nugegoda',
+                        hintText: 'e.g., Looking for a reliable electrician in Homagama',
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                     ),
                     const SizedBox(height: 14),
 
-                    // Location
+                    // Location - District & Divisional Secretariat Section
                     Text(
-                      'Location / Neighborhood',
+                      'Location (District & DS Division)',
                       style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 13),
                     ),
-                    const SizedBox(height: 6),
-                    TextField(
-                      controller: locationController,
-                      decoration: InputDecoration(
-                        hintText: 'e.g., Colombo 03, Dehiwala, Kandy',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        // District Dropdown
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            initialValue: SriLankaLocations.districts.contains(selectedDistrict) ? selectedDistrict : SriLankaLocations.districts.first,
+                            decoration: InputDecoration(
+                              labelText: 'District',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            ),
+                            items: SriLankaLocations.districts.map((dist) {
+                              return DropdownMenuItem<String>(
+                                value: dist,
+                                child: Text(dist, overflow: TextOverflow.ellipsis),
+                              );
+                            }).toList(),
+                            onChanged: (val) {
+                              if (val != null) {
+                                setModalState(() {
+                                  selectedDistrict = val;
+                                  selectedDsDivision = null;
+                                });
+                              }
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        // DS Division Dropdown
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            initialValue: currentDistrictDsList.contains(selectedDsDivision) ? selectedDsDivision : null,
+                            hint: Text('DS Division', style: GoogleFonts.dmSans(fontSize: 13)),
+                            decoration: InputDecoration(
+                              labelText: 'DS Division',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            ),
+                            items: currentDistrictDsList.map((ds) {
+                              return DropdownMenuItem<String>(
+                                value: ds,
+                                child: Text(ds, overflow: TextOverflow.ellipsis),
+                              );
+                            }).toList(),
+                            onChanged: (val) {
+                              setModalState(() => selectedDsDivision = val);
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 14),
 
@@ -252,21 +323,108 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                       decoration: InputDecoration(
                         hintText: 'Describe what service, recommendation, or advice you are seeking...',
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.outlineVariant),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.brandYellow, width: 2),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 14),
 
-                    // Image URL
+                    // Image Attachment Section (Upload Only)
                     Text(
-                      'Image URL (Optional)',
+                      'Image Attachment (Optional)',
                       style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 13),
                     ),
-                    const SizedBox(height: 6),
-                    TextField(
-                      controller: imageController,
-                      decoration: InputDecoration(
-                        hintText: 'https://example.com/image.jpg',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    const SizedBox(height: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceVariant.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.outlineVariant),
+                      ),
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: () async {
+                              final ImagePicker picker = ImagePicker();
+                              final XFile? file = await picker.pickImage(
+                                source: ImageSource.gallery,
+                                maxWidth: 1024,
+                                maxHeight: 1024,
+                                imageQuality: 85,
+                              );
+                              if (file != null) {
+                                final bytes = await file.readAsBytes();
+                                final mime = file.mimeType ?? 'image/jpeg';
+                                final base64Str = base64Encode(bytes);
+                                final dataUri = 'data:$mime;base64,$base64Str';
+                                setModalState(() {
+                                  imageController.text = dataUri;
+                                });
+                              }
+                            },
+                            icon: const Icon(Icons.add_a_photo_outlined),
+                            label: Text(hasImage ? 'Change Selected Photo' : 'Attach Photo from Device'),
+                            style: OutlinedButton.styleFrom(
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                          ),
+
+                          // Image Preview Thumbnail
+                          if (hasImage) ...[
+                            const SizedBox(height: 12),
+                            Stack(
+                              children: [
+                                Container(
+                                  height: 120,
+                                  width: double.infinity,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: AppColors.outlineVariant),
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: imageController.text.startsWith('data:image/')
+                                        ? Image.memory(
+                                            base64Decode(imageController.text.split(',').last),
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, _, _) => const Center(child: Icon(Icons.broken_image)),
+                                          )
+                                        : Image.network(
+                                            imageController.text,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, _, _) => const Center(child: Icon(Icons.broken_image)),
+                                          ),
+                                  ),
+                                ),
+                                Positioned(
+                                  top: 6,
+                                  right: 6,
+                                  child: CircleAvatar(
+                                    backgroundColor: Colors.black54,
+                                    radius: 14,
+                                    child: IconButton(
+                                      padding: EdgeInsets.zero,
+                                      icon: const Icon(Icons.close, size: 16, color: Colors.white),
+                                      onPressed: () {
+                                        setModalState(() {
+                                          imageController.clear();
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -286,7 +444,9 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                             : () async {
                                 final title = titleController.text.trim();
                                 final content = contentController.text.trim();
-                                final location = locationController.text.trim();
+                                final constructedLocation = (selectedDsDivision != null && selectedDsDivision!.isNotEmpty)
+                                    ? '$selectedDsDivision, ${selectedDistrict ?? "Colombo"}'
+                                    : (selectedDistrict ?? 'Colombo');
                                 final imageUrl = imageController.text.trim();
 
                                 if (title.isEmpty || content.isEmpty) {
@@ -310,7 +470,7 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                                     title: title,
                                     content: content,
                                     serviceCategoryId: selectedCatId,
-                                    location: location,
+                                    location: constructedLocation,
                                     images: imagesList,
                                   );
                                 } else {
@@ -318,7 +478,7 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                                     title: title,
                                     content: content,
                                     serviceCategoryId: selectedCatId,
-                                    location: location,
+                                    location: constructedLocation,
                                     images: imagesList,
                                   );
                                 }
@@ -855,13 +1015,21 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
             const SizedBox(height: 12),
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: Image.network(
-                post.images.first,
-                height: 200,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => const SizedBox.shrink(),
-              ),
+              child: post.images.first.startsWith('data:image/')
+                  ? Image.memory(
+                      base64Decode(post.images.first.split(',').last),
+                      height: 200,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                    )
+                  : Image.network(
+                      post.images.first,
+                      height: 200,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                    ),
             ),
           ],
 
