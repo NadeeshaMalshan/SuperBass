@@ -1,10 +1,8 @@
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List, Union
 import json
 import asyncio
-from uuid import uuid4
 import os
 import httpx
 from dotenv import load_dotenv
@@ -240,6 +238,28 @@ tools = [
             },
             "required": ["bookingId", "workerId", "residentId", "rating"]
         }
+    },
+    {
+        "name": "get_user_community_posts",
+        "description": "Get all community posts published by a specific user using their email",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "email": {"type": "string", "description": "User email address"}
+            },
+            "required": ["email"]
+        }
+    },
+    {
+        "name": "get_user_details",
+        "description": "Get user profile and account details (role, contact info, worker details if applicable) using their email",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "email": {"type": "string", "description": "User email address"}
+            },
+            "required": ["email"]
+        }
     }
 ]
 
@@ -376,6 +396,69 @@ async def call_create_worker_review(args: Dict[str, Any]):
     response = await backend_client.post(f"/api/Bookings/{booking_id}/review", json=payload)
     return response.json()
 
+async def call_get_user_community_posts(args: Dict[str, Any]):
+    email = str(args.get("email", "")).strip()
+    if not email:
+        raise ValueError("email required")
+    response = await backend_client.get(f"/api/community-posts/user/{email}")
+    return response.json()
+
+async def call_get_user_details(args: Dict[str, Any]):
+    email = str(args.get("email", "")).strip()
+    if not email:
+        raise ValueError("email required")
+    
+    # 1. Fetch resident profile
+    resident_data = None
+    try:
+        r_res = await backend_client.get(f"/api/Residents/{email}")
+        if r_res.status_code == 200:
+            resident_data = r_res.json()
+            if isinstance(resident_data, dict):
+                resident_data.pop("passwordHash", None)
+    except Exception:
+        pass
+
+    # 2. Fetch worker profile if applicable
+    worker_profile = None
+    is_worker = False
+    try:
+        w_res = await backend_client.get("/api/workers/me", params={"email": email})
+        if w_res.status_code == 200:
+            w_data = w_res.json()
+            if isinstance(w_data, dict) and w_data.get("worker"):
+                is_worker = True
+                worker_profile = w_data.get("worker")
+                if isinstance(worker_profile, dict):
+                    worker_profile.pop("passwordHash", None)
+    except Exception:
+        pass
+
+    display_name = None
+    phone_no = None
+    address = None
+
+    if resident_data:
+        display_name = resident_data.get("name")
+        phone_no = resident_data.get("phoneNo")
+        address = resident_data.get("address")
+
+    if not display_name and worker_profile:
+        display_name = worker_profile.get("name")
+    if not phone_no and worker_profile:
+        phone_no = worker_profile.get("phoneNo")
+
+    return {
+        "email": email,
+        "name": display_name or email.split("@")[0],
+        "role": "Worker" if is_worker else "Resident",
+        "isWorker": is_worker,
+        "phoneNo": phone_no or "",
+        "address": address or "",
+        "resident": resident_data,
+        "worker": worker_profile
+    }
+
 # Map tool names to functions
 TOOL_FUNCTIONS = {
     "search_workers": call_search_workers,
@@ -392,6 +475,8 @@ TOOL_FUNCTIONS = {
     "update_community_post": call_update_community_post,
     "delete_community_post": call_delete_community_post,
     "create_worker_review": call_create_worker_review,
+    "get_user_community_posts": call_get_user_community_posts,
+    "get_user_details": call_get_user_details,
 }
 
 @app.get("/")
@@ -486,32 +571,6 @@ async def handle_mcp(request: Request):
             },
             id=getattr(body, 'id', None) if 'body' in locals() else None
         )
-
-# Optional: SSE endpoint for MCP over HTTP+SSE
-@app.get("/mcp/sse")
-async def mcp_sse_endpoint(request: Request):
-    """
-    MCP Server-Sent Events endpoint.
-    This allows MCP clients to connect via SSE for real-time communication.
-    """
-    async def event_stream():
-        # Send initial connection event
-        yield f"data: {json.dumps({'type': 'connection', 'sessionId': str(uuid4())})}\n\n"
-
-        # Keep connection alive
-        while True:
-            # Check if client disconnected
-            if await request.is_disconnected():
-                break
-
-            # Send ping every 30 seconds
-            yield f"data: {json.dumps({'type': 'ping', 'timestamp': asyncio.get_event_loop().time()})}\n\n"
-            await asyncio.sleep(30)
-
-    return StreamingResponse(
-        event_stream(),
-        media_type="text/event-stream"
-    )
 
 @app.on_event("shutdown")
 async def shutdown_event():
