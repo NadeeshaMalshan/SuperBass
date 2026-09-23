@@ -9,17 +9,21 @@ import 'models/worker_model.dart';
 import 'screens/chat_screen.dart';
 import 'screens/community_screen.dart';
 import 'screens/join_screen.dart';
+import 'screens/worker/worker_portal_screen.dart';
+import 'screens/worker/become_worker_sheet.dart';
 import 'screens/profile_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'services/api_config.dart';
 import 'services/api_service.dart';
 import 'services/auth_service.dart';
+import 'services/chat_signalr_service.dart';
 import 'services/notification_service.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
 import 'widgets/app_components.dart';
 import 'widgets/notifications_sheet.dart';
+import 'widgets/m3_bottom_nav_bar.dart';
 import 'package:loading_indicator_m3e/loading_indicator_m3e.dart';
 
 void main() async {
@@ -91,6 +95,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
         user.email,
         isWorker: user.isWorker,
       );
+      ChatSignalRService().connect(user.email);
     }
 
     AuthService().currentUserNotifier.addListener(_onAuthChanged);
@@ -103,8 +108,10 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
         user.email,
         isWorker: user.isWorker,
       );
+      ChatSignalRService().connect(user.email);
     } else {
       NotificationService().stopListening();
+      ChatSignalRService().disconnect();
     }
   }
 
@@ -121,6 +128,12 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
       builder: (context, user, _) {
         final bool isLoggedIn = user != null;
 
+        // Role Guard: When an authenticated user is a Worker, lock the interface to the Worker Portal.
+        // They cannot be a resident unless they explicitly revert via Worker Profile & Settings ("Revert to Resident Mode").
+        if (isLoggedIn && (user.isWorker || user.activeRole == 'Worker')) {
+          return const WorkerPortalScreen();
+        }
+
         final List<Widget> pages = [
           const FindTabScreen(),
           const CommunityScreen(),
@@ -129,39 +142,39 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
           const ProfileScreen(),
         ];
 
-        final List<NavigationDestination> destinations = [
-          const NavigationDestination(
-            icon: Icon(Icons.search_outlined),
-            selectedIcon: Icon(Icons.search_rounded),
+        final List<M3BottomNavItem> navItems = [
+          const M3BottomNavItem(
+            icon: Icons.search_outlined,
+            selectedIcon: Icons.search_rounded,
             label: 'Find',
           ),
-          const NavigationDestination(
-            icon: Icon(Icons.groups_outlined),
-            selectedIcon: Icon(Icons.groups_rounded),
+          const M3BottomNavItem(
+            icon: Icons.groups_outlined,
+            selectedIcon: Icons.groups_rounded,
             label: 'Community',
           ),
           if (isLoggedIn) ...[
-            const NavigationDestination(
-              icon: Icon(Icons.calendar_month_outlined),
-              selectedIcon: Icon(Icons.calendar_month_rounded),
+            const M3BottomNavItem(
+              icon: Icons.calendar_today_outlined,
+              selectedIcon: Icons.calendar_month_rounded,
               label: 'Bookings',
             ),
-            const NavigationDestination(
-              icon: Icon(Icons.chat_bubble_outline_rounded),
-              selectedIcon: Icon(Icons.chat_bubble_rounded),
+            const M3BottomNavItem(
+              icon: Icons.chat_bubble_outline_rounded,
+              selectedIcon: Icons.chat_bubble_rounded,
               label: 'Chats',
             ),
           ],
-          const NavigationDestination(
-            icon: Icon(Icons.person_outline_rounded),
-            selectedIcon: Icon(Icons.person_rounded),
+          const M3BottomNavItem(
+            icon: Icons.person_outline_rounded,
+            selectedIcon: Icons.person_rounded,
             label: 'Account',
           ),
         ];
 
         // Ensure current index is within bounds if tabs change dynamically
-        final effectiveIndex = _currentIndex >= destinations.length
-            ? destinations.length - 1
+        final effectiveIndex = _currentIndex >= navItems.length
+            ? navItems.length - 1
             : _currentIndex;
 
         return Scaffold(
@@ -169,14 +182,14 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
             index: effectiveIndex,
             children: pages,
           ),
-          bottomNavigationBar: NavigationBar(
+          bottomNavigationBar: M3BottomNavigationBar(
             selectedIndex: effectiveIndex,
-            onDestinationSelected: (index) {
+            items: navItems,
+            onItemSelected: (index) {
               setState(() {
                 _currentIndex = index;
               });
             },
-            destinations: destinations,
           ),
         );
       },
@@ -636,16 +649,16 @@ class _FindTabScreenState extends State<FindTabScreen> {
               const SizedBox(height: 12),
 
               SizedBox(
-                height: 120,
+                height: 105,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   itemCount: _categories.length,
-                  separatorBuilder: (context, index) => const SizedBox(width: 12),
+                  separatorBuilder: (context, index) => const SizedBox(width: 14),
                   itemBuilder: (context, index) {
                     final cat = _categories[index];
                     return SizedBox(
-                      width: 105,
+                      width: 76,
                       child: CategoryCard(
                         title: cat['name'] as String,
                         icon: cat['icon'] as IconData,
@@ -733,7 +746,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                   name: worker.name,
                                   trade: trade,
                                   rating: worker.overallRating,
-                                  reviewCount: worker.completedJobs > 0 ? worker.completedJobs : 12,
+                                  reviewCount: worker.completedJobs,
                                   location: worker.primaryServiceArea ?? 'Colombo',
                                   distance: '1.5 km',
                                   profileImage: worker.profileImage,
@@ -1441,11 +1454,26 @@ class ChatsTabScreen extends StatefulWidget {
 class _ChatsTabScreenState extends State<ChatsTabScreen> {
   List<Map<String, dynamic>> _conversations = [];
   bool _isLoading = true;
+  StreamSubscription? _msgSub;
+  StreamSubscription? _readSub;
 
   @override
   void initState() {
     super.initState();
     _fetchChats();
+    _msgSub = ChatSignalRService().onMessageReceived.listen((_) {
+      if (mounted) _fetchChats();
+    });
+    _readSub = ChatSignalRService().onMessagesRead.listen((_) {
+      if (mounted) _fetchChats();
+    });
+  }
+
+  @override
+  void dispose() {
+    _msgSub?.cancel();
+    _readSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _fetchChats() async {
@@ -1620,11 +1648,23 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
                                 ],
                               ),
                               onTap: () async {
+                                final convId = c['id'] is int ? c['id'] as int : int.tryParse(c['id']?.toString() ?? '0') ?? 0;
+                                final userEmail = AuthService().currentUser?.email;
+
+                                // Optimistically clear unread count badge in UI immediately
+                                setState(() {
+                                  c['unreadCount'] = 0;
+                                });
+
+                                if (userEmail != null && convId > 0) {
+                                  ApiService().markConversationAsRead(convId, userEmail);
+                                }
+
                                 await Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder: (context) => ChatScreen(
-                                      conversationId: c['id'] is int ? c['id'] as int : int.tryParse(c['id']?.toString() ?? '0') ?? 0,
+                                      conversationId: convId,
                                       name: name,
                                       profileImage: c['workerProfileImage']?.toString(),
                                     ),
@@ -1640,4 +1680,287 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
   }
 }
 
+/// 5. ACCOUNT TAB
+class AccountTabScreen extends StatelessWidget {
+  const AccountTabScreen({super.key});
 
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          'My Profile',
+          style: GoogleFonts.dmSans(fontWeight: FontWeight.w800),
+        ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            Center(
+              child: ValueListenableBuilder<AuthUser?>(
+                valueListenable: AuthService().currentUserNotifier,
+                builder: (context, user, _) {
+                  final displayName = user?.name.isNotEmpty == true
+                      ? user!.name
+                      : 'Guest User';
+                  final initial = displayName.isNotEmpty
+                      ? displayName[0].toUpperCase()
+                      : 'G';
+                  final role = user?.activeRole ?? 'Guest';
+                  final email = user?.email ?? 'Not signed in';
+
+                  return Column(
+                    children: [
+                      Container(
+                        width: 96,
+                        height: 96,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.primaryContainer,
+                          border: Border.all(color: AppColors.brandYellow, width: 3),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.brandYellow.withValues(alpha: 0.3),
+                              blurRadius: 16,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: ClipOval(
+                          child: (user?.picture != null && user!.picture!.isNotEmpty)
+                              ? Image.network(
+                                  user.picture!,
+                                  width: 96,
+                                  height: 96,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) => Center(
+                                    child: Text(
+                                      initial,
+                                      style: GoogleFonts.dmSans(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 36,
+                                        color: AppColors.onPrimaryContainer,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              : Center(
+                                  child: Text(
+                                    initial,
+                                    style: GoogleFonts.dmSans(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 36,
+                                      color: AppColors.onPrimaryContainer,
+                                    ),
+                                  ),
+                                ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        displayName,
+                        style: GoogleFonts.dmSans(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 20,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '$role • $email',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 14,
+                          color: AppColors.onSurfaceVariant,
+                        ),
+                      ),
+                      if (user == null) ...[
+                        const SizedBox(height: 12),
+                        ElevatedButton.icon(
+                          onPressed: () =>
+                              Navigator.pushNamed(context, '/join'),
+                          icon: const Icon(Icons.login_rounded, size: 18),
+                          label: const Text('Sign In / Join'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.brandYellow,
+                            foregroundColor: Colors.black,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 32),
+
+            // Worker Portal Card
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: () async {
+                  final user = AuthService().currentUser;
+                  if (user == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Please sign in to access Worker Mode.', style: GoogleFonts.dmSans()),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                    return;
+                  }
+
+                  // Show quick loading indicator while checking profile
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (_) => const Center(
+                      child: CircularProgressIndicator(color: AppColors.brandYellow),
+                    ),
+                  );
+
+                  WorkerModel? worker;
+                  try {
+                    worker = await ApiService().fetchMyWorkerProfile(user.email);
+                  } catch (_) {}
+
+                  if (context.mounted) {
+                    Navigator.of(context).pop(); // dismiss loading dialog
+
+                    if (worker != null || user.isWorker) {
+                      await AuthService().updateActiveRole('Worker');
+                    } else {
+                      // Open Become Worker bottom sheet
+                      BecomeWorkerSheet.show(
+                        context,
+                        onWorkerCreated: () {
+                          // Handled reactively: BecomeWorkerSheet calls AuthService.updateWorkerStatus, switching the shell to WorkerPortalScreen
+                        },
+                      );
+                    }
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: AppColors.onPrimary,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.handyman_rounded,
+                        color: AppColors.brandYellow,
+                        size: 28,
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Switch to Worker Mode',
+                              style: GoogleFonts.dmSans(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Offer your skills and get jobs in your area.',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 12,
+                                color: Colors.white70,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            _buildSettingsTile(
+              icon: Icons.edit_outlined,
+              title: 'Edit Profile',
+            ),
+            _buildSettingsTile(
+              icon: Icons.location_on_outlined,
+              title: 'Saved Addresses',
+            ),
+
+            _buildSettingsTile(
+              icon: Icons.security_outlined,
+              title: 'Privacy & Security',
+            ),
+            _buildSettingsTile(
+              icon: Icons.help_outline_rounded,
+              title: 'Help & Support',
+            ),
+            _buildSettingsTile(
+              icon: Icons.logout_rounded,
+              title: 'Sign Out',
+              isDestructive: true,
+              onTap: () async {
+                await AuthService().logout();
+                if (context.mounted) {
+                  Navigator.of(
+                    context,
+                  ).pushNamedAndRemoveUntil('/join', (route) => false);
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSettingsTile({
+    required IconData icon,
+    required String title,
+    bool isDestructive = false,
+    VoidCallback? onTap,
+  }) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      leading: Icon(
+        icon,
+        color: isDestructive ? AppColors.error : AppColors.onSurface,
+      ),
+      title: Text(
+        title,
+        style: GoogleFonts.dmSans(
+          fontWeight: FontWeight.w600,
+          color: isDestructive ? AppColors.error : AppColors.onSurface,
+        ),
+      ),
+      trailing: const Icon(
+        Icons.arrow_forward_ios_rounded,
+        size: 14,
+        color: AppColors.outline,
+      ),
+      onTap: onTap ?? () {},
+    );
+  }
+}

@@ -8,6 +8,7 @@ import Community from './Community.jsx'
 import Onboarding from './Onboarding.jsx'
 import Chats from './Chats.jsx'
 import Bookings from './Bookings.jsx'
+import AiCommunityChat from './pages/AiCommunityChat.jsx'
 
 import WorkerDetail from './WorkerDetail.jsx'
 
@@ -50,6 +51,9 @@ function Router() {
   }
   if (path === '/community' || path === '/community.jsx') {
     return <Community />;
+  }
+  if (path === '/ai-chat' || path === '/agent' || path === '/ai-chat.jsx') {
+    return <AiCommunityChat />;
   }
   if (path === '/chats' || path === '/chats.jsx') {
     return <Chats />;

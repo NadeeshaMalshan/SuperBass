@@ -14,6 +14,17 @@
 *.pfx
 
 # ------------------------------------------
+# Python & Logs
+# ------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.log
+*.egg-info/
+.venv/
+.pytest_cache/
+
+# ------------------------------------------
 # React / Node / Vite / Webpack
 # ------------------------------------------
 node_modules/
@@ -119,6 +130,14 @@ $RECYCLE.BIN/
 *.yaml
 App/linux/flutter/generated_plugin_registrant.cc
 App/linux/flutter/generated_plugin_registrant.h
+App/linux/flutter/generated_plugins.cmake
+App/macos/Flutter/GeneratedPluginRegistrant.swift
+App/pubspec.lock
+App/windows/flutter/generated_plugin_registrant.cc
+App/windows/flutter/generated_plugin_registrant.h
+App/windows/flutter/generated_plugins.cmake
+App/linux/flutter/generated_plugin_registrant.cc
+App/linux/flutter/generated_plugin_registrant.cc
 App/linux/flutter/generated_plugins.cmake
 App/macos/Flutter/GeneratedPluginRegistrant.swift
 App/pubspec.lock

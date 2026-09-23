@@ -18,6 +18,7 @@ import '@material/web/list/list-item.js';
 import Loader from './components/Loader.jsx';
 import UserMenu from './components/UserMenu.jsx';
 import { BACKEND_URL } from './config.js';
+import { chatSignalR } from './services/chatSignalR.js';
 
 const API_BASE_URL = `${BACKEND_URL}/api/conversations`;
 
@@ -106,6 +107,9 @@ export default function Chats() {
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const textInputRef = useRef(null);
+  const selectedChatRef = useRef(null);
+  const typingTimerRef = useRef(null);
+  const typingDebounceRef = useRef(null);
 
   const currentUserEmail = localStorage.getItem('email') || 'resident@superbass.lk';
   const token = localStorage.getItem('token');
@@ -123,33 +127,169 @@ export default function Chats() {
     scrollToBottom();
   }, [messages, isTyping, showEmojiPicker]);
 
-
-
-  // Check presence for active chat
   useEffect(() => {
-    if (!selectedChat) return;
+    selectedChatRef.current = selectedChat;
+  }, [selectedChat]);
 
-    const targetEmail = selectedChat.workerEmail?.toLowerCase() === currentUserEmail.toLowerCase()
-      ? selectedChat.residentEmail
-      : selectedChat.workerEmail;
+  // Connect to SignalR and attach live listeners
+  useEffect(() => {
+    if (!currentUserEmail) return;
 
-    const checkPresence = async () => {
-      if (!targetEmail) return;
+    chatSignalR.connect(currentUserEmail);
+
+    // Heartbeat to keep web client presence active in ChatHub / backend
+    const sendHeartbeat = async () => {
       try {
-        const res = await axios.get(`${API_BASE_URL}/presence`, {
-          params: { userEmail: targetEmail }
+        await axios.post(`${API_BASE_URL}/heartbeat`, { userEmail: currentUserEmail }, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
-        if (res.data) {
-          setIsOtherUserOnline(res.data.isOnline ?? true);
-          setOtherUserLastSeen(res.data.lastSeen);
-        }
       } catch (e) {}
     };
+    sendHeartbeat();
+    const heartbeatInterval = setInterval(sendHeartbeat, 25000);
 
-    checkPresence();
-    const presenceInterval = setInterval(checkPresence, 4000);
-    return () => clearInterval(presenceInterval);
-  }, [selectedChat, currentUserEmail]);
+    // 1. Live Incoming Messages
+    const unsubMsg = chatSignalR.on('ReceiveMessage', (msg) => {
+      if (!msg) return;
+      const convId = msg.conversationId || msg.ConversationId;
+      const currentChat = selectedChatRef.current;
+
+      // Update sidebar conversation item
+      setConversations(prev => {
+        const idx = prev.findIndex(c => c.id === convId);
+        if (idx === -1) {
+          fetchConversations();
+          return prev;
+        }
+        const updated = [...prev];
+        const isCurrentActive = currentChat && currentChat.id === convId;
+        updated[idx] = {
+          ...updated[idx],
+          lastMessage: msg.content || (msg.messageType === 'Image' ? 'Shared an image' : 'New message'),
+          lastMessageAt: msg.createdAt || new Date().toISOString(),
+          unreadCount: isCurrentActive ? 0 : (updated[idx].unreadCount || 0) + (msg.senderEmail?.toLowerCase() !== currentUserEmail.toLowerCase() ? 1 : 0)
+        };
+        return updated;
+      });
+
+      // If message belongs to active chat, display immediately
+      if (currentChat && currentChat.id === convId) {
+        setMessages(prev => {
+          if (prev.some(m => m.id === msg.id)) return prev;
+
+          // Replace optimistic local message if exists
+          const localIdx = prev.findIndex(m =>
+            m.id?.toString().startsWith('local-') &&
+            m.senderEmail?.toLowerCase() === msg.senderEmail?.toLowerCase() &&
+            m.content === msg.content
+          );
+          if (localIdx !== -1) {
+            const newArr = [...prev];
+            newArr[localIdx] = msg;
+            return newArr;
+          }
+          return [...prev, msg];
+        });
+
+        // If message is from other user and active chat is open, instantly mark as read
+        if (msg.senderEmail?.toLowerCase() !== currentUserEmail.toLowerCase()) {
+          chatSignalR.markMessagesAsRead(convId);
+          axios.post(`${API_BASE_URL}/${convId}/read`, { readerEmail: currentUserEmail }, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+          }).catch(() => {});
+        }
+      }
+    });
+
+    // 2. Live Read Receipts (Double Blue Checks)
+    const unsubRead = chatSignalR.on('MessagesRead', (data) => {
+      const convId = data?.conversationId ?? data?.ConversationId;
+      const currentChat = selectedChatRef.current;
+
+      if (currentChat && currentChat.id === convId) {
+        // Mark all outgoing messages as read instantly
+        setMessages(prev => prev.map(m => {
+          const isOutgoing = m.senderEmail?.toLowerCase() === currentUserEmail.toLowerCase();
+          if (isOutgoing && !m.isRead) {
+            return { ...m, isRead: true };
+          }
+          return m;
+        }));
+      }
+    });
+
+    // 3. Live Presence (Active Now)
+    const unsubPresence = chatSignalR.on('UserPresenceChanged', (data) => {
+      const userEmail = data?.userEmail ?? data?.UserEmail;
+      const isOnline = data?.isOnline ?? data?.IsOnline ?? false;
+      const lastSeen = data?.lastSeen ?? data?.LastSeen;
+
+      if (!userEmail) return;
+
+      // Update sidebar conversation online indicator
+      setConversations(prev => prev.map(c => {
+        const otherEmail = c.workerEmail?.toLowerCase() === currentUserEmail.toLowerCase()
+          ? c.residentEmail
+          : c.workerEmail;
+        if (otherEmail?.toLowerCase() === userEmail.toLowerCase()) {
+          return { ...c, isOnline };
+        }
+        return c;
+      }));
+
+      // Update active chat header
+      const currentChat = selectedChatRef.current;
+      if (currentChat) {
+        const currentTargetEmail = currentChat.workerEmail?.toLowerCase() === currentUserEmail.toLowerCase()
+          ? currentChat.residentEmail
+          : currentChat.workerEmail;
+        if (currentTargetEmail?.toLowerCase() === userEmail.toLowerCase()) {
+          setIsOtherUserOnline(isOnline);
+          if (!isOnline && lastSeen) {
+            setOtherUserLastSeen(lastSeen);
+          }
+        }
+      }
+    });
+
+    // 4. Live Typing Indicator
+    const unsubTyping = chatSignalR.on('UserTyping', (data) => {
+      const convId = data?.conversationId ?? data?.ConversationId;
+      const userEmail = data?.userEmail ?? data?.UserEmail;
+      const isUserTyping = data?.isTyping ?? data?.IsTyping ?? false;
+      const currentChat = selectedChatRef.current;
+
+      if (currentChat && currentChat.id === convId) {
+        if (userEmail?.toLowerCase() !== currentUserEmail.toLowerCase()) {
+          setIsTyping(isUserTyping);
+          if (isUserTyping) {
+            if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+            typingTimerRef.current = setTimeout(() => {
+              setIsTyping(false);
+            }, 3500);
+          }
+        }
+      }
+    });
+
+    // 5. Reconnection handler
+    const unsubReconnect = chatSignalR.on('Reconnected', () => {
+      const currentChat = selectedChatRef.current;
+      if (currentChat) {
+        chatSignalR.joinConversation(currentChat.id);
+        loadMessages(currentChat.id, false);
+      }
+    });
+
+    return () => {
+      clearInterval(heartbeatInterval);
+      unsubMsg();
+      unsubRead();
+      unsubPresence();
+      unsubTyping();
+      unsubReconnect();
+    };
+  }, [currentUserEmail]);
 
   // Fetch all user conversations
   const fetchConversations = async () => {
@@ -160,7 +300,6 @@ export default function Chats() {
       });
       if (res.data && Array.isArray(res.data)) {
         setConversations(res.data);
-
       }
     } catch (err) {
       console.warn('Error loading conversations:', err.message);
@@ -171,7 +310,7 @@ export default function Chats() {
 
   useEffect(() => {
     fetchConversations();
-    const interval = setInterval(fetchConversations, 5000);
+    const interval = setInterval(fetchConversations, 8000);
     return () => clearInterval(interval);
   }, [currentUserEmail]);
 
@@ -188,7 +327,8 @@ export default function Chats() {
         setMessages(res.data);
       }
 
-      // Mark conversation as read
+      // Mark conversation as read via SignalR and REST API
+      chatSignalR.markMessagesAsRead(conversationId);
       try {
         await axios.post(`${API_BASE_URL}/${conversationId}/read`, { readerEmail: currentUserEmail }, {
           headers: token ? { Authorization: `Bearer ${token}` } : {}
@@ -201,30 +341,62 @@ export default function Chats() {
     }
   };
 
+  // When selected chat changes: join SignalR room, mark read, check presence
   useEffect(() => {
-    if (selectedChat) {
-      loadMessages(selectedChat.id, true);
-      const msgInterval = setInterval(() => loadMessages(selectedChat.id, false), 3500);
-      return () => clearInterval(msgInterval);
-    }
-  }, [selectedChat]);
+    if (!selectedChat) return;
+
+    chatSignalR.joinConversation(selectedChat.id);
+    loadMessages(selectedChat.id, true);
+
+    // Optimistically clear unread badge in sidebar
+    setConversations(prev => prev.map(c => c.id === selectedChat.id ? { ...c, unreadCount: 0 } : c));
+
+    // Check initial presence of the other user
+    const targetEmail = selectedChat.workerEmail?.toLowerCase() === currentUserEmail.toLowerCase()
+      ? selectedChat.residentEmail
+      : selectedChat.workerEmail;
+
+    const checkPresence = async () => {
+      if (!targetEmail) return;
+      try {
+        const res = await axios.get(`${API_BASE_URL}/presence`, {
+          params: { userEmail: targetEmail },
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        if (res.data) {
+          setIsOtherUserOnline(res.data.isOnline ?? true);
+          setOtherUserLastSeen(res.data.lastSeen);
+        }
+      } catch (e) {}
+    };
+
+    checkPresence();
+
+    // Fallback sync every 10 seconds
+    const fallbackInterval = setInterval(() => {
+      loadMessages(selectedChat.id, false);
+    }, 10000);
+
+    return () => {
+      clearInterval(fallbackInterval);
+      chatSignalR.leaveConversation(selectedChat.id);
+    };
+  }, [selectedChat?.id]);
 
   const handleInputChange = (e) => {
     setInputText(e.target.value);
     if (selectedChat) {
-      try {
-        axios.post(`${API_BASE_URL}/${selectedChat.id}/typing`, {
-          userEmail: currentUserEmail,
-          isTyping: true
-        });
-      } catch (err) {}
+      chatSignalR.sendTyping(selectedChat.id, true);
+      if (typingDebounceRef.current) clearTimeout(typingDebounceRef.current);
+      typingDebounceRef.current = setTimeout(() => {
+        chatSignalR.sendTyping(selectedChat.id, false);
+      }, 2000);
     }
   };
 
   const handleSelectConversation = (conv) => {
     setSelectedChat(conv);
     setShowEmojiPicker(false);
-    loadMessages(conv.id);
   };
 
   const handleSendMessage = async () => {
@@ -234,6 +406,9 @@ export default function Chats() {
 
     setIsSending(true);
     setShowEmojiPicker(false);
+
+    if (typingDebounceRef.current) clearTimeout(typingDebounceRef.current);
+    chatSignalR.sendTyping(selectedChat.id, false);
 
     const newMsg = {
       id: `local-${Date.now()}`,

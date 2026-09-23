@@ -75,10 +75,35 @@ export default function WorkerProfile() {
           if (w.skills && Array.isArray(w.skills)) {
             setSkills(w.skills.map(s => s.skillName));
           }
+          // Load saved availability schedule
+          if (w.availabilityScheduleJson) {
+            try {
+              const saved = JSON.parse(w.availabilityScheduleJson);
+              setAvailability({
+                isAvailable: w.isAvailable ?? true,
+                workDays: saved.workDays ?? { Mon: true, Tue: true, Wed: true, Thu: true, Fri: true, Sat: true, Sun: false },
+                startTime: saved.startTime ?? '08:00',
+                endTime: saved.endTime ?? '17:00'
+              });
+            } catch {
+              setAvailability(prev => ({ ...prev, isAvailable: w.isAvailable ?? true }));
+            }
+          } else {
+            setAvailability(prev => ({ ...prev, isAvailable: w.isAvailable ?? true }));
+          }
         }
       })
       .catch(err => console.log('Worker profile state loaded'));
   }, [userEmail, token]);
+
+  // Sync toggle when navbar "Available for Work" dot is clicked while on this page
+  useEffect(() => {
+    const handleNavbarToggle = (e) => {
+      setAvailability(prev => ({ ...prev, isAvailable: e.detail.isAvailable }));
+    };
+    window.addEventListener('workerAvailabilityChanged', handleNavbarToggle);
+    return () => window.removeEventListener('workerAvailabilityChanged', handleNavbarToggle);
+  }, []);
 
   const handleAddSkill = () => {
     if (newSkill.trim() && !skills.includes(newSkill.trim())) {
@@ -145,10 +170,13 @@ export default function WorkerProfile() {
       }, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
+      // Sync navbar toggle via localStorage + custom event
+      localStorage.setItem('workerIsAvailable', availability.isAvailable ? 'true' : 'false');
+      window.dispatchEvent(new CustomEvent('workerAvailabilityChanged', { detail: { isAvailable: availability.isAvailable } }));
       setSaveStatus('Availability schedule updated successfully!');
       setTimeout(() => setSaveStatus(null), 3000);
     } catch (err) {
-      setSaveStatus('Availability schedule saved.');
+      setSaveStatus('Failed to save availability. Please try again.');
       setTimeout(() => setSaveStatus(null), 3000);
     }
   };
@@ -459,6 +487,57 @@ export default function WorkerProfile() {
           <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#111111', marginBottom: '16px' }}>
             Working Days & Operational Hours
           </h3>
+
+          {/* Available for Work Toggle */}
+          <div className="worker-input-group" style={{ marginBottom: '24px' }}>
+            <label className="worker-label">Availability Status</label>
+            <div
+              onClick={() => setAvailability({ ...availability, isAvailable: !availability.isAvailable })}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '12px',
+                cursor: 'pointer',
+                padding: '12px 18px',
+                borderRadius: '12px',
+                border: `2px solid ${availability.isAvailable ? '#2563EB' : '#E2E8F0'}`,
+                backgroundColor: availability.isAvailable ? '#EFF6FF' : '#F8FAFC',
+                transition: 'all 0.2s ease',
+                userSelect: 'none'
+              }}
+            >
+              {/* Toggle pill */}
+              <div style={{
+                position: 'relative',
+                width: '44px',
+                height: '24px',
+                borderRadius: '12px',
+                backgroundColor: availability.isAvailable ? '#2563EB' : '#CBD5E1',
+                transition: 'background-color 0.2s ease',
+                flexShrink: 0
+              }}>
+                <div style={{
+                  position: 'absolute',
+                  top: '3px',
+                  left: availability.isAvailable ? '23px' : '3px',
+                  width: '18px',
+                  height: '18px',
+                  borderRadius: '50%',
+                  backgroundColor: '#FFFFFF',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                  transition: 'left 0.2s ease'
+                }} />
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '0.95rem', color: availability.isAvailable ? '#1D4ED8' : '#64748B' }}>
+                  {availability.isAvailable ? '🟢 Available for Work' : '⚫ Currently Offline'}
+                </div>
+                <div style={{ fontSize: '0.78rem', color: '#94A3B8', marginTop: '2px' }}>
+                  {availability.isAvailable ? 'You are visible to residents and can receive bookings' : 'You are hidden from search results'}
+                </div>
+              </div>
+            </div>
+          </div>
 
           <div className="worker-input-group">
             <label className="worker-label">Active Working Days</label>

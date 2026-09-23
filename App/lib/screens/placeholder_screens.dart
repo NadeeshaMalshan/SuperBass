@@ -381,24 +381,20 @@ class _WorkerOnboardingScreenState extends State<WorkerOnboardingScreen> {
     final user = AuthService().currentUserNotifier.value;
     
     if (user != null) {
-      final payload = {
-        "Email": user.email,
-        "Description": _descController.text.trim(),
-        "PrimaryServiceArea": _areaController.text.trim(),
-        "CoverageRadiusKm": double.tryParse(_radiusController.text.trim()) ?? 10.0,
-        "PricingModel": _pricingModel,
-        "HourlyRate": double.tryParse(_rateController.text.trim()),
-        "Skills": [
-          // Hardcoding a default skill since UI doesn't collect it yet, 
-          // or we could add a text field for it.
+      final worker = await ApiService().becomeWorker(
+        email: user.email,
+        description: _descController.text.trim(),
+        primaryServiceArea: _areaController.text.trim(),
+        coverageRadiusKm: double.tryParse(_radiusController.text.trim()) ?? 10.0,
+        pricingModel: _pricingModel,
+        hourlyRate: double.tryParse(_rateController.text.trim()),
+        skills: [
           {"SkillName": "General Handyman", "ExperienceYears": 1}
-        ]
-      };
-
-      final success = await ApiService().becomeWorker(payload);
+        ],
+      );
       
       if (mounted) {
-        if (success) {
+        if (worker != null) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Successfully upgraded to Worker!'), backgroundColor: Colors.green),
           );
@@ -415,7 +411,7 @@ class _WorkerOnboardingScreenState extends State<WorkerOnboardingScreen> {
             isNewUser: user.isNewUser,
             isWorker: true,
             activeRole: 'Worker',
-            workerId: user.workerId,
+            workerId: worker.id,
           );
           if (mounted) Navigator.pop(context);
         } else {

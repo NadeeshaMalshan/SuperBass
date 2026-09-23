@@ -161,15 +161,15 @@ namespace Superbass.Controllers
         // PUT/POST: /api/conversations/5/read
         [HttpPut("{id:int}/read")]
         [HttpPost("{id:int}/read")]
-        public async Task<IActionResult> MarkRead(int id, [FromBody] MarkReadRequest? request)
+        public async Task<IActionResult> MarkRead(int id, [FromBody] MarkReadRequest? request, [FromQuery] string? email, [FromQuery] string? readerEmail)
         {
-            var readerEmail = request?.ReaderEmail ?? GetCurrentUserEmail();
-            if (string.IsNullOrWhiteSpace(readerEmail))
+            var targetEmail = request?.ReaderEmail ?? readerEmail ?? email ?? GetCurrentUserEmail();
+            if (string.IsNullOrWhiteSpace(targetEmail))
             {
-                readerEmail = "resident@superbass.lk";
+                return BadRequest(new { message = "Reader email is required." });
             }
 
-            var updated = await _communicationRepo.MarkConversationAsReadAsync(id, readerEmail);
+            var updated = await _communicationRepo.MarkConversationAsReadAsync(id, targetEmail.Trim());
 
             if (updated)
             {
@@ -177,7 +177,7 @@ namespace Superbass.Controllers
                 await _hubContext.Clients.Group(groupName).SendAsync("MessagesRead", new 
                 { 
                     conversationId = id, 
-                    readerEmail 
+                    readerEmail = targetEmail 
                 });
             }
 

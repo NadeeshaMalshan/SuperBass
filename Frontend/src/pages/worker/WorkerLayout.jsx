@@ -4,7 +4,8 @@ import './worker.css';
 import { API_BASE_URL } from '../../config.js';
 
 export default function WorkerLayout({ children, activeTab = 'dashboard' }) {
-  const [isOnline, setIsOnline] = useState(true);
+  const savedAvailable = localStorage.getItem('workerIsAvailable');
+  const [isOnline, setIsOnline] = useState(savedAvailable !== null ? savedAvailable === 'true' : true);
   const [workerId, setWorkerId] = useState(null);
   const [toggling, setToggling] = useState(false);
 
@@ -24,16 +25,28 @@ export default function WorkerLayout({ children, activeTab = 'dashboard' }) {
       .then(res => {
         if (res.data && res.data.worker) {
           setWorkerId(res.data.worker.id);
-          setIsOnline(res.data.worker.isAvailable !== false);
+          const dbAvailable = res.data.worker.isAvailable !== false;
+          setIsOnline(dbAvailable);
+          localStorage.setItem('workerIsAvailable', dbAvailable ? 'true' : 'false');
         }
       })
       .catch(err => console.log('Could not fetch worker navbar availability'));
+
+    // Listen for availability changes from WorkerProfile save
+    const handleAvailabilityChange = (e) => {
+      setIsOnline(e.detail.isAvailable);
+    };
+    window.addEventListener('workerAvailabilityChanged', handleAvailabilityChange);
+    return () => window.removeEventListener('workerAvailabilityChanged', handleAvailabilityChange);
   }, [userEmail, token]);
 
   const toggleStatus = async () => {
     if (toggling) return;
     const newStatus = !isOnline;
     setIsOnline(newStatus);
+    localStorage.setItem('workerIsAvailable', newStatus ? 'true' : 'false');
+    // Also notify WorkerProfile if it's open on the same page
+    window.dispatchEvent(new CustomEvent('workerAvailabilityChanged', { detail: { isAvailable: newStatus } }));
 
     if (workerId) {
       try {

@@ -222,7 +222,7 @@ class ServiceSearchBar extends StatelessWidget {
   }
 }
 
-/// Category Card for trade selection
+/// Category Item matching modern circular design (Uber/Grab style)
 class CategoryCard extends StatelessWidget {
   final String title;
   final IconData icon;
@@ -234,69 +234,71 @@ class CategoryCard extends StatelessWidget {
     super.key,
     required this.title,
     required this.icon,
-    required this.count,
+    this.count = 0,
     this.isSelected = false,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: isSelected ? AppColors.primaryContainer : AppColors.surface,
+    return InkWell(
+      onTap: onTap,
       borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isSelected ? AppColors.brandYellow : AppColors.outlineVariant,
-              width: isSelected ? 1.8 : 1.0,
+      splashColor: Colors.transparent,
+      highlightColor: Colors.transparent,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            width: 66,
+            height: 66,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isSelected ? const Color(0xFFFEF08A) : const Color(0xFFF3F4F6),
+              border: Border.all(
+                color: isSelected ? AppColors.brandYellow : const Color(0xFFE5E7EB),
+                width: isSelected ? 2.0 : 0.8,
+              ),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: AppColors.brandYellow.withValues(alpha: 0.28),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ]
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+            ),
+            child: Center(
+              child: Icon(
+                icon,
+                color: isSelected ? const Color(0xFF18181B) : const Color(0xFF374151),
+                size: 28,
+              ),
             ),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: isSelected ? AppColors.brandYellow : AppColors.surfaceVariant,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  icon,
-                  color: isSelected ? AppColors.onPrimary : AppColors.onSurface,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                title,
-                style: GoogleFonts.dmSans(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                  color: AppColors.onSurface,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 2),
-              Text(
-                '$count Pros',
-                style: GoogleFonts.dmSans(
-                  fontWeight: FontWeight.w500,
-                  fontSize: 11,
-                  color: AppColors.onSurfaceVariant,
-                ),
-              ),
-            ],
+          const SizedBox(height: 8),
+          Text(
+            title,
+            style: GoogleFonts.dmSans(
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+              fontSize: 13,
+              color: isSelected ? AppColors.onSurface : const Color(0xFF374151),
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-        ),
+        ],
       ),
     );
   }
@@ -306,7 +308,7 @@ class CategoryCard extends StatelessWidget {
 class WorkerCard extends StatelessWidget {
   final String name;
   final String trade;
-  final double rating;
+  final double? rating;
   final int reviewCount;
   final String location;
   final String distance;
@@ -318,7 +320,7 @@ class WorkerCard extends StatelessWidget {
     super.key,
     required this.name,
     required this.trade,
-    required this.rating,
+    this.rating,
     required this.reviewCount,
     required this.location,
     required this.distance,
@@ -421,23 +423,42 @@ class WorkerCard extends StatelessWidget {
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    const Icon(Icons.star_rounded, size: 18, color: AppColors.starRating),
-                    const SizedBox(width: 4),
-                    Text(
-                      rating.toStringAsFixed(1),
-                      style: GoogleFonts.dmSans(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                        color: AppColors.onSurface,
+                    if (rating != null && rating! > 0) ...[
+                      const Icon(Icons.star_rounded, size: 18, color: AppColors.starRating),
+                      const SizedBox(width: 4),
+                      Text(
+                        rating!.toStringAsFixed(1),
+                        style: GoogleFonts.dmSans(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: AppColors.onSurface,
+                        ),
                       ),
-                    ),
-                    Text(
-                      ' ($reviewCount reviews)',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 12,
-                        color: AppColors.onSurfaceVariant,
+                      if (reviewCount > 0)
+                        Text(
+                          ' ($reviewCount reviews)',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 12,
+                            color: AppColors.onSurfaceVariant,
+                          ),
+                        ),
+                    ] else ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceVariant,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'New Pro',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.onSurfaceVariant,
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                     const Spacer(),
                     const Icon(Icons.location_on_outlined, size: 14, color: AppColors.onSurfaceVariant),
                     const SizedBox(width: 2),

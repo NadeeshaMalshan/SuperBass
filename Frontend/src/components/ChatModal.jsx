@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import './ChatModal.css';
 import { BACKEND_URL } from '../config.js';
+import { chatSignalR } from '../services/chatSignalR.js';
 
 const API_BASE_URL = `${BACKEND_URL}/api/conversations`;
 
@@ -51,19 +52,26 @@ export default function ChatModal({
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const textInputRef = useRef(null);
+  const typingTimerRef = useRef(null);
+  const typingDebounceRef = useRef(null);
 
   const currentUserEmail = localStorage.getItem('email') || 'resident@superbass.lk';
   const currentUserName = localStorage.getItem('userName') || 'You';
   const token = localStorage.getItem('token');
 
-  // Check recipient presence
+  // Check recipient presence initially & via SignalR
   useEffect(() => {
     if (!isOpen) return;
+
+    chatSignalR.connect(currentUserEmail);
+
+    const targetEmail = recipient.email || `${recipient.name?.toLowerCase().replace(/\s+/g, '') || 'worker'}@superbass.lk`;
+
     const checkPresence = async () => {
-      const targetEmail = recipient.email || `${recipient.name?.toLowerCase().replace(/\s+/g, '') || 'worker'}@superbass.lk`;
       try {
         const res = await axios.get(`${API_BASE_URL}/presence`, {
-          params: { userEmail: targetEmail }
+          params: { userEmail: targetEmail },
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
         if (res.data) {
           setIsOtherUserOnline(res.data.isOnline ?? true);
@@ -71,8 +79,18 @@ export default function ChatModal({
       } catch (e) {}
     };
     checkPresence();
-    const interval = setInterval(checkPresence, 4000);
-    return () => clearInterval(interval);
+
+    const unsubPresence = chatSignalR.on('UserPresenceChanged', (data) => {
+      const email = data?.userEmail ?? data?.UserEmail;
+      const isOnline = data?.isOnline ?? data?.IsOnline ?? false;
+      if (email?.toLowerCase() === targetEmail.toLowerCase()) {
+        setIsOtherUserOnline(isOnline);
+      }
+    });
+
+    return () => {
+      unsubPresence();
+    };
   }, [isOpen, recipient.email, recipient.name]);
 
   const scrollToBottom = () => {
@@ -82,6 +100,81 @@ export default function ChatModal({
   useEffect(() => {
     scrollToBottom();
   }, [messages, isTyping, showEmojiPicker]);
+
+  // Handle conversation room & SignalR live messaging
+  useEffect(() => {
+    if (!isOpen || !conversationId) return;
+
+    chatSignalR.joinConversation(conversationId);
+    chatSignalR.markMessagesAsRead(conversationId);
+
+    // Live Read Receipts
+    const unsubRead = chatSignalR.on('MessagesRead', (data) => {
+      const convId = data?.conversationId ?? data?.ConversationId;
+      if (convId === conversationId) {
+        setMessages(prev => prev.map(m => {
+          const isOutgoing = m.senderEmail?.toLowerCase() === currentUserEmail.toLowerCase();
+          if (isOutgoing && !m.isRead) {
+            return { ...m, isRead: true };
+          }
+          return m;
+        }));
+      }
+    });
+
+    // Live Incoming Messages
+    const unsubMsg = chatSignalR.on('ReceiveMessage', (msg) => {
+      if (!msg) return;
+      const convId = msg.conversationId || msg.ConversationId;
+      if (convId === conversationId) {
+        setMessages(prev => {
+          if (prev.some(m => m.id === msg.id)) return prev;
+          const localIdx = prev.findIndex(m =>
+            m.id?.toString().startsWith('temp-') &&
+            m.senderEmail?.toLowerCase() === msg.senderEmail?.toLowerCase() &&
+            m.content === msg.content
+          );
+          if (localIdx !== -1) {
+            const arr = [...prev];
+            arr[localIdx] = msg;
+            return arr;
+          }
+          return [...prev, msg];
+        });
+
+        if (msg.senderEmail?.toLowerCase() !== currentUserEmail.toLowerCase()) {
+          chatSignalR.markMessagesAsRead(conversationId);
+          axios.post(`${API_BASE_URL}/${conversationId}/read`, { readerEmail: currentUserEmail }, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+          }).catch(() => {});
+        }
+      }
+    });
+
+    // Live Typing Indicator
+    const unsubTyping = chatSignalR.on('UserTyping', (data) => {
+      const convId = data?.conversationId ?? data?.ConversationId;
+      const userEmail = data?.userEmail ?? data?.UserEmail;
+      const isUserTyping = data?.isTyping ?? data?.IsTyping ?? false;
+
+      if (convId === conversationId && userEmail?.toLowerCase() !== currentUserEmail.toLowerCase()) {
+        setIsTyping(isUserTyping);
+        if (isUserTyping) {
+          if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+          typingTimerRef.current = setTimeout(() => {
+            setIsTyping(false);
+          }, 3500);
+        }
+      }
+    });
+
+    return () => {
+      chatSignalR.leaveConversation(conversationId);
+      unsubRead();
+      unsubMsg();
+      unsubTyping();
+    };
+  }, [isOpen, conversationId]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -122,7 +215,7 @@ export default function ChatModal({
       if (conversationId) {
         loadMessages(conversationId, true);
       }
-    }, 3000);
+    }, 10000);
 
     return () => {
       isMounted = false;
@@ -141,7 +234,8 @@ export default function ChatModal({
         setMessages(res.data);
       }
 
-      // Mark incoming messages as read
+      // Mark incoming messages as read via SignalR and REST API
+      chatSignalR.markMessagesAsRead(convId);
       try {
         await axios.post(`${API_BASE_URL}/${convId}/read`, { readerEmail: currentUserEmail }, {
           headers: token ? { Authorization: `Bearer ${token}` } : {}
@@ -157,12 +251,11 @@ export default function ChatModal({
   const handleInputChange = (e) => {
     setInputText(e.target.value);
     if (conversationId) {
-      try {
-        axios.post(`${API_BASE_URL}/${conversationId}/typing`, {
-          userEmail: currentUserEmail,
-          isTyping: true
-        });
-      } catch (err) {}
+      chatSignalR.sendTyping(conversationId, true);
+      if (typingDebounceRef.current) clearTimeout(typingDebounceRef.current);
+      typingDebounceRef.current = setTimeout(() => {
+        chatSignalR.sendTyping(conversationId, false);
+      }, 2000);
     }
   };
 
@@ -172,6 +265,9 @@ export default function ChatModal({
 
     setIsSending(true);
     setShowEmojiPicker(false);
+
+    if (typingDebounceRef.current) clearTimeout(typingDebounceRef.current);
+    if (conversationId) chatSignalR.sendTyping(conversationId, false);
 
     const imageToClear = previewImage;
     const msgType = imageToClear ? 'Image' : 'Text';
