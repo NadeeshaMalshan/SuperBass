@@ -14,11 +14,12 @@ An enterprise-ready implementation of the [Model Context Protocol](https://model
   - [Option B: Postman Collection (Interactive UI)](#option-b-postman-collection-interactive-ui)
   - [Option C: PowerShell / Terminal (Direct JSON-RPC)](#option-c-powershell--terminal-direct-json-rpc)
   - [Option D: Connecting via Claude Desktop](#option-d-connecting-via-claude-desktop)
-- [Available Tools Reference (All 14 Tools)](#available-tools-reference-all-14-tools)
+- [Available Tools Reference (All 16 Tools)](#available-tools-reference-all-16-tools)
   - [Worker Management Tools (4)](#1-worker-management-tools)
   - [Booking Management Tools (5)](#2-booking-management-tools)
-  - [Community Tools (4)](#3-community-tools)
+  - [Community Tools (5)](#3-community-tools)
   - [Review Tools (1)](#4-review-tools)
+  - [User & Profile Tools (1)](#5-user--profile-tools)
 - [API Endpoints](#api-endpoints)
 - [Troubleshooting](#troubleshooting)
 
@@ -30,7 +31,7 @@ The MCP Server translates standardized AI tool calls into HTTP REST requests to 
 
 - **Protocol Version**: `2024-11-05`
 - **Supported Transport**: Standard HTTP POST (JSON-RPC 2.0)
-- **Total Registered Tools**: **14 Tools**
+- **Total Registered Tools**: **16 Tools**
 - **Default Port**: `8000`
 - **Backend API Port**: `5237` (or `5000`)
 
@@ -297,6 +298,12 @@ Soft-delete an existing community post (status updated to `"Removed"`).
   - `postId` *(integer/string, required)*: ID of the post to delete
   - `authorId` *(string, optional)*: Author ID or email for verification
 
+#### `get_user_community_posts`
+Retrieve all community posts published by a specific user.
+- **Backend Endpoint**: `GET /api/community-posts/user/{email}`
+- **Arguments**:
+  - `email` *(string, required)*: User email address or user ID (e.g., `"kpjmp28@gmail.com"`)
+
 ---
 
 ### 4. Review Tools
@@ -310,6 +317,17 @@ Submit a star rating and review comment for a completed booking.
   - `residentId` *(string, required)*: Reviewer resident ID or email
   - `rating` *(integer 1-5, required)*: Rating score
   - `comment` *(string, optional)*: Written review comment
+
+---
+
+### 5. User & Profile Tools
+
+#### `get_user_details`
+Retrieve comprehensive user profile details (role, resident profile, contact info, worker stats and skills if applicable) by email address.
+- **Backend Endpoints**: `GET /api/Residents/{email}` & `GET /api/workers/me?email={email}`
+- **Arguments**:
+  - `email` *(string, required)*: User email address (e.g., `"dampahalagevenuri@gmail.com"`, `"kpjmp28@gmail.com"`)
+- **Returns**: Unified user object including role (`"Worker"` or `"Resident"`), `isWorker`, contact details, resident profile, and full worker profile (if applicable) with password hashes securely stripped.
 
 ---
 
