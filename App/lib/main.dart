@@ -11,6 +11,7 @@ import 'screens/community_screen.dart';
 import 'screens/join_screen.dart';
 import 'screens/worker/worker_portal_screen.dart';
 import 'screens/worker/become_worker_sheet.dart';
+import 'screens/profile_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'services/api_config.dart';
@@ -138,7 +139,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
           const CommunityScreen(),
           if (isLoggedIn) const BookingsTabScreen(),
           if (isLoggedIn) const ChatsTabScreen(),
-          const AccountTabScreen(),
+          const ProfileScreen(),
         ];
 
         final List<M3BottomNavItem> navItems = [
@@ -177,7 +178,10 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
             : _currentIndex;
 
         return Scaffold(
-          body: pages[effectiveIndex],
+          body: IndexedStack(
+            index: effectiveIndex,
+            children: pages,
+          ),
           bottomNavigationBar: M3BottomNavigationBar(
             selectedIndex: effectiveIndex,
             items: navItems,

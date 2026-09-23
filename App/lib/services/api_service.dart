@@ -915,4 +915,36 @@ class ApiService {
       return false;
     }
   }
+
+  /// Update Profile: PUT /api/residents/{email}
+  Future<bool> updateProfile(String email, Map<String, dynamic> data) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/residents/${Uri.encodeComponent(email)}');
+      final response = await http.put(uri, headers: _headers, body: jsonEncode(data));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return true;
+      }
+      debugPrint('Failed to update profile: ${response.statusCode} - ${response.body}');
+      return false;
+    } catch (e) {
+      debugPrint('Error updating profile: $e');
+      return false;
+    }
+  }
+
+  /// Delete Profile: DELETE /api/residents/{email}
+  Future<bool> deleteProfile(String email) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/residents/${Uri.encodeComponent(email)}');
+      final response = await http.delete(uri, headers: _headers);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return true;
+      }
+      debugPrint('Failed to delete profile: ${response.statusCode} - ${response.body}');
+      return false;
+    } catch (e) {
+      debugPrint('Error deleting profile: $e');
+      return false;
+    }
+  }
 }
