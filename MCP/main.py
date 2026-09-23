@@ -1,10 +1,8 @@
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List, Union
 import json
 import asyncio
-from uuid import uuid4
 import os
 import httpx
 from dotenv import load_dotenv
@@ -486,32 +484,6 @@ async def handle_mcp(request: Request):
             },
             id=getattr(body, 'id', None) if 'body' in locals() else None
         )
-
-# Optional: SSE endpoint for MCP over HTTP+SSE
-@app.get("/mcp/sse")
-async def mcp_sse_endpoint(request: Request):
-    """
-    MCP Server-Sent Events endpoint.
-    This allows MCP clients to connect via SSE for real-time communication.
-    """
-    async def event_stream():
-        # Send initial connection event
-        yield f"data: {json.dumps({'type': 'connection', 'sessionId': str(uuid4())})}\n\n"
-
-        # Keep connection alive
-        while True:
-            # Check if client disconnected
-            if await request.is_disconnected():
-                break
-
-            # Send ping every 30 seconds
-            yield f"data: {json.dumps({'type': 'ping', 'timestamp': asyncio.get_event_loop().time()})}\n\n"
-            await asyncio.sleep(30)
-
-    return StreamingResponse(
-        event_stream(),
-        media_type="text/event-stream"
-    )
 
 @app.on_event("shutdown")
 async def shutdown_event():
