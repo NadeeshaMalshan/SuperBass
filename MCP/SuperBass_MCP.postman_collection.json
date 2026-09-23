@@ -1,0 +1,442 @@
+{
+  "info": {
+    "_postman_id": "a5e9b89c-43f1-4db8-b570-9f9b5a7a8d01",
+    "name": "SuperBass MCP Server",
+    "description": "Postman Collection for testing all Model Context Protocol (MCP) endpoints and backend bridge tools in SuperBass MCP server.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "worker_id",
+      "value": "13",
+      "type": "string"
+    },
+    {
+      "key": "resident_id",
+      "value": "kpjmp28@gmail.com",
+      "type": "string"
+    },
+    {
+      "key": "booking_id",
+      "value": "8",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Protocol & Discovery",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "MCP Initialize",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 1,\n  \"method\": \"initialize\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mcp",
+              "host": ["{{base_url}}"],
+              "path": ["mcp"]
+            }
+          }
+        },
+        {
+          "name": "MCP Tools List",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 2,\n  \"method\": \"tools/list\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mcp",
+              "host": ["{{base_url}}"],
+              "path": ["mcp"]
+            }
+          }
+        },
+        {
+          "name": "MCP Resources List",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 3,\n  \"method\": \"resources/list\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mcp",
+              "host": ["{{base_url}}"],
+              "path": ["mcp"]
+            }
+          }
+        },
+        {
+          "name": "MCP Resources Read",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 4,\n  \"method\": \"resources/read\",\n  \"params\": {\n    \"uri\": \"test://resource\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mcp",
+              "host": ["{{base_url}}"],
+              "path": ["mcp"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Worker Tools",
+      "item": [
+        {
+          "name": "Tool: search_workers",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"test-search-workers\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"search_workers\",\n    \"arguments\": {\n      \"query\": \"plumber\",\n      \"page\": 1,\n      \"pageSize\": 10\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mcp",
+              "host": ["{{base_url}}"],
+              "path": ["mcp"]
+            }
+          }
+        },
+        {
+          "name": "Tool: get_worker_details",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"test-worker-details\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"get_worker_details\",\n    \"arguments\": {\n      \"workerId\": \"{{worker_id}}\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mcp",
+              "host": ["{{base_url}}"],
+              "path": ["mcp"]
+            }
+          }
+        },
+        {
+          "name": "Tool: get_worker_performance",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"test-worker-perf\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"get_worker_performance\",\n    \"arguments\": {\n      \"workerId\": \"{{worker_id}}\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mcp",
+              "host": ["{{base_url}}"],
+              "path": ["mcp"]
+            }
+          }
+        },
+        {
+          "name": "Tool: check_worker_availability",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"test-check-avail\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"check_worker_availability\",\n    \"arguments\": {\n      \"workerId\": \"{{worker_id}}\",\n      \"startTime\": \"2026-09-25T09:00:00Z\",\n      \"endTime\": \"2026-09-25T11:00:00Z\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mcp",
+              "host": ["{{base_url}}"],
+              "path": ["mcp"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Booking Tools",
+      "item": [
+        {
+          "name": "Tool: create_booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"test-create-booking\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"create_booking\",\n    \"arguments\": {\n      \"workerId\": \"{{worker_id}}\",\n      \"residentId\": \"{{resident_id}}\",\n      \"startTime\": \"2026-09-25T10:00:00Z\",\n      \"endTime\": \"2026-09-25T12:00:00Z\",\n      \"notes\": \"Fix kitchen wiring and socket\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mcp",
+              "host": ["{{base_url}}"],
+              "path": ["mcp"]
+            }
+          }
+        },
+        {
+          "name": "Tool: get_booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"test-get-booking\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"get_booking\",\n    \"arguments\": {\n      \"bookingId\": \"{{booking_id}}\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mcp",
+              "host": ["{{base_url}}"],
+              "path": ["mcp"]
+            }
+          }
+        },
+        {
+          "name": "Tool: get_resident_bookings",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"test-resident-bookings\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"get_resident_bookings\",\n    \"arguments\": {\n      \"residentId\": \"{{resident_id}}\",\n      \"upcomingOnly\": false\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mcp",
+              "host": ["{{base_url}}"],
+              "path": ["mcp"]
+            }
+          }
+        },
+        {
+          "name": "Tool: reschedule_booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"test-reschedule-booking\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"reschedule_booking\",\n    \"arguments\": {\n      \"bookingId\": \"{{booking_id}}\",\n      \"startTime\": \"2026-09-26T14:00:00Z\",\n      \"endTime\": \"2026-09-26T16:00:00Z\",\n      \"reason\": \"Rescheduled for Saturday morning\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mcp",
+              "host": ["{{base_url}}"],
+              "path": ["mcp"]
+            }
+          }
+        },
+        {
+          "name": "Tool: create_worker_review",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"test-create-review\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"create_worker_review\",\n    \"arguments\": {\n      \"bookingId\": \"{{booking_id}}\",\n      \"workerId\": \"{{worker_id}}\",\n      \"residentId\": \"{{resident_id}}\",\n      \"rating\": 5,\n      \"comment\": \"Superb electrical work, very safe and prompt!\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mcp",
+              "host": ["{{base_url}}"],
+              "path": ["mcp"]
+            }
+          }
+        },
+        {
+          "name": "Tool: cancel_booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"test-cancel-booking\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"cancel_booking\",\n    \"arguments\": {\n      \"bookingId\": \"{{booking_id}}\",\n      \"reason\": \"Test workflow completed\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mcp",
+              "host": ["{{base_url}}"],
+              "path": ["mcp"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Community & Review Tools",
+      "item": [
+        {
+          "name": "Tool: create_community_post",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"test-create-post\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"create_community_post\",\n    \"arguments\": {\n      \"authorId\": \"{{resident_id}}\",\n      \"title\": \"Community Electrical Safety Workshop\",\n      \"content\": \"Hosting a quick safety walkthrough this weekend.\",\n      \"communityId\": \"Electrical\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mcp",
+              "host": ["{{base_url}}"],
+              "path": ["mcp"]
+            }
+          }
+        },
+        {
+          "name": "Tool: get_community_posts",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"test-get-posts\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"get_community_posts\",\n    \"arguments\": {\n      \"communityId\": \"Electrical\",\n      \"limit\": 5,\n      \"offset\": 0\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mcp",
+              "host": ["{{base_url}}"],
+              "path": ["mcp"]
+            }
+          }
+        },
+        {
+          "name": "Tool: update_community_post",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"test-update-post\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"update_community_post\",\n    \"arguments\": {\n      \"postId\": 6,\n      \"authorId\": \"{{resident_id}}\",\n      \"title\": \"Updated Workshop Title\",\n      \"content\": \"Updated details: workshop starts at 11 AM instead of 10 AM.\",\n      \"communityId\": \"Electrical\",\n      \"location\": \"Colombo\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mcp",
+              "host": ["{{base_url}}"],
+              "path": ["mcp"]
+            }
+          }
+        },
+        {
+          "name": "Tool: delete_community_post",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"test-delete-post\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"delete_community_post\",\n    \"arguments\": {\n      \"postId\": 6,\n      \"authorId\": \"{{resident_id}}\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mcp",
+              "host": ["{{base_url}}"],
+              "path": ["mcp"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
