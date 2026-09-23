@@ -9,6 +9,7 @@ import 'models/worker_model.dart';
 import 'screens/chat_screen.dart';
 import 'screens/community_screen.dart';
 import 'screens/join_screen.dart';
+import 'screens/profile_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'services/api_config.dart';
@@ -125,7 +126,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
           const CommunityScreen(),
           if (isLoggedIn) const BookingsTabScreen(),
           if (isLoggedIn) const ChatsTabScreen(),
-          const AccountTabScreen(),
+          const ProfileScreen(),
         ];
 
         final List<NavigationDestination> destinations = [
@@ -164,7 +165,10 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
             : _currentIndex;
 
         return Scaffold(
-          body: pages[effectiveIndex],
+          body: IndexedStack(
+            index: effectiveIndex,
+            children: pages,
+          ),
           bottomNavigationBar: NavigationBar(
             selectedIndex: effectiveIndex,
             onDestinationSelected: (index) {
@@ -1636,232 +1640,4 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
   }
 }
 
-/// 5. ACCOUNT TAB
-class AccountTabScreen extends StatelessWidget {
-  const AccountTabScreen({super.key});
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'My Profile',
-          style: GoogleFonts.dmSans(fontWeight: FontWeight.w800),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            Center(
-              child: ValueListenableBuilder<AuthUser?>(
-                valueListenable: AuthService().currentUserNotifier,
-                builder: (context, user, _) {
-                  final displayName = user?.name.isNotEmpty == true
-                      ? user!.name
-                      : 'Guest User';
-                  final initial = displayName.isNotEmpty
-                      ? displayName[0].toUpperCase()
-                      : 'G';
-                  final role = user?.activeRole ?? 'Guest';
-                  final email = user?.email ?? 'Not signed in';
-
-                  return Column(
-                    children: [
-                      Container(
-                        width: 96,
-                        height: 96,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.primaryContainer,
-                          border: Border.all(color: AppColors.brandYellow, width: 3),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.brandYellow.withValues(alpha: 0.3),
-                              blurRadius: 16,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: ClipOval(
-                          child: (user?.picture != null && user!.picture!.isNotEmpty)
-                              ? Image.network(
-                                  user.picture!,
-                                  width: 96,
-                                  height: 96,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) => Center(
-                                    child: Text(
-                                      initial,
-                                      style: GoogleFonts.dmSans(
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 36,
-                                        color: AppColors.onPrimaryContainer,
-                                      ),
-                                    ),
-                                  ),
-                                )
-                              : Center(
-                                  child: Text(
-                                    initial,
-                                    style: GoogleFonts.dmSans(
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 36,
-                                      color: AppColors.onPrimaryContainer,
-                                    ),
-                                  ),
-                                ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        displayName,
-                        style: GoogleFonts.dmSans(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 20,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '$role • $email',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 14,
-                          color: AppColors.onSurfaceVariant,
-                        ),
-                      ),
-                      if (user == null) ...[
-                        const SizedBox(height: 12),
-                        ElevatedButton.icon(
-                          onPressed: () =>
-                              Navigator.pushNamed(context, '/join'),
-                          icon: const Icon(Icons.login_rounded, size: 18),
-                          label: const Text('Sign In / Join'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.brandYellow,
-                            foregroundColor: Colors.black,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 32),
-
-            // Worker Portal Card
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: AppColors.onPrimary,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.handyman_rounded,
-                    color: AppColors.brandYellow,
-                    size: 28,
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Switch to Worker Mode',
-                          style: GoogleFonts.dmSans(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Offer your skills and get jobs in your area.',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 12,
-                            color: Colors.white70,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    color: Colors.white,
-                    size: 16,
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            _buildSettingsTile(
-              icon: Icons.edit_outlined,
-              title: 'Edit Profile',
-            ),
-            _buildSettingsTile(
-              icon: Icons.location_on_outlined,
-              title: 'Saved Addresses',
-            ),
-
-            _buildSettingsTile(
-              icon: Icons.security_outlined,
-              title: 'Privacy & Security',
-            ),
-            _buildSettingsTile(
-              icon: Icons.help_outline_rounded,
-              title: 'Help & Support',
-            ),
-            _buildSettingsTile(
-              icon: Icons.logout_rounded,
-              title: 'Sign Out',
-              isDestructive: true,
-              onTap: () async {
-                await AuthService().logout();
-                if (context.mounted) {
-                  Navigator.of(
-                    context,
-                  ).pushNamedAndRemoveUntil('/join', (route) => false);
-                }
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSettingsTile({
-    required IconData icon,
-    required String title,
-    bool isDestructive = false,
-    VoidCallback? onTap,
-  }) {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      leading: Icon(
-        icon,
-        color: isDestructive ? AppColors.error : AppColors.onSurface,
-      ),
-      title: Text(
-        title,
-        style: GoogleFonts.dmSans(
-          fontWeight: FontWeight.w600,
-          color: isDestructive ? AppColors.error : AppColors.onSurface,
-        ),
-      ),
-      trailing: const Icon(
-        Icons.arrow_forward_ios_rounded,
-        size: 14,
-        color: AppColors.outline,
-      ),
-      onTap: onTap ?? () {},
-    );
-  }
-}

@@ -44,8 +44,6 @@ dependencies:
   onesignal_flutter: ^5.2.8
   image_picker: ^1.1.2
 
->>>>>>> 33f802be3492c7857171321f9df6122ad391a943
-
 dev_dependencies:
   flutter_test:
     sdk: flutter
