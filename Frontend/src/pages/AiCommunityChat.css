@@ -24,7 +24,7 @@
 }
 
 .ai-chat-main {
-  max-width: 980px;
+  max-width: 1140px;
   width: 100%;
   margin: 0 auto;
   padding: 1.25rem 1rem 2rem;
@@ -38,7 +38,7 @@
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 14px;
-  padding: 18px 24px;
+  padding: 16px 22px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
   margin-bottom: 1rem;
   display: flex;
@@ -55,8 +55,8 @@
 }
 
 .ai-chat-bot-icon {
-  width: 46px;
-  height: 46px;
+  width: 44px;
+  height: 44px;
   border-radius: 12px;
   background: #fef3c7;
   border: 1.5px solid #FDC101;
@@ -64,19 +64,19 @@
   align-items: center;
   justify-content: center;
   color: #b45309;
-  font-size: 1.45rem;
+  font-size: 1.35rem;
   box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);
 }
 
 .ai-chat-title-text h2 {
-  font-size: 1.2rem;
+  font-size: 1.15rem;
   font-weight: 700;
   color: #0f172a;
   margin: 0 0 2px 0;
 }
 
 .ai-chat-title-text p {
-  font-size: 0.825rem;
+  font-size: 0.8rem;
   color: #64748b;
   margin: 0;
 }
@@ -115,7 +115,133 @@
   box-shadow: 0 0 6px #22c55e;
 }
 
-/* Chat History Container */
+/* -----------------------------------------------------------
+   Multi-Chat Two-Column Layout (Sidebar + Chat Thread)
+----------------------------------------------------------- */
+.ai-chat-layout {
+  display: flex;
+  gap: 16px;
+  flex: 1;
+  min-height: 520px;
+}
+
+/* Conversations Sidebar */
+.ai-conversations-sidebar {
+  width: 260px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.ai-new-chat-btn {
+  background: #FDC101;
+  color: #0f172a;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 0.885rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(253, 193, 1, 0.25);
+  transition: all 0.2s ease;
+}
+
+.ai-new-chat-btn:hover {
+  background: #eab308;
+  transform: translateY(-1px);
+}
+
+.ai-sidebar-heading {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+}
+
+.ai-conv-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  max-height: 480px;
+  flex: 1;
+}
+
+.ai-conv-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ai-conv-item:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.ai-conv-item.active {
+  background: #fffbeb;
+  border-color: #FDC101;
+  box-shadow: 0 1px 4px rgba(253, 193, 1, 0.2);
+}
+
+.ai-conv-item-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ai-conv-item-title {
+  font-size: 0.845rem;
+  font-weight: 600;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ai-conv-item-date {
+  font-size: 0.7rem;
+  color: #94a3b8;
+}
+
+.ai-conv-delete-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  opacity: 0.6;
+  transition: all 0.15s ease;
+}
+
+.ai-conv-delete-btn:hover {
+  color: #ef4444;
+  opacity: 1;
+  background: #fee2e2;
+}
+
+/* Chat History Thread Container */
 .ai-chat-thread-container {
   background: #ffffff;
   border: 1px solid #e2e8f0;
@@ -124,7 +250,7 @@
   display: flex;
   flex-direction: column;
   flex: 1;
-  min-height: 480px;
+  min-height: 520px;
   overflow: hidden;
 }
 
@@ -135,7 +261,7 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
-  max-height: 60vh;
+  max-height: 58vh;
 }
 
 /* Message Rows */
@@ -334,4 +460,15 @@
 
 .ai-clear-btn:hover {
   color: #ef4444;
+}
+
+/* Responsive adjustments */
+@media (max-width: 860px) {
+  .ai-chat-layout {
+    flex-direction: column;
+  }
+  .ai-conversations-sidebar {
+    width: 100%;
+    max-height: 220px;
+  }
 }
