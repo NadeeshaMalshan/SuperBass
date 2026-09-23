@@ -117,5 +117,17 @@ def main():
             "authorId": "kpjmp28@gmail.com"
         })
 
+    test_tool("get_user_community_posts", {
+        "email": "kpjmp28@gmail.com"
+    })
+
+    print("\n=== 4. TESTING USER & PROFILE TOOLS ===")
+    test_tool("get_user_details", {
+        "email": "dampahalagevenuri@gmail.com"
+    })
+    test_tool("get_user_details", {
+        "email": "kpjmp28@gmail.com"
+    })
+
 if __name__ == "__main__":
     main()
