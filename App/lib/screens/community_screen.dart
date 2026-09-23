@@ -11,7 +11,8 @@ import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
 
 class CommunityScreen extends StatefulWidget {
-  const CommunityScreen({super.key});
+  final bool isWorkerMode;
+  const CommunityScreen({super.key, this.isWorkerMode = false});
 
   @override
   State<CommunityScreen> createState() => _CommunityScreenState();
@@ -700,10 +701,12 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.brandYellow,
-        foregroundColor: Colors.black,
-        elevation: 4,
+      floatingActionButton: Padding(
+        padding: EdgeInsets.only(bottom: widget.isWorkerMode ? 74.0 : 0.0),
+        child: FloatingActionButton.extended(
+          backgroundColor: widget.isWorkerMode ? const Color(0xFF2563EB) : AppColors.brandYellow,
+          foregroundColor: widget.isWorkerMode ? Colors.white : Colors.black,
+          elevation: 4,
         onPressed: () {
           if (AuthService().currentUser == null) {
             Navigator.pushNamed(context, '/join');
@@ -717,7 +720,8 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
           style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 15),
         ),
       ),
-      body: TabBarView(
+    ),
+    body: TabBarView(
         controller: _tabController,
         children: [
           _buildFeedView(_allPosts, currentUser),
@@ -731,7 +735,7 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
     return RefreshIndicator(
       onRefresh: _fetchPosts,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.fromLTRB(16, 16, 16, widget.isWorkerMode ? 96 : 16),
         children: [
           // Banner
           Container(
