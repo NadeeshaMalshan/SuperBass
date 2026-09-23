@@ -464,6 +464,332 @@ class ApiService {
     }
   }
 
+  // ==========================================
+  // WORKER MANAGEMENT API ENDPOINTS
+  // ==========================================
+
+  /// Get current user's worker profile: GET /api/workers/me?email=...
+  Future<WorkerModel?> fetchMyWorkerProfile(String email) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/workers/me').replace(
+        queryParameters: {'email': email},
+      );
+      debugPrint('Fetching worker profile from: $uri');
+      final response = await http.get(uri, headers: _headers);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        if (data is Map<String, dynamic> && data['worker'] != null) {
+          return WorkerModel.fromJson(data['worker'] as Map<String, dynamic>);
+        }
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error fetching worker profile: $e');
+      return null;
+    }
+  }
+
+  /// Get worker performance analytics: GET /api/workers/{id}/performance
+  Future<Map<String, dynamic>?> fetchWorkerPerformance(int workerId) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/workers/$workerId/performance');
+      final response = await http.get(uri, headers: _headers);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error fetching worker performance: $e');
+      return null;
+    }
+  }
+
+  /// Accept a booking request: POST /api/bookings/{id}/accept
+  Future<BookingModel?> acceptBooking(int bookingId) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/bookings/$bookingId/accept');
+      final response = await http.post(uri, headers: _headers, body: jsonEncode({}));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        return BookingModel.fromJson(data as Map<String, dynamic>);
+      }
+      debugPrint('Failed to accept booking (${response.statusCode}): ${response.body}');
+      return null;
+    } catch (e) {
+      debugPrint('Error accepting booking: $e');
+      return null;
+    }
+  }
+
+  /// Reject / Decline a booking request: POST /api/bookings/{id}/reject
+  Future<BookingModel?> rejectBooking(int bookingId, {String? reason}) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/bookings/$bookingId/reject');
+      final response = await http.post(
+        uri,
+        headers: _headers,
+        body: jsonEncode({'reason': reason ?? 'Worker schedule unavailable'}),
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        return BookingModel.fromJson(data as Map<String, dynamic>);
+      }
+      debugPrint('Failed to reject booking (${response.statusCode}): ${response.body}');
+      return null;
+    } catch (e) {
+      debugPrint('Error rejecting booking: $e');
+      return null;
+    }
+  }
+
+  /// Mark booking as started (in progress): POST /api/bookings/{id}/start
+  Future<BookingModel?> startBooking(int bookingId) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/bookings/$bookingId/start');
+      final response = await http.post(uri, headers: _headers, body: jsonEncode({}));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        return BookingModel.fromJson(data as Map<String, dynamic>);
+      }
+      debugPrint('Failed to start booking (${response.statusCode}): ${response.body}');
+      return null;
+    } catch (e) {
+      debugPrint('Error starting booking: $e');
+      return null;
+    }
+  }
+
+  /// Mark booking as completed: POST /api/bookings/{id}/complete
+  Future<BookingModel?> completeBooking(int bookingId) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/bookings/$bookingId/complete');
+      final response = await http.post(uri, headers: _headers, body: jsonEncode({}));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        return BookingModel.fromJson(data as Map<String, dynamic>);
+      }
+      debugPrint('Failed to complete booking (${response.statusCode}): ${response.body}');
+      return null;
+    } catch (e) {
+      debugPrint('Error completing booking: $e');
+      return null;
+    }
+  }
+
+  /// Reschedule a booking: POST /api/bookings/{id}/reschedule
+  Future<BookingModel?> rescheduleBooking(
+    int bookingId, {
+    required DateTime newScheduledDate,
+    String? rescheduleNote,
+    String rescheduledBy = 'Worker',
+  }) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/bookings/$bookingId/reschedule');
+      final response = await http.post(
+        uri,
+        headers: _headers,
+        body: jsonEncode({
+          'newScheduledDate': newScheduledDate.toIso8601String(),
+          'rescheduleNote': rescheduleNote ?? '',
+          'rescheduledBy': rescheduledBy,
+        }),
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        return BookingModel.fromJson(data as Map<String, dynamic>);
+      }
+      debugPrint('Failed to reschedule booking (${response.statusCode}): ${response.body}');
+      return null;
+    } catch (e) {
+      debugPrint('Error rescheduling booking: $e');
+      return null;
+    }
+  }
+
+  /// Update Worker Availability & Schedule: PUT /api/workers/{id}/availability
+  Future<bool> updateWorkerAvailability(
+    int workerId, {
+    required bool isAvailable,
+    String? scheduleJson,
+  }) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/workers/$workerId/availability');
+      final payload = <String, dynamic>{
+        'isAvailable': isAvailable,
+      };
+      if (scheduleJson != null) {
+        payload['scheduleJson'] = scheduleJson;
+      }
+      final response = await http.put(
+        uri,
+        headers: _headers,
+        body: jsonEncode(payload),
+      );
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (e) {
+      debugPrint('Error updating worker availability: $e');
+      return false;
+    }
+  }
+
+  /// Update Worker Pricing: PUT /api/workers/{id}/pricing
+  Future<bool> updateWorkerPricing(
+    int workerId, {
+    required String pricingModel,
+    double? hourlyRate,
+    double? dailyRate,
+  }) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/workers/$workerId/pricing');
+      final response = await http.put(
+        uri,
+        headers: _headers,
+        body: jsonEncode({
+          'pricingModel': pricingModel,
+          'hourlyRate': hourlyRate ?? 0.0,
+          'dailyRate': dailyRate ?? 0.0,
+        }),
+      );
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (e) {
+      debugPrint('Error updating worker pricing: $e');
+      return false;
+    }
+  }
+
+  /// Update Worker Service Area: PUT /api/workers/{id}/service-area
+  Future<bool> updateWorkerServiceArea(
+    int workerId, {
+    required String serviceArea,
+    required double radiusKm,
+  }) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/workers/$workerId/service-area');
+      final response = await http.put(
+        uri,
+        headers: _headers,
+        body: jsonEncode({
+          'serviceArea': serviceArea,
+          'radiusKm': radiusKm,
+        }),
+      );
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (e) {
+      debugPrint('Error updating worker service area: $e');
+      return false;
+    }
+  }
+
+  /// Update Worker Password: PUT /api/workers/{id}/password
+  Future<bool> updateWorkerPassword(int workerId, String newPassword) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/workers/$workerId/password');
+      final response = await http.put(
+        uri,
+        headers: _headers,
+        body: jsonEncode({'newPassword': newPassword}),
+      );
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (e) {
+      debugPrint('Error updating worker password: $e');
+      return false;
+    }
+  }
+
+  /// Add Worker Skill: POST /api/workers/{id}/skills
+  Future<WorkerSkillItem?> addWorkerSkill(
+    int workerId, {
+    required String skillName,
+    int experienceYears = 1,
+  }) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/workers/$workerId/skills');
+      final response = await http.post(
+        uri,
+        headers: _headers,
+        body: jsonEncode({
+          'skillName': skillName,
+          'experienceYears': experienceYears,
+        }),
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        return WorkerSkillItem.fromJson(data as Map<String, dynamic>);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error adding worker skill: $e');
+      return null;
+    }
+  }
+
+  /// Remove Worker Skill: DELETE /api/workers/{id}/skills/{skillId}
+  Future<bool> removeWorkerSkill(int workerId, int skillId) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/workers/$workerId/skills/$skillId');
+      final response = await http.delete(uri, headers: _headers);
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (e) {
+      debugPrint('Error removing worker skill: $e');
+      return false;
+    }
+  }
+
+  /// Revert Worker profile back to Resident: DELETE /api/workers/revert-to-resident?email=...
+  Future<bool> revertToResident(String email) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/workers/revert-to-resident').replace(
+        queryParameters: {'email': email},
+      );
+      final response = await http.delete(uri, headers: _headers);
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (e) {
+      debugPrint('Error reverting worker to resident: $e');
+      return false;
+    }
+  }
+
+  /// Upgrade Resident to Worker: POST /api/workers/become-worker
+  Future<WorkerModel?> becomeWorker({
+    required String email,
+    required String description,
+    required String primaryServiceArea,
+    required double coverageRadiusKm,
+    required String pricingModel,
+    double? hourlyRate,
+    double? dailyRate,
+    required List<Map<String, dynamic>> skills,
+  }) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/workers/become-worker');
+      final response = await http.post(
+        uri,
+        headers: _headers,
+        body: jsonEncode({
+          'email': email,
+          'description': description,
+          'primaryServiceArea': primaryServiceArea,
+          'coverageRadiusKm': coverageRadiusKm,
+          'pricingModel': pricingModel,
+          'hourlyRate': hourlyRate ?? 0.0,
+          'dailyRate': dailyRate ?? 0.0,
+          'skills': skills,
+        }),
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        if (data is Map<String, dynamic> && data['worker'] != null) {
+          return WorkerModel.fromJson(data['worker'] as Map<String, dynamic>);
+        }
+      }
+      debugPrint('Failed to become worker (${response.statusCode}): ${response.body}');
+      return null;
+    } catch (e) {
+      debugPrint('Error becoming worker: $e');
+      return null;
+    }
+  }
+
   /// 5. Fetch user conversations: GET /api/conversations?userEmail=...
   Future<List<Map<String, dynamic>>> fetchConversations(String userEmail) async {
     try {

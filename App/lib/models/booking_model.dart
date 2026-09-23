@@ -11,10 +11,20 @@ class BookingModel {
   final String urgency;
   final DateTime? scheduledDate;
   final String locationAddress;
+  final String? contactPhone;
   final String pricingModel;
   final double estimatedPrice;
+  final double? agreedPrice;
   final String status;
   final String? rejectionReason;
+  final String? cancellationReason;
+  final double? reviewRating;
+  final int? qualityRating;
+  final int? punctualityRating;
+  final int? communicationRating;
+  final String? reviewComment;
+  final DateTime? reviewedAt;
+  final int? conversationId;
   final DateTime createdAt;
 
   BookingModel({
@@ -30,10 +40,20 @@ class BookingModel {
     this.urgency = 'Medium',
     this.scheduledDate,
     this.locationAddress = 'Colombo',
+    this.contactPhone,
     this.pricingModel = 'Hourly',
     this.estimatedPrice = 0.0,
+    this.agreedPrice,
     this.status = 'Pending',
     this.rejectionReason,
+    this.cancellationReason,
+    this.reviewRating,
+    this.qualityRating,
+    this.punctualityRating,
+    this.communicationRating,
+    this.reviewComment,
+    this.reviewedAt,
+    this.conversationId,
     required this.createdAt,
   });
 
@@ -51,11 +71,25 @@ class BookingModel {
       urgency: json['urgency'] as String? ?? 'Medium',
       scheduledDate: json['scheduledDate'] != null ? DateTime.tryParse(json['scheduledDate'].toString()) : null,
       locationAddress: json['locationAddress'] as String? ?? 'Colombo',
+      contactPhone: json['contactPhone'] as String?,
       pricingModel: json['pricingModel'] as String? ?? 'Hourly',
       estimatedPrice: (json['estimatedPrice'] as num?)?.toDouble() ?? 0.0,
+      agreedPrice: (json['agreedPrice'] as num?)?.toDouble(),
       status: json['status'] as String? ?? 'Pending',
       rejectionReason: json['rejectionReason'] as String?,
-      createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now() : DateTime.now(),
+      cancellationReason: json['cancellationReason'] as String?,
+      reviewRating: (json['reviewRating'] as num?)?.toDouble(),
+      qualityRating: json['qualityRating'] as int?,
+      punctualityRating: json['punctualityRating'] as int?,
+      communicationRating: json['communicationRating'] as int?,
+      reviewComment: json['reviewComment'] as String?,
+      reviewedAt: json['reviewedAt'] != null ? DateTime.tryParse(json['reviewedAt'].toString()) : null,
+      conversationId: json['conversationId'] is int
+          ? json['conversationId']
+          : int.tryParse(json['conversationId']?.toString() ?? ''),
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
+          : DateTime.now(),
     );
   }
 
@@ -73,10 +107,20 @@ class BookingModel {
       'urgency': urgency,
       'scheduledDate': scheduledDate?.toIso8601String(),
       'locationAddress': locationAddress,
+      'contactPhone': contactPhone,
       'pricingModel': pricingModel,
       'estimatedPrice': estimatedPrice,
+      'agreedPrice': agreedPrice,
       'status': status,
       'rejectionReason': rejectionReason,
+      'cancellationReason': cancellationReason,
+      'reviewRating': reviewRating,
+      'qualityRating': qualityRating,
+      'punctualityRating': punctualityRating,
+      'communicationRating': communicationRating,
+      'reviewComment': reviewComment,
+      'reviewedAt': reviewedAt?.toIso8601String(),
+      'conversationId': conversationId,
       'createdAt': createdAt.toIso8601String(),
     };
   }
