@@ -3,9 +3,40 @@ Community and User Management Tools backed by SuperBass MCP Server.
 Each LangChain tool routes its execution through JSON-RPC 2.0 to the MCP Server.
 """
 
-from typing import Optional, Dict, Any, Union
+from typing import Optional, Dict, Any, Union, List
 from langchain_core.tools import tool
 from agent_backend.tools.mcp_client import mcp_client
+
+
+def sanitize_payload(obj: Any) -> Any:
+    """
+    Recursively strips large base64 data URLs, raw image blobs, and giant strings
+    from tool outputs before passing them into the LLM context.
+    Prevents token rate limit spikes (TPM 429 errors).
+    """
+    if isinstance(obj, list):
+        return [sanitize_payload(item) for item in obj]
+    elif isinstance(obj, dict):
+        sanitized = {}
+        for k, v in obj.items():
+            if k in ("images", "imageUrls") and isinstance(v, list):
+                sanitized[k] = [
+                    img if (isinstance(img, str) and img.startswith("http") and len(img) < 300)
+                    else "[image_attached]"
+                    for img in v
+                ]
+                sanitized["imagesCount"] = len(v)
+            elif k in ("images", "image", "userAvatar", "avatar", "profilePicture") and isinstance(v, str):
+                if v.startswith("data:") or len(v) > 250:
+                    sanitized[k] = "[image_attached]" if k != "userAvatar" else "[avatar_attached]"
+                else:
+                    sanitized[k] = v
+            elif isinstance(v, str) and (v.startswith("data:image") or (len(v) > 500 and "base64" in v[:60])):
+                sanitized[k] = "[image_data_truncated]"
+            else:
+                sanitized[k] = sanitize_payload(v)
+        return sanitized
+    return obj
 
 
 @tool
@@ -34,7 +65,8 @@ async def create_community_post(
         "communityId": communityId or "General",
         "location": location or "Colombo"
     }
-    return await mcp_client.call_tool("create_community_post", args)
+    raw = await mcp_client.call_tool("create_community_post", args)
+    return sanitize_payload(raw)
 
 
 @tool
@@ -60,7 +92,8 @@ async def get_community_posts(
     if offset is not None:
         args["offset"] = offset
 
-    return await mcp_client.call_tool("get_community_posts", args)
+    raw = await mcp_client.call_tool("get_community_posts", args)
+    return sanitize_payload(raw)
 
 
 @tool
@@ -94,7 +127,8 @@ async def update_community_post(
     if authorId:
         args["authorId"] = authorId
 
-    return await mcp_client.call_tool("update_community_post", args)
+    raw = await mcp_client.call_tool("update_community_post", args)
+    return sanitize_payload(raw)
 
 
 @tool
@@ -116,7 +150,8 @@ async def delete_community_post(
     if authorId:
         args["authorId"] = authorId
 
-    return await mcp_client.call_tool("delete_community_post", args)
+    raw = await mcp_client.call_tool("delete_community_post", args)
+    return sanitize_payload(raw)
 
 
 @tool
@@ -131,7 +166,8 @@ async def get_user_community_posts(
     - email (string, required): User email address or user ID (e.g., 'kpjmp28@gmail.com')
     """
     args = {"email": str(email).strip()}
-    return await mcp_client.call_tool("get_user_community_posts", args)
+    raw = await mcp_client.call_tool("get_user_community_posts", args)
+    return sanitize_payload(raw)
 
 
 @tool
@@ -147,7 +183,8 @@ async def get_user_details(
     Returns: Unified user object including role ('Worker' or 'Resident'), isWorker, contact details, resident profile, and full worker profile (if applicable) with password hashes securely stripped.
     """
     args = {"email": str(email).strip()}
-    return await mcp_client.call_tool("get_user_details", args)
+    raw = await mcp_client.call_tool("get_user_details", args)
+    return sanitize_payload(raw)
 
 
 COMMUNITY_TOOLS = [

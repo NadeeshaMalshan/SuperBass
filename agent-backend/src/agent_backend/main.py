@@ -146,15 +146,22 @@ async def chat_endpoint(request: ChatRequest):
     )
 
     try:
-        # 1. Retrieve any prior messages from Neon DB to supply conversational context if resuming
+        # 1. Retrieve prior messages from Neon DB to supply bounded conversational context
         history_msgs = []
         try:
             db_messages = await chat_repository.get_conversation_messages(conv_id)
-            for m in db_messages:
+            # Safe context window: take the most recent 8 messages (4 turns)
+            recent_db_messages = db_messages[-8:] if len(db_messages) > 8 else db_messages
+            for m in recent_db_messages:
+                msg_content = str(m.get("message", "") or "")
+                # Prevent legacy bloated messages from expanding context
+                if len(msg_content) > 1200:
+                    msg_content = msg_content[:1200] + "... [truncated]"
+
                 if m.get("sender") == "user":
-                    history_msgs.append(HumanMessage(content=m.get("message", "")))
+                    history_msgs.append(HumanMessage(content=msg_content))
                 elif m.get("sender") == "assistant":
-                    history_msgs.append(AIMessage(content=m.get("message", "")))
+                    history_msgs.append(AIMessage(content=msg_content))
         except Exception as e:
             logger.warning(f"Could not load DB history for {conv_id}: {e}")
 
@@ -169,8 +176,9 @@ async def chat_endpoint(request: ChatRequest):
             "metadata": request.metadata or {}
         }
 
-        # 3. Thread configuration for LangGraph checkpointer state persistence
-        thread_config = {"configurable": {"thread_id": conv_id}}
+        # 3. Thread configuration for LangGraph (per-turn execution ID to prevent duplicate append)
+        turn_thread_id = f"{conv_id}-{uuid.uuid4().hex[:6]}"
+        thread_config = {"configurable": {"thread_id": turn_thread_id}}
 
         # 4. Execute LangGraph workflow
         final_state = await graph.ainvoke(initial_state, config=thread_config)
