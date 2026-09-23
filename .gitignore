@@ -20,6 +20,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.log
+*.egg-info/
+.venv/
+.pytest_cache/
 
 # ------------------------------------------
 # React / Node / Vite / Webpack

@@ -5,6 +5,7 @@ import './Community.css';
 import categoriesData from './data/categories.json';
 import ChatModal from './components/ChatModal.jsx';
 import UserMenu from './components/UserMenu.jsx';
+import AiAssistantWidget from './components/AiAssistantWidget.jsx';
 
 // Material 3 Web Components
 import '@material/web/button/filled-button.js';
@@ -435,6 +436,22 @@ export default function Community() {
 
         {/* Nav Actions */}
         <div className="nav-actions" style={{ display: 'flex', alignItems: 'center' }}>
+          <md-filled-button
+            onClick={() => navigate('/ai-chat')}
+            style={{
+              '--md-sys-color-primary': '#fef3c7',
+              '--md-sys-color-on-primary': '#92400e',
+              border: '1.5px solid #FDC101',
+              padding: '0 16px',
+              minWidth: '130px',
+              margin: '0 8px',
+              fontWeight: 700
+            }}
+          >
+            <i className="fa-solid fa-wand-magic-sparkles" style={{ marginRight: '6px', color: '#b45309' }}></i>
+            AI Assistant
+          </md-filled-button>
+
           <md-filled-button
             onClick={() => navigate('/find')}
             style={{
@@ -1296,6 +1313,9 @@ export default function Community() {
         recipient={chatRecipient}
         postContext={chatPostContext}
       />
+
+      {/* Floating AI Assistant Widget */}
+      <AiAssistantWidget />
     </div>
   );
 }
