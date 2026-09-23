@@ -435,6 +435,53 @@
               "path": ["mcp"]
             }
           }
+        },
+        {
+          "name": "Tool: get_user_community_posts",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"test-get-user-posts\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"get_user_community_posts\",\n    \"arguments\": {\n      \"email\": \"{{resident_id}}\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mcp",
+              "host": ["{{base_url}}"],
+              "path": ["mcp"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. User & Profile Tools",
+      "item": [
+        {
+          "name": "Tool: get_user_details",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"test-user-details\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"get_user_details\",\n    \"arguments\": {\n      \"email\": \"{{resident_id}}\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mcp",
+              "host": ["{{base_url}}"],
+              "path": ["mcp"]
+            }
+          }
         }
       ]
     }
