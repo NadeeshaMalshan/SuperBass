@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import './App.css';
 import UserMenu from './components/UserMenu.jsx';
+import AiAssistantWidget from './components/AiAssistantWidget.jsx';
 
 // Google Material 3 Web Components
 import '@material/web/button/filled-button.js';
@@ -88,8 +89,11 @@ export default function App() {
         <ul className="nav-links">
           <li className="nav-link" onClick={() => navigate('/find')}>Services</li>
           <li className="nav-link" onClick={() => navigate('/community')}>Community</li>
+          <li className="nav-link" onClick={() => navigate('/ai-chat')} style={{ color: '#b45309', fontWeight: 600 }}>
+            <i className="fa-solid fa-wand-magic-sparkles" style={{ marginRight: '5px', color: '#f59e0b' }}></i>
+            AI Assistant
+          </li>
           <li className="nav-link">How it Works</li>
-          <li className="nav-link">AI Diagnostic</li>
           <li className="nav-link">For Baas / Pros</li>
         </ul>
 
@@ -260,6 +264,9 @@ export default function App() {
           </div>
         </div>
       </section>
+
+      {/* Floating AI Assistant Widget */}
+      <AiAssistantWidget />
     </div>
   );
 }

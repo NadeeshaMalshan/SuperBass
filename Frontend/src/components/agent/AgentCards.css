@@ -1,0 +1,293 @@
+/* SuperBass Agent UI Cards Styling - Matches Community and App Theme */
+
+.agent-card-container {
+  margin-top: 10px;
+  width: 100%;
+  animation: fadeInCard 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeInCard {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Base Card Style */
+.agent-base-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px 18px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.agent-base-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+}
+
+/* Card Header */
+.agent-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.agent-card-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+}
+
+.agent-card-badge.success {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.agent-card-badge.category {
+  background: #fffbeb;
+  color: #92400e;
+  border: 1px solid rgba(253, 193, 1, 0.5);
+}
+
+.agent-card-badge.role {
+  background: #eff6ff;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+.agent-card-badge.removed {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.agent-card-badge.info {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+/* Title & Meta */
+.agent-card-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.35;
+}
+
+.agent-card-content {
+  font-size: 0.885rem;
+  color: #475569;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.agent-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 0.785rem;
+  color: #64748b;
+  align-items: center;
+}
+
+.agent-card-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Buttons inside Cards */
+.agent-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.agent-card-btn {
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 0.825rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.agent-card-btn.primary {
+  background: #FDC101;
+  color: #0f172a;
+}
+
+.agent-card-btn.primary:hover {
+  background: #eab308;
+  transform: translateY(-1px);
+}
+
+.agent-card-btn.secondary {
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+}
+
+.agent-card-btn.secondary:hover {
+  background: #e2e8f0;
+}
+
+/* Post List Specific */
+.agent-post-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 380px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.agent-post-item {
+  padding: 12px 14px;
+  border: 1px solid #f1f5f9;
+  background: #fafafa;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.agent-post-item:hover {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transform: translateY(-1px);
+}
+
+.agent-post-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.agent-post-item-title {
+  font-size: 0.925rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.agent-post-item-cat {
+  font-size: 0.725rem;
+  color: #b45309;
+  background: #fef3c7;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.agent-post-item-body {
+  font-size: 0.825rem;
+  color: #64748b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* User Profile Card */
+.agent-profile-avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.agent-profile-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #fef3c7;
+  border: 2px solid #FDC101;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #78350f;
+}
+
+.agent-skills-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.agent-skill-pill {
+  font-size: 0.75rem;
+  background: #f1f5f9;
+  color: #334155;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+/* Suggestion Chips */
+.agent-chips-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 6px;
+}
+
+.agent-chip-btn {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  transition: all 0.2s ease;
+}
+
+.agent-chip-btn:hover {
+  background: #fffbeb;
+  border-color: #FDC101;
+  color: #92400e;
+  transform: translateY(-1px);
+}
+
+/* Error Card */
+.agent-error-card {
+  border-left: 4px solid #ef4444;
+  background: #fef2f2;
+}
