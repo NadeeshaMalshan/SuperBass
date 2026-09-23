@@ -14,11 +14,13 @@ import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'services/api_config.dart';
 import 'services/api_service.dart';
 import 'services/auth_service.dart';
+import 'services/chat_signalr_service.dart';
 import 'services/notification_service.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
 import 'widgets/app_components.dart';
 import 'widgets/notifications_sheet.dart';
+import 'widgets/m3_bottom_nav_bar.dart';
 import 'package:loading_indicator_m3e/loading_indicator_m3e.dart';
 
 void main() async {
@@ -90,6 +92,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
         user.email,
         isWorker: user.isWorker,
       );
+      ChatSignalRService().connect(user.email);
     }
 
     AuthService().currentUserNotifier.addListener(_onAuthChanged);
@@ -102,8 +105,10 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
         user.email,
         isWorker: user.isWorker,
       );
+      ChatSignalRService().connect(user.email);
     } else {
       NotificationService().stopListening();
+      ChatSignalRService().disconnect();
     }
   }
 
@@ -128,51 +133,51 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
           const AccountTabScreen(),
         ];
 
-        final List<NavigationDestination> destinations = [
-          const NavigationDestination(
-            icon: Icon(Icons.search_outlined),
-            selectedIcon: Icon(Icons.search_rounded),
+        final List<M3BottomNavItem> navItems = [
+          const M3BottomNavItem(
+            icon: Icons.search_outlined,
+            selectedIcon: Icons.search_rounded,
             label: 'Find',
           ),
-          const NavigationDestination(
-            icon: Icon(Icons.groups_outlined),
-            selectedIcon: Icon(Icons.groups_rounded),
+          const M3BottomNavItem(
+            icon: Icons.groups_outlined,
+            selectedIcon: Icons.groups_rounded,
             label: 'Community',
           ),
           if (isLoggedIn) ...[
-            const NavigationDestination(
-              icon: Icon(Icons.calendar_month_outlined),
-              selectedIcon: Icon(Icons.calendar_month_rounded),
+            const M3BottomNavItem(
+              icon: Icons.calendar_today_outlined,
+              selectedIcon: Icons.calendar_month_rounded,
               label: 'Bookings',
             ),
-            const NavigationDestination(
-              icon: Icon(Icons.chat_bubble_outline_rounded),
-              selectedIcon: Icon(Icons.chat_bubble_rounded),
+            const M3BottomNavItem(
+              icon: Icons.chat_bubble_outline_rounded,
+              selectedIcon: Icons.chat_bubble_rounded,
               label: 'Chats',
             ),
           ],
-          const NavigationDestination(
-            icon: Icon(Icons.person_outline_rounded),
-            selectedIcon: Icon(Icons.person_rounded),
+          const M3BottomNavItem(
+            icon: Icons.person_outline_rounded,
+            selectedIcon: Icons.person_rounded,
             label: 'Account',
           ),
         ];
 
         // Ensure current index is within bounds if tabs change dynamically
-        final effectiveIndex = _currentIndex >= destinations.length
-            ? destinations.length - 1
+        final effectiveIndex = _currentIndex >= navItems.length
+            ? navItems.length - 1
             : _currentIndex;
 
         return Scaffold(
           body: pages[effectiveIndex],
-          bottomNavigationBar: NavigationBar(
+          bottomNavigationBar: M3BottomNavigationBar(
             selectedIndex: effectiveIndex,
-            onDestinationSelected: (index) {
+            items: navItems,
+            onItemSelected: (index) {
               setState(() {
                 _currentIndex = index;
               });
             },
-            destinations: destinations,
           ),
         );
       },
@@ -632,16 +637,16 @@ class _FindTabScreenState extends State<FindTabScreen> {
               const SizedBox(height: 12),
 
               SizedBox(
-                height: 120,
+                height: 105,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   itemCount: _categories.length,
-                  separatorBuilder: (context, index) => const SizedBox(width: 12),
+                  separatorBuilder: (context, index) => const SizedBox(width: 14),
                   itemBuilder: (context, index) {
                     final cat = _categories[index];
                     return SizedBox(
-                      width: 105,
+                      width: 76,
                       child: CategoryCard(
                         title: cat['name'] as String,
                         icon: cat['icon'] as IconData,
@@ -1437,11 +1442,26 @@ class ChatsTabScreen extends StatefulWidget {
 class _ChatsTabScreenState extends State<ChatsTabScreen> {
   List<Map<String, dynamic>> _conversations = [];
   bool _isLoading = true;
+  StreamSubscription? _msgSub;
+  StreamSubscription? _readSub;
 
   @override
   void initState() {
     super.initState();
     _fetchChats();
+    _msgSub = ChatSignalRService().onMessageReceived.listen((_) {
+      if (mounted) _fetchChats();
+    });
+    _readSub = ChatSignalRService().onMessagesRead.listen((_) {
+      if (mounted) _fetchChats();
+    });
+  }
+
+  @override
+  void dispose() {
+    _msgSub?.cancel();
+    _readSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _fetchChats() async {
@@ -1616,11 +1636,23 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
                                 ],
                               ),
                               onTap: () async {
+                                final convId = c['id'] is int ? c['id'] as int : int.tryParse(c['id']?.toString() ?? '0') ?? 0;
+                                final userEmail = AuthService().currentUser?.email;
+
+                                // Optimistically clear unread count badge in UI immediately
+                                setState(() {
+                                  c['unreadCount'] = 0;
+                                });
+
+                                if (userEmail != null && convId > 0) {
+                                  ApiService().markConversationAsRead(convId, userEmail);
+                                }
+
                                 await Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder: (context) => ChatScreen(
-                                      conversationId: c['id'] is int ? c['id'] as int : int.tryParse(c['id']?.toString() ?? '0') ?? 0,
+                                      conversationId: convId,
                                       name: name,
                                       profileImage: c['workerProfileImage']?.toString(),
                                     ),

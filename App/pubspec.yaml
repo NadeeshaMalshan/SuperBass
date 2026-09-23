@@ -43,8 +43,7 @@ dependencies:
   flutter_local_notifications: ^22.3.1
   onesignal_flutter: ^5.2.8
   image_picker: ^1.1.2
-
->>>>>>> 33f802be3492c7857171321f9df6122ad391a943
+  signalr_netcore: ^1.4.4
 
 dev_dependencies:
   flutter_test:

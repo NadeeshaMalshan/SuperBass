@@ -383,8 +383,9 @@ namespace Superbass.Services
 
         public async Task<bool> MarkConversationAsReadAsync(int conversationId, string readerEmail)
         {
+            var lowerEmail = readerEmail.Trim().ToLower();
             var unreadMessages = await _context.ChatMessages
-                .Where(m => m.ConversationId == conversationId && !m.IsRead && m.SenderEmail != readerEmail)
+                .Where(m => m.ConversationId == conversationId && !m.IsRead && m.SenderEmail.ToLower() != lowerEmail)
                 .ToListAsync();
 
             if (!unreadMessages.Any()) return false;
@@ -482,13 +483,16 @@ namespace Superbass.Services
 
         public async Task<int> GetTotalUnreadCountAsync(string userEmail)
         {
-            var worker = await _context.Workers.FirstOrDefaultAsync(w => w.ResidentEmail == userEmail || w.Email == userEmail);
+            var lowerEmail = userEmail.Trim().ToLower();
+            var worker = await _context.Workers.FirstOrDefaultAsync(w => 
+                (w.ResidentEmail != null && w.ResidentEmail.ToLower() == lowerEmail) || 
+                (w.Email != null && w.Email.ToLower() == lowerEmail));
             int? workerId = worker?.Id;
 
             var unreadCount = await _context.ChatMessages
                 .Include(m => m.Conversation)
-                .Where(m => !m.IsRead && !m.IsDeleted && m.SenderEmail != userEmail &&
-                    (m.Conversation!.ResidentEmail == userEmail || (workerId.HasValue && m.Conversation.WorkerId == workerId.Value)))
+                .Where(m => !m.IsRead && !m.IsDeleted && m.SenderEmail.ToLower() != lowerEmail &&
+                    (m.Conversation!.ResidentEmail.ToLower() == lowerEmail || (workerId.HasValue && m.Conversation.WorkerId == workerId.Value)))
                 .CountAsync();
 
             return unreadCount;
@@ -496,8 +500,9 @@ namespace Superbass.Services
 
         private async Task<ConversationSummaryDto> MapToSummaryDtoAsync(Conversation conv, string currentUserEmail)
         {
+            var lowerEmail = currentUserEmail.Trim().ToLower();
             var unreadCount = await _context.ChatMessages
-                .Where(m => m.ConversationId == conv.Id && !m.IsRead && !m.IsDeleted && m.SenderEmail != currentUserEmail)
+                .Where(m => m.ConversationId == conv.Id && !m.IsRead && !m.IsDeleted && m.SenderEmail.ToLower() != lowerEmail)
                 .CountAsync();
 
             var isUserWorker = conv.Worker != null && (
