@@ -1,11 +1,15 @@
 """
 SuperBass Agent Backend - FastAPI Server Entrypoint.
-Provides REST and chat endpoints for interacting with the LangGraph multi-agent system.
+Provides REST and chat endpoints for interacting with the LangGraph multi-agent system,
+with persistent conversation history in Neon PostgreSQL.
 """
 
-from fastapi import FastAPI, HTTPException
+from typing import Optional, List, Dict, Any
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, HTTPException, Query, Body
 from fastapi.middleware.cors import CORSMiddleware
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, AIMessage
+from pydantic import BaseModel, Field
 import uuid
 import logging
 
@@ -14,6 +18,8 @@ from agent_backend.schemas.api_models import ChatRequest, ChatResponse
 from agent_backend.schemas.card_models import AgentCardResponse, TextMessageCard
 from agent_backend.graph.workflow import graph
 from agent_backend.tools.mcp_client import mcp_client
+from agent_backend.db.database import init_db
+from agent_backend.db.chat_repository import chat_repository
 
 # Configure logging
 logging.basicConfig(
@@ -22,10 +28,21 @@ logging.basicConfig(
 )
 logger = logging.getLogger("agent_backend.api")
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan event to initialize database tables on startup."""
+    logger.info("Initializing Neon PostgreSQL database tables...")
+    await init_db()
+    yield
+    logger.info("Shutting down agent backend service.")
+
+
 app = FastAPI(
     title="SuperBass Agent Backend",
-    description="Multi-Agent AI Workflow powered by LangGraph, OpenAI gpt-4o-mini, and MCP Tools",
-    version="0.1.0"
+    description="Multi-Agent AI Workflow powered by LangGraph, OpenAI gpt-4o-mini, and MCP Tools with Neon DB Persistence",
+    version="0.2.0",
+    lifespan=lifespan
 )
 
 # Configure CORS
@@ -39,6 +56,12 @@ app.add_middleware(
 )
 
 
+# Conversation Creation Model
+class CreateConversationRequest(BaseModel):
+    email: str = Field(description="User email address")
+    title: Optional[str] = Field(default="New Conversation", description="Thread title")
+
+
 @app.get("/health")
 async def health():
     """Service health check endpoint."""
@@ -46,6 +69,7 @@ async def health():
         "status": "healthy",
         "service": "agent-backend",
         "model": settings.openai_model,
+        "database": "Neon PostgreSQL",
         "environment": settings.environment
     }
 
@@ -64,18 +88,79 @@ async def list_available_tools():
     return {"mcp_tools": mcp_tools}
 
 
+# -------------------------------------------------------------
+# Conversation Management Endpoints (Multiple Chats Support)
+# -------------------------------------------------------------
+
+@app.get("/api/conversations")
+async def list_user_conversations(email: str = Query(..., description="User email")):
+    """List all previous conversation threads for a user."""
+    threads = await chat_repository.list_conversations(email)
+    return {"conversations": threads}
+
+
+@app.post("/api/conversations")
+async def create_new_conversation(req: CreateConversationRequest):
+    """Create a new blank conversation session."""
+    conv_id = str(uuid.uuid4())
+    conv = await chat_repository.get_or_create_conversation(conv_id, req.email, req.title)
+    return {
+        "conversation_id": conv.id,
+        "title": conv.title,
+        "user_email": conv.user_email,
+        "created_at": conv.created_at.isoformat() if conv.created_at else None
+    }
+
+
+@app.get("/api/conversations/{conversation_id}")
+async def get_conversation_details(conversation_id: str):
+    """Fetch complete message and card history for a conversation thread."""
+    messages = await chat_repository.get_conversation_messages(conversation_id)
+    return {
+        "conversation_id": conversation_id,
+        "messages": messages
+    }
+
+
+@app.delete("/api/conversations/{conversation_id}")
+async def delete_user_conversation(conversation_id: str, email: Optional[str] = None):
+    """Delete a conversation thread and its messages."""
+    deleted = await chat_repository.delete_conversation(conversation_id, email)
+    return {"success": deleted, "conversation_id": conversation_id}
+
+
+# -------------------------------------------------------------
+# Chat Invocation with Database Persistence
+# -------------------------------------------------------------
+
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_endpoint(request: ChatRequest):
     """
     Main chat endpoint for Frontend UI.
-    Takes user input, routes via LangGraph Multi-Agent, and returns a typed UI card response.
+    Takes user input, routes via LangGraph Multi-Agent, saves history in Neon PostgreSQL,
+    and returns a typed UI card response.
     """
     conv_id = request.conversation_id or str(uuid.uuid4())
-    logger.info(f"Incoming chat request for thread '{conv_id}' from '{request.email}' ({request.user_type}): {request.message}")
+    logger.info(
+        f"Incoming chat request for thread '{conv_id}' from '{request.email}' ({request.user_type}): {request.message}"
+    )
 
     try:
+        # 1. Retrieve any prior messages from Neon DB to supply conversational context if resuming
+        history_msgs = []
+        try:
+            db_messages = await chat_repository.get_conversation_messages(conv_id)
+            for m in db_messages:
+                if m.get("sender") == "user":
+                    history_msgs.append(HumanMessage(content=m.get("message", "")))
+                elif m.get("sender") == "assistant":
+                    history_msgs.append(AIMessage(content=m.get("message", "")))
+        except Exception as e:
+            logger.warning(f"Could not load DB history for {conv_id}: {e}")
+
+        # 2. Build initial state for this turn
         initial_state = {
-            "messages": [HumanMessage(content=request.message)],
+            "messages": history_msgs + [HumanMessage(content=request.message)],
             "email": request.email,
             "user_type": request.user_type,
             "user_profile": None,
@@ -84,13 +169,13 @@ async def chat_endpoint(request: ChatRequest):
             "metadata": request.metadata or {}
         }
 
-        # Thread configuration for LangGraph checkpointer state persistence
+        # 3. Thread configuration for LangGraph checkpointer state persistence
         thread_config = {"configurable": {"thread_id": conv_id}}
 
-        # Execute LangGraph workflow
+        # 4. Execute LangGraph workflow
         final_state = await graph.ainvoke(initial_state, config=thread_config)
 
-        # Retrieve typed structured UI card
+        # 5. Retrieve typed structured UI card
         card_response = final_state.get("structured_response")
         if not card_response:
             # Fallback text card
@@ -102,6 +187,17 @@ async def chat_endpoint(request: ChatRequest):
                 card_data=TextMessageCard(text=last_text).model_dump(),
                 metadata={"agent": "system", "user_email": request.email}
             )
+
+        # 6. Save turn (user prompt + assistant card response) to Neon PostgreSQL
+        try:
+            await chat_repository.save_chat_turn(
+                conv_id=conv_id,
+                user_email=request.email,
+                user_text=request.message,
+                assistant_card_response=card_response
+            )
+        except Exception as db_err:
+            logger.error(f"Failed to persist chat turn to DB: {db_err}")
 
         return ChatResponse(
             conversation_id=conv_id,

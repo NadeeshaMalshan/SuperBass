@@ -82,8 +82,67 @@ export async function checkMcpHealth() {
   }
 }
 
+/**
+ * Fetch all conversations for a user
+ */
+export async function listConversations(email) {
+  try {
+    const userEmail = email || localStorage.getItem('email') || 'resident@superbass.lk';
+    const res = await agentClient.get('/api/conversations', { params: { email: userEmail } });
+    return res.data?.conversations || [];
+  } catch (e) {
+    console.error('Failed to list conversations:', e);
+    return [];
+  }
+}
+
+/**
+ * Create a new conversation session
+ */
+export async function createConversation(email, title = 'New Conversation') {
+  try {
+    const userEmail = email || localStorage.getItem('email') || 'resident@superbass.lk';
+    const res = await agentClient.post('/api/conversations', { email: userEmail, title });
+    return res.data;
+  } catch (e) {
+    console.error('Failed to create conversation:', e);
+    return null;
+  }
+}
+
+/**
+ * Fetch all messages for a specific conversation
+ */
+export async function getConversationMessages(convId) {
+  try {
+    const res = await agentClient.get(`/api/conversations/${convId}`);
+    return res.data?.messages || [];
+  } catch (e) {
+    console.error(`Failed to load messages for ${convId}:`, e);
+    return [];
+  }
+}
+
+/**
+ * Delete a conversation session
+ */
+export async function deleteConversation(convId, email) {
+  try {
+    const userEmail = email || localStorage.getItem('email') || 'resident@superbass.lk';
+    const res = await agentClient.delete(`/api/conversations/${convId}`, { params: { email: userEmail } });
+    return res.data?.success || false;
+  } catch (e) {
+    console.error(`Failed to delete conversation ${convId}:`, e);
+    return false;
+  }
+}
+
 export default {
   sendAgentMessage,
   checkAgentHealth,
   checkMcpHealth,
+  listConversations,
+  createConversation,
+  getConversationMessages,
+  deleteConversation,
 };
