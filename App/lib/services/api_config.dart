@@ -35,4 +35,17 @@ class ApiConfig {
     }
     return const String.fromEnvironment('GOOGLE_CLIENT_ID');
   }
+
+  /// OneSignal App ID loaded from .env or compile-time define
+  static String get onesignalAppId {
+    final envId = dotenv.env['ONESIGNAL_APP_ID'];
+    if (envId != null && envId.trim().isNotEmpty) {
+      return envId.trim();
+    }
+    const defineId = String.fromEnvironment('ONESIGNAL_APP_ID');
+    if (defineId.isNotEmpty) {
+      return defineId;
+    }
+    return 'b7e6df63-34ca-4bbd-8889-b8844c9b579b';
+  }
 }

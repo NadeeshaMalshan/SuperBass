@@ -18,15 +18,18 @@ namespace Superbass.Controllers
         private readonly SuperbassDbContext _context;
         private readonly ICommunicationRepository _communicationRepo;
         private readonly IHubContext<ChatHub> _hubContext;
+        private readonly IPushNotificationService _pushNotificationService;
 
         public BookingsController(
             SuperbassDbContext context,
             ICommunicationRepository communicationRepo,
-            IHubContext<ChatHub> hubContext)
+            IHubContext<ChatHub> hubContext,
+            IPushNotificationService pushNotificationService)
         {
             _context = context;
             _communicationRepo = communicationRepo;
             _hubContext = hubContext;
+            _pushNotificationService = pushNotificationService;
         }
 
         private string? GetCurrentUserEmail()
@@ -179,6 +182,22 @@ namespace Superbass.Controllers
                 .Include(b => b.Worker)
                 .FirstAsync(b => b.Id == booking.Id);
 
+            // Send OneSignal push notification to worker
+            var workerTargetEmail = worker.ResidentEmail ?? worker.Email;
+            if (!string.IsNullOrWhiteSpace(workerTargetEmail))
+            {
+                _ = _pushNotificationService.SendPushNotificationAsync(
+                    recipientEmail: workerTargetEmail,
+                    title: "New Booking Request! 📋",
+                    message: $"New request for '{booking.JobTitle}' from {resident.Name}.",
+                    data: new Dictionary<string, string>
+                    {
+                        { "bookingId", booking.Id.ToString() },
+                        { "type", "booking" }
+                    }
+                );
+            }
+
             return CreatedAtAction(nameof(GetBookingById), new { id = booking.Id }, MapToDto(savedBooking));
         }
 
@@ -283,6 +302,14 @@ namespace Superbass.Controllers
                 catch { }
             }
 
+            // Send OneSignal push to resident
+            _ = _pushNotificationService.SendPushNotificationAsync(
+                recipientEmail: booking.ResidentEmail,
+                title: "Booking Confirmed! 🎉",
+                message: $"{booking.Worker?.Name ?? "Worker"} has accepted your booking for '{booking.JobTitle}'.",
+                data: new Dictionary<string, string> { { "bookingId", booking.Id.ToString() }, { "type", "booking" } }
+            );
+
             return Ok(MapToDto(booking));
         }
 
@@ -323,6 +350,14 @@ namespace Superbass.Controllers
                 catch { }
             }
 
+            // Send OneSignal push to resident
+            _ = _pushNotificationService.SendPushNotificationAsync(
+                recipientEmail: booking.ResidentEmail,
+                title: "Booking Declined ❌",
+                message: $"Your booking for '{booking.JobTitle}' was declined: {booking.RejectionReason}",
+                data: new Dictionary<string, string> { { "bookingId", booking.Id.ToString() }, { "type", "booking" } }
+            );
+
             return Ok(MapToDto(booking));
         }
 
@@ -355,6 +390,14 @@ namespace Superbass.Controllers
                 }
                 catch { }
             }
+
+            // Send OneSignal push to resident
+            _ = _pushNotificationService.SendPushNotificationAsync(
+                recipientEmail: booking.ResidentEmail,
+                title: "Job In Progress 🚀",
+                message: $"Worker has started working on '{booking.JobTitle}'.",
+                data: new Dictionary<string, string> { { "bookingId", booking.Id.ToString() }, { "type", "booking" } }
+            );
 
             return Ok(MapToDto(booking));
         }
@@ -395,6 +438,14 @@ namespace Superbass.Controllers
                 catch { }
             }
 
+            // Send OneSignal push to resident
+            _ = _pushNotificationService.SendPushNotificationAsync(
+                recipientEmail: booking.ResidentEmail,
+                title: "Job Completed! ✅",
+                message: $"Your service for '{booking.JobTitle}' has been completed.",
+                data: new Dictionary<string, string> { { "bookingId", booking.Id.ToString() }, { "type", "booking" } }
+            );
+
             return Ok(MapToDto(booking));
         }
 
@@ -419,6 +470,20 @@ namespace Superbass.Controllers
             }
 
             await _context.SaveChangesAsync();
+
+            // Send OneSignal push to the other party
+            var currentUser = GetCurrentUserEmail();
+            var isCancelledByResident = string.Equals(currentUser, booking.ResidentEmail, StringComparison.OrdinalIgnoreCase);
+            var notifyEmail = isCancelledByResident ? (booking.Worker?.ResidentEmail ?? booking.Worker?.Email) : booking.ResidentEmail;
+            if (!string.IsNullOrWhiteSpace(notifyEmail))
+            {
+                _ = _pushNotificationService.SendPushNotificationAsync(
+                    recipientEmail: notifyEmail,
+                    title: "Booking Cancelled ⚠️",
+                    message: $"The booking for '{booking.JobTitle}' was cancelled.",
+                    data: new Dictionary<string, string> { { "bookingId", booking.Id.ToString() }, { "type", "booking" } }
+                );
+            }
 
             return Ok(MapToDto(booking));
         }

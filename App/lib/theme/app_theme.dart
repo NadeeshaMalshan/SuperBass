@@ -71,7 +71,7 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.brandYellow,
           foregroundColor: AppColors.onPrimary,
-          minimumSize: const Size.fromHeight(56),
+          minimumSize: const Size(64, 48),
           elevation: 2,
           shadowColor: AppColors.brandYellowGlow,
           shape: const StadiumBorder(),
@@ -85,7 +85,7 @@ class AppTheme {
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.onPrimary,
           foregroundColor: Colors.white,
-          minimumSize: const Size.fromHeight(56),
+          minimumSize: const Size(64, 48),
           shape: const StadiumBorder(),
           textStyle: GoogleFonts.dmSans(
             fontSize: 16,
@@ -96,7 +96,7 @@ class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.onSurface,
-          minimumSize: const Size.fromHeight(56),
+          minimumSize: const Size(64, 48),
           side: const BorderSide(color: AppColors.outline),
           shape: const StadiumBorder(),
           textStyle: GoogleFonts.dmSans(
@@ -114,15 +114,15 @@ class AppTheme {
           fontSize: 15,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(9999),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.outlineVariant),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(9999),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.outlineVariant),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(9999),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.brandYellow, width: 2),
         ),
       ),

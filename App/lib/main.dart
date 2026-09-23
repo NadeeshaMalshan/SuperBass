@@ -1,17 +1,26 @@
+import 'dart:async';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'models/app_notification_model.dart';
 import 'models/auth_user.dart';
 import 'models/booking_model.dart';
 import 'models/worker_model.dart';
 import 'screens/chat_screen.dart';
 import 'screens/community_screen.dart';
 import 'screens/join_screen.dart';
+import 'package:flutter/foundation.dart';
+import 'package:onesignal_flutter/onesignal_flutter.dart';
+import 'services/api_config.dart';
 import 'services/api_service.dart';
 import 'services/auth_service.dart';
+import 'services/chat_signalr_service.dart';
+import 'services/notification_service.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
 import 'widgets/app_components.dart';
+import 'widgets/notifications_sheet.dart';
+import 'widgets/m3_bottom_nav_bar.dart';
 import 'package:loading_indicator_m3e/loading_indicator_m3e.dart';
 
 void main() async {
@@ -21,7 +30,23 @@ void main() async {
   } catch (e) {
     debugPrint('Note: .env file loading: $e');
   }
+
+  // Initialize OneSignal Push Notifications (Android/iOS)
+  if (!kIsWeb) {
+    try {
+      final appId = ApiConfig.onesignalAppId;
+      if (appId.isNotEmpty) {
+        OneSignal.Debug.setLogLevel(kDebugMode ? OSLogLevel.verbose : OSLogLevel.none);
+        OneSignal.initialize(appId);
+        OneSignal.Notifications.requestPermission(true);
+      }
+    } catch (e) {
+      debugPrint('OneSignal initialization error: $e');
+    }
+  }
+
   await AuthService().init();
+  await NotificationService().initialize();
   runApp(const SuperBassApp());
 }
 
@@ -55,6 +80,45 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
   int _currentIndex = 0;
 
   @override
+  void initState() {
+    super.initState();
+    _initNotifications();
+  }
+
+  void _initNotifications() {
+    final user = AuthService().currentUser;
+    if (user != null) {
+      NotificationService().startListening(
+        user.email,
+        isWorker: user.isWorker,
+      );
+      ChatSignalRService().connect(user.email);
+    }
+
+    AuthService().currentUserNotifier.addListener(_onAuthChanged);
+  }
+
+  void _onAuthChanged() {
+    final user = AuthService().currentUser;
+    if (user != null) {
+      NotificationService().startListening(
+        user.email,
+        isWorker: user.isWorker,
+      );
+      ChatSignalRService().connect(user.email);
+    } else {
+      NotificationService().stopListening();
+      ChatSignalRService().disconnect();
+    }
+  }
+
+  @override
+  void dispose() {
+    AuthService().currentUserNotifier.removeListener(_onAuthChanged);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<AuthUser?>(
       valueListenable: AuthService().currentUserNotifier,
@@ -63,57 +127,57 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
 
         final List<Widget> pages = [
           const FindTabScreen(),
-          const CommunityTabScreen(),
+          const CommunityScreen(),
           if (isLoggedIn) const BookingsTabScreen(),
           if (isLoggedIn) const ChatsTabScreen(),
           const AccountTabScreen(),
         ];
 
-        final List<NavigationDestination> destinations = [
-          const NavigationDestination(
-            icon: Icon(Icons.search_outlined),
-            selectedIcon: Icon(Icons.search_rounded),
+        final List<M3BottomNavItem> navItems = [
+          const M3BottomNavItem(
+            icon: Icons.search_outlined,
+            selectedIcon: Icons.search_rounded,
             label: 'Find',
           ),
-          const NavigationDestination(
-            icon: Icon(Icons.groups_outlined),
-            selectedIcon: Icon(Icons.groups_rounded),
+          const M3BottomNavItem(
+            icon: Icons.groups_outlined,
+            selectedIcon: Icons.groups_rounded,
             label: 'Community',
           ),
           if (isLoggedIn) ...[
-            const NavigationDestination(
-              icon: Icon(Icons.calendar_month_outlined),
-              selectedIcon: Icon(Icons.calendar_month_rounded),
+            const M3BottomNavItem(
+              icon: Icons.calendar_today_outlined,
+              selectedIcon: Icons.calendar_month_rounded,
               label: 'Bookings',
             ),
-            const NavigationDestination(
-              icon: Icon(Icons.chat_bubble_outline_rounded),
-              selectedIcon: Icon(Icons.chat_bubble_rounded),
+            const M3BottomNavItem(
+              icon: Icons.chat_bubble_outline_rounded,
+              selectedIcon: Icons.chat_bubble_rounded,
               label: 'Chats',
             ),
           ],
-          const NavigationDestination(
-            icon: Icon(Icons.person_outline_rounded),
-            selectedIcon: Icon(Icons.person_rounded),
+          const M3BottomNavItem(
+            icon: Icons.person_outline_rounded,
+            selectedIcon: Icons.person_rounded,
             label: 'Account',
           ),
         ];
 
         // Ensure current index is within bounds if tabs change dynamically
-        final effectiveIndex = _currentIndex >= destinations.length
-            ? destinations.length - 1
+        final effectiveIndex = _currentIndex >= navItems.length
+            ? navItems.length - 1
             : _currentIndex;
 
         return Scaffold(
           body: pages[effectiveIndex],
-          bottomNavigationBar: NavigationBar(
+          bottomNavigationBar: M3BottomNavigationBar(
             selectedIndex: effectiveIndex,
-            onDestinationSelected: (index) {
+            items: navItems,
+            onItemSelected: (index) {
               setState(() {
                 _currentIndex = index;
               });
             },
-            destinations: destinations,
           ),
         );
       },
@@ -133,7 +197,6 @@ class _FindTabScreenState extends State<FindTabScreen> {
   int _selectedCategoryIndex = 0;
   List<WorkerModel> _workers = [];
   bool _isLoading = true;
-  String? _error;
 
   final List<Map<String, dynamic>> _categories = [
     {'name': 'All Pros', 'skill': null, 'icon': Icons.apps_rounded},
@@ -154,7 +217,6 @@ class _FindTabScreenState extends State<FindTabScreen> {
   Future<void> _fetchWorkers() async {
     setState(() {
       _isLoading = true;
-      _error = null;
     });
 
     try {
@@ -169,7 +231,6 @@ class _FindTabScreenState extends State<FindTabScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.toString();
           _isLoading = false;
         });
       }
@@ -238,7 +299,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
                             ? Image.network(
                                 worker.profileImage!,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Center(
+                                errorBuilder: (_, _, _) => Center(
                                   child: Text(
                                     worker.name.isNotEmpty ? worker.name[0].toUpperCase() : 'W',
                                     style: GoogleFonts.dmSans(fontWeight: FontWeight.w800, fontSize: 18),
@@ -382,6 +443,9 @@ class _FindTabScreenState extends State<FindTabScreen> {
                               );
                             }
 
+                            final scaffoldMessenger = ScaffoldMessenger.of(context);
+                            final navigator = Navigator.of(sheetContext);
+
                             final booking = await ApiService().createBooking(
                               workerId: worker.id,
                               jobTitle: titleController.text.trim(),
@@ -392,17 +456,19 @@ class _FindTabScreenState extends State<FindTabScreen> {
                               estimatedPrice: worker.hourlyRate > 0 ? worker.hourlyRate : 2500.0,
                             );
 
+                            if (sheetContext.mounted) {
+                              navigator.pop();
+                            }
                             if (mounted) {
-                              Navigator.pop(sheetContext);
                               if (booking != null) {
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                scaffoldMessenger.showSnackBar(
                                   SnackBar(
                                     content: Text('Booking #${booking.id} created with ${worker.name}!'),
                                     backgroundColor: AppColors.success,
                                   ),
                                 );
                               } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                scaffoldMessenger.showSnackBar(
                                   const SnackBar(
                                     content: Text('Failed to create booking. Check backend connection.'),
                                     backgroundColor: AppColors.error,
@@ -437,17 +503,23 @@ class _FindTabScreenState extends State<FindTabScreen> {
     return Scaffold(
       appBar: AppBar(
         actions: [
-          IconButton.filledTonal(
-            onPressed: () => _fetchWorkers(),
-            icon: const Icon(Icons.refresh_rounded, size: 22),
-            style: IconButton.styleFrom(
-              backgroundColor: AppColors.surfaceVariant,
-              foregroundColor: AppColors.onSurface,
-            ),
+          NotificationBellButton(
+            onNotificationTap: (n) {
+              if (n.type == NotificationType.chat && n.referenceId != null) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ChatScreen(
+                      conversationId: n.referenceId!,
+                      name: n.metadata?['name']?.toString() ?? 'Conversation',
+                      profileImage: n.metadata?['profileImage']?.toString(),
+                    ),
+                  ),
+                );
+              }
+            },
           ),
-          const SizedBox(width: 8),
           Padding(
-            padding: const EdgeInsets.only(right: 16.0),
+            padding: const EdgeInsets.only(right: 16.0, left: 4.0),
             child: ValueListenableBuilder<AuthUser?>(
               valueListenable: AuthService().currentUserNotifier,
               builder: (context, user, _) {
@@ -475,7 +547,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
                               width: 36,
                               height: 36,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Center(
+                              errorBuilder: (_, _, _) => Center(
                                 child: Text(
                                   initial,
                                   style: GoogleFonts.dmSans(
@@ -565,16 +637,16 @@ class _FindTabScreenState extends State<FindTabScreen> {
               const SizedBox(height: 12),
 
               SizedBox(
-                height: 120,
+                height: 105,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   itemCount: _categories.length,
-                  separatorBuilder: (context, index) => const SizedBox(width: 12),
+                  separatorBuilder: (context, index) => const SizedBox(width: 14),
                   itemBuilder: (context, index) {
                     final cat = _categories[index];
                     return SizedBox(
-                      width: 105,
+                      width: 76,
                       child: CategoryCard(
                         title: cat['name'] as String,
                         icon: cat['icon'] as IconData,
@@ -681,16 +753,6 @@ class _FindTabScreenState extends State<FindTabScreen> {
   }
 }
 
-/// 2. COMMUNITY TAB
-class CommunityTabScreen extends StatelessWidget {
-  const CommunityTabScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const CommunityScreen();
-  }
-}
-
 /// 3. BOOKINGS TAB
 class BookingsTabScreen extends StatefulWidget {
   const BookingsTabScreen({super.key});
@@ -745,6 +807,378 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
     }
   }
 
+  void _showBookingDetails(BookingModel b) {
+    final color = _getStatusColor(b.status);
+    final scheduledDateStr = b.scheduledDate != null
+        ? '${b.scheduledDate!.day}/${b.scheduledDate!.month}/${b.scheduledDate!.year} at ${b.scheduledDate!.hour.toString().padLeft(2, '0')}:${b.scheduledDate!.minute.toString().padLeft(2, '0')}'
+        : 'Flexible / ASAP';
+    final requestedDateStr = '${b.createdAt.day}/${b.createdAt.month}/${b.createdAt.year}';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.only(left: 24, right: 24, top: 20, bottom: 32),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.outlineVariant,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Booking Details',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Booking #${b.id}',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      b.status,
+                      style: GoogleFonts.dmSans(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        color: color,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // Worker Card
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceVariant.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.outlineVariant),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.primaryContainer,
+                      ),
+                      child: Center(
+                        child: Text(
+                          b.workerName.isNotEmpty ? b.workerName[0].toUpperCase() : 'W',
+                          style: GoogleFonts.dmSans(
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.onPrimaryContainer,
+                            fontSize: 18,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            b.workerName,
+                            style: GoogleFonts.dmSans(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                            ),
+                          ),
+                          if (b.workerPhone != null && b.workerPhone!.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              b.workerPhone!,
+                              style: GoogleFonts.dmSans(
+                                fontSize: 13,
+                                color: AppColors.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+
+              // Job Info
+              Text(
+                'Job Information',
+                style: GoogleFonts.dmSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.onSurfaceVariant,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                b.jobTitle,
+                style: GoogleFonts.dmSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.onSurface,
+                ),
+              ),
+              if (b.description.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(
+                  b.description,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 14,
+                    color: AppColors.onSurfaceVariant,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
+
+              // Info items
+              _buildDetailItem(
+                Icons.calendar_today_outlined,
+                'Scheduled Date',
+                scheduledDateStr,
+              ),
+              const SizedBox(height: 12),
+              _buildDetailItem(
+                Icons.location_on_outlined,
+                'Location',
+                b.locationAddress,
+              ),
+              const SizedBox(height: 12),
+              _buildDetailItem(
+                Icons.speed_outlined,
+                'Urgency',
+                b.urgency,
+              ),
+              const SizedBox(height: 12),
+              _buildDetailItem(
+                Icons.history_outlined,
+                'Requested On',
+                requestedDateStr,
+              ),
+              const Divider(height: 28, color: AppColors.outlineVariant),
+
+              // Price Breakdown
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Estimated Price (${b.pricingModel})',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                  ),
+                  Text(
+                    'Rs. ${b.estimatedPrice.toStringAsFixed(0)}',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.onSurface,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              if (b.status.toLowerCase() == 'requested' || b.status.toLowerCase() == 'pending') ...[
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      _confirmCancelBooking(b);
+                    },
+                    icon: const Icon(Icons.cancel_outlined, color: AppColors.error),
+                    label: Text(
+                      'Cancel Booking Request',
+                      style: GoogleFonts.dmSans(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        color: AppColors.error,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppColors.error, width: 1.5),
+                      foregroundColor: AppColors.error,
+                      backgroundColor: AppColors.error.withValues(alpha: 0.05),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+
+              // Close Button
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: FilledButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.onPrimary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    'Close',
+                    style: GoogleFonts.dmSans(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailItem(IconData icon, String title, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 18, color: AppColors.onSurfaceVariant),
+        const SizedBox(width: 10),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: GoogleFonts.dmSans(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppColors.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 1),
+            Text(
+              value,
+              style: GoogleFonts.dmSans(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.onSurface,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Future<void> _confirmCancelBooking(BookingModel b) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: Text(
+          'Cancel Booking Request?',
+          style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          'Are you sure you want to cancel your request for "${b.jobTitle}" with ${b.workerName}?',
+          style: GoogleFonts.dmSans(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(false),
+            child: Text(
+              'Keep Booking',
+              style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
+            ),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(
+              'Yes, Cancel',
+              style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cancelling booking...')),
+      );
+
+      final success = await ApiService().cancelBooking(b.id);
+      if (mounted) {
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Booking request cancelled successfully.'),
+              backgroundColor: AppColors.onPrimary,
+            ),
+          );
+          _fetchBookings();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to cancel booking. Please try again.'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = AuthService().currentUser;
@@ -756,9 +1190,20 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
           style: GoogleFonts.dmSans(fontWeight: FontWeight.w800),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: _fetchBookings,
+          NotificationBellButton(
+            onNotificationTap: (n) {
+              if (n.type == NotificationType.chat && n.referenceId != null) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ChatScreen(
+                      conversationId: n.referenceId!,
+                      name: n.metadata?['name']?.toString() ?? 'Conversation',
+                      profileImage: n.metadata?['profileImage']?.toString(),
+                    ),
+                  ),
+                );
+              }
+            },
           ),
         ],
       ),
@@ -818,7 +1263,7 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                       : ListView.separated(
                           padding: const EdgeInsets.all(20),
                           itemCount: _bookings.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 14),
+                          separatorBuilder: (_, _) => const SizedBox(height: 14),
                           itemBuilder: (context, index) {
                             final b = _bookings[index];
                             final color = _getStatusColor(b.status);
@@ -913,6 +1358,69 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                                       ),
                                     ],
                                   ),
+                                  const SizedBox(height: 14),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        flex: (b.status.toLowerCase() == 'requested' || b.status.toLowerCase() == 'pending') ? 3 : 1,
+                                        child: SizedBox(
+                                          height: 40,
+                                          child: OutlinedButton.icon(
+                                            onPressed: () => _showBookingDetails(b),
+                                            icon: const Icon(Icons.visibility_outlined, size: 16),
+                                            label: Text(
+                                              'View Booking',
+                                              style: GoogleFonts.dmSans(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                            style: OutlinedButton.styleFrom(
+                                              minimumSize: const Size(0, 40),
+                                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                              side: const BorderSide(color: AppColors.outlineVariant, width: 1.5),
+                                              foregroundColor: AppColors.onSurface,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(10),
+                                              ),
+                                              backgroundColor: AppColors.surfaceVariant.withValues(alpha: 0.4),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      if (b.status.toLowerCase() == 'requested' || b.status.toLowerCase() == 'pending') ...[
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          flex: 2,
+                                          child: SizedBox(
+                                            height: 40,
+                                            child: OutlinedButton.icon(
+                                              onPressed: () => _confirmCancelBooking(b),
+                                              icon: const Icon(Icons.cancel_outlined, size: 16, color: AppColors.error),
+                                              label: Text(
+                                                'Cancel',
+                                                style: GoogleFonts.dmSans(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: AppColors.error,
+                                                ),
+                                              ),
+                                              style: OutlinedButton.styleFrom(
+                                                minimumSize: const Size(0, 40),
+                                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                                side: const BorderSide(color: AppColors.error, width: 1.2),
+                                                foregroundColor: AppColors.error,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(10),
+                                                ),
+                                                backgroundColor: AppColors.error.withValues(alpha: 0.05),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
                                 ],
                               ),
                             );
@@ -934,11 +1442,26 @@ class ChatsTabScreen extends StatefulWidget {
 class _ChatsTabScreenState extends State<ChatsTabScreen> {
   List<Map<String, dynamic>> _conversations = [];
   bool _isLoading = true;
+  StreamSubscription? _msgSub;
+  StreamSubscription? _readSub;
 
   @override
   void initState() {
     super.initState();
     _fetchChats();
+    _msgSub = ChatSignalRService().onMessageReceived.listen((_) {
+      if (mounted) _fetchChats();
+    });
+    _readSub = ChatSignalRService().onMessagesRead.listen((_) {
+      if (mounted) _fetchChats();
+    });
+  }
+
+  @override
+  void dispose() {
+    _msgSub?.cancel();
+    _readSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _fetchChats() async {
@@ -994,11 +1517,8 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
           'Messages',
           style: GoogleFonts.dmSans(fontWeight: FontWeight.w800),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: _fetchChats,
-          ),
+        actions: const [
+          NotificationBellButton(),
         ],
       ),
       body: user == null
@@ -1116,11 +1636,23 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
                                 ],
                               ),
                               onTap: () async {
+                                final convId = c['id'] is int ? c['id'] as int : int.tryParse(c['id']?.toString() ?? '0') ?? 0;
+                                final userEmail = AuthService().currentUser?.email;
+
+                                // Optimistically clear unread count badge in UI immediately
+                                setState(() {
+                                  c['unreadCount'] = 0;
+                                });
+
+                                if (userEmail != null && convId > 0) {
+                                  ApiService().markConversationAsRead(convId, userEmail);
+                                }
+
                                 await Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder: (context) => ChatScreen(
-                                      conversationId: c['id'] is int ? c['id'] as int : int.tryParse(c['id']?.toString() ?? '0') ?? 0,
+                                      conversationId: convId,
                                       name: name,
                                       profileImage: c['workerProfileImage']?.toString(),
                                     ),

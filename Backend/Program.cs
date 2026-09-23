@@ -4,6 +4,7 @@ using Superbass.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Text.Json.Serialization;
 
 // Load .env file
 DotNetEnv.Env.Load();
@@ -36,13 +37,19 @@ var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__De
 builder.Services.AddDbContext<SuperbassDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+    });
 builder.Services.AddSignalR();
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<ICommunityPostRepository, EfCommunityPostRepository>();
 builder.Services.AddScoped<WorkerRepository, EfWorkerRepository>();
 builder.Services.AddScoped<IResidentRepository, EfResidentRepository>();
 builder.Services.AddScoped<ICommunicationRepository, EfCommunicationRepository>();
+builder.Services.AddHttpClient<IPushNotificationService, PushNotificationService>();
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -83,7 +90,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             {
                 var accessToken = context.Request.Query["access_token"];
                 var path = context.HttpContext.Request.Path;
-                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                if (!string.IsNullOrEmpty(accessToken) && (path.StartsWithSegments("/hubs") || path.StartsWithSegments("/chathub")))
                 {
                     context.Token = accessToken;
                 }
@@ -126,5 +133,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<ChatHub>("/hubs/chat");
+app.MapHub<ChatHub>("/chathub");
 
 app.Run();

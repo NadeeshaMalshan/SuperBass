@@ -19,15 +19,18 @@ namespace Superbass.Controllers
         private readonly ICommunicationRepository _communicationRepo;
         private readonly IHubContext<ChatHub> _hubContext;
         private readonly IWebHostEnvironment _environment;
+        private readonly IPushNotificationService _pushNotificationService;
 
         public ConversationsController(
             ICommunicationRepository communicationRepo,
             IHubContext<ChatHub> hubContext,
-            IWebHostEnvironment environment)
+            IWebHostEnvironment environment,
+            IPushNotificationService pushNotificationService)
         {
             _communicationRepo = communicationRepo;
             _hubContext = hubContext;
             _environment = environment;
+            _pushNotificationService = pushNotificationService;
         }
 
         private string? GetCurrentUserEmail()
@@ -132,6 +135,21 @@ namespace Superbass.Controllers
                 var groupName = $"conversation_{id}";
                 await _hubContext.Clients.Group(groupName).SendAsync("ReceiveMessage", messageDto);
 
+                // Send Push Notification via OneSignal
+                if (!string.IsNullOrWhiteSpace(messageDto.ReceiverEmail))
+                {
+                    _ = _pushNotificationService.SendPushNotificationAsync(
+                        recipientEmail: messageDto.ReceiverEmail,
+                        title: $"New Message from {senderRole} 💬",
+                        message: !string.IsNullOrWhiteSpace(messageDto.Content) ? messageDto.Content : "Sent an attachment",
+                        data: new Dictionary<string, string>
+                        {
+                            { "conversationId", id.ToString() },
+                            { "type", "chat" }
+                        }
+                    );
+                }
+
                 return Ok(messageDto);
             }
             catch (KeyNotFoundException ex)
@@ -143,15 +161,15 @@ namespace Superbass.Controllers
         // PUT/POST: /api/conversations/5/read
         [HttpPut("{id:int}/read")]
         [HttpPost("{id:int}/read")]
-        public async Task<IActionResult> MarkRead(int id, [FromBody] MarkReadRequest? request)
+        public async Task<IActionResult> MarkRead(int id, [FromBody] MarkReadRequest? request, [FromQuery] string? email, [FromQuery] string? readerEmail)
         {
-            var readerEmail = request?.ReaderEmail ?? GetCurrentUserEmail();
-            if (string.IsNullOrWhiteSpace(readerEmail))
+            var targetEmail = request?.ReaderEmail ?? readerEmail ?? email ?? GetCurrentUserEmail();
+            if (string.IsNullOrWhiteSpace(targetEmail))
             {
-                readerEmail = "resident@superbass.lk";
+                return BadRequest(new { message = "Reader email is required." });
             }
 
-            var updated = await _communicationRepo.MarkConversationAsReadAsync(id, readerEmail);
+            var updated = await _communicationRepo.MarkConversationAsReadAsync(id, targetEmail.Trim());
 
             if (updated)
             {
@@ -159,7 +177,7 @@ namespace Superbass.Controllers
                 await _hubContext.Clients.Group(groupName).SendAsync("MessagesRead", new 
                 { 
                     conversationId = id, 
-                    readerEmail 
+                    readerEmail = targetEmail 
                 });
             }
 
