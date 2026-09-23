@@ -550,4 +550,43 @@ class ApiService {
       return null;
     }
   }
+
+  /// 8. Mark conversation messages as read: POST /api/conversations/{id}/read
+  Future<bool> markConversationAsRead(int conversationId, String readerEmail) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/conversations/$conversationId/read');
+      final body = jsonEncode({'readerEmail': readerEmail});
+      final response = await http.post(uri, headers: _headers, body: body);
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (e) {
+      debugPrint('Error marking conversation $conversationId as read: $e');
+      return false;
+    }
+  }
+
+  /// 9. Delete/Unsend messages: POST /api/conversations/messages/delete?userEmail={email}
+  Future<bool> deleteMessages(List<int> messageIds, String userEmail) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/conversations/messages/delete').replace(
+        queryParameters: {'userEmail': userEmail},
+      );
+      final body = jsonEncode(messageIds);
+      final response = await http.post(
+        uri,
+        headers: {
+          ..._headers,
+          'Content-Type': 'application/json',
+        },
+        body: body,
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return true;
+      }
+      debugPrint('Delete messages failed (${response.statusCode}): ${response.body}');
+      return false;
+    } catch (e) {
+      debugPrint('Error deleting messages: $e');
+      return false;
+    }
+  }
 }
