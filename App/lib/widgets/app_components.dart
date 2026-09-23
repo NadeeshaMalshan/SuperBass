@@ -308,7 +308,7 @@ class CategoryCard extends StatelessWidget {
 class WorkerCard extends StatelessWidget {
   final String name;
   final String trade;
-  final double rating;
+  final double? rating;
   final int reviewCount;
   final String location;
   final String distance;
@@ -320,7 +320,7 @@ class WorkerCard extends StatelessWidget {
     super.key,
     required this.name,
     required this.trade,
-    required this.rating,
+    this.rating,
     required this.reviewCount,
     required this.location,
     required this.distance,
@@ -423,23 +423,42 @@ class WorkerCard extends StatelessWidget {
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    const Icon(Icons.star_rounded, size: 18, color: AppColors.starRating),
-                    const SizedBox(width: 4),
-                    Text(
-                      rating.toStringAsFixed(1),
-                      style: GoogleFonts.dmSans(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                        color: AppColors.onSurface,
+                    if (rating != null && rating! > 0) ...[
+                      const Icon(Icons.star_rounded, size: 18, color: AppColors.starRating),
+                      const SizedBox(width: 4),
+                      Text(
+                        rating!.toStringAsFixed(1),
+                        style: GoogleFonts.dmSans(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: AppColors.onSurface,
+                        ),
                       ),
-                    ),
-                    Text(
-                      ' ($reviewCount reviews)',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 12,
-                        color: AppColors.onSurfaceVariant,
+                      if (reviewCount > 0)
+                        Text(
+                          ' ($reviewCount reviews)',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 12,
+                            color: AppColors.onSurfaceVariant,
+                          ),
+                        ),
+                    ] else ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceVariant,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'New Pro',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.onSurfaceVariant,
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                     const Spacer(),
                     const Icon(Icons.location_on_outlined, size: 14, color: AppColors.onSurfaceVariant),
                     const SizedBox(width: 2),
