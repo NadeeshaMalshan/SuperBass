@@ -29,7 +29,7 @@ An enterprise-ready implementation of the [Model Context Protocol](https://model
 The MCP Server translates standardized AI tool calls into HTTP REST requests to the SuperBass backend and returns structured JSON responses back to the model.
 
 - **Protocol Version**: `2024-11-05`
-- **Supported Transports**: HTTP POST (JSON-RPC 2.0) & Server-Sent Events (SSE)
+- **Supported Transport**: Standard HTTP POST (JSON-RPC 2.0)
 - **Total Registered Tools**: **14 Tools**
 - **Default Port**: `8000`
 - **Backend API Port**: `5237` (or `5000`)
@@ -41,7 +41,7 @@ The MCP Server translates standardized AI tool calls into HTTP REST requests to 
 ```text
 [ AI Client / Claude Desktop / Postman ]
                    │
-            (MCP JSON-RPC 2.0 / SSE)
+            (MCP JSON-RPC 2.0)
                    ▼
      [ FastAPI MCP Server (Port 8000) ]
                    │
@@ -318,7 +318,6 @@ Submit a star rating and review comment for a completed booking.
 | Method | Path | Description |
 |---|---|---|
 | `POST` | `/mcp` | Primary MCP JSON-RPC 2.0 endpoint |
-| `GET` | `/mcp/sse` | MCP Server-Sent Events (SSE) endpoint |
 | `GET` | `/health` | Health check endpoint (`{"status":"healthy"}`) |
 | `GET` | `/docs` | Swagger interactive API documentation |
 | `GET` | `/` | Server welcome message |
