@@ -4,6 +4,7 @@ Schemas package exports.
 
 from agent_backend.schemas.card_models import (
     CommunityPostSummary,
+    PostConfirmationCard,
     PostCreatedCard,
     PostListCard,
     PostDetailCard,
@@ -19,6 +20,7 @@ from agent_backend.schemas.api_models import ChatRequest, ChatResponse
 
 __all__ = [
     "CommunityPostSummary",
+    "PostConfirmationCard",
     "PostCreatedCard",
     "PostListCard",
     "PostDetailCard",
