@@ -338,7 +338,9 @@ export default function WorkerDetail() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div>
                             <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.1rem' }}>{serviceTitle}</div>
-                            <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '2px', fontWeight: 600 }}>{skill.experienceYears || 1}+ Years Experience</div>
+                            <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '2px', fontWeight: 600 }}>
+                              {skill.experienceYears <= 0 ? 'Less than 1 Year Experience' : `${skill.experienceYears || 1}+ Years Experience`}
+                            </div>
                           </div>
                           <span style={{ backgroundColor: '#ecfccb', color: '#4d7c0f', width: '32px', height: '32px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: 800 }}>✓</span>
                         </div>
