@@ -1,28 +1,57 @@
 class WorkerSkillItem {
   final int id;
-  final String skillName;
+  final String serviceName; // The service / trade category (e.g. "Plumbing", "Electrical", "Carpentry")
+  final List<String> skills; // Array of specific skills relevant to this service
   final int experienceYears;
+  final String skillName; // Backward compatibility alias
 
   WorkerSkillItem({
     required this.id,
-    required this.skillName,
+    required this.serviceName,
+    this.skills = const [],
     this.experienceYears = 1,
-  });
+    String? skillName,
+  }) : skillName = (skillName != null && skillName.isNotEmpty) ? skillName : serviceName;
 
   factory WorkerSkillItem.fromJson(Map<String, dynamic> json) {
+    final service = json['serviceName']?.toString() ??
+        json['service']?.toString() ??
+        json['skillName']?.toString() ??
+        'General';
+
+    List<String> parsedSkills = [];
+    if (json['skills'] is List) {
+      for (final item in (json['skills'] as List)) {
+        if (item != null && item.toString().trim().isNotEmpty) {
+          parsedSkills.add(item.toString().trim());
+        }
+      }
+    } else if (json['skills'] is String && (json['skills'] as String).isNotEmpty) {
+      parsedSkills = (json['skills'] as String)
+          .split(',')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+    }
+
     return WorkerSkillItem(
       id: json['id'] is int ? json['id'] : int.tryParse(json['id']?.toString() ?? '0') ?? 0,
-      skillName: json['skillName']?.toString() ?? '',
+      serviceName: service,
+      skills: parsedSkills,
       experienceYears: json['experienceYears'] is int
           ? json['experienceYears']
           : int.tryParse(json['experienceYears']?.toString() ?? '1') ?? 1,
+      skillName: json['skillName']?.toString() ?? service,
     );
   }
 
   Map<String, dynamic> toJson() => {
         'id': id,
-        'skillName': skillName,
+        'serviceName': serviceName,
+        'service': serviceName,
+        'skills': skills,
         'experienceYears': experienceYears,
+        'skillName': skillName,
       };
 }
 
@@ -52,6 +81,9 @@ class WorkerModel {
   final String? availabilityScheduleJson;
   final List<String> skills;
   final List<WorkerSkillItem> skillItems;
+
+  List<String> get serviceNames =>
+      skillItems.map((s) => s.serviceName).where((s) => s.isNotEmpty).toSet().toList();
 
   WorkerModel({
     required this.id,
@@ -90,20 +122,30 @@ class WorkerModel {
         if (s is Map<String, dynamic>) {
           final item = WorkerSkillItem.fromJson(s);
           parsedSkillItems.add(item);
-          if (item.skillName.isNotEmpty) {
-            parsedSkills.add(item.skillName);
+          if (item.serviceName.isNotEmpty && !parsedSkills.contains(item.serviceName)) {
+            parsedSkills.add(item.serviceName);
+          }
+          for (final sub in item.skills) {
+            if (!parsedSkills.contains(sub)) {
+              parsedSkills.add(sub);
+            }
           }
         } else if (s is Map) {
           final item = WorkerSkillItem.fromJson(Map<String, dynamic>.from(s));
           parsedSkillItems.add(item);
-          if (item.skillName.isNotEmpty) {
-            parsedSkills.add(item.skillName);
+          if (item.serviceName.isNotEmpty && !parsedSkills.contains(item.serviceName)) {
+            parsedSkills.add(item.serviceName);
+          }
+          for (final sub in item.skills) {
+            if (!parsedSkills.contains(sub)) {
+              parsedSkills.add(sub);
+            }
           }
         } else {
-          final str = s.toString();
+          final str = s.toString().trim();
           if (str.isNotEmpty) {
             parsedSkills.add(str);
-            parsedSkillItems.add(WorkerSkillItem(id: 0, skillName: str));
+            parsedSkillItems.add(WorkerSkillItem(id: 0, serviceName: str, skills: [str]));
           }
         }
       }
