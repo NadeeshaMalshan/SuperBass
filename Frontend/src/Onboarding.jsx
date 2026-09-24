@@ -3,6 +3,21 @@ import './App.css';
 import '@material/web/button/filled-button.js';
 import '@material/web/button/outlined-button.js';
 import '@material/web/textfield/filled-text-field.js';
+import '@material/web/select/filled-select.js';
+import '@material/web/select/select-option.js';
+
+const sriLankaGeoData = {
+  "Western": ["Colombo", "Gampaha", "Kalutara"],
+  "Central": ["Kandy", "Matale", "Nuwara Eliya"],
+  "Southern": ["Galle", "Matara", "Hambantota"],
+  "Northern": ["Jaffna", "Kilinochchi", "Mannar", "Mullaitivu", "Vavuniya"],
+  "Eastern": ["Trincomalee", "Batticaloa", "Ampara"],
+  "North Western": ["Kurunegala", "Puttalam"],
+  "North Central": ["Anuradhapura", "Polonnaruwa"],
+  "Uva": ["Badulla", "Monaragala"],
+  "Sabaragamuwa": ["Ratnapura", "Kegalle"]
+};
+
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import axios from 'axios';
 import { API_BASE_URL } from './config.js';
@@ -336,18 +351,37 @@ export default function Onboarding() {
               onInput={(e) => setArea(e.target.value)}
             ></md-filled-text-field>
             <div style={{ display: 'flex', gap: '1rem' }}>
-              <md-filled-text-field 
+              <md-filled-select 
+                label="Province" 
+                value={province} 
+                onInput={(e) => {
+                  setProvince(e.target.value);
+                  setDistrict(''); // Clear district when province changes
+                }} 
+                style={{ flex: 1 }}
+              >
+                <md-select-option value="" disabled><div slot="headline">Select Province</div></md-select-option>
+                {Object.keys(sriLankaGeoData).map(p => (
+                  <md-select-option key={p} value={p}>
+                    <div slot="headline">{p}</div>
+                  </md-select-option>
+                ))}
+              </md-filled-select>
+
+              <md-filled-select 
                 label="District" 
                 value={district} 
                 onInput={(e) => setDistrict(e.target.value)} 
                 style={{ flex: 1 }}
-              ></md-filled-text-field>
-              <md-filled-text-field 
-                label="Province" 
-                value={province} 
-                onInput={(e) => setProvince(e.target.value)} 
-                style={{ flex: 1 }}
-              ></md-filled-text-field>
+                disabled={!province ? true : undefined}
+              >
+                <md-select-option value="" disabled><div slot="headline">Select District</div></md-select-option>
+                {province && sriLankaGeoData[province]?.map(d => (
+                  <md-select-option key={d} value={d}>
+                    <div slot="headline">{d}</div>
+                  </md-select-option>
+                ))}
+              </md-filled-select>
             </div>
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
                <md-outlined-button 
