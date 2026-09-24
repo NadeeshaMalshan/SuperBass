@@ -434,6 +434,7 @@ class _BecomeWorkerSheetState extends State<BecomeWorkerSheet> {
                               underline: const SizedBox.shrink(),
                               isDense: true,
                               items: const [
+                                DropdownMenuItem(value: 0, child: Text('< 1 Year Exp')),
                                 DropdownMenuItem(value: 1, child: Text('1 Year Exp')),
                                 DropdownMenuItem(value: 2, child: Text('2 Years Exp')),
                                 DropdownMenuItem(value: 3, child: Text('3 Years Exp')),
