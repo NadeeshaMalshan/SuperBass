@@ -27,13 +27,18 @@ class ApiService {
   /// 1. Fetch Workers from /api/workers
   Future<List<WorkerModel>> fetchWorkers({String? skill, String? location}) async {
     try {
+      final user = AuthService().currentUserNotifier.value;
       Uri uri;
+      
       if ((skill != null && skill.isNotEmpty && skill != 'All Pros') ||
-          (location != null && location.isNotEmpty)) {
+          (location != null && location.isNotEmpty) ||
+          (user?.locationLat != null && user?.locationLng != null)) {
         uri = Uri.parse('${ApiConfig.baseUrl}/api/workers/search').replace(
           queryParameters: {
             if (skill != null && skill.isNotEmpty && skill != 'All Pros') 'skill': skill,
             if (location != null && location.isNotEmpty) 'location': location,
+            if (user?.locationLat != null) 'residentLat': user!.locationLat.toString(),
+            if (user?.locationLng != null) 'residentLng': user!.locationLng.toString(),
           },
         );
       } else {

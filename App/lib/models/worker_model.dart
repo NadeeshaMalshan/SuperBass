@@ -52,6 +52,7 @@ class WorkerModel {
   final String? availabilityScheduleJson;
   final List<String> skills;
   final List<WorkerSkillItem> skillItems;
+  final double? distance;
 
   WorkerModel({
     required this.id,
@@ -79,6 +80,7 @@ class WorkerModel {
     this.availabilityScheduleJson,
     this.skills = const [],
     this.skillItems = const [],
+    this.distance,
   });
 
   factory WorkerModel.fromJson(Map<String, dynamic> json) {
@@ -135,6 +137,7 @@ class WorkerModel {
       availabilityScheduleJson: json['availabilityScheduleJson'] as String?,
       skills: parsedSkills,
       skillItems: parsedSkillItems,
+      distance: (json['distance'] as num?)?.toDouble(),
     );
   }
 
