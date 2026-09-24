@@ -103,7 +103,7 @@ namespace Superbass.Controllers
                 WorkerId = id,
                 ServiceName = service,
                 Skills = subSkills,
-                ExperienceYears = dto.ExperienceYears > 0 ? dto.ExperienceYears : 1,
+                ExperienceYears = dto.ExperienceYears >= 0 ? dto.ExperienceYears : 0,
                 SkillName = service
             };
 
@@ -195,7 +195,7 @@ namespace Superbass.Controllers
                     {
                         ServiceName = service,
                         Skills = subSkills,
-                        ExperienceYears = s.ExperienceYears > 0 ? s.ExperienceYears : 1,
+                        ExperienceYears = s.ExperienceYears >= 0 ? s.ExperienceYears : 0,
                         SkillName = service
                     };
                 }).ToList();
