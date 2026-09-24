@@ -328,16 +328,33 @@ export default function WorkerDetail() {
               </h2>
 
               {worker.skills && worker.skills.length > 0 ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-                  {worker.skills.map((skill, idx) => (
-                    <div key={idx} style={{ backgroundColor: '#ffffff', border: '1.5px solid #e2e8f0', padding: '16px', borderRadius: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'border-color 0.2s' }}>
-                      <div>
-                        <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.05rem' }}>{skill.skillName}</div>
-                        <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '4px', fontWeight: 600 }}>{skill.experienceYears || 1}+ Years Experience</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
+                  {worker.skills.map((skill, idx) => {
+                    const serviceTitle = skill.serviceName || skill.skillName;
+                    const subSkills = Array.isArray(skill.skills) ? skill.skills : [];
+
+                    return (
+                      <div key={idx} style={{ backgroundColor: '#ffffff', border: '1.5px solid #e2e8f0', padding: '18px', borderRadius: '18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.1rem' }}>{serviceTitle}</div>
+                            <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '2px', fontWeight: 600 }}>{skill.experienceYears || 1}+ Years Experience</div>
+                          </div>
+                          <span style={{ backgroundColor: '#ecfccb', color: '#4d7c0f', width: '32px', height: '32px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: 800 }}>✓</span>
+                        </div>
+
+                        {subSkills.length > 0 && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', paddingTop: '6px', borderTop: '1px dashed #f1f5f9' }}>
+                            {subSkills.map((sub, sIdx) => (
+                              <span key={sIdx} style={{ fontSize: '0.78rem', backgroundColor: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', padding: '3px 9px', borderRadius: '8px', fontWeight: 600 }}>
+                                {sub}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                      <span style={{ backgroundColor: '#ecfccb', color: '#4d7c0f', width: '32px', height: '32px', clipPath: 'polygon(50% 0%, 82% 12%, 99% 41%, 93% 75%, 67% 97%, 33% 97%, 7% 75%, 1% 41%, 18% 12%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: 800 }}>✓</span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <p style={{ color: '#64748b', margin: 0, fontSize: '1rem' }}>General Handyman & Repair Services.</p>
