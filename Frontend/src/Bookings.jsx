@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css'; // Leveraging existing App.css for styles
+import M3TopNavbar from './components/M3TopNavbar.jsx';
 import UserMenu from './components/UserMenu.jsx';
 import { API_BASE_URL } from './config.js';
 
@@ -10,6 +11,7 @@ import '@material/web/icon/icon.js';
 
 export default function Bookings() {
   const [bookings, setBookings] = useState([]);
+  const [bookingSearch, setBookingSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
@@ -23,7 +25,8 @@ export default function Bookings() {
   });
 
   const activeRole = localStorage.getItem('activeRole') || 'Resident';
-  const currentUserEmail = activeRole === 'Worker' 
+  const isWorker = activeRole.toLowerCase() === 'worker' || localStorage.getItem('workerAuth') === 'true';
+  const currentUserEmail = isWorker 
     ? (localStorage.getItem('workerEmail') || localStorage.getItem('email')) 
     : localStorage.getItem('email');
   const token = localStorage.getItem('token');
@@ -42,7 +45,7 @@ export default function Bookings() {
 
     try {
       setLoading(true);
-      const endpoint = activeRole === 'Worker' 
+      const endpoint = isWorker 
         ? `${API_BASE_URL}/bookings/worker?email=${encodeURIComponent(currentUserEmail)}`
         : `${API_BASE_URL}/bookings/resident?email=${encodeURIComponent(currentUserEmail)}`;
 
@@ -120,7 +123,7 @@ export default function Bookings() {
 
   const renderStatusBadge = (status) => {
     const statusStyles = {
-      Requested: { bg: '#fef3c7', text: '#d97706' },
+      Requested: isWorker ? { bg: '#dbeafe', text: '#1e40af' } : { bg: '#fef3c7', text: '#d97706' },
       Confirmed: { bg: '#dbeafe', text: '#1e40af' },
       InProgress: { bg: '#e0e7ff', text: '#4338ca' },
       Completed: { bg: '#d1fae5', text: '#065f46' },
@@ -137,23 +140,27 @@ export default function Bookings() {
     );
   };
 
+  const filteredBookings = bookings.filter(b => {
+    if (!bookingSearch.trim()) return true;
+    const q = bookingSearch.toLowerCase();
+    return (
+      (b.jobTitle && b.jobTitle.toLowerCase().includes(q)) ||
+      (b.workerName && b.workerName.toLowerCase().includes(q)) ||
+      (b.residentName && b.residentName.toLowerCase().includes(q)) ||
+      (b.locationAddress && b.locationAddress.toLowerCase().includes(q)) ||
+      (b.status && b.status.toLowerCase().includes(q))
+    );
+  });
+
   return (
     <div className="app-container" style={{ backgroundColor: '#f9fafb', minHeight: '100vh', color: '#111827' }}>
-      <header className="navbar" style={{ padding: '1rem 2rem', borderBottom: '1px solid #e5e7eb', backgroundColor: '#ffffff' }}>
-        <a href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }} className="brand-logo" style={{ cursor: 'pointer' }}>
-          <img src="/iconWithText-cropped.png" alt="Super Bass Logo" className="brand-logo-img" style={{ height: '40px' }} />
-        </a>
-        <ul className="nav-links">
-          <li className="nav-link" onClick={() => navigate('/')}>Home</li>
-          <li className="nav-link" onClick={() => navigate('/find')}>Services</li>
-          <li className="nav-link active" style={{ color: '#00d26a', fontWeight: 600 }}>Bookings</li>
-          <li className="nav-link" onClick={() => navigate('/community')}>Community</li>
-          <li className="nav-link" onClick={() => navigate('/chats')}>Messages</li>
-        </ul>
-        <div className="nav-actions">
-          <UserMenu />
-        </div>
-      </header>
+      {/* Google Workspace / Material 3 Top Navbar */}
+      <M3TopNavbar
+        activePage="bookings"
+        searchValue={bookingSearch}
+        onSearchChange={setBookingSearch}
+        searchPlaceholder="Search bookings by job, worker, location, status..."
+      />
 
       <main style={{ maxWidth: '1000px', margin: '40px auto', padding: '0 20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
@@ -164,17 +171,17 @@ export default function Bookings() {
           <p>Loading bookings...</p>
         ) : error ? (
           <div style={{ backgroundColor: '#fee2e2', color: '#991b1b', padding: '16px', borderRadius: '12px' }}>{error}</div>
-        ) : bookings.length === 0 ? (
+        ) : filteredBookings.length === 0 ? (
           <div style={{ backgroundColor: '#ffffff', padding: '40px', borderRadius: '16px', textAlign: 'center', border: '1px solid #e5e7eb' }}>
-            <h2>No bookings found</h2>
-            <p style={{ color: '#6b7280' }}>You don't have any bookings yet.</p>
+            <h2>{bookingSearch ? 'No matching bookings found' : 'No bookings found'}</h2>
+            <p style={{ color: '#6b7280' }}>{bookingSearch ? 'Try a different search term.' : "You don't have any bookings yet."}</p>
             {activeRole === 'Resident' && (
               <md-filled-button onClick={() => navigate('/find')} style={{ marginTop: '16px' }}>Find a Worker</md-filled-button>
             )}
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {bookings.map((booking) => (
+            {filteredBookings.map((booking) => (
               <div key={booking.id} style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '24px', border: '1px solid #e5e7eb', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -205,7 +212,7 @@ export default function Bookings() {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: '0.8rem', color: '#6b7280', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>Estimated Price</div>
-                    <div style={{ fontWeight: 800, color: '#d97706', fontSize: '1.1rem' }}>
+                    <div style={{ fontWeight: 800, color: isWorker ? '#2563eb' : '#d97706', fontSize: '1.1rem' }}>
                       {booking.estimatedPrice ? `Rs. ${booking.estimatedPrice.toLocaleString()}` : 'Negotiable'}
                     </div>
                   </div>
@@ -227,7 +234,7 @@ export default function Bookings() {
                   {activeRole === 'Worker' && booking.status === 'Requested' && (
                     <>
                       <md-outlined-button onClick={() => handleAction(booking.id, 'reject')} style={{ '--md-sys-color-primary': '#dc2626' }}>Reject</md-outlined-button>
-                      <md-filled-button onClick={() => handleAction(booking.id, 'accept')}>Accept Request</md-filled-button>
+                      <md-filled-button onClick={() => handleAction(booking.id, 'accept')} style={{ '--md-sys-color-primary': '#2563eb', '--md-sys-color-on-primary': '#ffffff' }}>Accept Request</md-filled-button>
                     </>
                   )}
 

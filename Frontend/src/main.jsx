@@ -32,6 +32,27 @@ function Router() {
 
   const activeRole = localStorage.getItem('activeRole') || 'Resident';
 
+  // Role-based Theme: Switch yellow accents to Worker Blue except on landing and worker-detail
+  useEffect(() => {
+    const updateTheme = () => {
+      const currentRole = (localStorage.getItem('activeRole') || '').toLowerCase();
+      const currentPath = window.location.pathname;
+      const isWorker = currentRole === 'worker' || localStorage.getItem('workerAuth') === 'true';
+      const isLanding = currentPath === '/' || currentPath === '' || currentPath === '/index.html';
+      const isWorkerDetail = currentPath === '/worker-detail' || currentPath.startsWith('/worker-detail');
+
+      if (isWorker && !isLanding && !isWorkerDetail) {
+        document.body.classList.add('worker-theme');
+      } else {
+        document.body.classList.remove('worker-theme');
+      }
+    };
+
+    updateTheme();
+    window.addEventListener('storage', updateTheme);
+    return () => window.removeEventListener('storage', updateTheme);
+  }, [path]);
+
   // Role Guard: Active Worker trying to access Resident account profile
   if (path === '/account' || path === '/account.jsx') {
     if (activeRole === 'Worker') {

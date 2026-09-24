@@ -1002,16 +1002,19 @@ md-filled-button:hover .btn-icon {
 
 .find-layout {
   display: flex;
-  gap: 28px;
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 24px;
+  gap: 24px;
+  max-width: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0 24px 24px 0;
+  box-sizing: border-box;
 }
 
 @media (max-width: 992px) {
   .find-layout {
     flex-direction: column;
     padding: 16px;
+    gap: 16px;
   }
 }
 
@@ -1304,6 +1307,7 @@ input:checked + .toggle-slider:before {
 .find-main {
   flex: 1;
   min-width: 0;
+  padding: 20px 24px 30px 6px;
 }
 
 .find-main-header {

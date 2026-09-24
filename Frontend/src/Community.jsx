@@ -10,8 +10,10 @@ import AiAssistantWidget from './components/AiAssistantWidget.jsx';
 // Material 3 Web Components
 import '@material/web/button/filled-button.js';
 import '@material/web/button/outlined-button.js';
+import '@material/web/icon/icon.js';
 import '@material/web/progress/circular-progress.js';
 import Loader from './components/Loader.jsx';
+import './components/M3Navbar.css';
 import { BACKEND_URL } from './config.js';
 
 const API_BASE_URL = `${BACKEND_URL}/api/community-posts`;
@@ -392,80 +394,127 @@ export default function Community() {
 
   return (
     <div className="find-page-container">
-      {/* Top Navbar */}
-      <header className="navbar" style={{ padding: '1rem 2rem', borderBottom: '1px solid #e2e8f0', backgroundColor: '#ffffff' }}>
-        <a href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }} className="brand-logo" style={{ cursor: 'pointer' }}>
-          <img src="/iconWithText-cropped.png" alt="Super Bass Logo" className="brand-logo-img" style={{ height: '40px' }} />
-        </a>
+      {/* Google Workspace / Gmail Style Material 3 Top Navbar */}
+      <header className="m3-top-navbar">
+        {/* Left: App Logo & Name */}
+        <div className="m3-navbar-brand-group">
+          <a
+            href="/"
+            onClick={(e) => { e.preventDefault(); navigate('/'); }}
+            className="m3-brand-link"
+            title="superබාස් - Home"
+          >
+            <img src="/icon.png" alt="superබාස්" className="m3-brand-logo-img" />
+            <span className="m3-brand-title">
+              super<span className="m3-brand-accent">බාස්</span>
+            </span>
+          </a>
+        </div>
 
-        {/* Search Input Bar */}
-        <div style={{ flex: 1, maxWidth: '580px', margin: '0 2rem' }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            backgroundColor: '#f8fafc',
-            borderRadius: '24px',
-            padding: '8px 20px',
-            border: '1px solid #e2e8f0',
-            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)'
-          }}>
-            <i className="fa-solid fa-magnifying-glass" style={{ color: '#94a3b8', marginRight: '12px' }}></i>
-            <input 
+        {/* Center: Search Pill */}
+        <div className="m3-navbar-center">
+          <div className="m3-search-pill">
+            <div className="m3-search-leading-icon" title="Search Community">
+              <md-icon>search_spark</md-icon>
+            </div>
+
+            <input
               type="text"
-              placeholder="Search community posts, ads, and requests..."
+              className="m3-search-input"
+              placeholder="Search community posts, questions, and requests..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                width: '100%',
-                background: 'transparent',
-                border: 'none',
-                color: '#0f172a',
-                outline: 'none',
-                fontSize: '0.925rem'
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') setSearchTerm('');
               }}
             />
+
             {searchTerm && (
-              <i 
-                className="fa-solid fa-xmark" 
+              <button
+                type="button"
+                className="m3-search-clear-btn"
                 onClick={() => setSearchTerm('')}
-                style={{ color: '#94a3b8', cursor: 'pointer' }}
-              ></i>
+                title="Clear search"
+                aria-label="Clear search"
+              >
+                <md-icon>close</md-icon>
+              </button>
             )}
           </div>
         </div>
 
-        {/* Nav Actions */}
-        <div className="nav-actions" style={{ display: 'flex', alignItems: 'center' }}>
-          <md-filled-button
-            onClick={() => navigate('/ai-chat')}
-            style={{
-              '--md-sys-color-primary': '#fef3c7',
-              '--md-sys-color-on-primary': '#92400e',
-              border: '1.5px solid #FDC101',
-              padding: '0 16px',
-              minWidth: '130px',
-              margin: '0 8px',
-              fontWeight: 700
-            }}
-          >
-            <i className="fa-solid fa-wand-magic-sparkles" style={{ marginRight: '6px', color: '#b45309' }}></i>
-            AI Assistant
-          </md-filled-button>
-
-          <md-filled-button
+        {/* Right: Navigation Buttons (Find Workers, Community, AI, Messages, Bookings) & User Avatar */}
+        <div className="m3-navbar-right">
+          {/* 1. Find Workers */}
+          <button
+            type="button"
+            className="m3-nav-btn"
             onClick={() => navigate('/find')}
-            style={{
-              '--md-sys-color-primary': '#FDC101',
-              '--md-sys-color-on-primary': '#000000',
-              padding: '0 20px',
-              minWidth: '100px',
-              margin: '0 8px'
-            }}
+            title="Find Craftsmen & Workers"
           >
-            Find Workers
-          </md-filled-button>
-          
-          <UserMenu />
+            <md-icon>search</md-icon>
+            <span>Find Workers</span>
+          </button>
+
+          {/* 2. AI Assistant Button */}
+          <button
+            type="button"
+            className="m3-nav-btn m3-nav-btn-ai"
+            onClick={() => navigate('/ai-chat')}
+            title="AI Home Assistant"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <defs>
+                <linearGradient id="commGeminiGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#4285F4" />
+                  <stop offset="35%" stopColor="#9B72CB" />
+                  <stop offset="70%" stopColor="#D96570" />
+                  <stop offset="100%" stopColor="#F4B400" />
+                </linearGradient>
+              </defs>
+              <path
+                d="M12 0C12 6.627 6.627 12 0 12C6.627 12 12 17.373 12 24C12 17.373 17.373 12 24 12C17.373 12 12 6.627 12 0Z"
+                fill="url(#commGeminiGrad)"
+              />
+            </svg>
+            <span>AI</span>
+          </button>
+
+          {/* 4. Messages Button */}
+          <button
+            type="button"
+            className="m3-nav-btn"
+            onClick={() => navigate('/chats')}
+            title="Direct Messages"
+          >
+            <md-icon>chat</md-icon>
+            <span>Messages</span>
+          </button>
+
+          {/* 5. Bookings Button */}
+          <button
+            type="button"
+            className="m3-nav-btn"
+            onClick={() => navigate('/bookings')}
+            title="My Bookings"
+          >
+            <md-icon>calendar_today</md-icon>
+            <span>Bookings</span>
+          </button>
+
+          {/* 6. User Profile Avatar or Sign In */}
+          {localStorage.getItem('token') ? (
+            <UserMenu variant="m3-google" />
+          ) : (
+            <button
+              type="button"
+              className="m3-signin-btn"
+              onClick={() => navigate('/join')}
+              title="Sign in to superබාස්"
+            >
+              Sign in
+            </button>
+          )}
         </div>
       </header>
 

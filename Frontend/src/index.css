@@ -18,6 +18,11 @@
   --brand-yellow-light: #fffbeb;
   --brand-yellow-glow: rgba(245, 158, 11, 0.28);
 
+  --loader-bg: #fef3c7;
+  --loader-fill: #FDC101;
+  --md-circular-progress-active-indicator-color: #FDC101;
+  --md-linear-progress-active-indicator-color: #FDC101;
+
   --font-heading: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -118,4 +123,43 @@ md-outlined-button.hero-secondary-button {
   --md-outlined-button-trailing-space: 32px;
   margin: 12px 8px;
   cursor: pointer;
+}
+
+/* ==========================================================================
+   Worker Role Blue Theme Design Tokens & Component Overrides
+   ========================================================================== */
+body.worker-theme {
+  --md-sys-color-primary: #2563EB;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-primary-container: #dbeafe;
+  --md-sys-color-on-primary-container: #1e40af;
+
+  --brand-yellow: #2563EB;
+  --brand-yellow-hover: #1d4ed8;
+  --brand-yellow-light: #eff6ff;
+  --brand-yellow-glow: rgba(37, 99, 235, 0.28);
+
+  --loader-bg: #dbeafe;
+  --loader-fill: #2563EB;
+  --md-circular-progress-active-indicator-color: #2563EB;
+  --md-linear-progress-active-indicator-color: #2563EB;
+}
+
+body.worker-theme md-filled-button {
+  --md-filled-button-container-color: #2563EB;
+  --md-filled-button-label-text-color: #ffffff;
+  --md-filled-button-hover-container-color: #1d4ed8;
+  --md-filled-button-focus-container-color: #1d4ed8;
+}
+
+body.worker-theme md-outlined-button {
+  --md-outlined-button-outline-color: #bfdbfe;
+  --md-outlined-button-label-text-color: #2563EB;
+  --md-outlined-button-hover-label-text-color: #1d4ed8;
+}
+
+body.worker-theme md-outlined-text-field {
+  --md-sys-color-primary: #2563EB;
+  --md-outlined-text-field-focus-outline-color: #2563EB;
+  --md-outlined-text-field-focus-label-text-color: #2563EB;
 }

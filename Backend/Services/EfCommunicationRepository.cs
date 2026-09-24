@@ -241,12 +241,27 @@ namespace Superbass.Services
                 string.Equals(conv.Worker.Email, userEmail, StringComparison.OrdinalIgnoreCase));
             var otherEmail = isUserWorker ? conv.ResidentEmail : (conv.Worker?.Email ?? conv.Worker?.ResidentEmail ?? string.Empty);
 
+            var residentWorker = await _context.Workers.AsNoTracking().FirstOrDefaultAsync(w => 
+                w.ResidentEmail == conv.ResidentEmail || w.Email == conv.ResidentEmail);
+
+            var cleanResidentName = conv.Resident?.Name;
+            if (string.IsNullOrWhiteSpace(cleanResidentName) || cleanResidentName.Contains('@') || cleanResidentName == conv.ResidentEmail.Split('@')[0])
+            {
+                if (!string.IsNullOrWhiteSpace(residentWorker?.Name))
+                {
+                    cleanResidentName = residentWorker.Name;
+                }
+            }
+
+            var residentProfileImage = residentWorker?.ProfileImage;
+
             return new ConversationDetailsDto
             {
                 Id = conv.Id,
                 ResidentEmail = conv.ResidentEmail,
-                ResidentName = conv.Resident?.Name,
+                ResidentName = cleanResidentName ?? conv.Resident?.Name ?? conv.ResidentEmail.Split('@')[0],
                 ResidentPhone = conv.Resident?.PhoneNo,
+                ResidentProfileImage = residentProfileImage,
                 WorkerId = conv.WorkerId,
                 WorkerName = conv.Worker?.Name ?? "Worker",
                 WorkerEmail = conv.Worker?.Email ?? string.Empty,
@@ -510,12 +525,27 @@ namespace Superbass.Services
                 string.Equals(conv.Worker.Email, currentUserEmail, StringComparison.OrdinalIgnoreCase));
             var otherEmail = isUserWorker ? conv.ResidentEmail : (conv.Worker?.Email ?? conv.Worker?.ResidentEmail ?? string.Empty);
 
+            var residentWorker = await _context.Workers.AsNoTracking().FirstOrDefaultAsync(w => 
+                w.ResidentEmail == conv.ResidentEmail || w.Email == conv.ResidentEmail);
+
+            var cleanResidentName = conv.Resident?.Name;
+            if (string.IsNullOrWhiteSpace(cleanResidentName) || cleanResidentName.Contains('@') || cleanResidentName == conv.ResidentEmail.Split('@')[0])
+            {
+                if (!string.IsNullOrWhiteSpace(residentWorker?.Name))
+                {
+                    cleanResidentName = residentWorker.Name;
+                }
+            }
+
+            var residentProfileImage = residentWorker?.ProfileImage;
+
             return new ConversationSummaryDto
             {
                 Id = conv.Id,
                 ResidentEmail = conv.ResidentEmail,
-                ResidentName = conv.Resident?.Name,
+                ResidentName = cleanResidentName ?? conv.Resident?.Name ?? conv.ResidentEmail.Split('@')[0],
                 ResidentPhone = conv.Resident?.PhoneNo,
+                ResidentProfileImage = residentProfileImage,
                 WorkerId = conv.WorkerId,
                 WorkerName = conv.Worker?.Name ?? "Worker",
                 WorkerEmail = conv.Worker?.Email ?? string.Empty,
