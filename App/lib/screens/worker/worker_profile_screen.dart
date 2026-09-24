@@ -235,6 +235,7 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       items: const [
+                        DropdownMenuItem(value: 0, child: Text('< 1 Year Experience')),
                         DropdownMenuItem(value: 1, child: Text('1 Year Experience')),
                         DropdownMenuItem(value: 2, child: Text('2 Years Experience')),
                         DropdownMenuItem(value: 3, child: Text('3 Years Experience')),
@@ -682,7 +683,11 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
                                       ),
                                     ),
                                     Text(
-                                      '${s.experienceYears}+ Years Experience',
+                                      s.experienceYears <= 0
+                                          ? 'Less than 1 Year Experience'
+                                          : (s.experienceYears == 1
+                                              ? '1 Year Experience'
+                                              : '${s.experienceYears}+ Years Experience'),
                                       style: GoogleFonts.dmSans(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w600,
