@@ -133,51 +133,95 @@ class _SavedAddressesScreenState extends State<SavedAddressesScreen> {
 
   void _showAddAddressSheet() {
     final controller = TextEditingController();
+    String? selectedProvince;
+    String? selectedDistrict;
+    
+    final sriLankaGeoData = {
+      "Western": ["Colombo", "Gampaha", "Kalutara"],
+      "Central": ["Kandy", "Matale", "Nuwara Eliya"],
+      "Southern": ["Galle", "Matara", "Hambantota"],
+      "Northern": ["Jaffna", "Kilinochchi", "Mannar", "Mullaitivu", "Vavuniya"],
+      "Eastern": ["Trincomalee", "Batticaloa", "Ampara"],
+      "North Western": ["Kurunegala", "Puttalam"],
+      "North Central": ["Anuradhapura", "Polonnaruwa"],
+      "Uva": ["Badulla", "Monaragala"],
+      "Sabaragamuwa": ["Ratnapura", "Kegalle"]
+    };
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(ctx).viewInsets.bottom,
-          left: 16, right: 16, top: 16,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text('Update Address', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              decoration: const InputDecoration(labelText: 'Address', border: OutlineInputBorder()),
+      builder: (ctx) => StatefulBuilder(
+        builder: (BuildContext ctx, StateSetter setSheetState) {
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom,
+              left: 16, right: 16, top: 16,
             ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () async {
-                if (controller.text.trim().isEmpty) return;
-                Navigator.pop(ctx);
-                setState(() => _isLoading = true);
-                final user = AuthService().currentUserNotifier.value;
-                if (user != null) {
-                  final success = await ApiService().updateProfile(user.email, {
-                    "Address": controller.text.trim(),
-                  });
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(success ? "Address saved!" : "Failed to save.")),
-                    );
-                    if (success) {
-                      setState(() => _currentAddress = controller.text.trim());
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text('Update Address', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: controller,
+                  decoration: const InputDecoration(labelText: 'Street Address', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(labelText: 'Province', border: OutlineInputBorder()),
+                  value: selectedProvince,
+                  items: sriLankaGeoData.keys.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
+                  onChanged: (val) {
+                    setSheetState(() {
+                      selectedProvince = val;
+                      selectedDistrict = null; // reset district
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(labelText: 'District', border: OutlineInputBorder()),
+                  value: selectedDistrict,
+                  items: (selectedProvince == null ? <String>[] : sriLankaGeoData[selectedProvince]!)
+                      .map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
+                  onChanged: selectedProvince == null ? null : (val) {
+                    setSheetState(() {
+                      selectedDistrict = val;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (controller.text.trim().isEmpty || selectedProvince == null || selectedDistrict == null) return;
+                    Navigator.pop(ctx);
+                    setState(() => _isLoading = true);
+                    final user = AuthService().currentUserNotifier.value;
+                    if (user != null) {
+                      final fullAddress = "${controller.text.trim()}, $selectedDistrict, $selectedProvince";
+                      final success = await ApiService().updateProfile(user.email, {
+                        "Address": fullAddress,
+                      });
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(success ? "Address saved!" : "Failed to save.")),
+                        );
+                        if (success) {
+                          setState(() => _currentAddress = fullAddress);
+                        }
+                      }
                     }
-                  }
-                }
-                if (mounted) setState(() => _isLoading = false);
-              },
-              child: const Text('Save Address'),
+                    if (mounted) setState(() => _isLoading = false);
+                  },
+                  child: const Text('Save Address'),
+                ),
+                const SizedBox(height: 16),
+              ],
             ),
-            const SizedBox(height: 16),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
