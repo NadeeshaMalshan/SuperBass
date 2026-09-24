@@ -748,7 +748,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                   rating: worker.overallRating,
                                   reviewCount: worker.completedJobs,
                                   location: worker.primaryServiceArea ?? 'Colombo',
-                                  distance: '1.5 km',
+                                  distance: worker.distance != null ? '${worker.distance!.toStringAsFixed(1)} km' : 'Unknown',
                                   profileImage: worker.profileImage,
                                   onBookTap: () => _showBookingSheet(worker),
                                 ),
