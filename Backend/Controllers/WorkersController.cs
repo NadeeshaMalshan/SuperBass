@@ -93,8 +93,20 @@ namespace Superbass.Controllers
 
         // POST /api/workers/{id}/skills
         [HttpPost("{id}/skills")]
-        public async Task<IActionResult> AddSkill(int id, [FromBody] WorkerSkill skill)
+        public async Task<IActionResult> AddSkill(int id, [FromBody] WorkerSkillDto dto)
         {
+            var service = !string.IsNullOrWhiteSpace(dto.ServiceName) ? dto.ServiceName : (!string.IsNullOrWhiteSpace(dto.Service) ? dto.Service : (dto.SkillName ?? "General"));
+            var subSkills = dto.Skills != null && dto.Skills.Count > 0 ? dto.Skills : (!string.IsNullOrWhiteSpace(dto.SkillName) && dto.SkillName != service ? new List<string> { dto.SkillName } : new List<string>());
+
+            var skill = new WorkerSkill
+            {
+                WorkerId = id,
+                ServiceName = service,
+                Skills = subSkills,
+                ExperienceYears = dto.ExperienceYears > 0 ? dto.ExperienceYears : 1,
+                SkillName = service
+            };
+
             var created = await _workerRepository.AddSkillAsync(id, skill);
             if (created == null) return NotFound();
             return Ok(created);
@@ -176,10 +188,16 @@ namespace Superbass.Controllers
 
             try
             {
-                var skills = dto.Skills.Select(s => new WorkerSkill
-                {
-                    SkillName = s.SkillName,
-                    ExperienceYears = s.ExperienceYears
+                var skills = dto.Skills.Select(s => {
+                    var service = !string.IsNullOrWhiteSpace(s.ServiceName) ? s.ServiceName : (!string.IsNullOrWhiteSpace(s.Service) ? s.Service : (s.SkillName ?? "General"));
+                    var subSkills = s.Skills != null && s.Skills.Count > 0 ? s.Skills : (!string.IsNullOrWhiteSpace(s.SkillName) && s.SkillName != service ? new List<string> { s.SkillName } : new List<string>());
+                    return new WorkerSkill
+                    {
+                        ServiceName = service,
+                        Skills = subSkills,
+                        ExperienceYears = s.ExperienceYears > 0 ? s.ExperienceYears : 1,
+                        SkillName = service
+                    };
                 }).ToList();
 
                 var worker = await _workerRepository.CreateWorkerFromResidentAsync(
@@ -275,7 +293,10 @@ namespace Superbass.Controllers
 
         public class WorkerSkillDto
         {
-            public string SkillName { get; set; } = null!;
+            public string? ServiceName { get; set; }
+            public string? Service { get; set; } // Alias for convenience
+            public string? SkillName { get; set; } // Fallback
+            public List<string> Skills { get; set; } = new(); // Array of skills relevant to the service
             public int ExperienceYears { get; set; } = 1;
         }
 
