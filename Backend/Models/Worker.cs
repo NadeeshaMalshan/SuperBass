@@ -28,6 +28,9 @@ namespace Superbass.Models
         public double? LocationLng { get; set; } //longitude
         public double CoverageRadiusKm { get; set; } = 10.0; //coverage radius in kilometers
         
+        [NotMapped]
+        public double? Distance { get; set; }
+        
         // Pricing
         public string PricingModel { get; set; } = "Hourly"; // Hourly, Daily, Fixed
         public decimal? HourlyRate { get; set; }
