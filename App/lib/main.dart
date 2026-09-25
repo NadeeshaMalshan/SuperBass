@@ -9,6 +9,7 @@ import 'models/worker_model.dart';
 import 'screens/chat_screen.dart';
 import 'screens/community_screen.dart';
 import 'screens/join_screen.dart';
+import 'screens/profile_screen.dart';
 import 'screens/worker/worker_portal_screen.dart';
 import 'screens/worker/become_worker_sheet.dart';
 import 'package:flutter/foundation.dart';
