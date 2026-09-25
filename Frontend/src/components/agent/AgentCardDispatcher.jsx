@@ -1,4 +1,4 @@
-import React from 'react';
+import PostConfirmationCard from './PostConfirmationCard.jsx';
 import PostCreatedCard from './PostCreatedCard.jsx';
 import PostListCard from './PostListCard.jsx';
 import PostDetailCard from './PostDetailCard.jsx';
@@ -27,6 +27,8 @@ export default function AgentCardDispatcher({ response, onAction }) {
 
       {(() => {
         switch (response_type) {
+          case 'post_confirmation':
+            return <PostConfirmationCard data={card_data} onAction={onAction} />;
           case 'post_created':
             return <PostCreatedCard data={card_data} onAction={onAction} />;
           case 'post_list':

@@ -49,6 +49,35 @@ namespace Superbass.Services
                 if (updateDto.LocationLng != null) resident.LocationLng = updateDto.LocationLng;
             }
 
+            if (updateDto.Address != null && updateDto.LocationLat == null && updateDto.LocationLng == null)
+            {
+                try 
+                {
+                    using var client = new System.Net.Http.HttpClient();
+                    client.DefaultRequestHeaders.Add("User-Agent", "SuperBassApp/1.0");
+                    var url = $"https://nominatim.openstreetmap.org/search?q={System.Uri.EscapeDataString(updateDto.Address)}&format=json&limit=1";
+                    var response = await client.GetAsync(url);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var jsonString = await response.Content.ReadAsStringAsync();
+                        using var doc = System.Text.Json.JsonDocument.Parse(jsonString);
+                        if (doc.RootElement.GetArrayLength() > 0)
+                        {
+                            var first = doc.RootElement[0];
+                            if (first.TryGetProperty("lat", out var latProp) && first.TryGetProperty("lon", out var lonProp))
+                            {
+                                if (double.TryParse(latProp.GetString(), out double lat) && double.TryParse(lonProp.GetString(), out double lon))
+                                {
+                                    resident.LocationLat = lat;
+                                    resident.LocationLng = lon;
+                                }
+                            }
+                        }
+                    }
+                }
+                catch { /* Ignore geocoding errors */ }
+            }
+
             await _context.SaveChangesAsync();
             return true;
         }

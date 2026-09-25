@@ -99,6 +99,30 @@ class UserProfileCard(BaseModel):
     pricingModel: Optional[str] = Field(default=None, description="Hourly or fixed pricing model")
 
 
+class PostConfirmationCard(BaseModel):
+    """
+    UI Card rendered when a post draft requires user review and explicit confirmation
+    before committing to the database.
+    """
+    action: Literal["create", "update"] = Field(description="'create' or 'update'")
+    postId: Optional[Union[int, str]] = Field(default=None, description="Post ID if updating")
+    title: str = Field(description="Drafted post title")
+    content: str = Field(description="Drafted post body content")
+    communityId: str = Field(default="General", description="Category or community identifier")
+    location: str = Field(default="Colombo", description="Service location")
+    validationStatus: Literal["valid", "warning", "missing_info"] = Field(
+        default="valid",
+        description="Validation outcome: 'valid', 'warning', or 'missing_info'"
+    )
+    validationNotes: Optional[str] = Field(
+        default="Please review your post details above before publishing to the community board.",
+        description="Helper message or guidance notes"
+    )
+    confirmPrompt: str = Field(
+        description="Payload/prompt executed when user clicks Confirm & Publish / Update"
+    )
+
+
 class TextMessageCard(BaseModel):
     """UI Card rendered for conversational answers, clarifications, or greetings."""
     text: str = Field(description="Agent conversational message")
@@ -119,6 +143,7 @@ class ErrorCard(BaseModel):
 
 
 ResponseTypeLiteral = Literal[
+    "post_confirmation",
     "post_created",
     "post_list",
     "post_detail",

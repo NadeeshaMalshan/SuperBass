@@ -85,14 +85,14 @@ export default function Find() {
     setIsLoggedIn(!!localStorage.getItem('token'));
     setUserName(localStorage.getItem('userName') || '');
     setUserPicture(localStorage.getItem('userPicture') || '');
-
-    // Request Real Location on mount
     getRealUserLocation();
+  }, []);
 
-    // Fetch workers from backend API
+  useEffect(() => {
     const fetchWorkers = async () => {
       try {
-        const res = await axios.get(`${API_BASE_URL}/workers`);
+        const [lat, lng] = userLocation;
+        const res = await axios.get(`${API_BASE_URL}/workers/search?residentLat=${lat}&residentLng=${lng}`);
         setWorkers(res.data || []);
       } catch (err) {
         console.error('Error fetching workers:', err);
@@ -100,9 +100,8 @@ export default function Find() {
         setLoading(false);
       }
     };
-
     fetchWorkers();
-  }, []);
+  }, [userLocation]);
 
   const getFirstName = (name) => {
     if (!name) return 'Account';
@@ -354,8 +353,7 @@ export default function Find() {
     const isSelectedOnMap = selectedMapWorker && selectedMapWorker.id === worker.id;
     const displayRating = worker.overallRating != null ? worker.overallRating.toFixed(1) : null;
     const reviewCount = worker.completedJobs || 0;
-    const distanceMeters = Math.round((worker.id * 85) % 400 + 90);
-    const distanceMins = Math.round((worker.id * 2) % 8 + 3);
+    const realDistance = worker.distance != null ? `${worker.distance.toFixed(1)} km away` : 'Distance unknown';
 
     const rateValue = getWorkerRate(worker, rateType);
     const rateText = rateValue != null ? `Rs. ${rateValue.toLocaleString()}` : 'Negotiable';
@@ -397,8 +395,8 @@ export default function Find() {
           {/* Top Card Meta: Distance & Rating */}
           <div className="card-top-meta">
             <div className="card-distance-pill">
-              <i className="fa-solid fa-person-walking" style={{ color: '#64748b' }}></i>
-              <span>{distanceMeters}m ({distanceMins} min)</span>
+              <i className="fa-solid fa-location-dot" style={{ color: '#64748b' }}></i>
+              <span>{realDistance}</span>
             </div>
 
             <div className="card-rating-pill">

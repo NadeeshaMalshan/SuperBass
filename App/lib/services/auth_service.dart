@@ -13,11 +13,16 @@ class AuthService {
   factory AuthService() => _instance;
   AuthService._internal();
 
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    serverClientId: kIsWeb ? null : ApiConfig.googleClientId,
-    clientId: kIsWeb ? ApiConfig.googleClientId : null,
-    scopes: ['email', 'profile'],
-  );
+  // Lazy initialization of GoogleSignIn to prevent multiple GSI_LOGGER initialize() calls on Web
+  static GoogleSignIn? _googleSignInInstance;
+  GoogleSignIn get _googleSignIn {
+    _googleSignInInstance ??= GoogleSignIn(
+      serverClientId: kIsWeb ? null : ApiConfig.googleClientId,
+      clientId: kIsWeb ? ApiConfig.googleClientId : null,
+      scopes: ['email', 'profile'],
+    );
+    return _googleSignInInstance!;
+  }
 
   final ValueNotifier<AuthUser?> currentUserNotifier = ValueNotifier<AuthUser?>(null);
 
