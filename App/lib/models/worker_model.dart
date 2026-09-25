@@ -81,6 +81,7 @@ class WorkerModel {
   final String? availabilityScheduleJson;
   final List<String> skills;
   final List<WorkerSkillItem> skillItems;
+  final double? distance;
 
   List<String> get serviceNames =>
       skillItems.map((s) => s.serviceName).where((s) => s.isNotEmpty).toSet().toList();
@@ -208,6 +209,7 @@ class WorkerModel {
       'cancelledJobs': cancelledJobs,
       'availabilityScheduleJson': availabilityScheduleJson,
       'skills': skillItems.map((s) => s.toJson()).toList(),
+      'distance': distance,
     };
   }
 }

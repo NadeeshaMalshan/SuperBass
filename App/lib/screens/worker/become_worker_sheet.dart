@@ -66,7 +66,6 @@ class _BecomeWorkerSheetState extends State<BecomeWorkerSheet> {
 
   // Selected services with their respective skill arrays
   final List<WorkerServiceSelection> _selectedServices = [];
-  final _newSkillController = TextEditingController();
 
   @override
   void initState() {
