@@ -18,9 +18,9 @@ export default function Bookings() {
   const [reviewForm, setReviewForm] = useState({
     qualityRating: 5,
     punctualityRating: 5,
-    communicationRating: 5,
-    comment: ''
+    communicationRating: 5
   });
+  const [reviewComment, setReviewComment] = useState('');
 
   const activeRole = localStorage.getItem('activeRole') || 'Resident';
   const currentUserEmail = activeRole === 'Worker' 
@@ -96,9 +96,9 @@ export default function Bookings() {
     setReviewForm({
       qualityRating: 5,
       punctualityRating: 5,
-      communicationRating: 5,
-      comment: ''
+      communicationRating: 5
     });
+    setReviewComment('');
     setReviewModalOpen(true);
   };
 
@@ -107,7 +107,11 @@ export default function Bookings() {
     if (!selectedBooking) return;
 
     try {
-      await axios.post(`${API_BASE_URL}/bookings/${selectedBooking.id}/review`, reviewForm, {
+      const payload = {
+        ...reviewForm,
+        reviewComment: reviewComment
+      };
+      await axios.post(`${API_BASE_URL}/bookings/${selectedBooking.id}/review`, payload, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       setReviewModalOpen(false);
@@ -276,7 +280,7 @@ export default function Bookings() {
 
               <div>
                 <label style={{ display: 'block', fontWeight: 600, marginBottom: '8px' }}>Comment</label>
-                <textarea rows="4" value={reviewForm.comment} onChange={(e) => setReviewForm({...reviewForm, comment: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db' }} placeholder="How was the service?"></textarea>
+                <textarea rows="4" value={reviewComment} onChange={(e) => setReviewComment(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db' }} placeholder="Tell us about your experience with this worker..."></textarea>
               </div>
 
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '10px' }}>
