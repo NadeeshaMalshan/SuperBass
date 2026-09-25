@@ -21,12 +21,8 @@ export default function UserMenu({ variant = 'default' }) {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userName');
-    localStorage.removeItem('email');
-    localStorage.removeItem('userPicture');
-    localStorage.removeItem('userPhone');
-    localStorage.removeItem('userAddress');
+    localStorage.clear();
+    sessionStorage.clear();
     setIsOpen(false);
     navigate('/');
   };

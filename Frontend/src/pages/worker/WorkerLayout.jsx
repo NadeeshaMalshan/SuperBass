@@ -65,12 +65,8 @@ export default function WorkerLayout({ children, activeTab = 'dashboard' }) {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('email');
-    localStorage.removeItem('workerEmail');
-    localStorage.removeItem('userName');
-    localStorage.removeItem('userPicture');
-    localStorage.removeItem('activeRole');
+    localStorage.clear();
+    sessionStorage.clear();
     navigate('/join');
   };
 

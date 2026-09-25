@@ -29,6 +29,7 @@ export default function Find() {
       return '';
     }
   });
+  const [appliedSearchQuery, setAppliedSearchQuery] = useState(searchQuery);
 
   // Real User Geolocation State
   const [userLocation, setUserLocation] = useState([6.9271, 79.8612]); // Default Colombo [lat, lng]
@@ -48,6 +49,14 @@ export default function Find() {
   const [favorites, setFavorites] = useState({});
   const [showMap, setShowMap] = useState(false);
   const [selectedMapWorker, setSelectedMapWorker] = useState(null);
+
+  const [isWorkerDropdownOpen, setIsWorkerDropdownOpen] = useState(false);
+  const [failedWorkerAvatars, setFailedWorkerAvatars] = useState({});
+  const workerDropdownRef = useRef(null);
+  
+  const activeRole = localStorage.getItem('activeRole') || 'Resident';
+  const isWorker = activeRole.toLowerCase() === 'worker' || localStorage.getItem('workerAuth') === 'true';
+  const themePrimary = isWorker ? '#2563EB' : '#FDC101';
 
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -99,6 +108,17 @@ export default function Find() {
     getRealUserLocation();
   }, []);
 
+  // Close worker search dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (workerDropdownRef.current && !workerDropdownRef.current.contains(e.target)) {
+        setIsWorkerDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   useEffect(() => {
     const fetchWorkers = async () => {
       try {
@@ -114,9 +134,9 @@ export default function Find() {
     fetchWorkers();
   }, [userLocation]);
 
-  const getFirstName = (name) => {
-    if (!name) return 'Account';
-    return name.split(' ')[0];
+  const getInitial = (name) => {
+    if (!name) return 'U';
+    return name.trim().charAt(0).toUpperCase();
   };
 
   const navigate = (newPath) => {
@@ -135,6 +155,7 @@ export default function Find() {
     setSelectedCategories([]);
     setMinRating('Any');
     setSearchQuery('');
+    setAppliedSearchQuery('');
     setSortBy('recommended');
   };
 
@@ -193,8 +214,8 @@ export default function Find() {
   // Filtering Logic
   const filteredWorkers = workers.filter(w => {
     // 1. Search Query
-    if (searchQuery.trim() !== '') {
-      const q = searchQuery.toLowerCase();
+    if (appliedSearchQuery.trim() !== '') {
+      const q = appliedSearchQuery.toLowerCase();
       const nameMatch = w.name && w.name.toLowerCase().includes(q);
       const locMatch = w.primaryServiceArea && w.primaryServiceArea.toLowerCase().includes(q);
       const skillMatch = w.skills && w.skills.some(s => s.skillName.toLowerCase().includes(q));
@@ -397,34 +418,10 @@ export default function Find() {
           }
         }}
       >
-<button 
-          className={`card-heart-btn ${isFavorited ? 'favorited' : ''}`}
-          onClick={(e) => toggleFavorite(e, worker.id)}
-          title="Save to favorites"
-        >
-          <i className={`fa-${isFavorited ? 'solid' : 'regular'} fa-heart`}></i>
-        </button>
-
-        <div>
-          {/* Top Card Meta: Distance & Rating */}
-          <div className="card-top-meta">
-            <div className="card-distance-pill">
-              <i className="fa-solid fa-location-dot" style={{ color: '#64748b' }}></i>
-              <span>{realDistance}</span>
-            </div>
-
-            <div className="card-rating-pill">
-              <span>{displayRating != null ? `★ ${displayRating}` : 'No rating'}</span>
-              {reviewCount > 0 && <span style={{ color: '#92400e', fontWeight: 500 }}>({reviewCount})</span>}
-            </div>
-          </div>
-
-          {/* Photo Hero Container */}
-          <div className="card-photo-container">
-            {/* Main Content: Left Rounded Profile Avatar + Right Information */}
-            <div className="m3-card-horizontal-wrap">
-              {/* Left: Rounded Profile Photo / Avatar */}
-              <div className="m3-card-avatar-wrap">
+        {/* Main Content: Left Rounded Profile Avatar + Right Information */}
+        <div className="m3-card-horizontal-wrap">
+          {/* Left: Rounded Profile Photo / Avatar */}
+          <div className="m3-card-avatar-wrap">
             {worker.profilePicture || worker.profileImage ? (
               <img
                 src={worker.profilePicture || worker.profileImage}
@@ -479,7 +476,7 @@ export default function Find() {
             <div className="m3-card-chips-group">
               <span className="m3-card-chip m3-distance-chip" title="Proximity to your current location">
                 <md-icon>directions_walk</md-icon>
-                <span>{distanceMeters}m ({distanceMins} min)</span>
+                <span>{realDistance}</span>
               </span>
 
               {displayRating ? (
@@ -525,6 +522,170 @@ export default function Find() {
     );
   };
 
+  const handleStartChatWithWorker = (w) => {
+    setIsWorkerDropdownOpen(false);
+    navigate(`/chats`);
+  };
+
+  // Render Worker Search Results Dropdown inside Top Navbar
+  const renderWorkerSearchDropdown = () => {
+    if (!isWorkerDropdownOpen || !searchQuery.trim()) return null;
+    
+    // The dropdown uses the live searchQuery, not the appliedSearchQuery
+    const dropdownWorkers = workers.filter(w => {
+      const q = searchQuery.toLowerCase();
+      const nameMatch = w.name && w.name.toLowerCase().includes(q);
+      const locMatch = w.primaryServiceArea && w.primaryServiceArea.toLowerCase().includes(q);
+      const skillMatch = w.skills && w.skills.some(s => s.skillName.toLowerCase().includes(q));
+      return nameMatch || locMatch || skillMatch;
+    });
+
+    const matchingWorkers = dropdownWorkers;
+
+    return (
+      <div className="m3-search-dropdown" ref={workerDropdownRef}>
+        <div className="m3-search-dropdown-header">
+
+          <span className="m3-dropdown-hint">Press ↵ Enter to view all</span>
+        </div>
+
+        <div className="m3-search-dropdown-list">
+          {matchingWorkers.length === 0 ? (
+            <div className="m3-search-dropdown-empty">
+              <md-icon style={{ fontSize: '42px', color: '#94a3b8', marginBottom: '8px' }}>search_off</md-icon>
+              <h4>No verified workers found</h4>
+              <p>No craftsmen match "{searchQuery}". Try another skill or location.</p>
+              <div style={{ marginTop: '12px' }}>
+                <md-filled-button
+                  onClick={() => {
+                    setIsWorkerDropdownOpen(false);
+                    setAppliedSearchQuery(searchQuery);
+                    navigate(`/find?q=${encodeURIComponent(searchQuery)}`);
+                  }}
+                  style={{
+                    '--md-sys-color-primary': themePrimary,
+                    '--md-filled-button-container-color': themePrimary,
+                    '--md-filled-button-label-text-color': isWorker ? '#ffffff' : '#111827',
+                    '--md-filled-button-container-shape': '9999px',
+                    '--md-filled-button-container-height': '36px'
+                  }}
+                >
+                  <md-icon slot="icon">explore</md-icon>
+                  Browse Services Directory
+                </md-filled-button>
+              </div>
+            </div>
+          ) : (
+            matchingWorkers.slice(0, 8).map(w => {
+              const primarySkill = Array.isArray(w.skills) && w.skills.length > 0
+                ? (typeof w.skills[0] === 'string' ? w.skills[0] : w.skills[0]?.skillName)
+                : null;
+
+              const avatarUrl = w.profileImage && w.profileImage !== 'null' && w.profileImage.trim() !== ''
+                ? (w.profileImage.startsWith('http') ? w.profileImage : `${API_BASE_URL.replace('/api', '')}${w.profileImage.startsWith('/') ? '' : '/'}${w.profileImage}`)
+                : null;
+
+              const ratingVal = typeof w.overallRating === 'number' ? w.overallRating.toFixed(1) : '5.0';
+
+              return (
+                <div
+                  key={w.id}
+                  className="m3-navbar-worker-card"
+                  onClick={() => handleStartChatWithWorker(w)}
+                >
+                  <div className="m3-navbar-worker-avatar-wrap">
+                    {avatarUrl && !failedWorkerAvatars[w.id] ? (
+                      <img
+                        src={avatarUrl}
+                        alt={w.name}
+                        className="m3-navbar-worker-avatar-img"
+                        onError={() => setFailedWorkerAvatars(prev => ({ ...prev, [w.id]: true }))}
+                      />
+                    ) : (
+                      <div className="m3-navbar-worker-avatar-fallback">
+                        {getInitial(w.name)}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="m3-navbar-worker-info">
+                    <div className="m3-navbar-worker-header">
+                      <span className="m3-navbar-worker-name">{w.name}</span>
+                      <md-icon className="m3-navbar-verified-icon">verified</md-icon>
+                      {primarySkill && (
+                        <span className="m3-navbar-trade-tag">
+                          <md-icon>handyman</md-icon>
+                          <span>{primarySkill}</span>
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="m3-navbar-worker-chips">
+                      <span className="m3-navbar-chip rating">
+                        <md-icon>star</md-icon>
+                        <span>{ratingVal}</span>
+                      </span>
+
+                      {w.primaryServiceArea && (
+                        <span className="m3-navbar-chip location">
+                          <md-icon>location_on</md-icon>
+                          <span>{w.primaryServiceArea}</span>
+                        </span>
+                      )}
+
+                      <span className={`m3-navbar-chip status ${w.isAvailable ? 'available' : 'busy'}`}>
+                        <span className="m3-navbar-status-pulse"></span>
+                        <span>{w.isAvailable ? 'Available' : 'Busy'}</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="m3-navbar-worker-actions" onClick={(e) => e.stopPropagation()}>
+                    <md-outlined-button
+                      className="m3-navbar-btn-profile"
+                      onClick={() => {
+                        setIsWorkerDropdownOpen(false);
+                        navigate(`/worker-detail?id=${w.id}`);
+                      }}
+                    >
+                      <md-icon slot="icon">person</md-icon>
+                      Profile
+                    </md-outlined-button>
+
+                    <md-filled-button
+                      className="m3-navbar-btn-chat"
+                      onClick={() => handleStartChatWithWorker(w)}
+                    >
+                      <md-icon slot="icon">chat</md-icon>
+                      Chat
+                    </md-filled-button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {matchingWorkers.length > 0 && (
+          <div className="m3-search-dropdown-footer">
+            <button
+              type="button"
+              className="m3-search-dropdown-footer-link"
+              onClick={() => {
+                setIsWorkerDropdownOpen(false);
+                setAppliedSearchQuery(searchQuery);
+                navigate(`/find?q=${encodeURIComponent(searchQuery)}`);
+              }}
+            >
+              <span>Explore all {matchingWorkers.length} matching workers in Directory</span>
+              <md-icon>arrow_forward</md-icon>
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="find-page-container">
       {/* Google Workspace / Gmail Style Material 3 Top Navbar */}
@@ -566,9 +727,22 @@ export default function Find() {
               className="m3-search-input"
               placeholder="Search workers, skills, location..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setIsWorkerDropdownOpen(true)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setIsWorkerDropdownOpen(true);
+              }}
               onKeyDown={(e) => {
-                if (e.key === 'Escape') setSearchQuery('');
+                if (e.key === 'Escape') {
+                  setSearchQuery('');
+                  setAppliedSearchQuery('');
+                  setIsWorkerDropdownOpen(false);
+                }
+                if (e.key === 'Enter') {
+                  setAppliedSearchQuery(searchQuery);
+                  setIsWorkerDropdownOpen(false);
+                  navigate(`/find?q=${encodeURIComponent(searchQuery)}`);
+                }
               }}
             />
 
@@ -576,13 +750,19 @@ export default function Find() {
               <button
                 type="button"
                 className="m3-search-clear-btn"
-                onClick={() => setSearchQuery('')}
+                onClick={() => {
+                  setSearchQuery('');
+                  setAppliedSearchQuery('');
+                  setIsWorkerDropdownOpen(false);
+                }}
                 title="Clear search"
                 aria-label="Clear search"
               >
                 <md-icon>close</md-icon>
               </button>
             )}
+            
+            {renderWorkerSearchDropdown()}
           </div>
         </div>
 

@@ -163,3 +163,66 @@ body.worker-theme md-outlined-text-field {
   --md-outlined-text-field-focus-outline-color: #2563EB;
   --md-outlined-text-field-focus-label-text-color: #2563EB;
 }
+
+/* ==========================================================================
+   Material Design 3 Select, Option, Menu & List Design Tokens (colors.md)
+   ========================================================================== */
+md-outlined-select, md-filled-select {
+  --md-sys-color-primary: var(--brand-yellow);
+  --md-sys-color-primary-container: var(--md-sys-color-primary-container, #fef3c7);
+  --md-sys-color-on-primary-container: var(--md-sys-color-on-primary-container, #78350f);
+  --md-sys-color-surface-container: #ffffff;
+  --md-sys-color-surface-container-high: #ffffff;
+  --md-sys-color-surface-container-highest: #ffffff;
+  --md-menu-container-color: #ffffff;
+  --md-menu-container-shape: 16px;
+  --md-menu-container-elevation: 3;
+  --md-outlined-select-focus-outline-color: var(--brand-yellow);
+  --md-outlined-select-focus-label-text-color: #111827;
+  --md-outlined-select-focus-icon-color: #d97706;
+}
+
+md-select-option, md-menu-item {
+  --md-sys-color-primary-container: #fef3c7;
+  --md-sys-color-on-primary-container: #78350f;
+  --md-select-option-container-color: #ffffff;
+  --md-select-option-selected-container-color: #fef3c7;
+  --md-select-option-selected-label-text-color: #78350f;
+  --md-select-option-selected-leading-icon-color: #b45309;
+  --md-select-option-selected-trailing-icon-color: #b45309;
+  --md-select-option-focus-container-color: #fef3c7;
+  --md-select-option-focus-label-text-color: #78350f;
+  --md-select-option-hover-container-color: #fffbeb;
+  --md-select-option-hover-label-text-color: #0f172a;
+  --md-select-option-label-text-color: #0f172a;
+  --md-select-option-label-text-font: var(--font-body, 'DM Sans', sans-serif);
+  --md-select-option-label-text-size: 0.95rem;
+  --md-menu-item-container-color: #ffffff;
+  --md-menu-item-selected-container-color: #fef3c7;
+  --md-menu-item-selected-label-text-color: #78350f;
+  --md-menu-item-focus-container-color: #fef3c7;
+  --md-menu-item-hover-container-color: #fffbeb;
+}
+
+body.worker-theme md-outlined-select {
+  --md-sys-color-primary: #2563EB;
+  --md-sys-color-primary-container: #dbeafe;
+  --md-sys-color-on-primary-container: #1e40af;
+  --md-outlined-select-focus-outline-color: #2563EB;
+  --md-outlined-select-focus-label-text-color: #2563EB;
+  --md-outlined-select-focus-icon-color: #2563EB;
+}
+
+body.worker-theme md-select-option,
+body.worker-theme md-menu-item {
+  --md-sys-color-primary-container: #dbeafe;
+  --md-sys-color-on-primary-container: #1e40af;
+  --md-select-option-selected-container-color: #dbeafe;
+  --md-select-option-selected-label-text-color: #1e40af;
+  --md-select-option-focus-container-color: #dbeafe;
+  --md-select-option-focus-label-text-color: #1e40af;
+  --md-select-option-hover-container-color: #eff6ff;
+  --md-menu-item-selected-container-color: #dbeafe;
+  --md-menu-item-selected-label-text-color: #1e40af;
+  --md-menu-item-hover-container-color: #eff6ff;
+}

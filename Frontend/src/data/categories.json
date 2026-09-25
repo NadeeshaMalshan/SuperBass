@@ -1,12 +1,12 @@
 [
-  { "id": "plumbing", "name": "Plumbing", "icon": "fa-faucet-drip" },
-  { "id": "electrical", "name": "Electrical", "icon": "fa-bolt" },
-  { "id": "carpentry", "name": "Carpentry", "icon": "fa-hammer" },
-  { "id": "masonry", "name": "Masonry", "icon": "fa-trowel-bricks" },
-  { "id": "painting", "name": "Painting", "icon": "fa-paint-roller" },
-  { "id": "ac-repair", "name": "AC Repair", "icon": "fa-snowflake" },
-  { "id": "roofing", "name": "Roofing", "icon": "fa-house-chimney" },
-  { "id": "appliance-repair", "name": "Appliance Repair", "icon": "fa-screwdriver-wrench" },
-  { "id": "cctv-security", "name": "CCTV & Security", "icon": "fa-video" },
-  { "id": "general", "name": "General Advice", "icon": "fa-circle-info" }
+  { "id": "plumbing", "name": "Plumbing", "icon": "fa-faucet-drip", "materialIcon": "plumbing" },
+  { "id": "electrical", "name": "Electrical", "icon": "fa-bolt", "materialIcon": "electrical_services" },
+  { "id": "carpentry", "name": "Carpentry", "icon": "fa-hammer", "materialIcon": "carpenter" },
+  { "id": "masonry", "name": "Masonry", "icon": "fa-trowel-bricks", "materialIcon": "foundation" },
+  { "id": "painting", "name": "Painting", "icon": "fa-paint-roller", "materialIcon": "format_paint" },
+  { "id": "ac-repair", "name": "AC Repair", "icon": "fa-snowflake", "materialIcon": "ac_unit" },
+  { "id": "roofing", "name": "Roofing", "icon": "fa-house-chimney", "materialIcon": "roofing" },
+  { "id": "appliance-repair", "name": "Appliance Repair", "icon": "fa-screwdriver-wrench", "materialIcon": "home_repair_service" },
+  { "id": "cctv-security", "name": "CCTV & Security", "icon": "fa-video", "materialIcon": "videocam" },
+  { "id": "general", "name": "General Advice", "icon": "fa-circle-info", "materialIcon": "info" }
 ]

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import axios from 'axios';
 import './App.css';
 import './Community.css';
@@ -10,7 +11,13 @@ import AiAssistantWidget from './components/AiAssistantWidget.jsx';
 // Material 3 Web Components
 import '@material/web/button/filled-button.js';
 import '@material/web/button/outlined-button.js';
+import '@material/web/button/text-button.js';
 import '@material/web/icon/icon.js';
+import '@material/web/iconbutton/icon-button.js';
+import '@material/web/dialog/dialog.js';
+import '@material/web/textfield/outlined-text-field.js';
+import '@material/web/select/outlined-select.js';
+import '@material/web/select/select-option.js';
 import '@material/web/progress/circular-progress.js';
 import Loader from './components/Loader.jsx';
 import './components/M3Navbar.css';
@@ -28,6 +35,7 @@ export default function Community() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedLocation, setSelectedLocation] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
@@ -59,6 +67,15 @@ export default function Community() {
   const [newLocation, setNewLocation] = useState('Colombo 05');
   const [newImages, setNewImages] = useState([]);
   const fileInputRef = useRef(null);
+  const createDialogRef = useRef(null);
+
+  useEffect(() => {
+    if (isCreateModalOpen) {
+      createDialogRef.current?.show();
+    } else {
+      createDialogRef.current?.close();
+    }
+  }, [isCreateModalOpen]);
 
   const currentUserEmail = localStorage.getItem('email');
   const currentUserName = localStorage.getItem('userName');
@@ -332,8 +349,13 @@ export default function Community() {
 
   // Submit Create Post directly to Backend DB
   const handleCreatePost = async (e) => {
-    e.preventDefault();
-    if (!newTitle.trim() || !newContent.trim()) return;
+    if (e && typeof e.preventDefault === 'function') {
+      e.preventDefault();
+    }
+    if (!newTitle.trim() || !newContent.trim()) {
+      alert("Please provide both an Ad title and description.");
+      return;
+    }
 
     try {
       const userEmail = localStorage.getItem('email');
@@ -341,6 +363,8 @@ export default function Community() {
       await axios.post(API_BASE_URL, {
         title: newTitle,
         content: newContent,
+        condition: newCondition,
+        priceVal: newPrice ? parseFloat(newPrice.replace(/[^0-9.]/g, '')) || null : null,
         serviceCategoryId: newCategory,
         location: newLocation,
         images: newImages,
@@ -396,8 +420,18 @@ export default function Community() {
     <div className="find-page-container">
       {/* Google Workspace / Gmail Style Material 3 Top Navbar */}
       <header className="m3-top-navbar">
-        {/* Left: App Logo & Name */}
+        {/* Left: App Logo & Name with Hamburger Drawer Toggle */}
         <div className="m3-navbar-brand-group">
+          <button
+            type="button"
+            className="m3-hamburger-btn"
+            onClick={() => setIsSidebarCollapsed(prev => !prev)}
+            title={isSidebarCollapsed ? "Expand panel" : "Collapse panel"}
+            aria-label="Toggle navigation drawer"
+          >
+            <md-icon>menu</md-icon>
+          </button>
+
           <a
             href="/"
             onClick={(e) => { e.preventDefault(); navigate('/'); }}
@@ -415,7 +449,7 @@ export default function Community() {
         <div className="m3-navbar-center">
           <div className="m3-search-pill">
             <div className="m3-search-leading-icon" title="Search Community">
-              <md-icon>search_spark</md-icon>
+              <md-icon>search</md-icon>
             </div>
 
             <input
@@ -521,69 +555,173 @@ export default function Community() {
       {/* Main Content Container */}
       {/* Main Layout Container */}
       <div className="find-layout">
-        {/* Left Sidebar Filters */}
-        <aside className="find-sidebar">
-          <div className="find-sidebar-header">
-            <h2 className="find-sidebar-title">Filter by</h2>
-            <button className="find-sidebar-reset" onClick={() => {
-              setSearchTerm('');
-              setSelectedCategory('all');
-              setSelectedLocation('all');
-              setSortBy('newest');
-            }}>
-              Reset all <i className="fa-solid fa-xmark"></i>
-            </button>
-          </div>
+        {/* Left Sidebar Navigation (Google Workspace Style) */}
+        <aside className={`find-sidebar m3-drawer ${isSidebarCollapsed ? 'minimized' : ''}`}>
+          {/* Post Ad / Compose Action Button (Material 3 Extended FAB) */}
+          <button
+            type="button"
+            className="m3-compose-fab"
+            onClick={() => setIsCreateModalOpen(true)}
+            title="Post a new ad or service request"
+            aria-label="Post Ad"
+          >
+            <md-icon>edit</md-icon>
+            <span>Post Ad</span>
+          </button>
 
-          {/* Filter Group: Location */}
-          <div className="filter-group">
-            <div className="filter-group-title">Location</div>
-            <select
-              value={selectedLocation}
-              onChange={(e) => setSelectedLocation(e.target.value)}
-              style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', fontSize: '0.9rem', color: '#334155', outline: 'none' }}
+          {/* Primary Navigation List */}
+          <nav className="m3-drawer-nav">
+            <div
+              className={`m3-drawer-item ${selectedCategory === 'all' && selectedLocation === 'all' ? 'active' : ''}`}
+              onClick={() => {
+                setSearchTerm('');
+                setSelectedCategory('all');
+                setSelectedLocation('all');
+                setSortBy('newest');
+              }}
+              title="View all community posts"
             >
-              <option value="all">All Locations</option>
-              <option value="Colombo">Colombo</option>
-              <option value="Colombo 03">Colombo 03</option>
-              <option value="Colombo 05">Colombo 05</option>
-              <option value="Kandy">Kandy</option>
-              <option value="Rajagiriya">Rajagiriya</option>
-              <option value="Nugegoda">Nugegoda</option>
-              <option value="Dehiwala">Dehiwala</option>
-            </select>
+              <div className="m3-drawer-item-left">
+                <md-icon className="m3-drawer-icon">dashboard</md-icon>
+                <span className="m3-drawer-label">All Posts</span>
+              </div>
+              <span className="m3-drawer-badge">{posts.length}</span>
+            </div>
+
+            <div
+              className={`m3-drawer-item ${activeTab === 'moderation' ? 'active' : ''}`}
+              onClick={() => setActiveTab('moderation')}
+              title="Review reported and flagged posts"
+            >
+              <div className="m3-drawer-item-left">
+                <md-icon className="m3-drawer-icon">gavel</md-icon>
+                <span className="m3-drawer-label">Moderation Queue</span>
+              </div>
+              {moderationPosts.length > 0 && (
+                <span className="m3-drawer-badge">{moderationPosts.length}</span>
+              )}
+            </div>
+          </nav>
+
+          <hr className="m3-drawer-divider" />
+
+          {/* Location Section */}
+          <div className="m3-drawer-section">
+            {!isSidebarCollapsed ? (
+              <>
+                <div className="m3-drawer-section-header">
+                  <span className="m3-drawer-section-title">Location</span>
+                  {selectedLocation !== 'all' && (
+                    <button
+                      type="button"
+                      className="m3-drawer-section-action"
+                      onClick={() => setSelectedLocation('all')}
+                      title="Clear location selection"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <div style={{ padding: '0 12px 10px' }}>
+                  <md-outlined-select
+                    value={selectedLocation}
+                    onInput={(e) => setSelectedLocation(e.target.value)}
+                    onChange={(e) => setSelectedLocation(e.target.value)}
+                    style={{
+                      width: '100%',
+                      '--md-outlined-select-container-height': '40px',
+                      '--md-outlined-select-container-shape': '10px',
+                      '--md-outlined-select-leading-space': '10px',
+                      '--md-outlined-select-trailing-space': '10px',
+                      '--md-outlined-select-input-text-size': '0.85rem',
+                      '--md-outlined-select-focus-outline-color': '#FDC101',
+                      '--md-outlined-select-focus-icon-color': '#d97706',
+                      '--md-menu-container-color': '#ffffff',
+                      '--md-menu-container-shape': '14px',
+                      '--md-sys-color-primary-container': '#fef3c7',
+                      '--md-sys-color-on-primary-container': '#78350f',
+                      '--md-sys-color-surface-container': '#ffffff',
+                      '--md-sys-color-surface-container-high': '#ffffff'
+                    }}
+                  >
+                    <md-icon slot="leading-icon" style={{ fontSize: '18px', '--md-icon-size': '18px', color: '#64748b' }}>location_on</md-icon>
+                    <md-select-option value="all" selected={selectedLocation === 'all'}>
+                      <div slot="headline">All Locations</div>
+                    </md-select-option>
+                    <md-select-option value="Colombo" selected={selectedLocation === 'Colombo'}>
+                      <div slot="headline">Colombo</div>
+                    </md-select-option>
+                    <md-select-option value="Colombo 03" selected={selectedLocation === 'Colombo 03'}>
+                      <div slot="headline">Colombo 03</div>
+                    </md-select-option>
+                    <md-select-option value="Colombo 05" selected={selectedLocation === 'Colombo 05'}>
+                      <div slot="headline">Colombo 05</div>
+                    </md-select-option>
+                    <md-select-option value="Kandy" selected={selectedLocation === 'Kandy'}>
+                      <div slot="headline">Kandy</div>
+                    </md-select-option>
+                    <md-select-option value="Rajagiriya" selected={selectedLocation === 'Rajagiriya'}>
+                      <div slot="headline">Rajagiriya</div>
+                    </md-select-option>
+                    <md-select-option value="Nugegoda" selected={selectedLocation === 'Nugegoda'}>
+                      <div slot="headline">Nugegoda</div>
+                    </md-select-option>
+                    <md-select-option value="Dehiwala" selected={selectedLocation === 'Dehiwala'}>
+                      <div slot="headline">Dehiwala</div>
+                    </md-select-option>
+                  </md-outlined-select>
+                </div>
+              </>
+            ) : (
+              <div
+                className={`m3-drawer-item ${selectedLocation !== 'all' ? 'active' : ''}`}
+                onClick={() => setIsSidebarCollapsed(false)}
+                title={`Location: ${selectedLocation === 'all' ? 'All Locations' : selectedLocation} (Click to expand)`}
+              >
+                <div className="m3-drawer-item-left">
+                  <md-icon className="m3-drawer-icon">location_on</md-icon>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Filter Group: Service Categories */}
-          <div className="filter-group">
-            <div className="filter-group-title">Category</div>
-            <div className="checkbox-list">
-              <label className="custom-checkbox-item">
-                <div className="custom-checkbox-left">
-                  <input 
-                    type="radio" 
-                    name="catRadio"
-                    className="custom-checkbox-input"
-                    checked={selectedCategory === 'all'}
-                    onChange={() => setSelectedCategory('all')}
-                  />
-                  <span>All Categories</span>
-                </div>
-              </label>
-              {categoriesData.map(cat => (
-                <label key={cat.id} className="custom-checkbox-item">
-                  <div className="custom-checkbox-left">
-                    <input 
-                      type="radio" 
-                      name="catRadio"
-                      className="custom-checkbox-input"
-                      checked={selectedCategory === cat.id}
-                      onChange={() => setSelectedCategory(cat.id)}
-                    />
-                    <span>{cat.name}</span>
+          <hr className="m3-drawer-divider" />
+
+          {/* Categories Section */}
+          <div className="m3-drawer-section">
+            <div className="m3-drawer-section-header">
+              <span className="m3-drawer-section-title">Category</span>
+              {selectedCategory !== 'all' && (
+                <button
+                  type="button"
+                  className="m3-drawer-section-action"
+                  onClick={() => setSelectedCategory('all')}
+                  title="Clear category selection"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            <div className="m3-drawer-labels-list">
+              {categoriesData.map((cat) => {
+                const isSelected = selectedCategory === cat.id;
+                return (
+                  <div
+                    key={cat.id}
+                    className={`m3-drawer-item ${isSelected ? 'active' : ''}`}
+                    onClick={() => setSelectedCategory(cat.id)}
+                    title={`Filter by ${cat.name}`}
+                  >
+                    <div className="m3-drawer-item-left">
+                      <md-icon className="m3-drawer-icon">
+                        {isSelected ? 'label' : (cat.materialIcon || 'label_outline')}
+                      </md-icon>
+                      <span className="m3-drawer-label">{cat.name}</span>
+                    </div>
                   </div>
-                </label>
-              ))}
+                );
+              })}
             </div>
           </div>
         </aside>
@@ -597,50 +735,18 @@ export default function Community() {
                 {activeTab === 'feed' ? 'Community Listings' : 'Moderation Queue'}
               </h1>
               <p style={{ color: '#64748b', margin: '0.25rem 0 0 0', fontSize: '0.95rem' }}>
-                {activeTab === 'feed' 
-                  ? 'Browse classified ads, home service requests, and neighbor recommendations' 
+                {activeTab === 'feed'
+                  ? 'Browse classified ads, home service requests, and neighbor recommendations'
                   : 'Review flagged community listings'}
               </p>
             </div>
 
             <div className="find-header-actions">
-              {/* Tab Toggles */}
-              <div style={{ display: 'flex', gap: '8px', marginRight: '16px' }}>
-                <button
-                  onClick={() => setActiveTab('feed')}
-                  style={{
-                    padding: '6px 14px',
-                    borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
-                    backgroundColor: activeTab === 'feed' ? '#0f172a' : '#ffffff',
-                    color: activeTab === 'feed' ? '#ffffff' : '#475569',
-                    fontWeight: '600',
-                    fontSize: '0.85rem',
-                    cursor: 'pointer'
-                  }}
-                >
-                  All Listings
-                </button>
-                <button
-                  onClick={() => setActiveTab('moderation')}
-                  style={{
-                    padding: '6px 14px',
-                    borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
-                    backgroundColor: activeTab === 'moderation' ? '#ef4444' : '#ffffff',
-                    color: activeTab === 'moderation' ? '#ffffff' : '#475569',
-                    fontWeight: '600',
-                    fontSize: '0.85rem',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Moderation Queue
-                </button>
-              </div>
+
 
               {activeTab === 'feed' && (
                 <>
-                  <select 
+                  <select
                     className="find-sort-select"
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
@@ -649,164 +755,153 @@ export default function Community() {
                     <option value="popular">Most Popular</option>
                   </select>
 
-                  <md-filled-button
-                    onClick={() => setIsCreateModalOpen(true)}
-                    style={{
-                      '--md-sys-color-primary': '#FDC101',
-                      '--md-sys-color-on-primary': '#000000',
-                      padding: '0 24px',
-                      marginLeft: '8px'
-                    }}
-                  >
-                    <i slot="icon" className="fa-solid fa-plus"></i>
-                    Post Ad
-                  </md-filled-button>
+
                 </>
               )}
             </div>
           </div>
 
-        {/* Listings Cards Container */}
-        {loading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '4rem', color: '#64748b' }}>
-            <Loader />
-            <p style={{ fontSize: '1.1rem', fontWeight: '500' }}>Loading database posts...</p>
-          </div>
-        ) : (activeTab === 'feed' ? posts : moderationPosts).length === 0 ? (
-          <div style={{
-            backgroundColor: '#ffffff',
-            borderRadius: '12px',
-            padding: '4rem 2rem',
-            textAlign: 'center',
-            border: '1px solid #e2e8f0'
-          }}>
-            <i className="fa-solid fa-box-open" style={{ fontSize: '3rem', color: '#cbd5e1', marginBottom: '1rem' }}></i>
-            <h3 style={{ fontSize: '1.25rem', color: '#334155', fontWeight: '700', margin: '0 0 0.5rem 0' }}>
-              {activeTab === 'feed' ? 'No posts found in database' : 'No posts currently in moderation queue'}
-            </h3>
-            <p style={{ color: '#64748b', fontSize: '0.95rem', marginBottom: '1.5rem' }}>
-              {activeTab === 'feed' ? 'Create a post to publish it to the database.' : 'All reported posts have been resolved.'}
-            </p>
-            {activeTab === 'feed' && (
-              <button
-                onClick={() => setIsCreateModalOpen(true)}
-                style={{
-                  backgroundColor: '#009688',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: '24px',
-                  padding: '10px 24px',
-                  fontWeight: '700',
-                  cursor: 'pointer'
-                }}
-              >
-                Post New Ad / Request
-              </button>
-            )}
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gap: '20px', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
-            {(activeTab === 'feed' ? posts : moderationPosts).map(post => {
-              const catObj = categoriesData.find(c => c.id === post.category);
-              return (
-                <div 
-                  key={post.postId}
-                  className="sleek-worker-card"
-                  onClick={() => handleCardClick(post)}
-                  style={{ cursor: 'pointer' }}
+          {/* Listings Cards Container */}
+          {loading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '4rem', color: '#64748b' }}>
+              <Loader />
+              <p style={{ fontSize: '1.1rem', fontWeight: '500' }}>Loading posts...</p>
+            </div>
+          ) : (activeTab === 'feed' ? posts : moderationPosts).length === 0 ? (
+            <div style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '12px',
+              padding: '4rem 2rem',
+              textAlign: 'center',
+              border: '1px solid #e2e8f0'
+            }}>
+              <i className="fa-solid fa-box-open" style={{ fontSize: '3rem', color: '#cbd5e1', marginBottom: '1rem' }}></i>
+              <h3 style={{ fontSize: '1.25rem', color: '#334155', fontWeight: '700', margin: '0 0 0.5rem 0' }}>
+                {activeTab === 'feed' ? 'No posts found in database' : 'No posts currently in moderation queue'}
+              </h3>
+              <p style={{ color: '#64748b', fontSize: '0.95rem', marginBottom: '1.5rem' }}>
+                {activeTab === 'feed' ? 'Create a post to publish it to the database.' : 'All reported posts have been resolved.'}
+              </p>
+              {activeTab === 'feed' && (
+                <button
+                  onClick={() => setIsCreateModalOpen(true)}
+                  style={{
+                    backgroundColor: '#009688',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '24px',
+                    padding: '10px 24px',
+                    fontWeight: '700',
+                    cursor: 'pointer'
+                  }}
                 >
-                  {/* Top Meta */}
-                  <div className="card-top-meta" style={{ justifyContent: 'space-between', padding: '0 16px 12px 16px', borderBottom: '1px solid #f1f5f9' }}>
-                    <div className="card-distance-pill">
-                      <i className={`fa-solid ${catObj?.icon || 'fa-tag'}`} style={{ color: '#64748b' }}></i>
-                      <span>{post.category}</span>
-                    </div>
-                    <div className="card-rating-pill" style={{ background: 'transparent', padding: 0 }}>
-                      <span style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 500 }}>
-                        <i className="fa-solid fa-clock"></i> {formatTimeAgo(post.createdAt)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Photo Banner */}
-                  <div className="card-photo-container" style={{ margin: '16px', height: '180px', borderRadius: '12px' }}>
-                    {post.images && post.images.length > 0 ? (
-                      <img 
-                        src={post.images[0]} 
-                        alt={post.title} 
-                        className="card-photo-img"
-                        onError={(e) => {
-                          e.target.src = 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=500&auto=format&fit=crop';
-                        }}
-                      />
-                    ) : (
-                      <div className="card-photo-avatar-placeholder" style={{ borderRadius: '12px', background: '#f1f5f9' }}>
-                        <i className="fa-solid fa-image" style={{ color: '#cbd5e1', fontSize: '3rem' }}></i>
+                  Post New Ad / Request
+                </button>
+              )}
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gap: '20px', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
+              {(activeTab === 'feed' ? posts : moderationPosts).map(post => {
+                const catObj = categoriesData.find(c => c.id === post.category);
+                return (
+                  <div
+                    key={post.postId}
+                    className="sleek-worker-card"
+                    onClick={() => handleCardClick(post)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    {/* Top Meta */}
+                    <div className="card-top-meta" style={{ justifyContent: 'space-between', padding: '0 16px 12px 16px', borderBottom: '1px solid #f1f5f9' }}>
+                      <div className="card-distance-pill">
+                        <i className={`fa-solid ${catObj?.icon || 'fa-tag'}`} style={{ color: '#64748b' }}></i>
+                        <span>{post.category}</span>
                       </div>
-                    )}
-                    {post.images && post.images.length > 1 && (
-                      <div style={{ position: 'absolute', bottom: '8px', right: '8px', background: 'rgba(15, 23, 42, 0.75)', color: '#ffffff', fontSize: '0.75rem', padding: '4px 8px', borderRadius: '6px', fontWeight: 600 }}>
-                        <i className="fa-solid fa-camera"></i> {post.images.length}
-                      </div>
-                    )}
-                  </div>
-
-                  <div style={{ padding: '0 16px' }}>
-                    {/* Title and Edit/Delete Actions */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-                      <h3 className="card-worker-name" style={{ margin: 0, fontSize: '1.1rem', WebkitLineClamp: 2, display: '-webkit-box', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                        {post.title}
-                      </h3>
-                    </div>
-                    
-                    <p className="card-worker-role" style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '6px 0 0 0' }}>
-                      <i className="fa-solid fa-location-dot" style={{ color: '#94a3b8' }}></i> {post.location}
-                    </p>
-
-                    <div className="card-skills-row" style={{ marginTop: '12px' }}>
-                      {post.condition && <span className="card-skill-tag">{post.condition}</span>}
-                      {post.badgeType === 'verified_member' && (
-                        <span className="card-skill-tag" style={{ background: '#e0f2fe', color: '#0284c7', borderColor: '#bae6fd' }}>
-                          <i className="fa-solid fa-circle-check"></i> Verified
+                      <div className="card-rating-pill" style={{ background: 'transparent', padding: 0 }}>
+                        <span style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 500 }}>
+                          <i className="fa-solid fa-clock"></i> {formatTimeAgo(post.createdAt)}
                         </span>
+                      </div>
+                    </div>
+
+                    {/* Photo Banner */}
+                    <div className="card-photo-container" style={{ margin: '16px', height: '180px', borderRadius: '12px' }}>
+                      {post.images && post.images.length > 0 ? (
+                        <img
+                          src={post.images[0]}
+                          alt={post.title}
+                          className="card-photo-img"
+                          onError={(e) => {
+                            e.target.src = 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=500&auto=format&fit=crop';
+                          }}
+                        />
+                      ) : (
+                        <div className="card-photo-avatar-placeholder" style={{ borderRadius: '12px', background: '#f1f5f9' }}>
+                          <i className="fa-solid fa-image" style={{ color: '#cbd5e1', fontSize: '3rem' }}></i>
+                        </div>
+                      )}
+                      {post.images && post.images.length > 1 && (
+                        <div style={{ position: 'absolute', bottom: '8px', right: '8px', background: 'rgba(15, 23, 42, 0.75)', color: '#ffffff', fontSize: '0.75rem', padding: '4px 8px', borderRadius: '6px', fontWeight: 600 }}>
+                          <i className="fa-solid fa-camera"></i> {post.images.length}
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ padding: '0 16px' }}>
+                      {/* Title and Edit/Delete Actions */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                        <h3 className="card-worker-name" style={{ margin: 0, fontSize: '1.1rem', WebkitLineClamp: 2, display: '-webkit-box', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                          {post.title}
+                        </h3>
+                      </div>
+
+                      <p className="card-worker-role" style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '6px 0 0 0' }}>
+                        <i className="fa-solid fa-location-dot" style={{ color: '#94a3b8' }}></i> {post.location}
+                      </p>
+
+                      <div className="card-skills-row" style={{ marginTop: '12px' }}>
+                        {post.condition && <span className="card-skill-tag">{post.condition}</span>}
+                        {post.badgeType === 'verified_member' && (
+                          <span className="card-skill-tag" style={{ background: '#e0f2fe', color: '#0284c7', borderColor: '#bae6fd' }}>
+                            <i className="fa-solid fa-circle-check"></i> Verified
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="card-bottom-row" style={{ marginTop: '16px', padding: '16px', background: '#f8fafc', borderTop: '1px solid #f1f5f9', borderRadius: '0 0 20px 20px' }}>
+                      <div className="card-price-display">
+                        <span className="card-price-amount" style={{ color: '#0f172a', fontSize: '1.1rem' }}>{post.price || (post.priceVal ? `Rs ${post.priceVal.toLocaleString()}` : 'Inquire / Quote')}</span>
+                      </div>
+
+                      {isPostOwner(post) ? (
+                        <div style={{ display: 'flex', gap: '8px' }} onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={(e) => handleOpenEdit(post, e)}
+                            style={{ padding: '6px 12px', borderRadius: '6px', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem' }}
+                            title="Edit"
+                          >
+                            <i className="fa-solid fa-pen"></i> Edit
+                          </button>
+                          <button
+                            onClick={(e) => handleDeletePost(post.postId, e)}
+                            style={{ padding: '6px 12px', borderRadius: '6px', background: '#fef2f2', color: '#ef4444', border: '1px solid #fecaca', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem' }}
+                            title="Delete"
+                          >
+                            <i className="fa-solid fa-trash"></i> Delete
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          View Ad <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.75rem' }}></i>
+                        </div>
                       )}
                     </div>
                   </div>
-
-                  <div className="card-bottom-row" style={{ marginTop: '16px', padding: '16px', background: '#f8fafc', borderTop: '1px solid #f1f5f9', borderRadius: '0 0 20px 20px' }}>
-                    <div className="card-price-display">
-                      <span className="card-price-amount" style={{ color: '#0f172a', fontSize: '1.1rem' }}>{post.price || (post.priceVal ? `Rs ${post.priceVal.toLocaleString()}` : 'Inquire / Quote')}</span>
-                    </div>
-
-                    {isPostOwner(post) ? (
-                      <div style={{ display: 'flex', gap: '8px' }} onClick={(e) => e.stopPropagation()}>
-                        <button
-                          onClick={(e) => handleOpenEdit(post, e)}
-                          style={{ padding: '6px 12px', borderRadius: '6px', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem' }}
-                          title="Edit"
-                        >
-                          <i className="fa-solid fa-pen"></i> Edit
-                        </button>
-                        <button
-                          onClick={(e) => handleDeletePost(post.postId, e)}
-                          style={{ padding: '6px 12px', borderRadius: '6px', background: '#fef2f2', color: '#ef4444', border: '1px solid #fecaca', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem' }}
-                          title="Delete"
-                        >
-                          <i className="fa-solid fa-trash"></i> Delete
-                        </button>
-                      </div>
-                    ) : (
-                      <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        View Ad <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.75rem' }}></i>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </main>
+                );
+              })}
+            </div>
+          )}
+        </main>
       </div>
 
       {/* Listing Item Detail Modal View */}
@@ -822,7 +917,7 @@ export default function Community() {
                   {selectedPostForDetail.title}
                 </h2>
               </div>
-              <button 
+              <button
                 onClick={() => setSelectedPostForDetail(null)}
                 style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}
               >
@@ -834,10 +929,10 @@ export default function Community() {
               {/* Main Image Gallery */}
               {selectedPostForDetail.images && selectedPostForDetail.images.length > 0 && (
                 <div>
-                  <img 
-                    src={selectedGalleryImage || selectedPostForDetail.images[0]} 
+                  <img
+                    src={selectedGalleryImage || selectedPostForDetail.images[0]}
                     alt={selectedPostForDetail.title}
-                    className="detail-gallery-main" 
+                    className="detail-gallery-main"
                   />
                   {selectedPostForDetail.images.length > 1 && (
                     <div className="detail-thumbnails" style={{ marginTop: '10px' }}>
@@ -874,8 +969,8 @@ export default function Community() {
               {/* Poster Info Card */}
               <div className="poster-info-card">
                 <div className="poster-left">
-                  <img 
-                    src={selectedPostForDetail.userAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedPostForDetail.postId}`} 
+                  <img
+                    src={selectedPostForDetail.userAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedPostForDetail.postId}`}
                     alt={selectedPostForDetail.userName}
                     className="poster-avatar"
                   />
@@ -1124,137 +1219,169 @@ export default function Community() {
         </div>
       )}
 
-      {/* Create Ad / Post Modal */}
-      {isCreateModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsCreateModalOpen(false)}>
-          <div className="detail-modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '580px' }}>
-            <div className="modal-header">
-              <h2 style={{ fontSize: '1.35rem', fontWeight: '800', margin: 0, color: '#0f172a' }}>Post Classified Ad or Request</h2>
-              <button 
-                onClick={() => setIsCreateModalOpen(false)}
-                style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}
+      {/* Create Ad / Post Modal (Material 3 Dialog) */}
+      {createPortal(
+        <md-dialog
+          ref={createDialogRef}
+          onClose={() => setIsCreateModalOpen(false)}
+          style={{
+            '--md-dialog-container-color': '#ffffff',
+            '--md-dialog-container-shape': '28px',
+            '--md-outlined-text-field-container-shape': '14px',
+            '--md-outlined-text-field-focus-outline-color': '#fdc101',
+            '--md-outlined-text-field-focus-label-text-color': '#111827',
+            '--md-outlined-select-container-shape': '14px',
+            '--md-outlined-select-focus-outline-color': '#fdc101',
+            '--md-outlined-select-focus-label-text-color': '#111827',
+            '--md-outlined-select-focus-icon-color': '#d97706',
+            '--md-menu-container-color': '#ffffff',
+            '--md-menu-container-shape': '16px',
+            '--md-sys-color-primary-container': '#fef3c7',
+            '--md-sys-color-on-primary-container': '#78350f',
+            '--md-sys-color-surface-container': '#ffffff',
+            '--md-sys-color-surface-container-high': '#ffffff',
+            '--md-sys-color-surface-container-highest': '#ffffff',
+            fontFamily: "var(--font-body, 'DM Sans', sans-serif)",
+            position: 'fixed',
+            inset: 0,
+            margin: 'auto',
+            zIndex: 9999,
+            minWidth: '320px',
+            maxWidth: '680px',
+            width: 'min(680px, calc(100vw - 32px))',
+            maxHeight: 'min(90vh, 860px)'
+          }}
+        >
+          <div slot="headline" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '24px 28px 18px 28px', borderBottom: '1px solid #f1f5f9', boxSizing: 'border-box' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{ width: '44px', height: '44px', borderRadius: '14px', backgroundColor: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#b45309', flexShrink: 0 }}>
+                <md-icon style={{ fontSize: '24px' }}>campaign</md-icon>
+              </div>
+              <div>
+                <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#0f172a', fontFamily: "'DM Sans', sans-serif", lineHeight: 1.2 }}>
+                  Post Classified Ad or Request
+                </div>
+                <div style={{ fontSize: '0.825rem', color: '#64748b', marginTop: '3px' }}>
+                  Share your requirement or item with the neighborhood community
+                </div>
+              </div>
+            </div>
+            <md-icon-button type="button" onClick={() => setIsCreateModalOpen(false)} title="Close">
+              <md-icon>close</md-icon>
+            </md-icon-button>
+          </div>
+
+          <div slot="content" style={{ display: 'flex', flexDirection: 'column', gap: '20px', padding: '24px 28px', boxSizing: 'border-box' }}>
+            {/* Ad Title */}
+            <md-outlined-text-field
+              label="Ad Title *"
+              placeholder="e.g. Dell P2719H 27-inch IPS Monitor or Urgent AC Servicing"
+              value={newTitle}
+              onInput={(e) => setNewTitle(e.target.value)}
+              style={{ width: '100%' }}
+            >
+              <md-icon slot="leading-icon">title</md-icon>
+            </md-outlined-text-field>
+
+            {/* Condition and Price Row */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+              <md-outlined-select
+                label="Condition / Type"
+                value={newCondition}
+                onInput={(e) => setNewCondition(e.target.value)}
+                onChange={(e) => setNewCondition(e.target.value)}
+                style={{ width: '100%' }}
               >
-                ✕
-              </button>
+                <md-icon slot="leading-icon">category</md-icon>
+                <md-select-option value="Brand New" selected={newCondition === 'Brand New'}>
+                  <div slot="headline">Brand New</div>
+                </md-select-option>
+                <md-select-option value="Used" selected={newCondition === 'Used'}>
+                  <div slot="headline">Used</div>
+                </md-select-option>
+                <md-select-option value="Service Request" selected={newCondition === 'Service Request'}>
+                  <div slot="headline">Service Request</div>
+                </md-select-option>
+                <md-select-option value="Recommendation" selected={newCondition === 'Recommendation'}>
+                  <div slot="headline">Recommendation</div>
+                </md-select-option>
+              </md-outlined-select>
+
+              <md-outlined-text-field
+                label="Price / Budget (Rs)"
+                placeholder="e.g. 30,000"
+                value={newPrice}
+                onInput={(e) => setNewPrice(e.target.value)}
+                style={{ width: '100%' }}
+              >
+                <md-icon slot="leading-icon">payments</md-icon>
+              </md-outlined-text-field>
             </div>
 
-            <form onSubmit={handleCreatePost} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div>
-                <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Ad Title</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Dell P2719H 27 inch Frameless IPS Monitor or Urgent AC Servicing"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  required
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '0.95rem'
-                  }}
-                />
-              </div>
+            {/* Category and Location Row */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+              <md-outlined-select
+                label="Category"
+                value={newCategory}
+                onInput={(e) => setNewCategory(e.target.value)}
+                onChange={(e) => setNewCategory(e.target.value)}
+                style={{ width: '100%' }}
+              >
+                <md-icon slot="leading-icon">home_repair_service</md-icon>
+                {categoriesData.map(c => (
+                  <md-select-option key={c.id} value={c.id} selected={newCategory === c.id}>
+                    <div slot="headline">{c.name}</div>
+                  </md-select-option>
+                ))}
+              </md-outlined-select>
 
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Condition / Type</label>
-                  <select
-                    value={newCondition}
-                    onChange={(e) => setNewCondition(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      fontSize: '0.9rem'
-                    }}
-                  >
-                    <option value="Brand New">Brand New</option>
-                    <option value="Used">Used</option>
-                    <option value="Service Request">Service Request</option>
-                    <option value="Recommendation">Recommendation</option>
-                  </select>
+              <md-outlined-text-field
+                label="Location"
+                placeholder="e.g. Colombo 05"
+                value={newLocation}
+                onInput={(e) => setNewLocation(e.target.value)}
+                style={{ width: '100%' }}
+              >
+                <md-icon slot="leading-icon">location_on</md-icon>
+              </md-outlined-text-field>
+            </div>
+
+            {/* Description Textarea */}
+            <md-outlined-text-field
+              type="textarea"
+              rows="4"
+              label="Description *"
+              placeholder="Describe your item, specification, warranty, or service request details..."
+              value={newContent}
+              onInput={(e) => setNewContent(e.target.value)}
+              style={{ width: '100%' }}
+            />
+
+            {/* Attach Photos M3 Card */}
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '14px',
+              padding: '18px 20px',
+              borderRadius: '16px',
+              border: '1.5px dashed #cbd5e1',
+              backgroundColor: '#f8fafc',
+              boxSizing: 'border-box'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', flexShrink: 0 }}>
+                    <md-icon>photo_library</md-icon>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.925rem', fontWeight: 700, color: '#1e293b' }}>
+                      Attach Photos {newImages.length > 0 && <span style={{ color: '#059669', fontSize: '0.85rem', fontWeight: 600 }}>({newImages.length} attached)</span>}
+                    </div>
+                    <div style={{ fontSize: '0.775rem', color: '#64748b', marginTop: '2px' }}>
+                      Supports multiple images (JPG, PNG, WEBP)
+                    </div>
+                  </div>
                 </div>
-
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Price / Budget (Rs)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 30,000"
-                    value={newPrice}
-                    onChange={(e) => setNewPrice(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      fontSize: '0.9rem'
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Category</label>
-                  <select
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      fontSize: '0.9rem'
-                    }}
-                  >
-                    {categoriesData.map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Location</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Colombo 05"
-                    value={newLocation}
-                    onChange={(e) => setNewLocation(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      fontSize: '0.9rem'
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Description</label>
-                <textarea
-                  placeholder="Describe your item, specification, warranty, or service request details..."
-                  value={newContent}
-                  onChange={(e) => setNewContent(e.target.value)}
-                  required
-                  rows={4}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '0.95rem',
-                    fontFamily: 'inherit'
-                  }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Attach Multiple Photos</label>
                 <input
                   type="file"
                   accept="image/*"
@@ -1263,57 +1390,107 @@ export default function Community() {
                   onChange={handleImageUpload}
                   style={{ display: 'none' }}
                 />
-                <button
+                <md-outlined-button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   style={{
-                    padding: '10px 16px',
-                    borderRadius: '8px',
-                    border: '1px dashed #94a3b8',
-                    backgroundColor: '#f8fafc',
-                    cursor: 'pointer',
-                    fontWeight: '600',
-                    fontSize: '0.875rem',
-                    width: '100%'
+                    '--md-outlined-button-outline-color': '#d97706',
+                    '--md-outlined-button-label-text-color': '#111827',
+                    '--md-outlined-button-leading-space': '20px',
+                    '--md-outlined-button-trailing-space': '24px',
+                    '--md-outlined-button-with-leading-icon-leading-space': '18px',
+                    '--md-outlined-button-with-leading-icon-trailing-space': '24px',
+                    '--md-outlined-button-icon-spacing': '10px',
+                    '--md-outlined-button-container-height': '44px',
+                    '--md-outlined-button-container-shape': '9999px',
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontWeight: '700',
+                    minWidth: '175px',
+                    flexShrink: 0
                   }}
                 >
-                  <i className="fa-solid fa-camera"></i> Choose Photos ({newImages.length} attached)
-                </button>
+                  <md-icon slot="icon" style={{ fontSize: '20px', width: '20px', height: '20px', color: '#d97706' }}>add_a_photo</md-icon>
+                  Choose Photos
+                </md-outlined-button>
               </div>
 
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  style={{
-                    padding: '10px 20px',
-                    borderRadius: '20px',
-                    border: '1px solid #cbd5e1',
-                    backgroundColor: '#ffffff',
-                    fontWeight: '600',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  style={{
-                    padding: '10px 24px',
-                    borderRadius: '20px',
-                    border: 'none',
-                    backgroundColor: '#009688',
-                    color: '#ffffff',
-                    fontWeight: '700',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Publish Ad
-                </button>
-              </div>
-            </form>
+              {newImages.length > 0 && (
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', paddingTop: '4px' }}>
+                  {newImages.map((img, idx) => (
+                    <div key={idx} style={{ position: 'relative', width: '72px', height: '72px', borderRadius: '12px', overflow: 'hidden', border: '1.5px solid #e2e8f0', boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }}>
+                      <img src={img} alt={`Upload ${idx}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setNewImages(prev => prev.filter((_, i) => i !== idx));
+                        }}
+                        title="Remove photo"
+                        style={{
+                          position: 'absolute',
+                          top: '4px',
+                          right: '4px',
+                          width: '20px',
+                          height: '20px',
+                          borderRadius: '50%',
+                          backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                          color: '#ffffff',
+                          border: 'none',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '11px',
+                          padding: 0
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+
+          <div slot="actions" style={{ display: 'flex', gap: '12px', alignItems: 'center', justifyContent: 'flex-end', padding: '16px 28px 24px 28px', borderTop: '1px solid #f1f5f9', boxSizing: 'border-box', width: '100%' }}>
+            <md-text-button
+              type="button"
+              onClick={() => setIsCreateModalOpen(false)}
+              style={{
+                '--md-text-button-label-text-color': '#64748b',
+                '--md-text-button-container-shape': '9999px',
+                '--md-text-button-container-height': '44px',
+                '--md-text-button-leading-space': '16px',
+                '--md-text-button-trailing-space': '16px',
+                fontFamily: "'DM Sans', sans-serif",
+                fontWeight: '600'
+              }}
+            >
+              Cancel
+            </md-text-button>
+            <md-filled-button
+              type="button"
+              onClick={handleCreatePost}
+              style={{
+                '--md-filled-button-container-color': '#fdc101',
+                '--md-filled-button-label-text-color': '#111827',
+                '--md-filled-button-leading-space': '18px',
+                '--md-filled-button-trailing-space': '24px',
+                '--md-filled-button-icon-spacing': '8px',
+                '--md-filled-button-container-height': '44px',
+                '--md-filled-button-container-shape': '9999px',
+                fontFamily: "'DM Sans', sans-serif",
+                fontWeight: '700',
+                minWidth: '140px'
+              }}
+            >
+              <md-icon slot="icon" style={{ fontSize: '18px', width: '18px', height: '18px', color: '#111827' }}>send</md-icon>
+              Publish Ad
+            </md-filled-button>
+          </div>
+        </md-dialog>,
+        document.body
       )}
 
       {/* Report Post Modal */}
@@ -1339,13 +1516,13 @@ export default function Community() {
               }}
             />
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              <button 
+              <button
                 onClick={() => setReportingPostId(null)}
                 style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: 'none', cursor: 'pointer' }}
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={handleReportSubmit}
                 style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', backgroundColor: '#ef4444', color: '#fff', fontWeight: '700', cursor: 'pointer' }}
               >

@@ -109,6 +109,7 @@ export default function Chats() {
   const [isTyping, setIsTyping] = useState(false);
   const [isOtherUserOnline, setIsOtherUserOnline] = useState(false);
   const [otherUserLastSeen, setOtherUserLastSeen] = useState(null);
+  const [failedWorkerAvatars, setFailedWorkerAvatars] = useState({});
 
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -528,27 +529,7 @@ export default function Chats() {
     return name.trim().charAt(0).toUpperCase();
   };
 
-  // Material Design 3 / Google Workspace style gradient palettes for initial avatars
-  const AVATAR_PALETTE = [
-    { bg: 'linear-gradient(135deg, #1e40af, #3b82f6)', color: '#ffffff' }, // Blue
-    { bg: 'linear-gradient(135deg, #6b21a8, #a855f7)', color: '#ffffff' }, // Purple
-    { bg: 'linear-gradient(135deg, #065f46, #10b981)', color: '#ffffff' }, // Emerald
-    { bg: 'linear-gradient(135deg, #92400e, #f59e0b)', color: '#ffffff' }, // Amber
-    { bg: 'linear-gradient(135deg, #9f1239, #f43f5e)', color: '#ffffff' }, // Rose
-    { bg: 'linear-gradient(135deg, #155e75, #06b6d4)', color: '#ffffff' }, // Cyan
-    { bg: 'linear-gradient(135deg, #3730a3, #6366f1)', color: '#ffffff' }, // Indigo
-    { bg: 'linear-gradient(135deg, #9a3412, #ea580c)', color: '#ffffff' }  // Orange
-  ];
 
-  const getAvatarStyle = (name) => {
-    if (!name || typeof name !== 'string') return { background: AVATAR_PALETTE[0].bg, color: AVATAR_PALETTE[0].color };
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) {
-      hash = name.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const index = Math.abs(hash) % AVATAR_PALETTE.length;
-    return { background: AVATAR_PALETTE[index].bg, color: AVATAR_PALETTE[index].color };
-  };
 
   const resolvePartyDetails = (conv) => {
     if (!conv) return { displayName: 'SuperBass Member', avatarUrl: null, otherEmail: '', isUserWorker: false };
@@ -750,16 +731,16 @@ export default function Chats() {
   // Filter workers based on top navbar search query
   const matchingWorkers = workerSearchQuery.trim()
     ? workersList.filter(w => {
-        const q = workerSearchQuery.toLowerCase();
-        const nameMatch = w.name?.toLowerCase().includes(q);
-        const areaMatch = w.primaryServiceArea?.toLowerCase().includes(q);
-        const descMatch = w.description?.toLowerCase().includes(q);
-        const skillsMatch = Array.isArray(w.skills) && w.skills.some(s => {
-          const sName = typeof s === 'string' ? s : s?.skillName;
-          return sName?.toLowerCase().includes(q);
-        });
-        return nameMatch || areaMatch || descMatch || skillsMatch;
-      })
+      const q = workerSearchQuery.toLowerCase();
+      const nameMatch = w.name?.toLowerCase().includes(q);
+      const areaMatch = w.primaryServiceArea?.toLowerCase().includes(q);
+      const descMatch = w.description?.toLowerCase().includes(q);
+      const skillsMatch = Array.isArray(w.skills) && w.skills.some(s => {
+        const sName = typeof s === 'string' ? s : s?.skillName;
+        return sName?.toLowerCase().includes(q);
+      });
+      return nameMatch || areaMatch || descMatch || skillsMatch;
+    })
     : [];
 
   // Start chat with a selected worker from search dropdown
@@ -773,8 +754,8 @@ export default function Chats() {
       const wEmail = (c.workerEmail || '').toLowerCase();
       const wId = c.workerId;
       return (worker.id && wId === worker.id) ||
-             (worker.email && wEmail === worker.email.toLowerCase()) ||
-             (worker.residentEmail && wEmail === worker.residentEmail.toLowerCase());
+        (worker.email && wEmail === worker.email.toLowerCase()) ||
+        (worker.residentEmail && wEmail === worker.residentEmail.toLowerCase());
     });
 
     if (existing) {
@@ -814,10 +795,7 @@ export default function Chats() {
     return (
       <div className="m3-search-dropdown" ref={workerDropdownRef}>
         <div className="m3-search-dropdown-header">
-          <div className="m3-dropdown-title-wrap">
-            <md-icon style={{ fontSize: '18px', color: '#0284c7' }}>engineering</md-icon>
-            <span>Verified Craftsmen ({matchingWorkers.length})</span>
-          </div>
+
           <span className="m3-dropdown-hint">Press ↵ Enter to view all</span>
         </div>
 
@@ -834,7 +812,9 @@ export default function Chats() {
                     navigate(`/find?q=${encodeURIComponent(workerSearchQuery)}`);
                   }}
                   style={{
-                    '--md-sys-color-primary': '#0284c7',
+                    '--md-sys-color-primary': themePrimary,
+                    '--md-filled-button-container-color': themePrimary,
+                    '--md-filled-button-label-text-color': isWorker ? '#ffffff' : '#111827',
                     '--md-filled-button-container-shape': '9999px',
                     '--md-filled-button-container-height': '36px'
                   }}
@@ -863,22 +843,18 @@ export default function Chats() {
                   onClick={() => handleStartChatWithWorker(w)}
                 >
                   <div className="m3-navbar-worker-avatar-wrap">
-                    {avatarUrl ? (
+                    {avatarUrl && !failedWorkerAvatars[w.id] ? (
                       <img
                         src={avatarUrl}
                         alt={w.name}
                         className="m3-navbar-worker-avatar-img"
-                        onError={(e) => { e.target.style.display = 'none'; }}
+                        onError={() => setFailedWorkerAvatars(prev => ({ ...prev, [w.id]: true }))}
                       />
                     ) : (
-                      <div className="m3-navbar-worker-avatar-fallback" style={getAvatarStyle(w.name)}>
+                      <div className="m3-navbar-worker-avatar-fallback">
                         {getInitial(w.name)}
                       </div>
                     )}
-                    <span
-                      className={`m3-navbar-worker-status-pip ${w.isAvailable ? 'available' : 'busy'}`}
-                      title={w.isAvailable ? 'Available Now' : 'Busy'}
-                    />
                   </div>
 
                   <div className="m3-navbar-worker-info">
@@ -950,7 +926,7 @@ export default function Chats() {
               }}
             >
               <span>Explore all {matchingWorkers.length} matching workers in Directory</span>
-              <md-icon style={{ fontSize: '18px' }}>arrow_forward</md-icon>
+              <md-icon>arrow_forward</md-icon>
             </button>
           </div>
         )}
@@ -1074,7 +1050,7 @@ export default function Chats() {
                               onError={(e) => { e.target.style.display = 'none'; }}
                             />
                           ) : (
-                            <div className="chat-item-avatar" style={getAvatarStyle(party.displayName)}>
+                            <div className={`chat-item-avatar ${party.isUserWorker ? 'avatar-resident' : 'avatar-worker'}`}>
                               {getInitial(party.displayName)}
                             </div>
                           )}
@@ -1119,319 +1095,320 @@ export default function Chats() {
           {selectedChat ? (() => {
             const activeParty = resolvePartyDetails(selectedChat);
             return (
-            <main className="chats-main-pane">
-              {/* Header */}
-              <div className="chats-main-header">
-                <div className="chats-header-user-info">
-                  <div className="chats-header-avatar-wrapper">
-                    {activeParty.avatarUrl ? (
-                      <img
-                        src={activeParty.avatarUrl}
-                        alt={activeParty.displayName}
-                        className="chats-header-avatar"
-                        onError={(e) => { e.target.style.display = 'none'; }}
-                      />
-                    ) : (
-                      <div className="chats-header-avatar" style={getAvatarStyle(activeParty.displayName)}>
-                        {getInitial(activeParty.displayName)}
-                      </div>
-                    )}
-                    <span className={`chats-header-status-badge ${isOtherUserOnline ? 'online' : 'offline'}`}></span>
+              <main className="chats-main-pane">
+                {/* Header */}
+                <div className="chats-main-header">
+                  <div className="chats-header-user-info">
+                    <div className="chats-header-avatar-wrapper">
+                      {activeParty.avatarUrl ? (
+                        <img
+                          src={activeParty.avatarUrl}
+                          alt={activeParty.displayName}
+                          className="chats-header-avatar"
+                          onError={(e) => { e.target.style.display = 'none'; }}
+                        />
+                      ) : (
+                        <div className={`chats-header-avatar ${activeParty.isUserWorker ? 'avatar-resident' : 'avatar-worker'}`}>
+                          {getInitial(activeParty.displayName)}
+                        </div>
+                      )}
+                      <span className={`chats-header-status-badge ${isOtherUserOnline ? 'online' : 'offline'}`}></span>
+                    </div>
+                    <div>
+                      <h3 className="chats-header-name">
+                        {activeParty.displayName}
+                      </h3>
+                      <span className="chats-header-status">
+                        {isTyping ? (
+                          <span style={{ color: '#0284c7', fontWeight: 600 }}>✍️ typing...</span>
+                        ) : isOtherUserOnline ? (
+                          <span style={{ color: '#16a34a', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}>
+                            <i className="fa-solid fa-circle" style={{ fontSize: '0.45rem' }}></i> Active now
+                          </span>
+                        ) : otherUserLastSeen ? (
+                          <span style={{ color: '#94a3b8', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <i className="fa-regular fa-circle" style={{ fontSize: '0.45rem' }}></i> Last seen {formatConversationTime(otherUserLastSeen)}
+                          </span>
+                        ) : null}
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="chats-header-name">
-                      {activeParty.displayName}
-                    </h3>
-                    <span className="chats-header-status">
-                      {isTyping ? (
-                        <span style={{ color: '#0284c7', fontWeight: 600 }}>✍️ typing...</span>
-                      ) : isOtherUserOnline ? (
-                        <span style={{ color: '#16a34a', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}>
-                          <i className="fa-solid fa-circle" style={{ fontSize: '0.45rem' }}></i> Active now
-                        </span>
-                      ) : otherUserLastSeen ? (
-                        <span style={{ color: '#94a3b8', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                          <i className="fa-regular fa-circle" style={{ fontSize: '0.45rem' }}></i> Last seen {formatConversationTime(otherUserLastSeen)}
-                        </span>
-                      ) : null}
-                    </span>
+
+                  <div style={{ display: 'flex', gap: '8px', position: 'relative', alignItems: 'center' }}>
+                    {isSearchActive ? (
+                      <div className="chats-search-header">
+                        <input
+                          type="text"
+                          placeholder="Search in chat..."
+                          value={searchMessageKeyword}
+                          onChange={(e) => setSearchMessageKeyword(e.target.value)}
+                          autoFocus
+                        />
+                        <button type="button" onClick={() => { setIsSearchActive(false); setSearchMessageKeyword(''); }}>
+                          <i className="fa-solid fa-times"></i>
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        {isSelectModeActive && selectedMessageIds.length > 0 && (
+                          <md-icon-button
+                            title="Delete Selected"
+                            onClick={handleDeleteSelectedMessages}
+                            style={{ '--md-sys-color-on-surface-variant': '#ef4444' }}
+                          >
+                            <i className="fa-solid fa-trash"></i>
+                          </md-icon-button>
+                        )}
+                        <md-icon-button
+                          title="Search Chat"
+                          onClick={() => setIsSearchActive(true)}
+                        >
+                          <i className="fa-solid fa-search"></i>
+                        </md-icon-button>
+                        <md-icon-button
+                          id="chat-menu-anchor"
+                          title="Menu"
+                          onClick={() => setIsMenuOpen(!isMenuOpen)}
+                        >
+                          <i className="fa-solid fa-ellipsis-vertical"></i>
+                        </md-icon-button>
+                      </>
+                    )}
+
+                    <md-menu anchor="chat-menu-anchor" open={isMenuOpen} onClosed={() => setIsMenuOpen(false)} style={{ zIndex: 9999 }}>
+                      <md-menu-item onClick={() => {
+                        setIsMenuOpen(false);
+                        if (activeParty.workerId) {
+                          navigate(`/worker-detail?id=${activeParty.workerId}`);
+                        }
+                      }}>
+                        <div slot="headline">View Info</div>
+                        <i slot="end" className="fa-solid fa-circle-info" style={{ color: '#64748b' }}></i>
+                      </md-menu-item>
+                      <md-menu-item onClick={() => {
+                        setIsMenuOpen(false);
+                        setIsSelectModeActive(!isSelectModeActive);
+                        setSelectedMessageIds([]);
+                      }}>
+                        <div slot="headline">{isSelectModeActive ? 'Cancel Selection' : 'Select Messages'}</div>
+                        <i slot="end" className="fa-solid fa-check-square" style={{ color: '#64748b' }}></i>
+                      </md-menu-item>
+                      <md-menu-item onClick={() => { setIsMenuOpen(false); handleDeleteChat(); }}>
+                        <div slot="headline" style={{ color: '#ef4444' }}>Delete Chat</div>
+                        <i slot="end" className="fa-solid fa-trash" style={{ color: '#ef4444' }}></i>
+                      </md-menu-item>
+                    </md-menu>
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '8px', position: 'relative', alignItems: 'center' }}>
-                  {isSearchActive ? (
-                    <div className="chats-search-header">
-                      <input
-                        type="text"
-                        placeholder="Search in chat..."
-                        value={searchMessageKeyword}
-                        onChange={(e) => setSearchMessageKeyword(e.target.value)}
-                        autoFocus
-                      />
-                      <button type="button" onClick={() => { setIsSearchActive(false); setSearchMessageKeyword(''); }}>
-                        <i className="fa-solid fa-times"></i>
-                      </button>
+                {/* Messages Stream */}
+                <div className="chats-messages-stream" onClick={() => setShowEmojiPicker(false)}>
+                  {isMessagesLoading ? (
+                    <div className="chats-messages-loader-container">
+                      <Loader size={50} />
                     </div>
                   ) : (
                     <>
-                      {isSelectModeActive && selectedMessageIds.length > 0 && (
-                        <md-icon-button
-                          title="Delete Selected"
-                          onClick={handleDeleteSelectedMessages}
-                          style={{ '--md-sys-color-on-surface-variant': '#ef4444' }}
-                        >
-                          <i className="fa-solid fa-trash"></i>
-                        </md-icon-button>
+                      {messages.filter(msg => {
+                        if (!isSearchActive || !searchMessageKeyword) return true;
+                        return msg.content?.toLowerCase().includes(searchMessageKeyword.toLowerCase());
+                      }).map((msg, idx, arr) => {
+                        const isOutgoing = msg.senderEmail?.toLowerCase() === currentUserEmail.toLowerCase();
+                        const otherPartyName = activeParty.displayName;
+
+                        const isSelected = selectedMessageIds.includes(msg.id);
+
+                        let showDateDivider = false;
+                        let dateDividerText = '';
+
+                        if (idx === 0) {
+                          showDateDivider = true;
+                        } else {
+                          const prevMsg = arr[idx - 1];
+                          const prevDate = new Date(prevMsg.createdAt).toDateString();
+                          const currDate = new Date(msg.createdAt).toDateString();
+                          if (prevDate !== currDate) {
+                            showDateDivider = true;
+                          }
+                        }
+
+                        if (showDateDivider) {
+                          const msgDate = new Date(msg.createdAt);
+                          const today = new Date();
+                          const yesterday = new Date(today);
+                          yesterday.setDate(yesterday.getDate() - 1);
+
+                          if (msgDate.toDateString() === today.toDateString()) {
+                            dateDividerText = 'Today';
+                          } else if (msgDate.toDateString() === yesterday.toDateString()) {
+                            dateDividerText = 'Yesterday';
+                          } else {
+                            dateDividerText = msgDate.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+                          }
+                        }
+
+                        return (
+                          <React.Fragment key={msg.id || idx}>
+                            {showDateDivider && (
+                              <div className="chats-stream-date">{dateDividerText}</div>
+                            )}
+                            <div
+                              className={`chats-bubble-row ${isOutgoing ? 'resident' : 'worker'}`}
+                              onClick={() => {
+                                if (isSelectModeActive && msg.id) {
+                                  setSelectedMessageIds(prev =>
+                                    prev.includes(msg.id) ? prev.filter(id => id !== msg.id) : [...prev, msg.id]
+                                  );
+                                }
+                              }}
+                            >
+                              {isSelectModeActive && (
+                                <div className="chats-msg-checkbox">
+                                  <input type="checkbox" checked={isSelected} readOnly />
+                                </div>
+                              )}
+                              {!isOutgoing && (
+                                activeParty.avatarUrl ? (
+                                  <img
+                                    src={activeParty.avatarUrl}
+                                    alt={activeParty.displayName}
+                                    className="chats-msg-avatar"
+                                    onError={(e) => { e.target.style.display = 'none'; }}
+                                  />
+                                ) : (
+                                  <div className={`chats-msg-avatar ${!isOutgoing ? (activeParty.isUserWorker ? 'avatar-resident' : 'avatar-worker') : (isWorker ? 'avatar-worker' : 'avatar-resident')}`}>
+                                    {getInitial(otherPartyName)}
+                                  </div>
+                                )
+                              )}
+
+                              <div className="chats-msg-wrapper">
+                                <div className={`chats-bubble ${isOutgoing ? 'resident' : 'worker'}`}>
+                                  {msg.content && <div>{msg.content}</div>}
+                                  {msg.content && msg.content.includes('📋 Booking Requested #') && selectedChat.workerEmail?.toLowerCase() === currentUserEmail.toLowerCase() && (
+                                    <div style={{ marginTop: '10px', display: 'flex', gap: '8px' }}>
+                                      <button onClick={() => window.location.href = '/bookings'} style={{ backgroundColor: '#ffffff', color: '#000', padding: '6px 12px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+                                        View in Bookings
+                                      </button>
+                                    </div>
+                                  )}
+                                  {msg.attachmentUrl && (
+                                    <img
+                                      src={msg.attachmentUrl}
+                                      alt="attachment"
+                                      style={{ maxWidth: '100%', maxHeight: '220px', borderRadius: '12px', marginTop: '6px', objectFit: 'cover' }}
+                                      onClick={() => window.open(msg.attachmentUrl, '_blank')}
+                                    />
+                                  )}
+                                </div>
+                                <span className="chats-msg-time">
+                                  {formatMessageTime(msg.createdAt)}
+                                  {isOutgoing && (
+                                    msg.id && msg.id.toString().startsWith('local-') ? (
+                                      <i className="fa-solid fa-check" title="Sent" style={{ fontSize: '0.7rem', color: '#94a3b8' }}></i>
+                                    ) : msg.isRead ? (
+                                      <i className="fa-solid fa-check-double" title="Read" style={{ fontSize: '0.7rem', color: '#0284c7' }}></i>
+                                    ) : (
+                                      <i className="fa-solid fa-check-double" title="Delivered" style={{ fontSize: '0.7rem', color: '#94a3b8' }}></i>
+                                    )
+                                  )}
+                                </span>
+                              </div>
+                            </div>
+                          </React.Fragment>
+                        );
+                      })}
+
+                      {isTyping && (
+                        <div className="chats-bubble-row worker">
+                          {activeParty.avatarUrl ? (
+                            <img
+                              src={activeParty.avatarUrl}
+                              alt={activeParty.displayName}
+                              className="chats-msg-avatar"
+                              onError={(e) => { e.target.style.display = 'none'; }}
+                            />
+                          ) : (
+                            <div className={`chats-msg-avatar ${activeParty.isUserWorker ? 'avatar-resident' : 'avatar-worker'}`}>
+                              {getInitial(activeParty.displayName)}
+                            </div>
+                          )}
+                          <div className="chats-typing-bubble">
+                            <span className="chats-typing-dot"></span>
+                            <span className="chats-typing-dot"></span>
+                            <span className="chats-typing-dot"></span>
+                          </div>
+                        </div>
                       )}
-                      <md-icon-button
-                        title="Search Chat"
-                        onClick={() => setIsSearchActive(true)}
-                      >
-                        <i className="fa-solid fa-search"></i>
-                      </md-icon-button>
-                      <md-icon-button
-                        id="chat-menu-anchor"
-                        title="Menu"
-                        onClick={() => setIsMenuOpen(!isMenuOpen)}
-                      >
-                        <i className="fa-solid fa-ellipsis-vertical"></i>
-                      </md-icon-button>
+
+                      <div ref={messagesEndRef} />
                     </>
                   )}
-
-                  <md-menu anchor="chat-menu-anchor" open={isMenuOpen} onClosed={() => setIsMenuOpen(false)} style={{ zIndex: 9999 }}>
-                    <md-menu-item onClick={() => {
-                      setIsMenuOpen(false);
-                      if (activeParty.workerId) {
-                        navigate(`/worker-detail?id=${activeParty.workerId}`);
-                      }
-                    }}>
-                      <div slot="headline">View Info</div>
-                      <i slot="end" className="fa-solid fa-circle-info" style={{ color: '#64748b' }}></i>
-                    </md-menu-item>
-                    <md-menu-item onClick={() => {
-                      setIsMenuOpen(false);
-                      setIsSelectModeActive(!isSelectModeActive);
-                      setSelectedMessageIds([]);
-                    }}>
-                      <div slot="headline">{isSelectModeActive ? 'Cancel Selection' : 'Select Messages'}</div>
-                      <i slot="end" className="fa-solid fa-check-square" style={{ color: '#64748b' }}></i>
-                    </md-menu-item>
-                    <md-menu-item onClick={() => { setIsMenuOpen(false); handleDeleteChat(); }}>
-                      <div slot="headline" style={{ color: '#ef4444' }}>Delete Chat</div>
-                      <i slot="end" className="fa-solid fa-trash" style={{ color: '#ef4444' }}></i>
-                    </md-menu-item>
-                  </md-menu>
                 </div>
-              </div>
 
-              {/* Messages Stream */}
-              <div className="chats-messages-stream" onClick={() => setShowEmojiPicker(false)}>
-                {isMessagesLoading ? (
-                  <div className="chats-messages-loader-container">
-                    <Loader size={50} />
+                {/* Image Preview Bar if attached */}
+                {previewImage && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 20px', background: '#f1f5f9', borderTop: '1px solid #e2e8f0' }}>
+                    <img src={previewImage} alt="preview" style={{ width: '44px', height: '44px', borderRadius: '8px', objectFit: 'cover' }} />
+                    <span style={{ fontSize: '0.85rem', color: '#475569', flex: 1 }}>Photo ready to send</span>
+                    <button
+                      onClick={() => setPreviewImage(null)}
+                      style={{ background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '22px', height: '22px', cursor: 'pointer' }}
+                    >
+                      <i className="fa-solid fa-xmark"></i>
+                    </button>
                   </div>
-                ) : (
-                  <>
-                    {messages.filter(msg => {
-                      if (!isSearchActive || !searchMessageKeyword) return true;
-                      return msg.content?.toLowerCase().includes(searchMessageKeyword.toLowerCase());
-                    }).map((msg, idx, arr) => {
-                      const isOutgoing = msg.senderEmail?.toLowerCase() === currentUserEmail.toLowerCase();
-                      const otherPartyName = activeParty.displayName;
-
-                      const isSelected = selectedMessageIds.includes(msg.id);
-
-                      let showDateDivider = false;
-                      let dateDividerText = '';
-
-                      if (idx === 0) {
-                        showDateDivider = true;
-                      } else {
-                        const prevMsg = arr[idx - 1];
-                        const prevDate = new Date(prevMsg.createdAt).toDateString();
-                        const currDate = new Date(msg.createdAt).toDateString();
-                        if (prevDate !== currDate) {
-                          showDateDivider = true;
-                        }
-                      }
-
-                      if (showDateDivider) {
-                        const msgDate = new Date(msg.createdAt);
-                        const today = new Date();
-                        const yesterday = new Date(today);
-                        yesterday.setDate(yesterday.getDate() - 1);
-
-                        if (msgDate.toDateString() === today.toDateString()) {
-                          dateDividerText = 'Today';
-                        } else if (msgDate.toDateString() === yesterday.toDateString()) {
-                          dateDividerText = 'Yesterday';
-                        } else {
-                          dateDividerText = msgDate.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
-                        }
-                      }
-
-                      return (
-                        <React.Fragment key={msg.id || idx}>
-                          {showDateDivider && (
-                            <div className="chats-stream-date">{dateDividerText}</div>
-                          )}
-                          <div
-                            className={`chats-bubble-row ${isOutgoing ? 'resident' : 'worker'}`}
-                            onClick={() => {
-                              if (isSelectModeActive && msg.id) {
-                                setSelectedMessageIds(prev =>
-                                  prev.includes(msg.id) ? prev.filter(id => id !== msg.id) : [...prev, msg.id]
-                                );
-                              }
-                            }}
-                          >
-                            {isSelectModeActive && (
-                              <div className="chats-msg-checkbox">
-                                <input type="checkbox" checked={isSelected} readOnly />
-                              </div>
-                            )}
-                            {!isOutgoing && (
-                              activeParty.avatarUrl ? (
-                                <img
-                                  src={activeParty.avatarUrl}
-                                  alt={activeParty.displayName}
-                                  className="chats-msg-avatar"
-                                  onError={(e) => { e.target.style.display = 'none'; }}
-                                />
-                              ) : (
-                                <div className="chats-msg-avatar" style={getAvatarStyle(activeParty.displayName)}>
-                                  {getInitial(otherPartyName)}
-                                </div>
-                              )
-                            )}
-
-                            <div className="chats-msg-wrapper">
-                              <div className={`chats-bubble ${isOutgoing ? 'resident' : 'worker'}`}>
-                                {msg.content && <div>{msg.content}</div>}
-                                {msg.content && msg.content.includes('📋 Booking Requested #') && selectedChat.workerEmail?.toLowerCase() === currentUserEmail.toLowerCase() && (
-                                  <div style={{ marginTop: '10px', display: 'flex', gap: '8px' }}>
-                                    <button onClick={() => window.location.href = '/bookings'} style={{ backgroundColor: '#ffffff', color: '#000', padding: '6px 12px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
-                                      View in Bookings
-                                    </button>
-                                  </div>
-                                )}
-                                {msg.attachmentUrl && (
-                                  <img
-                                    src={msg.attachmentUrl}
-                                    alt="attachment"
-                                    style={{ maxWidth: '100%', maxHeight: '220px', borderRadius: '12px', marginTop: '6px', objectFit: 'cover' }}
-                                    onClick={() => window.open(msg.attachmentUrl, '_blank')}
-                                  />
-                                )}
-                              </div>
-                              <span className="chats-msg-time">
-                                {formatMessageTime(msg.createdAt)}
-                                {isOutgoing && (
-                                  msg.id && msg.id.toString().startsWith('local-') ? (
-                                    <i className="fa-solid fa-check" title="Sent" style={{ fontSize: '0.7rem', color: '#94a3b8' }}></i>
-                                  ) : msg.isRead ? (
-                                    <i className="fa-solid fa-check-double" title="Read" style={{ fontSize: '0.7rem', color: '#0284c7' }}></i>
-                                  ) : (
-                                    <i className="fa-solid fa-check-double" title="Delivered" style={{ fontSize: '0.7rem', color: '#94a3b8' }}></i>
-                                  )
-                                )}
-                              </span>
-                            </div>
-                          </div>
-                        </React.Fragment>
-                      );
-                    })}
-
-                    {isTyping && (
-                      <div className="chats-bubble-row worker">
-                        {activeParty.avatarUrl ? (
-                          <img
-                            src={activeParty.avatarUrl}
-                            alt={activeParty.displayName}
-                            className="chats-msg-avatar"
-                            onError={(e) => { e.target.style.display = 'none'; }}
-                          />
-                        ) : (
-                          <div className="chats-msg-avatar" style={getAvatarStyle(activeParty.displayName)}>
-                            {getInitial(activeParty.displayName)}
-                          </div>
-                        )}
-                        <div className="chats-typing-bubble">
-                          <span className="chats-typing-dot"></span>
-                          <span className="chats-typing-dot"></span>
-                          <span className="chats-typing-dot"></span>
-                        </div>
-                      </div>
-                    )}
-
-                    <div ref={messagesEndRef} />
-                  </>
                 )}
-              </div>
 
-              {/* Image Preview Bar if attached */}
-              {previewImage && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 20px', background: '#f1f5f9', borderTop: '1px solid #e2e8f0' }}>
-                  <img src={previewImage} alt="preview" style={{ width: '44px', height: '44px', borderRadius: '8px', objectFit: 'cover' }} />
-                  <span style={{ fontSize: '0.85rem', color: '#475569', flex: 1 }}>Photo ready to send</span>
+                {/* Emoji Picker */}
+                {showEmojiPicker && (
+                  <div style={{ position: 'absolute', bottom: '80px', right: '20px', zIndex: 10 }}>
+                    <EmojiPicker onEmojiClick={(emojiData) => handleEmojiClick(emojiData.emoji)} />
+                  </div>
+                )}
+
+                {/* Bottom Input Area */}
+                <div className="chats-input-bar-area" style={{ gap: '12px', padding: '12px 20px', alignItems: 'center' }}>
+                  <div style={{ flex: 1 }}>
+                    <md-outlined-text-field
+                      type="text"
+                      placeholder="Text message"
+                      value={inputText}
+                      onInput={handleInputChange}
+                      onKeyDown={handleKeyDown}
+                      disabled={isSending}
+                      style={{ width: '100%', '--md-sys-color-primary': themePrimary, '--md-outlined-text-field-container-shape': '24px' }}
+                    >
+                      <md-icon-button slot="leading-icon" onClick={() => fileInputRef.current?.click()}>
+                        <i className="fa-solid fa-circle-plus" style={{ color: '#64748b' }}></i>
+                      </md-icon-button>
+                      <md-icon-button slot="trailing-icon" onClick={() => setShowEmojiPicker(prev => !prev)}>
+                        <i className="fa-regular fa-face-smile" style={{ color: '#64748b' }}></i>
+                      </md-icon-button>
+                    </md-outlined-text-field>
+
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      style={{ display: 'none' }}
+                      accept="image/*"
+                      onChange={handleImageSelected}
+                    />
+                  </div>
+
                   <button
-                    onClick={() => setPreviewImage(null)}
-                    style={{ background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '22px', height: '22px', cursor: 'pointer' }}
+                    type="button"
+                    className={`chats-send-fab-btn ${hasContentToSend ? 'active' : ''}`}
+                    onClick={handleSendMessage}
+                    disabled={!hasContentToSend || isSending}
+                    title="Send"
                   >
-                    <i className="fa-solid fa-xmark"></i>
+                    <i className="fa-solid fa-paper-plane"></i>
                   </button>
                 </div>
-              )}
-
-              {/* Emoji Picker */}
-              {showEmojiPicker && (
-                <div style={{ position: 'absolute', bottom: '80px', right: '20px', zIndex: 10 }}>
-                  <EmojiPicker onEmojiClick={(emojiData) => handleEmojiClick(emojiData.emoji)} />
-                </div>
-              )}
-
-              {/* Bottom Input Area */}
-              <div className="chats-input-bar-area" style={{ gap: '12px', padding: '12px 20px', alignItems: 'center' }}>
-                <div style={{ flex: 1 }}>
-                  <md-outlined-text-field
-                    type="text"
-                    placeholder="Text message"
-                    value={inputText}
-                    onInput={handleInputChange}
-                    onKeyDown={handleKeyDown}
-                    disabled={isSending}
-                    style={{ width: '100%', '--md-sys-color-primary': themePrimary, '--md-outlined-text-field-container-shape': '24px' }}
-                  >
-                    <md-icon-button slot="leading-icon" onClick={() => fileInputRef.current?.click()}>
-                      <i className="fa-solid fa-circle-plus" style={{ color: '#64748b' }}></i>
-                    </md-icon-button>
-                    <md-icon-button slot="trailing-icon" onClick={() => setShowEmojiPicker(prev => !prev)}>
-                      <i className="fa-regular fa-face-smile" style={{ color: '#64748b' }}></i>
-                    </md-icon-button>
-                  </md-outlined-text-field>
-
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    style={{ display: 'none' }}
-                    accept="image/*"
-                    onChange={handleImageSelected}
-                  />
-                </div>
-
-                <button
-                  type="button"
-                  className={`chats-send-fab-btn ${hasContentToSend ? 'active' : ''}`}
-                  onClick={handleSendMessage}
-                  disabled={!hasContentToSend || isSending}
-                  title="Send"
-                >
-                  <i className="fa-solid fa-paper-plane"></i>
-                </button>
-              </div>
-            </main>
-          ); })() : (
+              </main>
+            );
+          })() : (
             <div className="chats-empty-state">
               <div className="chats-empty-illustration">
                 <i className="fa-regular fa-comments"></i>
