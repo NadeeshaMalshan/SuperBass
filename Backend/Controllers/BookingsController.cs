@@ -58,6 +58,8 @@ namespace Superbass.Controllers
                 Urgency = b.Urgency,
                 ScheduledDate = b.ScheduledDate,
                 LocationAddress = b.LocationAddress,
+                LocationLat = b.LocationLat,
+                LocationLng = b.LocationLng,
                 ContactPhone = b.ContactPhone,
                 PricingModel = b.PricingModel,
                 EstimatedPrice = b.EstimatedPrice,
@@ -90,6 +92,13 @@ namespace Superbass.Controllers
             if (string.IsNullOrWhiteSpace(residentEmail))
             {
                 residentEmail = "resident@superbass.lk";
+            }
+
+            // Reject if hiring account is a worker
+            var isWorkerAccount = await _context.Workers.AnyAsync(w => w.Email == residentEmail || w.ResidentEmail == residentEmail);
+            if (isWorkerAccount)
+            {
+                return BadRequest(new { message = "Workers are not permitted to hire or create bookings. Please switch to a Resident account to book services." });
             }
 
             // Ensure Resident exists
@@ -148,6 +157,8 @@ namespace Superbass.Controllers
                 Urgency = request.Urgency ?? "Medium",
                 ScheduledDate = scheduledUtc,
                 LocationAddress = request.LocationAddress ?? resident.Address ?? "Colombo",
+                LocationLat = request.LocationLat ?? resident.LocationLat,
+                LocationLng = request.LocationLng ?? resident.LocationLng,
                 ContactPhone = request.ContactPhone ?? resident.PhoneNo ?? string.Empty,
                 PricingModel = request.PricingModel ?? worker.PricingModel ?? "Hourly",
                 EstimatedPrice = request.EstimatedPrice ?? (worker.HourlyRate ?? worker.DailyRate),
@@ -276,6 +287,13 @@ namespace Superbass.Controllers
 
             if (booking == null) return NotFound(new { message = "Booking not found." });
 
+            // Check if worker already has an active InProgress job
+            var isWorkerBusy = await _context.Bookings.AnyAsync(b => b.WorkerId == booking.WorkerId && b.Status == "InProgress");
+            if (isWorkerBusy)
+            {
+                return BadRequest(new { message = "You are currently busy with an ongoing job. Please complete your active job before accepting new booking requests." });
+            }
+
             booking.Status = "Confirmed";
             booking.UpdatedAt = DateTime.UtcNow;
 
@@ -372,8 +390,22 @@ namespace Superbass.Controllers
 
             if (booking == null) return NotFound(new { message = "Booking not found." });
 
+            // Check if worker already has another job in progress
+            var isAlreadyBusy = await _context.Bookings.AnyAsync(b => b.WorkerId == booking.WorkerId && b.Id != booking.Id && b.Status == "InProgress");
+            if (isAlreadyBusy)
+            {
+                return BadRequest(new { message = "You already have another job in progress. Please complete it before starting a new job." });
+            }
+
             booking.Status = "InProgress";
             booking.UpdatedAt = DateTime.UtcNow;
+
+            // Mark worker as Busy (IsAvailable = false)
+            if (booking.Worker != null)
+            {
+                booking.Worker.IsAvailable = false;
+            }
+
             await _context.SaveChangesAsync();
 
             if (booking.ConversationId.HasValue)
@@ -419,6 +451,13 @@ namespace Superbass.Controllers
             if (booking.Worker != null)
             {
                 booking.Worker.CompletedJobs += 1;
+
+                // Check if worker has any remaining in-progress jobs
+                var hasOtherActiveJobs = await _context.Bookings.AnyAsync(b => b.WorkerId == booking.WorkerId && b.Id != booking.Id && b.Status == "InProgress");
+                if (!hasOtherActiveJobs)
+                {
+                    booking.Worker.IsAvailable = true; // Worker is Available again!
+                }
             }
 
             await _context.SaveChangesAsync();
@@ -459,6 +498,12 @@ namespace Superbass.Controllers
                 .FirstOrDefaultAsync(b => b.Id == id);
 
             if (booking == null) return NotFound(new { message = "Booking not found." });
+
+            // Cannot cancel if job is already in progress
+            if (booking.Status == "InProgress")
+            {
+                return BadRequest(new { message = "Job is currently in progress and cannot be cancelled. Please complete the job or contact support." });
+            }
 
             booking.Status = "Cancelled";
             booking.CancellationReason = request?.Reason ?? "Cancelled by user";

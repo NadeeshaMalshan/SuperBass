@@ -35,6 +35,9 @@ namespace Superbass.Models
         [MaxLength(250)]
         public string LocationAddress { get; set; } = string.Empty;
 
+        public double? LocationLat { get; set; }
+        public double? LocationLng { get; set; }
+
         [MaxLength(50)]
         public string ContactPhone { get; set; } = string.Empty;
 

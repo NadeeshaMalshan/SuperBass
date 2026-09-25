@@ -89,7 +89,6 @@
   }
 }
 
-/* User Info Card in Menu Header */
 .user-menu-header {
   padding: 10px 12px;
   display: flex;
@@ -97,6 +96,12 @@
   gap: 10px;
   border-bottom: 1px solid #f1f5f9;
   margin-bottom: 4px;
+  border-radius: 12px 12px 0 0;
+  transition: background-color 0.15s ease;
+}
+
+.user-menu-header:hover {
+  background-color: #f8fafc;
 }
 
 .user-menu-header-avatar {
@@ -202,4 +207,86 @@
 .user-menu-item.logout:hover {
   background-color: #fef2f2;
   color: #dc2626;
+}
+
+/* ==========================================================================
+   M3 Google-style Avatar Trigger (Gmail Header Match)
+   ========================================================================== */
+.m3-google-avatar-trigger {
+  background: transparent;
+  border: none;
+  padding: 3px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+  transition: transform 0.18s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.18s ease;
+  user-select: none;
+}
+
+.m3-google-avatar-trigger:hover {
+  transform: scale(1.05);
+}
+
+.m3-google-avatar-trigger:focus-visible {
+  outline: 2px solid #1a73e8;
+  outline-offset: 2px;
+}
+
+.m3-google-avatar-ring {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  padding: 2.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: box-shadow 0.2s cubic-bezier(0.2, 0, 0, 1), transform 0.2s ease;
+}
+
+/* Worker: Blue Ring */
+.m3-google-avatar-ring.worker-ring {
+  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 50%, #60a5fa 100%);
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.25), 0 2px 6px rgba(37, 99, 235, 0.35);
+}
+
+.m3-google-avatar-trigger:hover .m3-google-avatar-ring.worker-ring {
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.4), 0 3px 12px rgba(37, 99, 235, 0.6);
+}
+
+/* Resident: Yellow Ring */
+.m3-google-avatar-ring.resident-ring {
+  background: linear-gradient(135deg, #d97706 0%, #FDC101 50%, #fef08a 100%);
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.25), 0 2px 6px rgba(245, 158, 11, 0.4);
+}
+
+.m3-google-avatar-trigger:hover .m3-google-avatar-ring.resident-ring {
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.4), 0 3px 12px rgba(245, 158, 11, 0.65);
+}
+
+
+.m3-google-avatar-letter {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background-color: #1f1f1f;
+  color: #ffffff;
+  font-family: var(--font-heading, 'DM Sans', sans-serif);
+  font-weight: 700;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #ffffff;
+  letter-spacing: -0.5px;
+}
+
+.m3-google-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #ffffff;
 }

@@ -107,15 +107,7 @@ export default function AiAssistantWidget() {
   return (
     <>
       {/* Floating Action Button */}
-      <button
-        className="ai-fab-button"
-        onClick={() => setIsOpen(!isOpen)}
-        title="Chat with SuperBass AI"
-      >
-        <span className="ai-fab-pulse"></span>
-        <i className="fa-solid fa-wand-magic-sparkles"></i>
-        <span>SuperBass AI</span>
-      </button>
+
 
       {/* Floating Chat Popover */}
       {isOpen && (

@@ -11,6 +11,8 @@ namespace Superbass.Models
         public string? Urgency { get; set; } = "Medium";
         public DateTime? ScheduledDate { get; set; }
         public string? LocationAddress { get; set; }
+        public double? LocationLat { get; set; }
+        public double? LocationLng { get; set; }
         public string? ContactPhone { get; set; }
         public string? PricingModel { get; set; }
         public decimal? EstimatedPrice { get; set; }
@@ -52,6 +54,8 @@ namespace Superbass.Models
         public string Urgency { get; set; } = "Medium";
         public DateTime ScheduledDate { get; set; }
         public string LocationAddress { get; set; } = string.Empty;
+        public double? LocationLat { get; set; }
+        public double? LocationLng { get; set; }
         public string ContactPhone { get; set; } = string.Empty;
         public string PricingModel { get; set; } = "Hourly";
         public decimal? EstimatedPrice { get; set; }

@@ -8,8 +8,11 @@ import './App.css';
 import '@material/web/button/filled-button.js';
 import '@material/web/button/outlined-button.js';
 import '@material/web/icon/icon.js';
+import '@material/web/iconbutton/icon-button.js';
 import '@material/web/progress/circular-progress.js';
 import Loader from './components/Loader.jsx';
+import UserMenu from './components/UserMenu.jsx';
+import './components/M3Navbar.css';
 import { API_BASE_URL } from './config.js';
 
 export default function Find() {
@@ -19,7 +22,14 @@ export default function Find() {
 
   const [workers, setWorkers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(() => {
+    try {
+      return new URLSearchParams(window.location.search).get('q') || '';
+    } catch {
+      return '';
+    }
+  });
+  const [appliedSearchQuery, setAppliedSearchQuery] = useState(searchQuery);
 
   // Real User Geolocation State
   const [userLocation, setUserLocation] = useState([6.9271, 79.8612]); // Default Colombo [lat, lng]
@@ -34,9 +44,19 @@ export default function Find() {
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [minRating, setMinRating] = useState('Any');
   const [sortBy, setSortBy] = useState('recommended');
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [favorites, setFavorites] = useState({});
   const [showMap, setShowMap] = useState(false);
   const [selectedMapWorker, setSelectedMapWorker] = useState(null);
+
+  const [isWorkerDropdownOpen, setIsWorkerDropdownOpen] = useState(false);
+  const [failedWorkerAvatars, setFailedWorkerAvatars] = useState({});
+  const workerDropdownRef = useRef(null);
+  
+  const activeRole = localStorage.getItem('activeRole') || 'Resident';
+  const isWorker = activeRole.toLowerCase() === 'worker' || localStorage.getItem('workerAuth') === 'true';
+  const themePrimary = isWorker ? '#2563EB' : '#FDC101';
 
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -44,16 +64,16 @@ export default function Find() {
   const polylineRef = useRef(null);
 
   const categories = [
-    { id: 'Plumbing', label: 'Plumbing' },
-    { id: 'Electrical', label: 'Electrical' },
-    { id: 'Carpentry', label: 'Carpentry' },
-    { id: 'Masonry', label: 'Masonry' },
-    { id: 'Painting', label: 'Painting' },
-    { id: 'AC Repair', label: 'AC Repair' },
-    { id: 'Appliance Repair', label: 'Appliance Repair' },
-    { id: 'Roofing', label: 'Roofing' },
-    { id: 'Cleaning', label: 'Cleaning & Maid' },
-    { id: 'Gardening', label: 'Lawn & Gardening' }
+    { id: 'Plumbing', label: 'Plumbing', icon: 'plumbing' },
+    { id: 'Electrical', label: 'Electrical', icon: 'electrical_services' },
+    { id: 'Carpentry', label: 'Carpentry', icon: 'carpenter' },
+    { id: 'Masonry', label: 'Masonry', icon: 'foundation' },
+    { id: 'Painting', label: 'Painting', icon: 'format_paint' },
+    { id: 'AC Repair', label: 'AC Repair', icon: 'ac_unit' },
+    { id: 'Appliance Repair', label: 'Appliance Repair', icon: 'home_repair_service' },
+    { id: 'Roofing', label: 'Roofing', icon: 'roofing' },
+    { id: 'Cleaning', label: 'Cleaning & Maid', icon: 'cleaning_services' },
+    { id: 'Gardening', label: 'Lawn & Gardening', icon: 'yard' }
   ];
 
   // Get Real User Location via Geolocation API
@@ -88,6 +108,17 @@ export default function Find() {
     getRealUserLocation();
   }, []);
 
+  // Close worker search dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (workerDropdownRef.current && !workerDropdownRef.current.contains(e.target)) {
+        setIsWorkerDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   useEffect(() => {
     const fetchWorkers = async () => {
       try {
@@ -103,9 +134,9 @@ export default function Find() {
     fetchWorkers();
   }, [userLocation]);
 
-  const getFirstName = (name) => {
-    if (!name) return 'Account';
-    return name.split(' ')[0];
+  const getInitial = (name) => {
+    if (!name) return 'U';
+    return name.trim().charAt(0).toUpperCase();
   };
 
   const navigate = (newPath) => {
@@ -113,14 +144,18 @@ export default function Find() {
     window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
+  const hasActiveFilters = rateType !== 'Any' || availableNowOnly || favoritesOnly || minPrice !== '' || maxPrice !== '' || selectedCategories.length > 0 || minRating !== 'Any';
+
   const handleResetFilters = () => {
     setRateType('Any');
     setAvailableNowOnly(false);
+    setFavoritesOnly(false);
     setMinPrice('');
     setMaxPrice('');
     setSelectedCategories([]);
     setMinRating('Any');
     setSearchQuery('');
+    setAppliedSearchQuery('');
     setSortBy('recommended');
   };
 
@@ -179,8 +214,8 @@ export default function Find() {
   // Filtering Logic
   const filteredWorkers = workers.filter(w => {
     // 1. Search Query
-    if (searchQuery.trim() !== '') {
-      const q = searchQuery.toLowerCase();
+    if (appliedSearchQuery.trim() !== '') {
+      const q = appliedSearchQuery.toLowerCase();
       const nameMatch = w.name && w.name.toLowerCase().includes(q);
       const locMatch = w.primaryServiceArea && w.primaryServiceArea.toLowerCase().includes(q);
       const skillMatch = w.skills && w.skills.some(s => s.skillName.toLowerCase().includes(q));
@@ -200,6 +235,11 @@ export default function Find() {
 
     // 3. Available Now Only
     if (availableNowOnly && !w.isAvailable) {
+      return false;
+    }
+
+    // 3.5 Favorites / Starred Only
+    if (favoritesOnly && !favorites[w.id]) {
       return false;
     }
 
@@ -296,7 +336,7 @@ export default function Find() {
     filteredWorkers.forEach((worker, idx) => {
       const pos = getWorkerMapPos(worker);
       const isSelected = selectedMapWorker && selectedMapWorker.id === worker.id;
-      
+
       const customIcon = L.divIcon({
         className: 'custom-worker-marker-wrap',
         html: `<div class="custom-worker-marker ${isSelected ? 'selected' : ''}" style="background:${isSelected ? '#2563eb' : '#0f172a'};">${idx + 1}</div>`,
@@ -359,18 +399,14 @@ export default function Find() {
     const rateText = rateValue != null ? `Rs. ${rateValue.toLocaleString()}` : 'Negotiable';
     const unitText = rateValue != null ? (rateType === 'Per day' ? '/ day' : '/ hour') : '';
 
-    const primaryRole = worker.skills && worker.skills.length > 0 
+    const primaryRole = worker.skills && worker.skills.length > 0
       ? `${worker.skills[0].skillName} (${worker.skills[0].experienceYears || 1} yrs exp)`
       : (worker.description || 'Verified Home Craftsman');
 
     return (
-      <div 
+      <div
         key={worker.id}
-        className="sleek-worker-card"
-        style={{
-          borderColor: isSelectedOnMap ? '#2563eb' : '#e2e8f0',
-          boxShadow: isSelectedOnMap ? '0 8px 24px rgba(37,99,235,0.15)' : undefined
-        }}
+        className={`m3-worker-card ${isSelectedOnMap ? 'selected-map' : ''}`}
         onClick={() => {
           if (showMap) {
             setSelectedMapWorker(worker);
@@ -382,236 +418,576 @@ export default function Find() {
           }
         }}
       >
-        {/* Favorite Heart Button */}
-        <button 
-          className={`card-heart-btn ${isFavorited ? 'favorited' : ''}`}
-          onClick={(e) => toggleFavorite(e, worker.id)}
-          title="Save to favorites"
-        >
-          <i className={`fa-${isFavorited ? 'solid' : 'regular'} fa-heart`}></i>
-        </button>
-
-        <div>
-          {/* Top Card Meta: Distance & Rating */}
-          <div className="card-top-meta">
-            <div className="card-distance-pill">
-              <i className="fa-solid fa-location-dot" style={{ color: '#64748b' }}></i>
-              <span>{realDistance}</span>
-            </div>
-
-            <div className="card-rating-pill">
-              <span>{displayRating != null ? `★ ${displayRating}` : 'No rating'}</span>
-              {reviewCount > 0 && <span style={{ color: '#92400e', fontWeight: 500 }}>({reviewCount})</span>}
-            </div>
-          </div>
-
-          {/* Photo Hero Banner Container */}
-          <div className="card-photo-container">
+        {/* Main Content: Left Rounded Profile Avatar + Right Information */}
+        <div className="m3-card-horizontal-wrap">
+          {/* Left: Rounded Profile Photo / Avatar */}
+          <div className="m3-card-avatar-wrap">
             {worker.profilePicture || worker.profileImage ? (
-              <img 
-                src={worker.profilePicture || worker.profileImage} 
+              <img
+                src={worker.profilePicture || worker.profileImage}
                 alt={worker.name}
-                className="card-photo-img"
+                className="m3-card-avatar-img"
+                loading="lazy"
               />
             ) : (
-              <div className="card-photo-avatar-placeholder">
-                {worker.name ? worker.name.charAt(0).toUpperCase() : 'W'}
+              <div className="m3-card-avatar-fallback">
+                <span>{worker.name ? worker.name.charAt(0).toUpperCase() : 'W'}</span>
               </div>
             )}
           </div>
 
-          {/* Worker Headline Details */}
-          <h3 className="card-worker-name">{worker.name}</h3>
-          <p className="card-worker-role">{primaryRole}</p>
+          {/* Right: Worker Details & Chips */}
+          <div className="m3-card-info-wrap">
+            {/* Header Line: Name, Verified Badge & Favorite Button */}
+            <div className="m3-card-header-line">
+              <div className="m3-card-title-group">
+                <h3 className="m3-card-worker-name">{worker.name}</h3>
+                <md-icon className="m3-verified-badge" title="Verified Home Craftsman">verified</md-icon>
+              </div>
 
-          {/* Skill Tags */}
-          <div className="card-skills-row">
-            {worker.skills && worker.skills.length > 0 ? (
-              worker.skills.slice(0, 3).map((s, idx) => (
-                <span key={idx} className="card-skill-tag">
-                  {s.skillName}
+              <button
+                type="button"
+                className={`m3-card-fav-btn ${isFavorited ? 'favorited' : ''}`}
+                onClick={(e) => toggleFavorite(e, worker.id)}
+                title={isFavorited ? "Remove from favorites" : "Save to favorites"}
+                aria-label="Save worker to favorites"
+              >
+                <md-icon>{isFavorited ? 'favorite' : 'favorite_border'}</md-icon>
+              </button>
+            </div>
+
+            {/* Role / Description */}
+            <p className="m3-card-worker-role">{primaryRole}</p>
+
+            {/* Skill Tags */}
+            <div className="m3-card-skills-row">
+              {worker.skills && worker.skills.length > 0 ? (
+                worker.skills.slice(0, 2).map((s, idx) => (
+                  <span key={idx} className="m3-skill-pill">
+                    {s.skillName}
+                  </span>
+                ))
+              ) : (
+                <span className="m3-skill-pill">General Handyman</span>
+              )}
+            </div>
+
+            {/* Proximity, Rating & Availability Chips */}
+            <div className="m3-card-chips-group">
+              <span className="m3-card-chip m3-distance-chip" title="Proximity to your current location">
+                <md-icon>directions_walk</md-icon>
+                <span>{realDistance}</span>
+              </span>
+
+              {displayRating ? (
+                <span className="m3-card-chip m3-rating-chip">
+                  <md-icon className="m3-star-icon">star</md-icon>
+                  <span className="m3-rating-val">{displayRating}</span>
+                  {reviewCount > 0 && <span className="m3-rating-count">({reviewCount})</span>}
                 </span>
-              ))
-            ) : (
-              <span className="card-skill-tag">General Handyman</span>
-            )}
+              ) : (
+                <span className="m3-card-chip m3-new-chip">New</span>
+              )}
+
+              {worker.isAvailable !== false && (
+                <span className="m3-card-chip m3-avail-chip">Available</span>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Bottom Row: Price Rate & Action */}
-        <div className="card-bottom-row">
-          <div className="card-price-display">
-            <span className="card-price-amount">{rateText}</span>
-            {unitText && <span className="card-price-unit">{unitText}</span>}
+        {/* Card Footer: Rate Display & Action Button */}
+        <div className="m3-card-footer">
+          <div className="m3-card-price-group">
+            <span className="m3-card-price-label">ESTIMATED RATE</span>
+            <div className="m3-card-price-val-wrap">
+              <span className="m3-card-price-val">{rateText}</span>
+              {unitText && <span className="m3-card-price-unit">{unitText}</span>}
+            </div>
           </div>
 
-          <div 
+          <button
+            type="button"
+            className="m3-card-profile-btn"
             onClick={(e) => {
               e.stopPropagation();
               navigate(`/worker-detail?id=${worker.id}`);
             }}
-            style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
           >
-            Profile <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.75rem' }}></i>
-          </div>
+            <span>Profile</span>
+            <md-icon>arrow_forward</md-icon>
+          </button>
         </div>
+      </div>
+    );
+  };
+
+  const handleStartChatWithWorker = (w) => {
+    setIsWorkerDropdownOpen(false);
+    navigate(`/chats`);
+  };
+
+  // Render Worker Search Results Dropdown inside Top Navbar
+  const renderWorkerSearchDropdown = () => {
+    if (!isWorkerDropdownOpen || !searchQuery.trim()) return null;
+    
+    // The dropdown uses the live searchQuery, not the appliedSearchQuery
+    const dropdownWorkers = workers.filter(w => {
+      const q = searchQuery.toLowerCase();
+      const nameMatch = w.name && w.name.toLowerCase().includes(q);
+      const locMatch = w.primaryServiceArea && w.primaryServiceArea.toLowerCase().includes(q);
+      const skillMatch = w.skills && w.skills.some(s => s.skillName.toLowerCase().includes(q));
+      return nameMatch || locMatch || skillMatch;
+    });
+
+    const matchingWorkers = dropdownWorkers;
+
+    return (
+      <div className="m3-search-dropdown" ref={workerDropdownRef}>
+        <div className="m3-search-dropdown-header">
+
+          <span className="m3-dropdown-hint">Press ↵ Enter to view all</span>
+        </div>
+
+        <div className="m3-search-dropdown-list">
+          {matchingWorkers.length === 0 ? (
+            <div className="m3-search-dropdown-empty">
+              <md-icon style={{ fontSize: '42px', color: '#94a3b8', marginBottom: '8px' }}>search_off</md-icon>
+              <h4>No verified workers found</h4>
+              <p>No craftsmen match "{searchQuery}". Try another skill or location.</p>
+              <div style={{ marginTop: '12px' }}>
+                <md-filled-button
+                  onClick={() => {
+                    setIsWorkerDropdownOpen(false);
+                    setAppliedSearchQuery(searchQuery);
+                    navigate(`/find?q=${encodeURIComponent(searchQuery)}`);
+                  }}
+                  style={{
+                    '--md-sys-color-primary': themePrimary,
+                    '--md-filled-button-container-color': themePrimary,
+                    '--md-filled-button-label-text-color': isWorker ? '#ffffff' : '#111827',
+                    '--md-filled-button-container-shape': '9999px',
+                    '--md-filled-button-container-height': '36px'
+                  }}
+                >
+                  <md-icon slot="icon">explore</md-icon>
+                  Browse Services Directory
+                </md-filled-button>
+              </div>
+            </div>
+          ) : (
+            matchingWorkers.slice(0, 8).map(w => {
+              const primarySkill = Array.isArray(w.skills) && w.skills.length > 0
+                ? (typeof w.skills[0] === 'string' ? w.skills[0] : w.skills[0]?.skillName)
+                : null;
+
+              const avatarUrl = w.profileImage && w.profileImage !== 'null' && w.profileImage.trim() !== ''
+                ? (w.profileImage.startsWith('http') ? w.profileImage : `${API_BASE_URL.replace('/api', '')}${w.profileImage.startsWith('/') ? '' : '/'}${w.profileImage}`)
+                : null;
+
+              const ratingVal = typeof w.overallRating === 'number' ? w.overallRating.toFixed(1) : '5.0';
+
+              return (
+                <div
+                  key={w.id}
+                  className="m3-navbar-worker-card"
+                  onClick={() => handleStartChatWithWorker(w)}
+                >
+                  <div className="m3-navbar-worker-avatar-wrap">
+                    {avatarUrl && !failedWorkerAvatars[w.id] ? (
+                      <img
+                        src={avatarUrl}
+                        alt={w.name}
+                        className="m3-navbar-worker-avatar-img"
+                        onError={() => setFailedWorkerAvatars(prev => ({ ...prev, [w.id]: true }))}
+                      />
+                    ) : (
+                      <div className="m3-navbar-worker-avatar-fallback">
+                        {getInitial(w.name)}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="m3-navbar-worker-info">
+                    <div className="m3-navbar-worker-header">
+                      <span className="m3-navbar-worker-name">{w.name}</span>
+                      <md-icon className="m3-navbar-verified-icon">verified</md-icon>
+                      {primarySkill && (
+                        <span className="m3-navbar-trade-tag">
+                          <md-icon>handyman</md-icon>
+                          <span>{primarySkill}</span>
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="m3-navbar-worker-chips">
+                      <span className="m3-navbar-chip rating">
+                        <md-icon>star</md-icon>
+                        <span>{ratingVal}</span>
+                      </span>
+
+                      {w.primaryServiceArea && (
+                        <span className="m3-navbar-chip location">
+                          <md-icon>location_on</md-icon>
+                          <span>{w.primaryServiceArea}</span>
+                        </span>
+                      )}
+
+                      <span className={`m3-navbar-chip status ${w.isAvailable ? 'available' : 'busy'}`}>
+                        <span className="m3-navbar-status-pulse"></span>
+                        <span>{w.isAvailable ? 'Available' : 'Busy'}</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="m3-navbar-worker-actions" onClick={(e) => e.stopPropagation()}>
+                    <md-outlined-button
+                      className="m3-navbar-btn-profile"
+                      onClick={() => {
+                        setIsWorkerDropdownOpen(false);
+                        navigate(`/worker-detail?id=${w.id}`);
+                      }}
+                    >
+                      <md-icon slot="icon">person</md-icon>
+                      Profile
+                    </md-outlined-button>
+
+                    <md-filled-button
+                      className="m3-navbar-btn-chat"
+                      onClick={() => handleStartChatWithWorker(w)}
+                    >
+                      <md-icon slot="icon">chat</md-icon>
+                      Chat
+                    </md-filled-button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {matchingWorkers.length > 0 && (
+          <div className="m3-search-dropdown-footer">
+            <button
+              type="button"
+              className="m3-search-dropdown-footer-link"
+              onClick={() => {
+                setIsWorkerDropdownOpen(false);
+                setAppliedSearchQuery(searchQuery);
+                navigate(`/find?q=${encodeURIComponent(searchQuery)}`);
+              }}
+            >
+              <span>Explore all {matchingWorkers.length} matching workers in Directory</span>
+              <md-icon>arrow_forward</md-icon>
+            </button>
+          </div>
+        )}
       </div>
     );
   };
 
   return (
     <div className="find-page-container">
-      {/* Top Navbar */}
-      <header className="navbar" style={{ padding: '1rem 2rem', borderBottom: '1px solid #e2e8f0', backgroundColor: '#ffffff' }}>
-        <a href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }} className="brand-logo" style={{ cursor: 'pointer' }}>
-          <img src="/iconWithText-cropped.png" alt="Super Bass Logo" className="brand-logo-img" style={{ height: '40px' }} />
-        </a>
+      {/* Google Workspace / Gmail Style Material 3 Top Navbar */}
+      <header className="m3-top-navbar">
+        {/* Left: App Logo & Name with Hamburger Drawer Toggle */}
+        <div className="m3-navbar-brand-group">
+          <button
+            type="button"
+            className="m3-hamburger-btn"
+            onClick={() => setIsSidebarCollapsed(prev => !prev)}
+            title={isSidebarCollapsed ? "Expand panel" : "Collapse panel"}
+            aria-label="Toggle navigation drawer"
+          >
+            <md-icon>menu</md-icon>
+          </button>
 
-        {/* Search Input Bar */}
-        <div style={{ flex: 1, maxWidth: '580px', margin: '0 2rem' }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            backgroundColor: '#f8fafc',
-            borderRadius: '24px',
-            padding: '8px 20px',
-            border: '1px solid #e2e8f0',
-            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)'
-          }}>
-            <i className="fa-solid fa-magnifying-glass" style={{ color: '#94a3b8', marginRight: '12px' }}></i>
-            <input 
+          <a
+            href="/"
+            onClick={(e) => { e.preventDefault(); navigate('/'); }}
+            className="m3-brand-link"
+            title="superබාස් - Home"
+          >
+            <img src="/icon.png" alt="superබාස්" className="m3-brand-logo-img" />
+            <span className="m3-brand-title">
+              super<span className="m3-brand-accent">බාස්</span>
+            </span>
+          </a>
+        </div>
+
+        {/* Center: Search Pill ("Ask SuperBass" like "Ask Gmail") */}
+        <div className="m3-navbar-center">
+          <div className="m3-search-pill">
+            <div className="m3-search-leading-icon" title="AI-Powered Discovery">
+              <md-icon>search</md-icon>
+            </div>
+
+            <input
               type="text"
-              placeholder="Search by worker name, trade skill (e.g. Plumbing), or city..."
+              className="m3-search-input"
+              placeholder="Search workers, skills, location..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                width: '100%',
-                background: 'transparent',
-                border: 'none',
-                color: '#0f172a',
-                outline: 'none',
-                fontSize: '0.925rem'
+              onFocus={() => setIsWorkerDropdownOpen(true)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setIsWorkerDropdownOpen(true);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  setSearchQuery('');
+                  setAppliedSearchQuery('');
+                  setIsWorkerDropdownOpen(false);
+                }
+                if (e.key === 'Enter') {
+                  setAppliedSearchQuery(searchQuery);
+                  setIsWorkerDropdownOpen(false);
+                  navigate(`/find?q=${encodeURIComponent(searchQuery)}`);
+                }
               }}
             />
+
             {searchQuery && (
-              <i 
-                className="fa-solid fa-xmark" 
-                onClick={() => setSearchQuery('')}
-                style={{ color: '#94a3b8', cursor: 'pointer' }}
-              ></i>
+              <button
+                type="button"
+                className="m3-search-clear-btn"
+                onClick={() => {
+                  setSearchQuery('');
+                  setAppliedSearchQuery('');
+                  setIsWorkerDropdownOpen(false);
+                }}
+                title="Clear search"
+                aria-label="Clear search"
+              >
+                <md-icon>close</md-icon>
+              </button>
             )}
+            
+            {renderWorkerSearchDropdown()}
           </div>
         </div>
 
-        {/* Nav Actions */}
-        <div className="nav-actions">
+        {/* Right: Navigation Buttons (Community, AI, Messages, Bookings) & User Avatar */}
+        <div className="m3-navbar-right">
+          {/* 1. Community Button */}
+          <button
+            type="button"
+            className="m3-nav-btn"
+            onClick={() => navigate('/community')}
+            title="Community Discussions"
+          >
+            <md-icon>groups</md-icon>
+            <span>Community</span>
+          </button>
+
+          {/* 2. AI Assistant Button */}
+          <button
+            type="button"
+            className="m3-nav-btn m3-nav-btn-ai"
+            onClick={() => navigate('/ai-chat')}
+            title="AI Home Assistant"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <defs>
+                <linearGradient id="navGeminiGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#4285F4" />
+                  <stop offset="35%" stopColor="#9B72CB" />
+                  <stop offset="70%" stopColor="#D96570" />
+                  <stop offset="100%" stopColor="#F4B400" />
+                </linearGradient>
+              </defs>
+              <path
+                d="M12 0C12 6.627 6.627 12 0 12C6.627 12 12 17.373 12 24C12 17.373 17.373 12 24 12C17.373 12 12 6.627 12 0Z"
+                fill="url(#navGeminiGrad)"
+              />
+            </svg>
+            <span>AI</span>
+          </button>
+
+          {/* 3. Messages Button */}
+          <button
+            type="button"
+            className="m3-nav-btn"
+            onClick={() => navigate('/chats')}
+            title="Direct Messages"
+          >
+            <md-icon>chat</md-icon>
+            <span>Messages</span>
+          </button>
+
+          {/* 4. Bookings Button */}
+          <button
+            type="button"
+            className="m3-nav-btn"
+            onClick={() => navigate('/bookings')}
+            title="My Bookings"
+          >
+            <md-icon>calendar_today</md-icon>
+            <span>Bookings</span>
+          </button>
+
+          {/* 5. User Profile Avatar or Sign In */}
           {isLoggedIn ? (
-            <>
-              <md-filled-button
-                onClick={() => navigate('/community')}
-                style={{
-                  '--md-sys-color-primary': '#FDC101',
-                  '--md-sys-color-on-primary': '#000000',
-                  padding: '0 20px',
-                  minWidth: '100px',
-                  margin: '0 8px'
-                }}
-              >
-                Community
-              </md-filled-button>
-              <div style={{ position: 'relative', display: 'inline-block' }}>
-                <md-filled-button
-                  onClick={() => navigate('/account')}
-                  style={{
-                    '--md-sys-color-primary': '#0f172a',
-                    '--md-sys-color-on-primary': '#ffffff',
-                    padding: '0 16px',
-                    margin: '0 8px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}
-                >
-                  {userPicture && <img slot="icon" src={userPicture} alt="User" style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover' }} />}
-                  {getFirstName(userName)}
-                </md-filled-button>
-              </div>
-            </>
+            <UserMenu variant="m3-google" />
           ) : (
-            <md-filled-button
+            <button
+              type="button"
+              className="m3-signin-btn"
               onClick={() => navigate('/join')}
-              style={{
-                '--md-sys-color-primary': '#FDC101',
-                '--md-sys-color-on-primary': '#000000',
-                padding: '0 24px',
-                margin: '0 8px'
-              }}
+              title="Sign in to superබාස්"
             >
-              Join
-            </md-filled-button>
+              Sign in
+            </button>
           )}
         </div>
       </header>
 
       {/* Main Layout Container */}
-      <div className="find-layout" style={showMap ? { maxWidth: '100%', padding: '16px 24px' } : {}}>
-        {/* Left Sidebar Filters */}
-        <aside className="find-sidebar">
-          <div className="find-sidebar-header">
-            <h2 className="find-sidebar-title">Filter by</h2>
-            <button className="find-sidebar-reset" onClick={handleResetFilters}>
-              Reset all <i className="fa-solid fa-xmark"></i>
-            </button>
+      <div className="find-layout">
+        {/* Left Sidebar Filters - Google Material Design 3 Navigation Drawer (Gmail Style) */}
+        <aside className={`find-sidebar m3-drawer ${isSidebarCollapsed ? 'minimized' : ''}`}>
+          {/* Extended Action FAB (Gmail Compose style - Warm SuperBass Yellow) */}
+
+          {/* Primary Navigation List (Inbox / Starred / Available / Top Rated) */}
+          <nav className="m3-drawer-nav">
+            {/* All Workers (Inbox style) */}
+            <div
+              className={`m3-drawer-item ${!availableNowOnly && !favoritesOnly && selectedCategories.length === 0 && minRating === 'Any' ? 'active' : ''}`}
+              onClick={() => {
+                setAvailableNowOnly(false);
+                setFavoritesOnly(false);
+                setSelectedCategories([]);
+                setMinRating('Any');
+              }}
+              title="View all verified home service workers"
+            >
+              <div className="m3-drawer-item-left">
+                <md-icon className="m3-drawer-icon">handyman</md-icon>
+                <span className="m3-drawer-label">All Baas</span>
+              </div>
+              <span className="m3-drawer-badge">{workers.length}</span>
+            </div>
+
+            {/* Starred / Saved Baas */}
+            <div
+              className={`m3-drawer-item ${favoritesOnly ? 'active' : ''}`}
+              onClick={() => setFavoritesOnly(!favoritesOnly)}
+              title="Filter by favorited workers"
+            >
+              <div className="m3-drawer-item-left">
+                <md-icon className="m3-drawer-icon">{favoritesOnly ? 'star' : 'star_outline'}</md-icon>
+                <span className="m3-drawer-label">Starred</span>
+              </div>
+              {Object.values(favorites).filter(Boolean).length > 0 && (
+                <span className="m3-drawer-badge">{Object.values(favorites).filter(Boolean).length}</span>
+              )}
+            </div>
+
+            {/* Available Now */}
+            <div
+              className={`m3-drawer-item ${availableNowOnly ? 'active' : ''}`}
+              onClick={() => setAvailableNowOnly(!availableNowOnly)}
+              title="Filter by workers currently on call"
+            >
+              <div className="m3-drawer-item-left">
+                <md-icon className="m3-drawer-icon">{availableNowOnly ? 'bolt' : 'offline_bolt'}</md-icon>
+                <span className="m3-drawer-label">Available Now</span>
+              </div>
+              <span className="m3-drawer-badge">
+                {workers.filter(w => w.isAvailable).length}
+              </span>
+            </div>
+
+            {/* Top Rated (4.5+ ★) */}
+            <div
+              className={`m3-drawer-item ${minRating === '4.5' ? 'active' : ''}`}
+              onClick={() => setMinRating(minRating === '4.5' ? 'Any' : '4.5')}
+              title="Filter workers with 4.5+ star rating"
+            >
+              <div className="m3-drawer-item-left">
+                <md-icon className="m3-drawer-icon">{minRating === '4.5' ? 'workspace_premium' : 'hotel_class'}</md-icon>
+                <span className="m3-drawer-label">Top Rated (4.5★)</span>
+              </div>
+              <span className="m3-drawer-badge">
+                {workers.filter(w => (w.overallRating ?? 0) >= 4.5).length}
+              </span>
+            </div>
+          </nav>
+
+          <hr className="m3-drawer-divider" />
+
+          {/* Categories Section ("Labels" in Gmail) */}
+          <div className="m3-drawer-section">
+            <div className="m3-drawer-section-header">
+              <span className="m3-drawer-section-title">Trade Services</span>
+              {selectedCategories.length > 0 && (
+                <button
+                  type="button"
+                  className="m3-drawer-section-action"
+                  onClick={() => setSelectedCategories([])}
+                  title="Clear category selection"
+                >
+                  Clear ({selectedCategories.length})
+                </button>
+              )}
+            </div>
+
+            <div className="m3-drawer-labels-list">
+              {categories.map((cat) => {
+                const count = getCategoryCount(cat.id);
+                const isSelected = selectedCategories.includes(cat.id);
+                return (
+                  <div
+                    key={cat.id}
+                    className={`m3-drawer-item ${isSelected ? 'active' : ''}`}
+                    onClick={() => toggleCategory(cat.id)}
+                    title={`Filter by ${cat.label}`}
+                  >
+                    <div className="m3-drawer-item-left">
+                      <md-icon className="m3-drawer-icon">
+                        {isSelected ? 'label' : (cat.icon || 'label_outline')}
+                      </md-icon>
+                      <span className="m3-drawer-label">{cat.label}</span>
+                    </div>
+                    <span className="m3-drawer-badge">{count}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Filter Group: Rate / Rental Type */}
-          <div className="filter-group">
-            <div className="filter-group-title">Rate Type</div>
-            <div className="rate-chips-container">
+          <hr className="m3-drawer-divider" />
+
+          {/* Budget & Rate Filter Section */}
+          <div className="m3-drawer-section m3-rates-section">
+            <div className="m3-drawer-section-header">
+              <span className="m3-drawer-section-title">Rate Type</span>
+            </div>
+
+            {/* M3 Segmented Control */}
+            <div className="m3-segmented-control">
               {['Any', 'Per day', 'Per hour'].map((type) => (
-                <div 
+                <button
+                  type="button"
                   key={type}
-                  className={`rate-chip ${rateType === type ? 'active' : ''}`}
+                  className={`m3-segmented-btn ${rateType === type ? 'active' : ''}`}
                   onClick={() => setRateType(type)}
                 >
                   {type}
-                </div>
+                </button>
               ))}
             </div>
-          </div>
 
-          {/* Filter Group: Available Now Only */}
-          <div className="filter-group">
-            <div className="toggle-switch-row">
-              <span className="toggle-switch-label">Available Now Only</span>
-              <label className="toggle-switch">
-                <input 
-                  type="checkbox" 
-                  checked={availableNowOnly} 
-                  onChange={(e) => setAvailableNowOnly(e.target.checked)} 
-                />
-                <span className="toggle-slider"></span>
-              </label>
-            </div>
-          </div>
-
-          {/* Filter Group: Price Range & Histogram */}
-          <div className="filter-group">
-            <div className="filter-group-title">
-              <span>{rateType === 'Per day' ? 'DAILY RATE RANGE' : 'HOURLY RATE RANGE'}</span>
-            </div>
-
-            {/* Interactive Histogram Bars */}
+            {/* Interactive Histogram Graph */}
             <div className="histogram-container">
               {[500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 5000, 6000, 7500, 9000, 12000, 15000, 20000, 25000].map((stepPrice, idx) => {
                 const isActive = stepPrice >= minValNum && stepPrice <= maxValNum;
                 const heights = [25, 45, 65, 85, 100, 80, 60, 90, 70, 50, 35, 75, 95, 45, 30, 20];
                 return (
-                  <div 
-                    key={idx} 
+                  <div
+                    key={idx}
                     className={`histogram-bar ${isActive ? 'active' : ''}`}
                     style={{ height: `${heights[idx]}%`, cursor: 'pointer' }}
-                    title={`Rs. ${stepPrice}`}
+                    title={`Rs. ${stepPrice.toLocaleString()}`}
                     onClick={() => {
                       if (!minPrice || stepPrice < minValNum) {
                         setMinPrice(stepPrice.toString());
@@ -624,14 +1000,14 @@ export default function Find() {
               })}
             </div>
 
-            {/* Price Input Range */}
+            {/* Price Inputs Row */}
             <div className="price-inputs-row">
               <div className="price-input-box">
                 <span className="price-input-label">FROM</span>
-                <input 
-                  type="number" 
-                  className="price-input-val" 
-                  placeholder="Rs. 500" 
+                <input
+                  type="number"
+                  className="price-input-val"
+                  placeholder="Rs. 500"
                   value={minPrice}
                   onChange={(e) => setMinPrice(e.target.value)}
                 />
@@ -639,10 +1015,10 @@ export default function Find() {
               <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>–</span>
               <div className="price-input-box">
                 <span className="price-input-label">TO</span>
-                <input 
-                  type="number" 
-                  className="price-input-val" 
-                  placeholder="Rs. 10,000" 
+                <input
+                  type="number"
+                  className="price-input-val"
+                  placeholder="Rs. 25,000"
                   value={maxPrice}
                   onChange={(e) => setMaxPrice(e.target.value)}
                 />
@@ -650,56 +1026,17 @@ export default function Find() {
             </div>
           </div>
 
-          {/* Filter Group: Service Categories */}
-          <div className="filter-group">
-            <div className="filter-group-title">Service Trade</div>
-            <div className="checkbox-list">
-              {categories.map((cat) => {
-                const count = getCategoryCount(cat.id);
-                const isChecked = selectedCategories.includes(cat.id);
-                return (
-                  <label key={cat.id} className="custom-checkbox-item">
-                    <div className="custom-checkbox-left">
-                      <input 
-                        type="checkbox" 
-                        className="custom-checkbox-input"
-                        checked={isChecked}
-                        onChange={() => toggleCategory(cat.id)}
-                      />
-                      <span>{cat.label}</span>
-                    </div>
-                    <span className="custom-checkbox-count">{count}</span>
-                  </label>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Filter Group: Rating */}
-          <div className="filter-group">
-            <div className="filter-group-title">Minimum Rating</div>
-            <div className="checkbox-list">
-              {[
-                { val: 'Any', label: 'Any Rating' },
-                { val: '4.5', label: '★ 4.5 & Above' },
-                { val: '4.0', label: '★ 4.0 & Above' },
-                { val: '3.5', label: '★ 3.5 & Above' }
-              ].map(item => (
-                <label key={item.val} className="custom-checkbox-item">
-                  <div className="custom-checkbox-left">
-                    <input 
-                      type="radio" 
-                      name="minRatingRadio"
-                      className="custom-checkbox-input"
-                      checked={minRating === item.val}
-                      onChange={() => setMinRating(item.val)}
-                    />
-                    <span>{item.label}</span>
-                  </div>
-                </label>
-              ))}
-            </div>
-          </div>
+          {/* Reset All Filters Button */}
+          {hasActiveFilters && (
+            <button
+              type="button"
+              className="m3-drawer-reset-btn"
+              onClick={handleResetFilters}
+            >
+              <md-icon>restart_alt</md-icon>
+              <span>Reset All Filters</span>
+            </button>
+          )}
         </aside>
 
         {/* Right Main Content Area (Spans full width above cards/map) */}
@@ -711,7 +1048,7 @@ export default function Find() {
             </h1>
 
             <div className="find-header-actions">
-              <select 
+              <select
                 className="find-sort-select"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
@@ -722,7 +1059,7 @@ export default function Find() {
                 <option value="price_desc">Price: High to Low</option>
               </select>
 
-              <button 
+              <button
                 className="find-map-toggle-btn"
                 onClick={() => {
                   setShowMap(!showMap);
@@ -737,9 +1074,9 @@ export default function Find() {
 
           {/* Loading or Empty States */}
           {loading ? (
-            <div style={{ textAlign: 'center', padding: '80px 0', color: '#64748b', fontSize: '1.1rem' }}>
-              <i className="fa-solid fa-circle-notch fa-spin" style={{ fontSize: '2rem', marginBottom: '12px', color: '#0f172a' }}></i>
-              <p>Loading available verified workers...</p>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 20px', gap: '16px' }}>
+              <Loader size={56} />
+              <span style={{ fontSize: '0.95rem', fontWeight: 600, color: '#64748b' }}>Loading available verified workers...</span>
             </div>
           ) : filteredWorkers.length === 0 ? (
             <div style={{
@@ -755,7 +1092,7 @@ export default function Find() {
               <p style={{ color: '#64748b', margin: '0 0 20px 0', fontSize: '0.95rem' }}>
                 Try adjusting your rate range, price filters, or category selections.
               </p>
-              <button 
+              <button
                 onClick={handleResetFilters}
                 style={{
                   background: '#0f172a',
@@ -786,7 +1123,7 @@ export default function Find() {
                 {/* Map Search Input */}
                 <div className="map-search-overlay">
                   <i className="fa-solid fa-magnifying-glass" style={{ color: '#94a3b8' }}></i>
-                  <input 
+                  <input
                     type="text"
                     placeholder="Search address or workers..."
                     value={searchQuery}
@@ -801,8 +1138,8 @@ export default function Find() {
                 {/* Floating Map Worker Card Popup */}
                 {selectedMapWorker && (
                   <div className="map-floating-worker-card">
-                    <button 
-                      className="map-floating-close-btn" 
+                    <button
+                      className="map-floating-close-btn"
                       onClick={() => setSelectedMapWorker(null)}
                     >
                       <i className="fa-solid fa-xmark"></i>
@@ -812,7 +1149,7 @@ export default function Find() {
                       <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#b45309', background: '#fffbeb', padding: '2px 8px', borderRadius: '12px' }}>
                         ★ {selectedMapWorker.overallRating ? selectedMapWorker.overallRating.toFixed(1) : '5.0'} ({Math.round((selectedMapWorker.id * 37) % 150 + 20)})
                       </div>
-                      <button 
+                      <button
                         onClick={(e) => toggleFavorite(e, selectedMapWorker.id)}
                         style={{ background: 'none', border: 'none', color: favorites[selectedMapWorker.id] ? '#ef4444' : '#94a3b8', cursor: 'pointer' }}
                       >
@@ -822,8 +1159,8 @@ export default function Find() {
 
                     <div style={{ width: '100%', height: '110px', borderRadius: '12px', background: '#f8fafc', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px' }}>
                       {selectedMapWorker.profilePicture || selectedMapWorker.profileImage ? (
-                        <img 
-                          src={selectedMapWorker.profilePicture || selectedMapWorker.profileImage} 
+                        <img
+                          src={selectedMapWorker.profilePicture || selectedMapWorker.profileImage}
                           alt={selectedMapWorker.name}
                           style={{ maxHeight: '95px', objectFit: 'contain' }}
                         />
@@ -842,7 +1179,7 @@ export default function Find() {
                     </p>
 
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                      <button 
+                      <button
                         onClick={() => navigate(`/worker-detail?id=${selectedMapWorker.id}`)}
                         style={{
                           flex: 1,
