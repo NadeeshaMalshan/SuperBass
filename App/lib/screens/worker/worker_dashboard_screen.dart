@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/booking_model.dart';
@@ -5,6 +6,25 @@ import '../../models/worker_model.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../theme/worker_colors.dart';
+
+class _ProTipItem {
+  final String category;
+  final String badge;
+  final String text;
+  final IconData icon;
+  final Color iconColor;
+  final Color iconBg;
+
+  const _ProTipItem({
+    required this.category,
+    required this.badge,
+    required this.text,
+    required this.icon,
+    required this.iconColor,
+    required this.iconBg,
+  });
+}
+
 
 class WorkerDashboardScreen extends StatefulWidget {
   final WorkerModel? worker;
@@ -29,6 +49,44 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
   String _selectedOverviewPeriod = 'All Time';
   String _currentLocation = 'Colombo, Western Province';
 
+  static const List<_ProTipItem> _proTips = [
+    _ProTipItem(
+      category: 'PRO TIP',
+      badge: 'Setup 60%',
+      text: 'Add all your specific sub-skills to rank higher when residents search for emergency repairs.',
+      icon: Icons.lightbulb_outline_rounded,
+      iconColor: Color(0xFF059669),
+      iconBg: Color(0xFFECFDF5),
+    ),
+    _ProTipItem(
+      category: 'SPEED & RELIABILITY',
+      badge: '2x Priority',
+      text: 'Accepting job requests within 10 minutes boosts your algorithm priority by 2x.',
+      icon: Icons.bolt_rounded,
+      iconColor: Color(0xFF2563EB),
+      iconBg: Color(0xFFEFF6FF),
+    ),
+    _ProTipItem(
+      category: 'AVAILABILITY',
+      badge: 'Peak Hours',
+      text: 'Keep your status toggled to \'Online\' during peak morning hours (8 AM - 11 AM) for maximum booking volume.',
+      icon: Icons.schedule_rounded,
+      iconColor: Color(0xFFD97706),
+      iconBg: Color(0xFFFFFBEB),
+    ),
+    _ProTipItem(
+      category: 'COMMUNITY ENGAGEMENT',
+      badge: 'Direct Leads',
+      text: 'Share helpful advice in Community Discussions to attract direct bookings without commission.',
+      icon: Icons.forum_outlined,
+      iconColor: Color(0xFF9333EA),
+      iconBg: Color(0xFFF3E8FF),
+    ),
+  ];
+
+  Timer? _tipRotationTimer;
+  int _currentTipIndex = 0;
+
   @override
   void initState() {
     super.initState();
@@ -37,7 +95,26 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
       _currentLocation = '${_worker!.primaryServiceArea}, Western Province';
     }
     _loadDashboardData();
+    _startTipRotation();
   }
+
+  void _startTipRotation() {
+    _tipRotationTimer?.cancel();
+    _tipRotationTimer = Timer.periodic(const Duration(seconds: 6), (timer) {
+      if (mounted) {
+        setState(() {
+          _currentTipIndex = (_currentTipIndex + 1) % _proTips.length;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _tipRotationTimer?.cancel();
+    super.dispose();
+  }
+
 
   @override
   void didUpdateWidget(covariant WorkerDashboardScreen oldWidget) {
@@ -541,79 +618,146 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
             ),
             const SizedBox(height: 14),
 
-            // 2. PRO TIP Card
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 32,
-                            height: 32,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFECFDF5),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.lightbulb_outline_rounded,
-                              color: Color(0xFF059669),
-                              size: 18,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            'PRO TIP',
-                            style: GoogleFonts.dmSans(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              color: const Color(0xFF047857),
-                              letterSpacing: 0.5,
+            // 2. Rotating PRO TIP Card
+            Builder(
+              builder: (context) {
+                final currentTip = _proTips[_currentTipIndex];
+
+                return InkWell(
+                  onTap: () {
+                    setState(() {
+                      _currentTipIndex = (_currentTipIndex + 1) % _proTips.length;
+                    });
+                    _startTipRotation();
+                  },
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 320),
+                          transitionBuilder: (child, animation) => FadeTransition(
+                            opacity: animation,
+                            child: SlideTransition(
+                              position: Tween<Offset>(
+                                begin: const Offset(0.03, 0),
+                                end: Offset.zero,
+                              ).animate(animation),
+                              child: child,
                             ),
                           ),
-                        ],
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                          child: Row(
+                            key: ValueKey<int>(_currentTipIndex),
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 32,
+                                    height: 32,
+                                    decoration: BoxDecoration(
+                                      color: currentTip.iconBg,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      currentTip.icon,
+                                      color: currentTip.iconColor,
+                                      size: 18,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    currentTip.category,
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w800,
+                                      color: currentTip.iconColor,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                                ),
+                                child: Text(
+                                  currentTip.badge,
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF334155),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        child: Text(
-                          'Setup 60%',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF334155),
+                        const SizedBox(height: 12),
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 320),
+                          transitionBuilder: (child, animation) => FadeTransition(
+                            opacity: animation,
+                            child: child,
+                          ),
+                          child: SizedBox(
+                            key: ValueKey<int>(_currentTipIndex),
+                            width: double.infinity,
+                            child: Text(
+                              currentTip.text,
+                              style: GoogleFonts.dmSans(
+                                fontSize: 13,
+                                height: 1.45,
+                                fontWeight: FontWeight.w400,
+                                color: const Color(0xFF475569),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Complete your profile setup to unlock priority booking & zero-commission job alerts in Colombo Central.',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 13,
-                      height: 1.45,
-                      fontWeight: FontWeight.w400,
-                      color: const Color(0xFF475569),
+                        const SizedBox(height: 12),
+                        // Sleek indicator dots
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: List.generate(_proTips.length, (idx) {
+                            final isActive = idx == _currentTipIndex;
+                            return GestureDetector(
+                              onTap: () {
+                                setState(() => _currentTipIndex = idx);
+                                _startTipRotation();
+                              },
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 250),
+                                margin: const EdgeInsets.symmetric(horizontal: 3),
+                                width: isActive ? 18 : 6,
+                                height: 5,
+                                decoration: BoxDecoration(
+                                  color: isActive
+                                      ? currentTip.iconColor
+                                      : const Color(0xFFCBD5E1),
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                              ),
+                            );
+                          }),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                );
+              },
             ),
+
             const SizedBox(height: 22),
 
             // 3. Overview Header & 4 Metrics
