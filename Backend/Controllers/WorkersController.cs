@@ -38,11 +38,11 @@ namespace Superbass.Controllers
             return Ok(worker);
         }
 
-        // GET: /api/workers/search?skill=Plumbing&location=Colombo
+        // GET: /api/workers/search?skill=Plumbing&location=Colombo&residentLat=6.9&residentLng=79.8
         [HttpGet("search")]
-        public async Task<IActionResult> Search([FromQuery] string? skill, [FromQuery] string? location)
+        public async Task<IActionResult> Search([FromQuery] string? skill, [FromQuery] string? location, [FromQuery] double? residentLat, [FromQuery] double? residentLng)
         {
-            var results = await _workerRepository.SearchWorkersAsync(skill, location, null);
+            var results = await _workerRepository.SearchWorkersAsync(skill, location, null, residentLat, residentLng);
             return Ok(results);
         }
 

@@ -195,10 +195,8 @@ class _JoinScreenState extends State<JoinScreen> {
       ),
     );
 
-    // Redirect mirroring Frontend/src/Join.jsx routing:
-    // if activeRole === 'Worker' -> /worker/dashboard
-    // else if isNewUser -> /onboarding
-    // else -> /find
+    // Redirect: MainNavigationShell automatically displays WorkerPortalScreen if activeRole == 'Worker',
+    // or the Resident navigation tabs if activeRole == 'Resident'.
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const MainNavigationShell()),
     );

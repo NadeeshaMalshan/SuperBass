@@ -9,6 +9,9 @@ import 'models/worker_model.dart';
 import 'screens/chat_screen.dart';
 import 'screens/community_screen.dart';
 import 'screens/join_screen.dart';
+import 'screens/worker/worker_portal_screen.dart';
+import 'screens/worker/become_worker_sheet.dart';
+import 'screens/profile_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'services/api_config.dart';
@@ -125,12 +128,18 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
       builder: (context, user, _) {
         final bool isLoggedIn = user != null;
 
+        // Role Guard: When an authenticated user is a Worker, lock the interface to the Worker Portal.
+        // They cannot be a resident unless they explicitly revert via Worker Profile & Settings ("Revert to Resident Mode").
+        if (isLoggedIn && (user.isWorker || user.activeRole == 'Worker')) {
+          return const WorkerPortalScreen();
+        }
+
         final List<Widget> pages = [
           const FindTabScreen(),
           const CommunityScreen(),
           if (isLoggedIn) const BookingsTabScreen(),
           if (isLoggedIn) const ChatsTabScreen(),
-          const AccountTabScreen(),
+          const ProfileScreen(),
         ];
 
         final List<M3BottomNavItem> navItems = [
@@ -169,7 +178,10 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
             : _currentIndex;
 
         return Scaffold(
-          body: pages[effectiveIndex],
+          body: IndexedStack(
+            index: effectiveIndex,
+            children: pages,
+          ),
           bottomNavigationBar: M3BottomNavigationBar(
             selectedIndex: effectiveIndex,
             items: navItems,
@@ -734,9 +746,9 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                   name: worker.name,
                                   trade: trade,
                                   rating: worker.overallRating,
-                                  reviewCount: worker.completedJobs > 0 ? worker.completedJobs : 12,
+                                  reviewCount: worker.completedJobs,
                                   location: worker.primaryServiceArea ?? 'Colombo',
-                                  distance: '1.5 km',
+                                  distance: worker.distance != null ? '${worker.distance!.toStringAsFixed(1)} km' : 'Unknown',
                                   profileImage: worker.profileImage,
                                   onBookTap: () => _showBookingSheet(worker),
                                 ),
@@ -1785,49 +1797,104 @@ class AccountTabScreen extends StatelessWidget {
             const SizedBox(height: 32),
 
             // Worker Portal Card
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: AppColors.onPrimary,
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
                 borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.handyman_rounded,
-                    color: AppColors.brandYellow,
-                    size: 28,
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Switch to Worker Mode',
-                          style: GoogleFonts.dmSans(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Offer your skills and get jobs in your area.',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 12,
-                            color: Colors.white70,
-                          ),
-                        ),
-                      ],
+                onTap: () async {
+                  final user = AuthService().currentUser;
+                  if (user == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Please sign in to access Worker Mode.', style: GoogleFonts.dmSans()),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                    return;
+                  }
+
+                  // Show quick loading indicator while checking profile
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (_) => const Center(
+                      child: CircularProgressIndicator(color: AppColors.brandYellow),
                     ),
+                  );
+
+                  WorkerModel? worker;
+                  try {
+                    worker = await ApiService().fetchMyWorkerProfile(user.email);
+                  } catch (_) {}
+
+                  if (context.mounted) {
+                    Navigator.of(context).pop(); // dismiss loading dialog
+
+                    if (worker != null || user.isWorker) {
+                      await AuthService().updateActiveRole('Worker');
+                    } else {
+                      // Open Become Worker bottom sheet
+                      BecomeWorkerSheet.show(
+                        context,
+                        onWorkerCreated: () {
+                          // Handled reactively: BecomeWorkerSheet calls AuthService.updateWorkerStatus, switching the shell to WorkerPortalScreen
+                        },
+                      );
+                    }
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: AppColors.onPrimary,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                  const Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    color: Colors.white,
-                    size: 16,
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.handyman_rounded,
+                        color: AppColors.brandYellow,
+                        size: 28,
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Switch to Worker Mode',
+                              style: GoogleFonts.dmSans(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Offer your skills and get jobs in your area.',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 12,
+                                color: Colors.white70,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
 

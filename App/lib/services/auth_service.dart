@@ -13,11 +13,16 @@ class AuthService {
   factory AuthService() => _instance;
   AuthService._internal();
 
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    serverClientId: kIsWeb ? null : ApiConfig.googleClientId,
-    clientId: kIsWeb ? ApiConfig.googleClientId : null,
-    scopes: ['email', 'profile'],
-  );
+  // Lazy initialization of GoogleSignIn to prevent multiple GSI_LOGGER initialize() calls on Web
+  static GoogleSignIn? _googleSignInInstance;
+  GoogleSignIn get _googleSignIn {
+    _googleSignInInstance ??= GoogleSignIn(
+      serverClientId: kIsWeb ? null : ApiConfig.googleClientId,
+      clientId: kIsWeb ? ApiConfig.googleClientId : null,
+      scopes: ['email', 'profile'],
+    );
+    return _googleSignInInstance!;
+  }
 
   final ValueNotifier<AuthUser?> currentUserNotifier = ValueNotifier<AuthUser?>(null);
 
@@ -39,9 +44,47 @@ class AuthService {
       );
       currentUserNotifier.value = user;
       _syncOneSignalUser(user.email);
+      _syncWorkerStatusWithBackend(user);
       return user;
     }
     return null;
+  }
+
+  Future<void> _syncWorkerStatusWithBackend(AuthUser user) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/workers/me').replace(
+        queryParameters: {'email': user.email},
+      );
+      final response = await http.get(uri, headers: {
+        'Content-Type': 'application/json',
+        if (user.token.isNotEmpty) 'Authorization': 'Bearer ${user.token}',
+      });
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        final bool isWorkerInDb = data is Map && data['worker'] != null;
+        final int? workerId = isWorkerInDb ? data['worker']['id'] as int? : null;
+        final String roleInDb = isWorkerInDb ? 'Worker' : 'Resident';
+
+        if (user.isWorker != isWorkerInDb || user.activeRole != roleInDb) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('isWorker', isWorkerInDb);
+          await prefs.setString('activeRole', roleInDb);
+
+          currentUserNotifier.value = AuthUser(
+            token: user.token,
+            email: user.email,
+            name: user.name,
+            picture: user.picture,
+            isNewUser: user.isNewUser,
+            isWorker: isWorkerInDb,
+            activeRole: roleInDb,
+            workerId: workerId,
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Sync worker status error: $e');
+    }
   }
 
   Future<void> _syncOneSignalUser(String? email) async {
@@ -190,6 +233,49 @@ class AuthService {
     currentUserNotifier.value = user;
     _syncOneSignalUser(user.email);
     return user;
+  }
+
+  /// Update active role (e.g. switch between 'Resident' and 'Worker')
+  Future<void> updateActiveRole(String role) async {
+    final current = currentUserNotifier.value;
+    if (current == null) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('activeRole', role);
+
+    currentUserNotifier.value = AuthUser(
+      token: current.token,
+      email: current.email,
+      name: current.name,
+      picture: current.picture,
+      isNewUser: current.isNewUser,
+      isWorker: current.isWorker,
+      activeRole: role,
+      workerId: current.workerId,
+    );
+  }
+
+  /// Update worker status (when user creates worker profile or reverts)
+  Future<void> updateWorkerStatus({required bool isWorker, int? workerId, String? activeRole}) async {
+    final current = currentUserNotifier.value;
+    if (current == null) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isWorker', isWorker);
+    if (activeRole != null) {
+      await prefs.setString('activeRole', activeRole);
+    }
+
+    currentUserNotifier.value = AuthUser(
+      token: current.token,
+      email: current.email,
+      name: current.name,
+      picture: current.picture,
+      isNewUser: current.isNewUser,
+      isWorker: isWorker,
+      activeRole: activeRole ?? (isWorker ? 'Worker' : 'Resident'),
+      workerId: workerId ?? current.workerId,
+    );
   }
 
   /// Sign out and clear stored session

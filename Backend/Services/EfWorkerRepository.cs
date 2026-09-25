@@ -1,3 +1,4 @@
+using System;
 using Microsoft.EntityFrameworkCore;
 using Superbass.Models;
 
@@ -27,7 +28,7 @@ namespace Superbass.Services
             return await _context.Workers.Include(w => w.Skills).FirstOrDefaultAsync(w => w.ResidentEmail == email || w.Email == email);
         }
 
-        public async Task<IEnumerable<Worker>> SearchWorkersAsync(string? skill, string? location, double? maxDistanceKm)
+        public async Task<IEnumerable<Worker>> SearchWorkersAsync(string? skill, string? location, double? maxDistanceKm, double? residentLat = null, double? residentLng = null)
         {
             var query = _context.Workers.Include(w => w.Skills).AsQueryable();
 
@@ -41,8 +42,43 @@ namespace Superbass.Services
                 query = query.Where(w => w.PrimaryServiceArea != null && w.PrimaryServiceArea.ToLower().Contains(location.ToLower()));
             }
 
-            return await query.ToListAsync();
+            var workers = await query.ToListAsync();
+
+            if (residentLat.HasValue && residentLng.HasValue)
+            {
+                foreach (var w in workers)
+                {
+                    if (w.LocationLat.HasValue && w.LocationLng.HasValue)
+                    {
+                        w.Distance = CalculateHaversineDistance(residentLat.Value, residentLng.Value, w.LocationLat.Value, w.LocationLng.Value);
+                    }
+                }
+                
+                if (maxDistanceKm.HasValue)
+                {
+                    workers = workers.Where(w => !w.Distance.HasValue || w.Distance.Value <= maxDistanceKm.Value).ToList();
+                }
+
+                workers = workers.OrderBy(w => w.Distance ?? double.MaxValue).ToList();
+            }
+
+            return workers;
         }
+
+        private double CalculateHaversineDistance(double lat1, double lon1, double lat2, double lon2)
+        {
+            var R = 6371; // Radius of the earth in km
+            var dLat = ToRadians(lat2 - lat1);
+            var dLon = ToRadians(lon2 - lon1);
+            var a = 
+                Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                Math.Cos(ToRadians(lat1)) * Math.Cos(ToRadians(lat2)) * 
+                Math.Sin(dLon / 2) * Math.Sin(dLon / 2); 
+            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a)); 
+            return R * c; // Distance in km
+        }
+
+        private double ToRadians(double deg) => deg * (Math.PI / 180);
 
         public async Task<Worker> CreateWorkerAsync(Worker worker)
         {

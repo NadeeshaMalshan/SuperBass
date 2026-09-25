@@ -7,6 +7,8 @@ class AuthUser {
   final bool isWorker;
   final String activeRole;
   final int? workerId;
+  final double? locationLat;
+  final double? locationLng;
 
   AuthUser({
     required this.token,
@@ -17,6 +19,8 @@ class AuthUser {
     this.isWorker = false,
     this.activeRole = 'Resident',
     this.workerId,
+    this.locationLat,
+    this.locationLng,
   });
 
   factory AuthUser.fromJson(Map<String, dynamic> json) {
@@ -30,6 +34,8 @@ class AuthUser {
       activeRole: json['activeRole'] as String? ??
           ((json['isWorker'] == true) ? 'Worker' : 'Resident'),
       workerId: json['workerId'] as int?,
+      locationLat: (json['locationLat'] as num?)?.toDouble(),
+      locationLng: (json['locationLng'] as num?)?.toDouble(),
     );
   }
 
@@ -43,6 +49,8 @@ class AuthUser {
       'isWorker': isWorker,
       'activeRole': activeRole,
       'workerId': workerId,
+      'locationLat': locationLat,
+      'locationLng': locationLng,
     };
   }
 }
