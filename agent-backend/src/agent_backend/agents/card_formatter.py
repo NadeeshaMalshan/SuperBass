@@ -13,6 +13,7 @@ from agent_backend.config import settings
 from agent_backend.state.state import AgentState
 from agent_backend.schemas.card_models import (
     AgentCardResponse,
+    PostConfirmationCard,
     PostCreatedCard,
     PostListCard,
     PostDetailCard,
@@ -30,13 +31,15 @@ CARD_FORMATTER_PROMPT = """You are the Frontend UI Card Formatter for SuperBass.
 Your role is to format the conversation output and any tool results into a structured AgentCardResponse JSON object so the Frontend can render the appropriate interactive UI card component.
 
 Available response_type values and their corresponding card_data schemas:
-1. "post_created": Use when a new community post has been created.
+0. "post_confirmation": Use whenever a community post draft is formulated and presented for user review/confirmation before publishing or updating.
+   card_data fields: action ("create" or "update"), postId (if update), title, content, communityId, location, validationStatus ("valid"), validationNotes, confirmPrompt (e.g. "CONFIRM_PUBLISH: title=... content=...").
+1. "post_created": Use when a new community post has actually been published to the backend via tool execution.
    card_data fields: id, title, content, communityId, location, authorId, authorName, status, createdAt.
 2. "post_list": Use when returning a list or feed of community posts.
    card_data fields: category, totalCount, posts (list of {id, title, content, communityId, location, authorName, authorEmail, createdAt, likesCount, commentsCount}), page.
 3. "post_detail": Use when a specific single post was requested or viewed.
    card_data fields: id, title, content, communityId, location, authorName, authorEmail, createdAt, likesCount, commentsCount, comments.
-4. "post_updated": Use when an existing post was modified.
+4. "post_updated": Use when an existing post was modified via tool execution.
    card_data fields: id, title, content, communityId, location, updatedAt.
 5. "post_deleted": Use when a post was removed or deleted.
    card_data fields: id, status="Removed", message, deletedAt.
@@ -214,6 +217,40 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
                 card_data=card.model_dump(),
                 metadata={"agent": "community_agent", "user_email": email}
             )
+
+    # Check if the assistant has prepared a post draft awaiting confirmation
+    lower_content = last_ai_content.lower()
+    if any(keyword in lower_content for keyword in ["draft", "confirm", "review", "would you like me to publish"]):
+        # Extract title or default
+        draft_title = "Community Service Request"
+        draft_category = "General"
+        draft_location = "Colombo"
+
+        for line in last_ai_content.splitlines():
+            line_str = line.strip()
+            if "title:" in line_str.lower():
+                draft_title = line_str.split(":", 1)[1].strip().strip("*").strip()
+            elif "category:" in line_str.lower():
+                draft_category = line_str.split(":", 1)[1].strip().strip("*").strip()
+            elif "location:" in line_str.lower():
+                draft_location = line_str.split(":", 1)[1].strip().strip("*").strip()
+
+        card = PostConfirmationCard(
+            action="create",
+            title=draft_title,
+            content=last_ai_content,
+            communityId=draft_category,
+            location=draft_location,
+            validationStatus="valid",
+            validationNotes="Please review your draft details above and confirm to publish.",
+            confirmPrompt=f"CONFIRM_PUBLISH: Yes, please publish the post '{draft_title}' in {draft_category} for {draft_location}."
+        )
+        return AgentCardResponse(
+            response_type="post_confirmation",
+            message=last_ai_content,
+            card_data=card.model_dump(),
+            metadata={"agent": "community_agent", "user_email": email}
+        )
 
     # General text message fallback
     suggestions = [

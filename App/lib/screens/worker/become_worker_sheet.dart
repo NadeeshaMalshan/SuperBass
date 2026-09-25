@@ -66,6 +66,7 @@ class _BecomeWorkerSheetState extends State<BecomeWorkerSheet> {
 
   // Selected services with their respective skill arrays
   final List<WorkerServiceSelection> _selectedServices = [];
+  final _newSkillController = TextEditingController();
 
   @override
   void initState() {
@@ -270,9 +271,9 @@ class _BecomeWorkerSheetState extends State<BecomeWorkerSheet> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Become a SuperBass Pro',
+                          'Join as a Worker',
                           style: GoogleFonts.dmSans(
-                            fontSize: 19,
+                            fontSize: 20,
                             fontWeight: FontWeight.w800,
                             color: WorkerColors.onSurface,
                           ),

@@ -138,7 +138,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
           const CommunityScreen(),
           if (isLoggedIn) const BookingsTabScreen(),
           if (isLoggedIn) const ChatsTabScreen(),
-          const AccountTabScreen(),
+          const ProfileScreen(),
         ];
 
         final List<M3BottomNavItem> navItems = [
@@ -177,7 +177,10 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
             : _currentIndex;
 
         return Scaffold(
-          body: pages[effectiveIndex],
+          body: IndexedStack(
+            index: effectiveIndex,
+            children: pages,
+          ),
           bottomNavigationBar: M3BottomNavigationBar(
             selectedIndex: effectiveIndex,
             items: navItems,
@@ -744,7 +747,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                   rating: worker.overallRating,
                                   reviewCount: worker.completedJobs,
                                   location: worker.primaryServiceArea ?? 'Colombo',
-                                  distance: '1.5 km',
+                                  distance: worker.distance != null ? '${worker.distance!.toStringAsFixed(1)} km' : 'Unknown',
                                   profileImage: worker.profileImage,
                                   onBookTap: () => _showBookingSheet(worker),
                                 ),
