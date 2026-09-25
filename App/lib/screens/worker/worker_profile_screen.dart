@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/worker_model.dart';
+import '../../models/worker_services_data.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../theme/worker_colors.dart';
@@ -143,27 +144,223 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
     );
   }
 
-  // 1. Add / Remove Skill
-  Future<void> _handleAddSkill() async {
-    final skillName = _newSkillController.text.trim();
+  // 1. Add / Remove Service & Skills
+  void _showAddServiceDialog() {
     final workerId = widget.worker?.id;
-    if (skillName.isEmpty || workerId == null) return;
+    if (workerId == null) return;
 
-    setState(() => _isSaving = true);
-    final newItem = await ApiService().addWorkerSkill(workerId, skillName: skillName);
-    if (mounted) {
-      setState(() {
-        _isSaving = false;
-        if (newItem != null) {
-          _skills.add(newItem);
-          _newSkillController.clear();
-          _showFeedback('Skill "$skillName" added!');
-          widget.onWorkerUpdated?.call();
-        } else {
-          _showFeedback('Could not add skill.', isError: true);
-        }
-      });
-    }
+    ServiceCategoryDef selectedCategory = WorkerServicesCatalog.categories.first;
+    List<String> selectedSkills = List.from(selectedCategory.defaultSkills.take(2));
+    int experienceYears = 2;
+    final customSkillController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            final suggestedSkills = WorkerServicesCatalog.getSkillsForService(selectedCategory.name);
+
+            return Container(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+              ),
+              constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.85),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFCBD5E1),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Add Service & Specialization',
+                      style: GoogleFonts.dmSans(fontSize: 18, fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Service Dropdown
+                    Text('Select Service', style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 6),
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedCategory.name,
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: const Color(0xFFF8FAFC),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      items: WorkerServicesCatalog.categories.map((c) {
+                        return DropdownMenuItem(
+                          value: c.name,
+                          child: Text('${c.icon}  ${c.name}'),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setModalState(() {
+                            selectedCategory = WorkerServicesCatalog.categories.firstWhere((c) => c.name == val);
+                            selectedSkills = List.from(selectedCategory.defaultSkills.take(2));
+                          });
+                        }
+                      },
+                    ),
+
+                    const SizedBox(height: 14),
+                    // Experience
+                    Text('Experience Level', style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 6),
+                    DropdownButtonFormField<int>(
+                      initialValue: experienceYears,
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: const Color(0xFFF8FAFC),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 0, child: Text('< 1 Year Experience')),
+                        DropdownMenuItem(value: 1, child: Text('1 Year Experience')),
+                        DropdownMenuItem(value: 2, child: Text('2 Years Experience')),
+                        DropdownMenuItem(value: 3, child: Text('3 Years Experience')),
+                        DropdownMenuItem(value: 5, child: Text('5+ Years Experience')),
+                        DropdownMenuItem(value: 10, child: Text('10+ Years Experience')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) setModalState(() => experienceYears = val);
+                      },
+                    ),
+
+                    const SizedBox(height: 14),
+                    // Skills in this service
+                    Text('Skills for ${selectedCategory.name}', style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: suggestedSkills.map((sk) {
+                        final isSel = selectedSkills.contains(sk);
+                        return FilterChip(
+                          label: Text(sk),
+                          selected: isSel,
+                          selectedColor: WorkerColors.primaryLight,
+                          checkmarkColor: WorkerColors.primary,
+                          labelStyle: GoogleFonts.dmSans(
+                            fontSize: 11,
+                            fontWeight: isSel ? FontWeight.w700 : FontWeight.w500,
+                            color: isSel ? WorkerColors.primary : const Color(0xFF334155),
+                          ),
+                          onSelected: (val) {
+                            setModalState(() {
+                              if (val) {
+                                selectedSkills.add(sk);
+                              } else {
+                                selectedSkills.remove(sk);
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+
+                    const SizedBox(height: 10),
+                    // Custom skill input
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: customSkillController,
+                            style: GoogleFonts.dmSans(fontSize: 12),
+                            decoration: InputDecoration(
+                              hintText: 'Add custom skill to ${selectedCategory.name}...',
+                              filled: true,
+                              fillColor: const Color(0xFFF8FAFC),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: () {
+                            final text = customSkillController.text.trim();
+                            if (text.isNotEmpty && !selectedSkills.contains(text)) {
+                              setModalState(() {
+                                selectedSkills.add(text);
+                                customSkillController.clear();
+                              });
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: WorkerColors.primary,
+                            foregroundColor: Colors.white,
+                          ),
+                          child: const Text('Add'),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: selectedSkills.isEmpty
+                            ? null
+                            : () async {
+                                Navigator.pop(ctx);
+                                setState(() => _isSaving = true);
+                                final newItem = await ApiService().addWorkerSkill(
+                                  workerId,
+                                  serviceName: selectedCategory.name,
+                                  skills: selectedSkills,
+                                  experienceYears: experienceYears,
+                                );
+                                if (mounted) {
+                                  setState(() {
+                                    _isSaving = false;
+                                    if (newItem != null) {
+                                      _skills.add(newItem);
+                                      _showFeedback('Added ${selectedCategory.name} to your profile!');
+                                      widget.onWorkerUpdated?.call();
+                                    } else {
+                                      _showFeedback('Failed to add service.', isError: true);
+                                    }
+                                  });
+                                }
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: WorkerColors.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text('Save Service & Skills', style: TextStyle(fontWeight: FontWeight.w700)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _handleRemoveSkill(WorkerSkillItem skill) async {
@@ -177,10 +374,11 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
         _isSaving = false;
         if (success) {
           _skills.removeWhere((s) => s.id == skill.id);
-          _showFeedback('Skill "${skill.skillName}" removed.');
+          final label = skill.serviceName.isNotEmpty ? skill.serviceName : skill.skillName;
+          _showFeedback('Service "$label" removed.');
           widget.onWorkerUpdated?.call();
         } else {
-          _showFeedback('Could not remove skill.', isError: true);
+          _showFeedback('Could not remove service.', isError: true);
         }
       });
     }
@@ -389,71 +587,149 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
           ),
           const SizedBox(height: 18),
 
-          // 2. Skills & Rates Section
+          // 2. Services, Skills & Rates Section
           _buildCard(
-            title: 'Skills & Rates',
+            title: 'Services, Skills & Rates',
             icon: Icons.handyman_outlined,
             children: [
-              Text(
-                'Active Skills',
-                style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w700),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Active Services & Skills',
+                    style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w700),
+                  ),
+                  TextButton.icon(
+                    onPressed: _isSaving ? null : _showAddServiceDialog,
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text('Add Service'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: WorkerColors.primary,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 8),
 
               if (_skills.isEmpty)
-                Text(
-                  'No skills listed yet. Add one below.',
-                  style: GoogleFonts.dmSans(fontSize: 12, color: WorkerColors.onSurfaceVariant),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Center(
+                    child: Column(
+                      children: [
+                        const Icon(Icons.build_circle_outlined, size: 36, color: Color(0xFF94A3B8)),
+                        const SizedBox(height: 8),
+                        Text(
+                          'No services added yet.',
+                          style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF64748B)),
+                        ),
+                        const SizedBox(height: 8),
+                        ElevatedButton.icon(
+                          onPressed: _showAddServiceDialog,
+                          icon: const Icon(Icons.add, size: 16),
+                          label: const Text('Add Your First Service'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: WorkerColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 )
               else
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                Column(
                   children: _skills.map((s) {
-                    return Chip(
-                      label: Text(s.skillName),
-                      deleteIcon: const Icon(Icons.close_rounded, size: 16),
-                      onDeleted: () => _handleRemoveSkill(s),
-                      backgroundColor: WorkerColors.primaryLight,
-                      labelStyle: GoogleFonts.dmSans(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: WorkerColors.primary,
+                    final serviceTitle = s.serviceName.isNotEmpty ? s.serviceName : s.skillName;
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        side: const BorderSide(color: WorkerColors.primaryBorder),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: WorkerColors.primaryLight,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(Icons.handyman_rounded, color: WorkerColors.primary, size: 18),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      serviceTitle,
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w800,
+                                        color: const Color(0xFF0F172A),
+                                      ),
+                                    ),
+                                    Text(
+                                      s.experienceYears <= 0
+                                          ? 'Less than 1 Year Experience'
+                                          : (s.experienceYears == 1
+                                              ? '1 Year Experience'
+                                              : '${s.experienceYears}+ Years Experience'),
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFF64748B),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline_rounded, color: WorkerColors.error, size: 20),
+                                onPressed: _isSaving ? null : () => _handleRemoveSkill(s),
+                                tooltip: 'Remove service',
+                              ),
+                            ],
+                          ),
+                          if (s.skills.isNotEmpty) ...[
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: s.skills.map((sub) {
+                                return Chip(
+                                  label: Text(sub),
+                                  backgroundColor: Colors.white,
+                                  labelStyle: GoogleFonts.dmSans(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF334155),
+                                  ),
+                                  side: const BorderSide(color: Color(0xFFCBD5E1)),
+                                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                                );
+                              }).toList(),
+                            ),
+                          ],
+                        ],
                       ),
                     );
                   }).toList(),
                 ),
 
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _newSkillController,
-                      decoration: const InputDecoration(
-                        hintText: 'Add new skill...',
-                        contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      ),
-                      onFieldSubmitted: (_) => _handleAddSkill(),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: _isSaving ? null : _handleAddSkill,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: WorkerColors.primary,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                    ),
-                    child: const Text('Add'),
-                  ),
-                ],
-              ),
               const SizedBox(height: 18),
 
               DropdownButtonFormField<String>(

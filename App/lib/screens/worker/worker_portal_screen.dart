@@ -8,6 +8,7 @@ import 'worker_dashboard_screen.dart';
 import 'worker_jobs_screen.dart';
 import 'worker_performance_screen.dart';
 import 'worker_profile_screen.dart';
+import '../community_screen.dart';
 
 class WorkerPortalScreen extends StatefulWidget {
   const WorkerPortalScreen({super.key});
@@ -115,6 +116,7 @@ class _WorkerPortalScreenState extends State<WorkerPortalScreen> {
         onNavigateTab: (index) => setState(() => _currentIndex = index),
       ),
       const WorkerJobsScreen(),
+      const CommunityScreen(isWorkerMode: true),
       WorkerPerformanceScreen(worker: _worker),
       WorkerProfileScreen(
         worker: _worker,
@@ -127,8 +129,10 @@ class _WorkerPortalScreenState extends State<WorkerPortalScreen> {
 
     return Scaffold(
       backgroundColor: WorkerColors.background,
-      appBar: AppBar(
-        backgroundColor: WorkerColors.surface,
+      appBar: _currentIndex == 2
+          ? null
+          : AppBar(
+              backgroundColor: WorkerColors.surface,
         elevation: 0,
         scrolledUnderElevation: 0,
         automaticallyImplyLeading: false,
@@ -310,6 +314,11 @@ class _WorkerPortalScreenState extends State<WorkerPortalScreen> {
         label: 'My Jobs',
         icon: Icons.work_outline_rounded,
         selectedIcon: Icons.work_rounded,
+      ),
+      _WorkerNavItem(
+        label: 'Community',
+        icon: Icons.groups_outlined,
+        selectedIcon: Icons.groups_rounded,
       ),
       _WorkerNavItem(
         label: 'Performance',

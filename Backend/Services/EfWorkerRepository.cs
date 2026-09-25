@@ -34,7 +34,12 @@ namespace Superbass.Services
 
             if (!string.IsNullOrWhiteSpace(skill))
             {
-                query = query.Where(w => w.Skills.Any(s => s.SkillName.ToLower().Contains(skill.ToLower())));
+                var term = skill.Trim().ToLower();
+                query = query.Where(w => w.Skills.Any(s => 
+                    (s.ServiceName != null && s.ServiceName.ToLower().Contains(term)) ||
+                    (s.SkillName != null && s.SkillName.ToLower().Contains(term)) ||
+                    s.Skills.Any(sub => sub.ToLower().Contains(term))
+                ));
             }
 
             if (!string.IsNullOrWhiteSpace(location))
@@ -112,6 +117,7 @@ namespace Superbass.Services
                 if (dailyRate != null) existingWorker.DailyRate = dailyRate;
                 if (skills != null && skills.Count > 0)
                 {
+                    _context.WorkerSkills.RemoveRange(existingWorker.Skills);
                     existingWorker.Skills = skills;
                 }
                 await _context.SaveChangesAsync();

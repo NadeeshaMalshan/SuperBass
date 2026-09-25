@@ -701,11 +701,13 @@ class ApiService {
     }
   }
 
-  /// Add Worker Skill: POST /api/workers/{id}/skills
+  /// Add Worker Skill / Service: POST /api/workers/{id}/skills
   Future<WorkerSkillItem?> addWorkerSkill(
     int workerId, {
-    required String skillName,
+    required String serviceName,
+    List<String> skills = const [],
     int experienceYears = 1,
+    String? skillName,
   }) async {
     try {
       final uri = Uri.parse('${ApiConfig.baseUrl}/api/workers/$workerId/skills');
@@ -713,8 +715,11 @@ class ApiService {
         uri,
         headers: _headers,
         body: jsonEncode({
-          'skillName': skillName,
+          'serviceName': serviceName,
+          'service': serviceName,
+          'skills': skills,
           'experienceYears': experienceYears,
+          'skillName': skillName ?? serviceName,
         }),
       );
       if (response.statusCode >= 200 && response.statusCode < 300) {

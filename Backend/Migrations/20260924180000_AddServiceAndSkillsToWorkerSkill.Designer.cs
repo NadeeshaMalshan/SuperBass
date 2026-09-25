@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Superbass.Models;
@@ -12,9 +13,10 @@ using Superbass.Models;
 namespace Superbass.Migrations
 {
     [DbContext(typeof(SuperbassDbContext))]
-    partial class SuperbassDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260924180000_AddServiceAndSkillsToWorkerSkill")]
+    partial class AddServiceAndSkillsToWorkerSkill
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -420,7 +422,7 @@ namespace Superbass.Migrations
                     b.Property<int>("CancelledJobs")
                         .HasColumnType("integer");
 
-                    b.Property<int?>("CommunicationRating")
+                    b.Property<int>("CommunicationRating")
                         .HasColumnType("integer");
 
                     b.Property<int>("CompletedJobs")
@@ -455,7 +457,7 @@ namespace Superbass.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<double?>("OverallRating")
+                    b.Property<double>("OverallRating")
                         .HasColumnType("double precision");
 
                     b.Property<string>("PasswordHash")
@@ -474,10 +476,10 @@ namespace Superbass.Migrations
                     b.Property<string>("ProfileImage")
                         .HasColumnType("text");
 
-                    b.Property<int?>("PunctualityRating")
+                    b.Property<int>("PunctualityRating")
                         .HasColumnType("integer");
 
-                    b.Property<int?>("QualityRating")
+                    b.Property<int>("QualityRating")
                         .HasColumnType("integer");
 
                     b.Property<int>("RejectedJobs")
@@ -621,3 +623,4 @@ namespace Superbass.Migrations
         }
     }
 }
+
