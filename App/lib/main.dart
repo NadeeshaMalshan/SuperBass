@@ -11,7 +11,6 @@ import 'screens/community_screen.dart';
 import 'screens/join_screen.dart';
 import 'screens/worker/worker_portal_screen.dart';
 import 'screens/worker/become_worker_sheet.dart';
-import 'screens/profile_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'services/api_config.dart';

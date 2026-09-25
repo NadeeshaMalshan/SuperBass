@@ -1,8 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../models/worker_services_data.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../theme/worker_colors.dart';
+
+/// Selection data item for a service and its associated skills
+class WorkerServiceSelection {
+  final String serviceName;
+  final String icon;
+  final List<String> skills;
+  int experienceYears;
+  final TextEditingController customSkillController = TextEditingController();
+
+  WorkerServiceSelection({
+    required this.serviceName,
+    required this.icon,
+    required List<String> skills,
+    this.experienceYears = 2,
+  }) : skills = List.from(skills);
+
+  Map<String, dynamic> toMap() => {
+        'serviceName': serviceName,
+        'service': serviceName,
+        'skills': skills,
+        'experienceYears': experienceYears,
+        'skillName': serviceName,
+      };
+
+  void dispose() {
+    customSkillController.dispose();
+  }
+}
 
 /// Modal bottom sheet allowing a registered resident to upgrade to a Worker profile.
 class BecomeWorkerSheet extends StatefulWidget {
@@ -29,26 +58,30 @@ class _BecomeWorkerSheetState extends State<BecomeWorkerSheet> {
   final _serviceAreaController = TextEditingController(text: 'Colombo');
   final _hourlyRateController = TextEditingController(text: '1500');
   final _dailyRateController = TextEditingController(text: '8000');
-  final _newSkillController = TextEditingController();
 
   double _radiusKm = 15.0;
   String _pricingModel = 'Hourly';
-  final List<String> _skills = ['Plumbing', 'Pipe Repair'];
   bool _isSubmitting = false;
   String? _errorMessage;
 
-  final List<String> _availableSkillSuggestions = [
-    'Plumbing',
-    'Electrical',
-    'Carpentry',
-    'Masonry',
-    'Painting',
-    'AC Repair',
-    'Roofing',
-    'Gardening',
-    'Appliance Repair',
-    'Cleaning',
-  ];
+  // Selected services with their respective skill arrays
+  final List<WorkerServiceSelection> _selectedServices = [];
+  final _newSkillController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Default initial service selection: Plumbing
+    final defaultCat = WorkerServicesCatalog.categories.first;
+    _selectedServices.add(
+      WorkerServiceSelection(
+        serviceName: defaultCat.name,
+        icon: defaultCat.icon,
+        skills: defaultCat.defaultSkills.take(2).toList(),
+        experienceYears: 2,
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -56,31 +89,73 @@ class _BecomeWorkerSheetState extends State<BecomeWorkerSheet> {
     _serviceAreaController.dispose();
     _hourlyRateController.dispose();
     _dailyRateController.dispose();
-    _newSkillController.dispose();
+    for (final s in _selectedServices) {
+      s.dispose();
+    }
     super.dispose();
   }
 
-  void _addSkill(String skill) {
-    final trimmed = skill.trim();
-    if (trimmed.isNotEmpty && !_skills.contains(trimmed)) {
+  void _toggleService(ServiceCategoryDef cat) {
+    setState(() {
+      final existingIndex = _selectedServices.indexWhere((s) => s.serviceName.toLowerCase() == cat.name.toLowerCase());
+      if (existingIndex >= 0) {
+        if (_selectedServices.length > 1) {
+          _selectedServices[existingIndex].dispose();
+          _selectedServices.removeAt(existingIndex);
+        } else {
+          _errorMessage = 'You must keep at least one selected service.';
+        }
+      } else {
+        _errorMessage = null;
+        _selectedServices.add(
+          WorkerServiceSelection(
+            serviceName: cat.name,
+            icon: cat.icon,
+            skills: cat.defaultSkills.take(2).toList(),
+            experienceYears: 2,
+          ),
+        );
+      }
+    });
+  }
+
+  void _toggleSkill(WorkerServiceSelection service, String skill) {
+    setState(() {
+      if (service.skills.contains(skill)) {
+        if (service.skills.length > 1) {
+          service.skills.remove(skill);
+        } else {
+          _errorMessage = 'Each service must have at least one skill.';
+        }
+      } else {
+        _errorMessage = null;
+        service.skills.add(skill);
+      }
+    });
+  }
+
+  void _addCustomSkill(WorkerServiceSelection service) {
+    final text = service.customSkillController.text.trim();
+    if (text.isNotEmpty && !service.skills.contains(text)) {
       setState(() {
-        _skills.add(trimmed);
-        _newSkillController.clear();
+        service.skills.add(text);
+        service.customSkillController.clear();
       });
     }
   }
 
-  void _removeSkill(String skill) {
-    setState(() {
-      _skills.remove(skill);
-    });
-  }
-
   Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_skills.isEmpty) {
-      setState(() => _errorMessage = 'Please add at least one trade skill.');
+    if (_selectedServices.isEmpty) {
+      setState(() => _errorMessage = 'Please select at least one service.');
       return;
+    }
+
+    for (final s in _selectedServices) {
+      if (s.skills.isEmpty) {
+        setState(() => _errorMessage = 'Please assign at least one skill to ${s.serviceName}.');
+        return;
+      }
     }
 
     final user = AuthService().currentUser;
@@ -94,15 +169,14 @@ class _BecomeWorkerSheetState extends State<BecomeWorkerSheet> {
       _errorMessage = null;
     });
 
-    final skillsPayload = _skills
-        .map((s) => {'skillName': s, 'experienceYears': 2})
-        .toList();
+    final skillsPayload = _selectedServices.map((s) => s.toMap()).toList();
+    final primaryService = _selectedServices.first.serviceName;
 
     final worker = await ApiService().becomeWorker(
       email: user.email,
       description: _descController.text.trim().isNotEmpty
           ? _descController.text.trim()
-          : 'Experienced ${_skills.first} professional serving ${_serviceAreaController.text.trim()}.',
+          : 'Experienced $primaryService professional serving ${_serviceAreaController.text.trim()}.',
       primaryServiceArea: _serviceAreaController.text.trim(),
       coverageRadiusKm: _radiusKm,
       pricingModel: _pricingModel,
@@ -120,13 +194,24 @@ class _BecomeWorkerSheetState extends State<BecomeWorkerSheet> {
           workerId: worker.id,
           activeRole: 'Worker',
         );
-        if (!mounted) return;
-        Navigator.of(context).pop();
-        widget.onWorkerCreated();
+
+        if (mounted) {
+          Navigator.of(context).pop();
+          widget.onWorkerCreated();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Welcome aboard, ${worker.name}! You are now an active Pro Worker.',
+                style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
+              ),
+              backgroundColor: WorkerColors.primary,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
       } else {
-        setState(() {
-          _errorMessage = 'Could not create worker profile. Please try again.';
-        });
+        setState(() => _errorMessage = 'Failed to create worker profile. Please try again.');
       }
     }
   }
@@ -136,42 +221,43 @@ class _BecomeWorkerSheetState extends State<BecomeWorkerSheet> {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
     return Container(
-      decoration: const BoxDecoration(
-        color: WorkerColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      padding: EdgeInsets.fromLTRB(24, 16, 24, bottomInset + 24),
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.90,
       ),
-      child: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
+      padding: EdgeInsets.only(bottom: bottomInset),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+        child: Form(
+          key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
             children: [
-              // Drag handle
+              // Drag Handle
               Center(
                 child: Container(
                   width: 44,
-                  height: 4,
+                  height: 5,
+                  margin: const EdgeInsets.only(bottom: 20),
                   decoration: BoxDecoration(
                     color: WorkerColors.outlineVariant,
-                    borderRadius: BorderRadius.circular(2),
+                    borderRadius: BorderRadius.circular(3),
                   ),
                 ),
               ),
-              const SizedBox(height: 18),
 
-              // Title and worker badge
+              // Title Header
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: WorkerColors.primaryLight,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: WorkerColors.primaryBorder),
                     ),
                     child: const Icon(
                       Icons.handyman_rounded,
@@ -192,10 +278,11 @@ class _BecomeWorkerSheetState extends State<BecomeWorkerSheet> {
                             color: WorkerColors.onSurface,
                           ),
                         ),
+                        const SizedBox(height: 2),
                         Text(
-                          'Offer your services & get hired nearby',
+                          'Offer your trade services to nearby residents',
                           style: GoogleFonts.dmSans(
-                            fontSize: 13,
+                            fontSize: 12,
                             color: WorkerColors.onSurfaceVariant,
                           ),
                         ),
@@ -206,13 +293,14 @@ class _BecomeWorkerSheetState extends State<BecomeWorkerSheet> {
               ),
               const SizedBox(height: 20),
 
+              // Error banner if any
               if (_errorMessage != null)
                 Container(
-                  margin: const EdgeInsets.only(bottom: 16),
                   padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
                     color: WorkerColors.errorLight,
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: WorkerColors.error.withValues(alpha: 0.3)),
                   ),
                   child: Row(
@@ -233,32 +321,36 @@ class _BecomeWorkerSheetState extends State<BecomeWorkerSheet> {
                   ),
                 ),
 
-              // 1. Skills section
+              // 1. SERVICES SELECTION
               Text(
-                'Select Your Skills / Services',
+                '1. Select Services (Choose One or More)',
                 style: GoogleFonts.dmSans(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: WorkerColors.onSurface,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
+              Text(
+                'Tap to select the services you offer. You can choose multiple services.',
+                style: GoogleFonts.dmSans(
+                  fontSize: 12,
+                  color: WorkerColors.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 10),
 
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: _availableSkillSuggestions.map((s) {
-                  final isSelected = _skills.contains(s);
+                children: WorkerServicesCatalog.categories.map((cat) {
+                  final isSelected = _selectedServices.any(
+                    (s) => s.serviceName.toLowerCase() == cat.name.toLowerCase(),
+                  );
                   return FilterChip(
-                    label: Text(s),
+                    label: Text('${cat.icon}  ${cat.name}'),
                     selected: isSelected,
-                    onSelected: (val) {
-                      if (val) {
-                        _addSkill(s);
-                      } else {
-                        _removeSkill(s);
-                      }
-                    },
+                    onSelected: (_) => _toggleService(cat),
                     selectedColor: WorkerColors.primaryContainer,
                     checkmarkColor: WorkerColors.primary,
                     labelStyle: GoogleFonts.dmSans(
@@ -276,39 +368,196 @@ class _BecomeWorkerSheetState extends State<BecomeWorkerSheet> {
                 }).toList(),
               ),
 
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _newSkillController,
-                      decoration: InputDecoration(
-                        hintText: 'Add custom skill...',
-                        fillColor: WorkerColors.surfaceVariant,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      ),
-                      onFieldSubmitted: _addSkill,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: () => _addSkill(_newSkillController.text),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: WorkerColors.primary,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    ),
-                    child: const Text('Add'),
-                  ),
-                ],
-              ),
-
               const SizedBox(height: 20),
 
-              // 2. Service Area & Radius
+              // 2. SKILLS ARRAY PER SELECTED SERVICE
               Text(
-                'Service Location & Coverage',
+                '2. Skills & Trade Specialization',
+                style: GoogleFonts.dmSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: WorkerColors.onSurface,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Select specific skills relevant to each service and set your experience level.',
+                style: GoogleFonts.dmSans(
+                  fontSize: 12,
+                  color: WorkerColors.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Service cards with skill arrays
+              ..._selectedServices.map((service) {
+                final suggestedSkills = WorkerServicesCatalog.getSkillsForService(service.serviceName);
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Service Header
+                      Row(
+                        children: [
+                          Text(
+                            service.icon,
+                            style: const TextStyle(fontSize: 20),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              service.serviceName,
+                              style: GoogleFonts.dmSans(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: const Color(0xFF0F172A),
+                              ),
+                            ),
+                          ),
+                          // Experience Years Dropdown
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFFCBD5E1)),
+                            ),
+                            child: DropdownButton<int>(
+                              value: service.experienceYears,
+                              underline: const SizedBox.shrink(),
+                              isDense: true,
+                              items: const [
+                                DropdownMenuItem(value: 0, child: Text('< 1 Year Exp')),
+                                DropdownMenuItem(value: 1, child: Text('1 Year Exp')),
+                                DropdownMenuItem(value: 2, child: Text('2 Years Exp')),
+                                DropdownMenuItem(value: 3, child: Text('3 Years Exp')),
+                                DropdownMenuItem(value: 5, child: Text('5+ Years Exp')),
+                                DropdownMenuItem(value: 10, child: Text('10+ Years Exp')),
+                              ],
+                              onChanged: (val) {
+                                if (val != null) {
+                                  setState(() => service.experienceYears = val);
+                                }
+                              },
+                            ),
+                          ),
+                          if (_selectedServices.length > 1) ...[
+                            const SizedBox(width: 6),
+                            IconButton(
+                              icon: const Icon(Icons.close_rounded, size: 20, color: Color(0xFF94A3B8)),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: () {
+                                setState(() {
+                                  service.dispose();
+                                  _selectedServices.remove(service);
+                                });
+                              },
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Skills array heading
+                      Text(
+                        'Skills in ${service.serviceName}:',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF475569),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Suggested skills chips
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: suggestedSkills.map((sk) {
+                          final isSelected = service.skills.contains(sk);
+                          return FilterChip(
+                            label: Text(sk),
+                            selected: isSelected,
+                            onSelected: (_) => _toggleSkill(service, sk),
+                            selectedColor: WorkerColors.primaryLight,
+                            checkmarkColor: WorkerColors.primary,
+                            labelStyle: GoogleFonts.dmSans(
+                              fontSize: 11,
+                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                              color: isSelected ? WorkerColors.primary : const Color(0xFF334155),
+                            ),
+                            backgroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              side: BorderSide(
+                                color: isSelected ? WorkerColors.primary : const Color(0xFFE2E8F0),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      // Add custom skill input
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: service.customSkillController,
+                              style: GoogleFonts.dmSans(fontSize: 12),
+                              decoration: InputDecoration(
+                                hintText: 'Add specialized skill to ${service.serviceName}...',
+                                hintStyle: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF94A3B8)),
+                                filled: true,
+                                fillColor: Colors.white,
+                                isDense: true,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                                ),
+                              ),
+                              onSubmitted: (_) => _addCustomSkill(service),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                            onPressed: () => _addCustomSkill(service),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: WorkerColors.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              elevation: 0,
+                            ),
+                            child: const Text('Add', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              }),
+
+              const SizedBox(height: 10),
+
+              // 3. Service Area & Radius
+              Text(
+                '3. Service Location & Coverage',
                 style: GoogleFonts.dmSans(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -360,9 +609,9 @@ class _BecomeWorkerSheetState extends State<BecomeWorkerSheet> {
 
               const SizedBox(height: 16),
 
-              // 3. Pricing Model & Rates
+              // 4. Pricing Model & Rates
               Text(
-                'Pricing Details',
+                '4. Pricing Details',
                 style: GoogleFonts.dmSans(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -413,9 +662,9 @@ class _BecomeWorkerSheetState extends State<BecomeWorkerSheet> {
 
               const SizedBox(height: 16),
 
-              // 4. Bio / Overview
+              // 5. Bio / Overview
               Text(
-                'About Your Services (Optional)',
+                '5. About Your Services (Optional)',
                 style: GoogleFonts.dmSans(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
