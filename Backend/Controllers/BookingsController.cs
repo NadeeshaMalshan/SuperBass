@@ -94,6 +94,13 @@ namespace Superbass.Controllers
                 residentEmail = "resident@superbass.lk";
             }
 
+            // Reject if hiring account is a worker
+            var isWorkerAccount = await _context.Workers.AnyAsync(w => w.Email == residentEmail || w.ResidentEmail == residentEmail);
+            if (isWorkerAccount)
+            {
+                return BadRequest(new { message = "Workers are not permitted to hire or create bookings. Please switch to a Resident account to book services." });
+            }
+
             // Ensure Resident exists
             var resident = await _context.Residents.FindAsync(residentEmail);
             if (resident == null)

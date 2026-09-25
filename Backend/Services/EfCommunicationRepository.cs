@@ -20,6 +20,14 @@ namespace Superbass.Services
             CreateConversationRequest request,
             string residentEmail)
         {
+            // Prevent workers from initiating conversation with other workers
+            var isSenderWorker = await _context.Workers.AnyAsync(w => 
+                w.Email == residentEmail || w.ResidentEmail == residentEmail);
+            if (isSenderWorker)
+            {
+                throw new InvalidOperationException("Workers cannot initiate direct chats with other workers. Chatting is only permitted between residents and workers.");
+            }
+
             Worker? worker = null;
 
             if (request.WorkerId > 0)

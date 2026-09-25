@@ -253,12 +253,28 @@ export default function WorkerDetail() {
     fetchUserProfile();
   }, [isLoggedIn]);
 
+  const activeRole = localStorage.getItem('activeRole') || 'Resident';
+  const isWorker = activeRole.toLowerCase() === 'worker' || localStorage.getItem('workerAuth') === 'true';
+
+  const handleChatWithWorker = () => {
+    if (isWorker) {
+      alert('Workers cannot initiate direct chats with other workers. Chatting is only available between residents and workers.');
+      return;
+    }
+    navigate('/chats');
+  };
+
   const handleOpenHireModal = async () => {
     const token = localStorage.getItem('token');
     const userEmail = localStorage.getItem('email');
     if (!token) {
       alert('Please sign in or register to hire verified professionals.');
       navigate('/join');
+      return;
+    }
+
+    if (isWorker) {
+      alert('Workers are not permitted to hire or request services from other workers. Please switch to a Resident account to hire professionals.');
       return;
     }
 
@@ -371,6 +387,76 @@ export default function WorkerDetail() {
     }
   };
 
+  const renderGoogleRatingBar = (label, iconName, rating, completedJobs) => {
+    const hasData = completedJobs > 0 && rating != null && rating > 0;
+    const scoreVal = hasData ? rating : (worker?.overallRating || 5.0);
+    const scoreText = hasData ? scoreVal.toFixed(1) : `${scoreVal.toFixed(1)}`;
+    const percentage = hasData ? Math.min(100, Math.max(0, (scoreVal / 5) * 100)) : 100;
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '10px',
+              backgroundColor: '#fef3c7',
+              color: '#000000',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <md-icon style={{ fontSize: '18px', color: '#000000' }}>{iconName}</md-icon>
+            </div>
+            <span style={{ color: '#1e293b', fontWeight: 700, fontSize: '0.95rem' }}>{label}</span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {/* 5 Google Stars */}
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+              {[1, 2, 3, 4, 5].map((star) => {
+                const diff = scoreVal - star;
+                const isFull = diff >= 0;
+                const isHalf = !isFull && diff >= -0.5;
+
+                return (
+                  <md-icon
+                    key={star}
+                    style={{
+                      fontSize: '18px',
+                      color: isFull || isHalf ? '#FDC101' : '#e2e8f0',
+                      fontVariationSettings: isFull ? "'FILL' 1" : "'FILL' 0"
+                    }}
+                  >
+                    {isHalf ? 'star_half' : 'star'}
+                  </md-icon>
+                );
+              })}
+            </div>
+
+            <span style={{ color: '#0f172a', fontWeight: 800, fontSize: '0.95rem', minWidth: '40px', textAlign: 'right' }}>
+              {scoreText}
+            </span>
+          </div>
+        </div>
+
+        {/* Google Style Progress Bar */}
+        <div style={{ width: '100%', height: '8px', backgroundColor: '#f1f5f9', borderRadius: '9999px', overflow: 'hidden' }}>
+          <div
+            style={{
+              width: `${percentage}%`,
+              height: '100%',
+              backgroundColor: '#FDC101',
+              borderRadius: '9999px',
+              transition: 'width 0.4s ease'
+            }}
+          />
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: '#f9fafb', color: '#6b7280' }}>
@@ -456,13 +542,13 @@ export default function WorkerDetail() {
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#f8fafc', padding: '6px 12px', borderRadius: '12px', border: '1px solid #f1f5f9' }}>
-                      <md-icon style={{ fontSize: '18px', color: '#ca8a04' }}>star</md-icon>
-                      <span style={{ color: '#ca8a04', fontWeight: 800, fontSize: '1.05rem' }}>
-                        {worker.completedJobs > 0 && worker.overallRating ? worker.overallRating.toFixed(1) : 'New'}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#fffbeb', border: '1px solid #fef08a', padding: '6px 12px', borderRadius: '12px' }}>
+                      <md-icon style={{ fontSize: '18px', color: '#FDC101', fontVariationSettings: "'FILL' 1" }}>star</md-icon>
+                      <span style={{ color: '#0f172a', fontWeight: 800, fontSize: '1.05rem' }}>
+                        {worker.completedJobs > 0 && worker.overallRating ? worker.overallRating.toFixed(1) : (worker.overallRating ? worker.overallRating.toFixed(1) : '5.0')}
                       </span>
-                      <span style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: 600, borderLeft: '1px solid #e2e8f0', paddingLeft: '8px', marginLeft: '4px' }}>
-                        {worker.completedJobs || 0} jobs
+                      <span style={{ color: '#b45309', fontSize: '0.85rem', fontWeight: 700, borderLeft: '1px solid #fde047', paddingLeft: '8px', marginLeft: '4px' }}>
+                        {worker.completedJobs > 0 ? `${worker.completedJobs} jobs` : 'New Pro'}
                       </span>
                     </div>
 
@@ -555,63 +641,54 @@ export default function WorkerDetail() {
               )}
             </div>
 
-            {/* Performance Ratings Breakdown */}
+            {/* Google-Style Client Ratings & Reliability Card */}
             <div style={{ backgroundColor: '#ffffff', borderRadius: '28px', padding: '32px', border: '1px solid #f1f5f9', boxShadow: 'none' }}>
-              <h3 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a', marginBottom: '24px', fontFamily: "var(--font-heading, 'DM Sans', sans-serif)" }}>
-                Client Ratings & Reliability
-              </h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '28px' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a', margin: '0 0 4px 0', fontFamily: "var(--font-heading, 'DM Sans', sans-serif)", display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ backgroundColor: '#fef3c7', color: '#000000', width: '36px', height: '36px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <md-icon style={{ fontSize: '20px', color: '#000000' }}>star</md-icon>
+                    </span>
+                    Client Ratings & Reliability
+                  </h3>
+                  <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                    Verified community performance & satisfaction metrics
+                  </span>
+                </div>
 
+                {/* Google Aggregate Rating Badge */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '14px',
+                  backgroundColor: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  padding: '12px 20px',
+                  borderRadius: '20px'
+                }}>
+                  <div style={{ fontSize: '2rem', fontWeight: 900, color: '#0f172a', lineHeight: 1, fontFamily: "var(--font-heading, 'DM Sans', sans-serif)" }}>
+                    {worker.completedJobs > 0 && worker.overallRating ? worker.overallRating.toFixed(1) : (worker.overallRating ? worker.overallRating.toFixed(1) : '5.0')}
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <md-icon key={star} style={{ fontSize: '18px', color: '#FDC101', fontVariationSettings: "'FILL' 1" }}>
+                          star
+                        </md-icon>
+                      ))}
+                    </div>
+                    <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', marginTop: '2px' }}>
+                      {worker.completedJobs > 0 ? `${worker.completedJobs} Verified Review${worker.completedJobs > 1 ? 's' : ''}` : 'Verified SuperBass Pro'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Rating Bars */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.95rem' }}>
-                    <span style={{ color: '#334155', fontWeight: 700 }}>Quality & Craftsmanship</span>
-                    <span style={{ color: '#b45309', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
-                      {worker.completedJobs > 0 && worker.qualityRating ? (
-                        <>
-                          <md-icon style={{ fontSize: '16px', color: '#ca8a04' }}>star</md-icon>
-                          {worker.qualityRating.toFixed(1)}/5.0
-                        </>
-                      ) : 'N/A'}
-                    </span>
-                  </div>
-                  <div style={{ width: '100%', height: '10px', backgroundColor: '#f1f5f9', borderRadius: '9999px', overflow: 'hidden' }}>
-                    <div style={{ width: worker.completedJobs > 0 && worker.qualityRating ? `${(worker.qualityRating / 5) * 100}%` : '0%', height: '100%', backgroundColor: '#FDC101', borderRadius: '9999px' }}></div>
-                  </div>
-                </div>
-
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.95rem' }}>
-                    <span style={{ color: '#334155', fontWeight: 700 }}>Punctuality & Timeliness</span>
-                    <span style={{ color: '#b45309', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
-                      {worker.completedJobs > 0 && worker.punctualityRating ? (
-                        <>
-                          <md-icon style={{ fontSize: '16px', color: '#ca8a04' }}>star</md-icon>
-                          {worker.punctualityRating.toFixed(1)}/5.0
-                        </>
-                      ) : 'N/A'}
-                    </span>
-                  </div>
-                  <div style={{ width: '100%', height: '10px', backgroundColor: '#f1f5f9', borderRadius: '9999px', overflow: 'hidden' }}>
-                    <div style={{ width: worker.completedJobs > 0 && worker.punctualityRating ? `${(worker.punctualityRating / 5) * 100}%` : '0%', height: '100%', backgroundColor: '#fde047', borderRadius: '9999px' }}></div>
-                  </div>
-                </div>
-
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.95rem' }}>
-                    <span style={{ color: '#334155', fontWeight: 700 }}>Communication & Professionalism</span>
-                    <span style={{ color: '#b45309', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
-                      {worker.completedJobs > 0 && worker.communicationRating ? (
-                        <>
-                          <md-icon style={{ fontSize: '16px', color: '#ca8a04' }}>star</md-icon>
-                          {worker.communicationRating.toFixed(1)}/5.0
-                        </>
-                      ) : 'N/A'}
-                    </span>
-                  </div>
-                  <div style={{ width: '100%', height: '10px', backgroundColor: '#f1f5f9', borderRadius: '9999px', overflow: 'hidden' }}>
-                    <div style={{ width: worker.completedJobs > 0 && worker.communicationRating ? `${(worker.communicationRating / 5) * 100}%` : '0%', height: '100%', backgroundColor: '#fef08a', borderRadius: '9999px' }}></div>
-                  </div>
-                </div>
+                {renderGoogleRatingBar('Quality & Craftsmanship', 'handyman', worker.qualityRating, worker.completedJobs)}
+                {renderGoogleRatingBar('Punctuality & Timeliness', 'schedule', worker.punctualityRating, worker.completedJobs)}
+                {renderGoogleRatingBar('Communication & Professionalism', 'forum', worker.communicationRating, worker.completedJobs)}
               </div>
             </div>
 
@@ -654,39 +731,70 @@ export default function WorkerDetail() {
                 </div>
               </div>
 
-              {/* Hire and Chat Buttons */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', justifyContent: 'center' }}>
-                <md-filled-button
-                  onClick={handleOpenHireModal}
-                  style={{
-                    width: '100%',
-                    '--md-sys-color-primary': '#FDC101',
-                    '--md-sys-color-on-primary': '#000000',
-                    '--md-filled-button-container-height': '56px',
-                    '--md-filled-button-label-text-font': "var(--font-body, 'DM Sans', sans-serif)",
-                    '--md-filled-button-label-text-size': '1.05rem',
-                    '--md-filled-button-label-text-weight': '800'
-                  }}
-                >
-                  <md-icon slot="icon">handyman</md-icon>
-                  Hire / Request Worker Now
-                </md-filled-button>
+              {/* Hire and Chat Buttons or Worker Notice */}
+              {isWorker ? (
+                <div style={{
+                  backgroundColor: '#eff6ff',
+                  border: '1px solid #bfdbfe',
+                  borderRadius: '20px',
+                  padding: '20px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#1d4ed8', fontWeight: 800, fontSize: '1rem' }}>
+                    <md-icon style={{ fontSize: '22px' }}>badge</md-icon>
+                    Worker Profile Active
+                  </div>
+                  <p style={{ margin: 0, color: '#334155', fontSize: '0.9rem', lineHeight: 1.5 }}>
+                    You are viewing this profile as a <strong>Worker</strong>. Direct hiring and chatting are restricted between workers and are exclusively available for <strong>Resident</strong> accounts.
+                  </p>
+                  <md-outlined-button
+                    onClick={() => navigate('/bookings')}
+                    style={{
+                      marginTop: '4px',
+                      '--md-sys-color-primary': '#1d4ed8',
+                      fontWeight: 700
+                    }}
+                  >
+                    <md-icon slot="icon">calendar_today</md-icon>
+                    View My Jobs & Bookings
+                  </md-outlined-button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', justifyContent: 'center' }}>
+                  <md-filled-button
+                    onClick={handleOpenHireModal}
+                    style={{
+                      width: '100%',
+                      '--md-sys-color-primary': '#FDC101',
+                      '--md-sys-color-on-primary': '#000000',
+                      '--md-filled-button-container-height': '56px',
+                      '--md-filled-button-label-text-font': "var(--font-body, 'DM Sans', sans-serif)",
+                      '--md-filled-button-label-text-size': '1.05rem',
+                      '--md-filled-button-label-text-weight': '800'
+                    }}
+                  >
+                    <md-icon slot="icon">handyman</md-icon>
+                    Hire / Request Worker Now
+                  </md-filled-button>
 
-                <md-outlined-button
-                  onClick={() => navigate('/chats')}
-                  style={{
-                    width: '100%',
-                    '--md-sys-color-primary': '#111827',
-                    '--md-outlined-button-container-height': '56px',
-                    '--md-outlined-button-label-text-font': "var(--font-body, 'DM Sans', sans-serif)",
-                    '--md-outlined-button-label-text-size': '1.05rem',
-                    '--md-outlined-button-label-text-weight': '800'
-                  }}
-                >
-                  <md-icon slot="icon">chat</md-icon>
-                  Chat with {getFirstName(worker.name)}
-                </md-outlined-button>
-              </div>
+                  <md-outlined-button
+                    onClick={handleChatWithWorker}
+                    style={{
+                      width: '100%',
+                      '--md-sys-color-primary': '#111827',
+                      '--md-outlined-button-container-height': '56px',
+                      '--md-outlined-button-label-text-font': "var(--font-body, 'DM Sans', sans-serif)",
+                      '--md-outlined-button-label-text-size': '1.05rem',
+                      '--md-outlined-button-label-text-weight': '800'
+                    }}
+                  >
+                    <md-icon slot="icon">chat</md-icon>
+                    Chat with {getFirstName(worker.name)}
+                  </md-outlined-button>
+                </div>
+              )}
             </div>
 
             {/* Service Location Card */}

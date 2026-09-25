@@ -21,7 +21,7 @@ export default function Bookings() {
   const [bookingSearch, setBookingSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [statusFilter, setStatusFilter] = useState('All');
 
@@ -36,7 +36,7 @@ export default function Bookings() {
       reviewDialogRef.current?.close();
     }
   }, [reviewModalOpen, selectedBooking]);
-  
+
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [selectedViewBooking, setSelectedViewBooking] = useState(null);
   const viewDialogRef = useRef(null);
@@ -71,8 +71,8 @@ export default function Bookings() {
 
   const activeRole = localStorage.getItem('activeRole') || 'Resident';
   const isWorker = activeRole.toLowerCase() === 'worker' || localStorage.getItem('workerAuth') === 'true';
-  const currentUserEmail = isWorker 
-    ? (localStorage.getItem('workerEmail') || localStorage.getItem('email')) 
+  const currentUserEmail = isWorker
+    ? (localStorage.getItem('workerEmail') || localStorage.getItem('email'))
     : localStorage.getItem('email');
   const token = localStorage.getItem('token');
 
@@ -90,7 +90,7 @@ export default function Bookings() {
 
     try {
       setLoading(true);
-      const endpoint = isWorker 
+      const endpoint = isWorker
         ? `${API_BASE_URL}/bookings/worker?email=${encodeURIComponent(currentUserEmail)}`
         : `${API_BASE_URL}/bookings/resident?email=${encodeURIComponent(currentUserEmail)}`;
 
@@ -247,7 +247,7 @@ export default function Bookings() {
       Cancelled: { bg: '#f3f4f6', text: '#374151' },
     };
     const style = statusStyles[status] || { bg: '#f3f4f6', text: '#374151' };
-    
+
     return (
       <span style={{ backgroundColor: style.bg, color: style.text, padding: '4px 12px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 700 }}>
         {status}
@@ -364,262 +364,262 @@ export default function Bookings() {
           {/* Worker Busy / In Progress Status Banner */}
           {hasInProgressJob && (
             <div style={{
-              backgroundColor: '#fffbeb',
-              border: '1px solid #fef08a',
+              backgroundColor: '#ffffff',
               borderRadius: '16px',
-              padding: '16px 20px',
+              padding: '20px 24px',
               marginBottom: '20px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              gap: '16px',
+              gap: '20px',
               flexWrap: 'wrap'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: '1 1 340px' }}>
                 <div style={{
-                  width: '42px',
-                  height: '42px',
-                  borderRadius: '50%',
-                  backgroundColor: '#fef08a',
+                  width: '46px',
+                  height: '46px',
+                  borderRadius: '14px',
+                  backgroundColor: '#eff6ff',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#b45309',
+                  color: '#2563EB',
                   flexShrink: 0
                 }}>
-                  <md-icon style={{ fontSize: '24px' }}>engineering</md-icon>
+                  <md-icon style={{ fontSize: '26px' }}>engineering</md-icon>
                 </div>
                 <div>
-                  <div style={{ fontWeight: 800, color: '#92400e', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span>Status: Busy (Active Job In Progress)</span>
-                    <span style={{ backgroundColor: '#fed7aa', color: '#9a3412', padding: '2px 8px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 800 }}>LOCKED</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.05rem', fontFamily: "var(--font-heading, 'DM Sans', sans-serif)" }}>
+                      Status: Busy (Active Job In Progress)
+                    </span>
+                    <span style={{
+                      backgroundColor: '#dbeafe',
+                      color: '#1e40af',
+                      padding: '3px 10px',
+                      borderRadius: '12px',
+                      fontSize: '0.72rem',
+                      fontWeight: 800,
+                      letterSpacing: '0.05em'
+                    }}>
+                      LOCKED
+                    </span>
                   </div>
-                  <div style={{ color: '#b45309', fontSize: '0.85rem', marginTop: '2px' }}>
-                    You are currently working on <strong>"{activeJob?.jobTitle}"</strong>. You cannot accept other requests or start another job until this active job is completed.
+                  <div style={{ color: '#64748b', fontSize: '0.88rem', marginTop: '4px', lineHeight: 1.5 }}>
+                    You are currently working on <strong style={{ color: '#0f172a' }}>"{activeJob?.jobTitle}"</strong>. New requests and other job starts are paused until this active job is completed.
                   </div>
                 </div>
               </div>
-              {activeJob && (
-                <md-filled-button
-                  onClick={() => handleAction(activeJob.id, 'complete')}
-                  style={{
-                    '--md-sys-color-primary': '#059669',
-                    '--md-sys-color-on-primary': '#ffffff',
-                    fontWeight: 700,
-                    borderRadius: '20px'
-                  }}
-                >
-                  <md-icon slot="icon">check_circle</md-icon>
-                  Complete Active Job
-                </md-filled-button>
-              )}
+
+
             </div>
           )}
 
-        {loading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 20px', gap: '16px' }}>
-            <Loader size={56} />
-            <span style={{ fontSize: '0.95rem', fontWeight: 600, color: '#64748b' }}>Loading your bookings...</span>
-          </div>
-        ) : error ? (
-          <div style={{ backgroundColor: '#fee2e2', color: '#991b1b', padding: '16px', borderRadius: '12px' }}>{error}</div>
-        ) : filteredBookings.length === 0 ? (
-          <div style={{ backgroundColor: '#ffffff', padding: '48px 24px', borderRadius: '16px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-            <div style={{
-              width: '56px',
-              height: '56px',
-              borderRadius: '50%',
-              backgroundColor: '#f1f5f9',
-              color: '#64748b',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: '16px'
-            }}>
-              <md-icon style={{ fontSize: '28px' }}>inbox</md-icon>
+          {loading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 20px', gap: '16px' }}>
+              <Loader size={56} />
+              <span style={{ fontSize: '0.95rem', fontWeight: 600, color: '#64748b' }}>Loading your bookings...</span>
             </div>
-            <h2 style={{ margin: '0 0 8px 0', fontSize: '1.25rem', color: '#111827' }}>{bookingSearch ? 'No matching bookings found' : 'No bookings found'}</h2>
-            <p style={{ color: '#6b7280', margin: 0 }}>{bookingSearch ? 'Try a different search term.' : "You don't have any bookings yet."}</p>
-            {activeRole === 'Resident' && (
-              <md-filled-button 
-                onClick={() => navigate('/find')} 
-                style={{ 
-                  marginTop: '20px', 
-                  '--md-sys-color-primary': '#FDC101', 
-                  '--md-sys-color-on-primary': '#000000', 
-                  fontWeight: 700 
-                }}
-              >
-                Find a Worker
-              </md-filled-button>
-            )}
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {filteredBookings.map((booking) => (
-              <div key={booking.id} style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div>
-                    <h3 style={{ margin: '0 0 8px 0', fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      {booking.jobTitle}
-                      {booking.urgency && (
-                        <span style={{ 
-                          backgroundColor: booking.urgency.toLowerCase() === 'high' || booking.urgency.toLowerCase() === 'urgent' ? '#fee2e2' : '#f1f5f9', 
-                          color: booking.urgency.toLowerCase() === 'high' || booking.urgency.toLowerCase() === 'urgent' ? '#dc2626' : '#475569', 
-                          padding: '4px 10px', borderRadius: '12px', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em',
-                          display: 'inline-flex', alignItems: 'center', gap: '4px'
-                        }}>
-                          <md-icon style={{ fontSize: '14px' }}>flag</md-icon>
-                          {booking.urgency} Priority
-                        </span>
+          ) : error ? (
+            <div style={{ backgroundColor: '#fee2e2', color: '#991b1b', padding: '16px', borderRadius: '12px' }}>{error}</div>
+          ) : filteredBookings.length === 0 ? (
+            <div style={{ backgroundColor: '#ffffff', padding: '48px 24px', borderRadius: '16px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+              <div style={{
+                width: '56px',
+                height: '56px',
+                borderRadius: '50%',
+                backgroundColor: '#f1f5f9',
+                color: '#64748b',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '16px'
+              }}>
+                <md-icon style={{ fontSize: '28px' }}>inbox</md-icon>
+              </div>
+              <h2 style={{ margin: '0 0 8px 0', fontSize: '1.25rem', color: '#111827' }}>{bookingSearch ? 'No matching bookings found' : 'No bookings found'}</h2>
+              <p style={{ color: '#6b7280', margin: 0 }}>{bookingSearch ? 'Try a different search term.' : "You don't have any bookings yet."}</p>
+              {activeRole === 'Resident' && (
+                <md-filled-button
+                  onClick={() => navigate('/find')}
+                  style={{
+                    marginTop: '20px',
+                    '--md-sys-color-primary': '#FDC101',
+                    '--md-sys-color-on-primary': '#000000',
+                    fontWeight: 700
+                  }}
+                >
+                  Find a Worker
+                </md-filled-button>
+              )}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {filteredBookings.map((booking) => (
+                <div key={booking.id} style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <h3 style={{ margin: '0 0 8px 0', fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        {booking.jobTitle}
+                        {booking.urgency && (
+                          <span style={{
+                            backgroundColor: booking.urgency.toLowerCase() === 'high' || booking.urgency.toLowerCase() === 'urgent' ? '#fee2e2' : '#f1f5f9',
+                            color: booking.urgency.toLowerCase() === 'high' || booking.urgency.toLowerCase() === 'urgent' ? '#dc2626' : '#475569',
+                            padding: '4px 10px', borderRadius: '12px', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em',
+                            display: 'inline-flex', alignItems: 'center', gap: '4px'
+                          }}>
+                            <md-icon style={{ fontSize: '14px' }}>flag</md-icon>
+                            {booking.urgency} Priority
+                          </span>
+                        )}
+                      </h3>
+                      <div style={{ color: '#6b7280', fontSize: '0.9rem', display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><md-icon style={{ fontSize: '16px' }}>calendar_today</md-icon>{new Date(booking.scheduledDate).toLocaleString()}</span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><md-icon style={{ fontSize: '16px' }}>location_on</md-icon>{booking.locationAddress}</span>
+                      </div>
+                      {booking.description && (
+                        <p style={{ margin: '12px 0 0 0', color: '#4b5563', fontSize: '0.95rem', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
+                          {booking.description}
+                        </p>
                       )}
-                    </h3>
-                    <div style={{ color: '#6b7280', fontSize: '0.9rem', display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><md-icon style={{ fontSize: '16px' }}>calendar_today</md-icon>{new Date(booking.scheduledDate).toLocaleString()}</span>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><md-icon style={{ fontSize: '16px' }}>location_on</md-icon>{booking.locationAddress}</span>
                     </div>
-                    {booking.description && (
-                      <p style={{ margin: '12px 0 0 0', color: '#4b5563', fontSize: '0.95rem', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
-                        {booking.description}
-                      </p>
-                    )}
+                    <div>
+                      {renderStatusBadge(booking.status)}
+                    </div>
                   </div>
-                  <div>
-                    {renderStatusBadge(booking.status)}
-                  </div>
-                </div>
 
-                <div style={{ padding: '16px', backgroundColor: '#f8fafc', borderRadius: '12px', display: 'flex', justifyContent: 'space-between' }}>
-                  <div>
-                    <div style={{ fontSize: '0.8rem', color: '#6b7280', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>
-                      {activeRole === 'Resident' ? 'Worker Details' : 'Client Details'}
+                  <div style={{ padding: '16px', backgroundColor: '#f8fafc', borderRadius: '12px', display: 'flex', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ fontSize: '0.8rem', color: '#6b7280', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>
+                        {activeRole === 'Resident' ? 'Worker Details' : 'Client Details'}
+                      </div>
+                      <div style={{ fontWeight: 600 }}>
+                        {activeRole === 'Resident' ? booking.workerName : booking.residentName}
+                      </div>
+                      <div style={{ color: '#4b5563', fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <md-icon style={{ fontSize: '15px' }}>call</md-icon>
+                        {activeRole === 'Resident' ? booking.workerPhone || 'N/A' : booking.residentPhone || booking.contactPhone}
+                      </div>
                     </div>
-                    <div style={{ fontWeight: 600 }}>
-                      {activeRole === 'Resident' ? booking.workerName : booking.residentName}
-                    </div>
-                    <div style={{ color: '#4b5563', fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                      <md-icon style={{ fontSize: '15px' }}>call</md-icon>
-                      {activeRole === 'Resident' ? booking.workerPhone || 'N/A' : booking.residentPhone || booking.contactPhone}
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '0.8rem', color: '#6b7280', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>Estimated Price</div>
+                      <div style={{ fontWeight: 800, color: isWorker ? '#2563eb' : '#d97706', fontSize: '1.1rem' }}>
+                        {booking.estimatedPrice ? `Rs. ${booking.estimatedPrice.toLocaleString()}` : 'Negotiable'}
+                      </div>
                     </div>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '0.8rem', color: '#6b7280', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>Estimated Price</div>
-                    <div style={{ fontWeight: 800, color: isWorker ? '#2563eb' : '#d97706', fontSize: '1.1rem' }}>
-                      {booking.estimatedPrice ? `Rs. ${booking.estimatedPrice.toLocaleString()}` : 'Negotiable'}
-                    </div>
-                  </div>
-                </div>
 
-                {/* Actions Row */}
-                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '8px', flexWrap: 'wrap' }}>
-                  <md-outlined-button 
-                    onClick={() => openViewModal(booking)}
-                    style={{ 
-                      '--md-sys-color-primary': '#111827',
-                      '--md-outlined-button-label-text-color': '#111827',
-                      '--md-outlined-button-outline-color': '#cbd5e1',
-                      color: '#111827',
-                      fontWeight: 700,
-                      padding: '0 24px', 
-                      minWidth: '100px' 
-                    }}
-                  >
-                    View
-                  </md-outlined-button>
-                  
-                  <md-outlined-button 
-                    onClick={() => navigate('/chats')}
-                    style={{ 
-                      '--md-sys-color-primary': '#111827',
-                      '--md-outlined-button-label-text-color': '#111827',
-                      '--md-outlined-button-outline-color': '#cbd5e1',
-                      color: '#111827',
-                      fontWeight: 700,
-                      padding: '0 24px', 
-                      minWidth: '100px' 
-                    }}
-                  >
-                    Message
-                  </md-outlined-button>
-
-                  {activeRole === 'Resident' && ['Requested', 'Pending'].includes(booking.status) && (
-                    <md-filled-button 
-                      onClick={() => promptCancelBooking(booking)} 
-                      style={{ 
-                        '--md-sys-color-primary': '#dc2626', 
-                        '--md-sys-color-on-primary': '#ffffff',
+                  {/* Actions Row */}
+                  <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '8px', flexWrap: 'wrap' }}>
+                    <md-outlined-button
+                      onClick={() => openViewModal(booking)}
+                      style={{
+                        '--md-sys-color-primary': '#111827',
+                        '--md-outlined-button-label-text-color': '#111827',
+                        '--md-outlined-button-outline-color': '#cbd5e1',
+                        color: '#111827',
                         fontWeight: 700,
-                        padding: '0 24px', 
-                        minWidth: '100px' 
+                        padding: '0 24px',
+                        minWidth: '100px'
                       }}
                     >
-                      Cancel Booking
-                    </md-filled-button>
-                  )}
+                      View
+                    </md-outlined-button>
 
-                  {activeRole === 'Worker' && booking.status === 'Requested' && (
-                    <>
-                      <md-filled-button onClick={() => handleAction(booking.id, 'reject')} style={{ '--md-sys-color-primary': '#dc2626', '--md-sys-color-on-primary': '#ffffff', fontWeight: 700, padding: '0 24px', minWidth: '100px' }}>Reject</md-filled-button>
-                      <md-filled-button 
-                        onClick={() => handleAction(booking.id, 'accept')} 
+                    <md-outlined-button
+                      onClick={() => navigate('/chats')}
+                      style={{
+                        '--md-sys-color-primary': '#111827',
+                        '--md-outlined-button-label-text-color': '#111827',
+                        '--md-outlined-button-outline-color': '#cbd5e1',
+                        color: '#111827',
+                        fontWeight: 700,
+                        padding: '0 24px',
+                        minWidth: '100px'
+                      }}
+                    >
+                      Message
+                    </md-outlined-button>
+
+                    {activeRole === 'Resident' && ['Requested', 'Pending'].includes(booking.status) && (
+                      <md-filled-button
+                        onClick={() => promptCancelBooking(booking)}
+                        style={{
+                          '--md-sys-color-primary': '#dc2626',
+                          '--md-sys-color-on-primary': '#ffffff',
+                          fontWeight: 700,
+                          padding: '0 24px',
+                          minWidth: '100px'
+                        }}
+                      >
+                        Cancel Booking
+                      </md-filled-button>
+                    )}
+
+                    {activeRole === 'Worker' && booking.status === 'Requested' && (
+                      <>
+                        <md-filled-button onClick={() => handleAction(booking.id, 'reject')} style={{ '--md-sys-color-primary': '#dc2626', '--md-sys-color-on-primary': '#ffffff', fontWeight: 700, padding: '0 24px', minWidth: '100px' }}>Reject</md-filled-button>
+                        <md-filled-button
+                          onClick={() => handleAction(booking.id, 'accept')}
+                          disabled={hasInProgressJob}
+                          title={hasInProgressJob ? "You cannot accept new requests while an active job is in progress." : ""}
+                          style={{
+                            '--md-sys-color-primary': '#2563eb',
+                            '--md-sys-color-on-primary': '#ffffff',
+                            fontWeight: 700,
+                            padding: '0 24px',
+                            minWidth: '100px',
+                            opacity: hasInProgressJob ? 0.5 : 1,
+                            cursor: hasInProgressJob ? 'not-allowed' : 'pointer'
+                          }}
+                        >
+                          Accept Request
+                        </md-filled-button>
+                      </>
+                    )}
+
+                    {activeRole === 'Worker' && booking.status === 'Confirmed' && (
+                      <md-filled-button
+                        onClick={() => handleAction(booking.id, 'start')}
                         disabled={hasInProgressJob}
-                        title={hasInProgressJob ? "You cannot accept new requests while an active job is in progress." : ""}
-                        style={{ 
-                          '--md-sys-color-primary': '#2563eb', 
-                          '--md-sys-color-on-primary': '#ffffff', 
-                          fontWeight: 700, 
-                          padding: '0 24px', 
+                        title={hasInProgressJob ? "Finish your current in-progress job before starting another." : ""}
+                        style={{
+                          '--md-sys-color-primary': '#4338ca',
+                          padding: '0 24px',
                           minWidth: '100px',
                           opacity: hasInProgressJob ? 0.5 : 1,
                           cursor: hasInProgressJob ? 'not-allowed' : 'pointer'
                         }}
                       >
-                        Accept Request
+                        Start Job
                       </md-filled-button>
-                    </>
-                  )}
+                    )}
 
-                  {activeRole === 'Worker' && booking.status === 'Confirmed' && (
-                    <md-filled-button 
-                      onClick={() => handleAction(booking.id, 'start')} 
-                      disabled={hasInProgressJob}
-                      title={hasInProgressJob ? "Finish your current in-progress job before starting another." : ""}
-                      style={{ 
-                        '--md-sys-color-primary': '#4338ca', 
-                        padding: '0 24px', 
-                        minWidth: '100px',
-                        opacity: hasInProgressJob ? 0.5 : 1,
-                        cursor: hasInProgressJob ? 'not-allowed' : 'pointer'
-                      }}
-                    >
-                      Start Job
-                    </md-filled-button>
-                  )}
+                    {activeRole === 'Worker' && booking.status === 'InProgress' && (
+                      <md-filled-button
+                        onClick={() => handleAction(booking.id, 'complete')}
+                        style={{
+                          '--md-sys-color-primary': '#059669',
+                          padding: '0 24px',
+                          minWidth: '100px',
+                          boxShadow: '0 0 0 3px rgba(5, 150, 105, 0.25)'
+                        }}
+                      >
+                        <md-icon slot="icon">check_circle</md-icon>
+                        Mark Completed
+                      </md-filled-button>
+                    )}
 
-                  {activeRole === 'Worker' && booking.status === 'InProgress' && (
-                    <md-filled-button 
-                      onClick={() => handleAction(booking.id, 'complete')} 
-                      style={{ 
-                        '--md-sys-color-primary': '#059669', 
-                        padding: '0 24px', 
-                        minWidth: '100px',
-                        boxShadow: '0 0 0 3px rgba(5, 150, 105, 0.25)' 
-                      }}
-                    >
-                      <md-icon slot="icon">check_circle</md-icon>
-                      Mark Completed
-                    </md-filled-button>
-                  )}
-
-                  {activeRole === 'Resident' && booking.status === 'Completed' && (
-                    <md-filled-button onClick={() => openReviewModal(booking)} style={{ '--md-sys-color-primary': '#FDC101', '--md-sys-color-on-primary': '#000000', padding: '0 24px', minWidth: '100px' }}>⭐ Leave a Review</md-filled-button>
-                  )}
+                    {activeRole === 'Resident' && booking.status === 'Completed' && (
+                      <md-filled-button onClick={() => openReviewModal(booking)} style={{ '--md-sys-color-primary': '#FDC101', '--md-sys-color-on-primary': '#000000', padding: '0 24px', minWidth: '100px' }}>⭐ Leave a Review</md-filled-button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
         </main>
       </div>
       {/* Review Modal (Material 3 md-dialog Web Component) */}
@@ -807,7 +807,7 @@ export default function Bookings() {
           <div slot="content" style={{ padding: '20px 28px', fontFamily: "var(--font-body, 'DM Sans', sans-serif)" }}>
             {selectedViewBooking && (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '28px', alignItems: 'start' }}>
-                
+
                 {/* Left Column: Booking Info */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
                   <div>
@@ -824,9 +824,9 @@ export default function Bookings() {
                     {selectedViewBooking.urgency && (
                       <div>
                         <label style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '4px' }}>Priority</label>
-                        <span style={{ 
-                          backgroundColor: selectedViewBooking.urgency.toLowerCase() === 'high' || selectedViewBooking.urgency.toLowerCase() === 'urgent' ? '#fee2e2' : '#f1f5f9', 
-                          color: selectedViewBooking.urgency.toLowerCase() === 'high' || selectedViewBooking.urgency.toLowerCase() === 'urgent' ? '#dc2626' : '#475569', 
+                        <span style={{
+                          backgroundColor: selectedViewBooking.urgency.toLowerCase() === 'high' || selectedViewBooking.urgency.toLowerCase() === 'urgent' ? '#fee2e2' : '#f1f5f9',
+                          color: selectedViewBooking.urgency.toLowerCase() === 'high' || selectedViewBooking.urgency.toLowerCase() === 'urgent' ? '#dc2626' : '#475569',
                           padding: '5px 12px', borderRadius: '12px', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em',
                           display: 'inline-flex', alignItems: 'center', gap: '6px'
                         }}>
@@ -890,7 +890,7 @@ export default function Bookings() {
                     </h5>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    
+
                       {/* Step 1: Requested */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                         <div style={{
@@ -1059,14 +1059,14 @@ export default function Bookings() {
           }}
         >
           {/* Headline with centered Hero Icon */}
-          <div slot="headline" style={{ 
+          <div slot="headline" style={{
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             gap: '14px',
             padding: '28px 20px 6px 20px',
             textAlign: 'center',
-            fontFamily: "var(--font-heading, 'DM Sans', sans-serif)" 
+            fontFamily: "var(--font-heading, 'DM Sans', sans-serif)"
           }}>
             <md-icon style={{ fontSize: '40px', color: '#dc2626' }}>
               cancel
@@ -1077,27 +1077,27 @@ export default function Bookings() {
           </div>
 
           {/* Content */}
-          <div slot="content" style={{ 
-            textAlign: 'center', 
-            fontSize: '0.95rem', 
-            color: '#475569', 
+          <div slot="content" style={{
+            textAlign: 'center',
+            fontSize: '0.95rem',
+            color: '#475569',
             lineHeight: 1.6,
             padding: '8px 24px 20px 24px',
-            fontFamily: "var(--font-body, 'DM Sans', sans-serif)" 
+            fontFamily: "var(--font-body, 'DM Sans', sans-serif)"
           }}>
             Are you sure you want to cancel the request for <strong style={{ color: '#111827' }}>"{bookingToCancel?.jobTitle}"</strong>? This will notify the worker that the job has been cancelled.
           </div>
 
           {/* Actions */}
-          <div slot="actions" style={{ 
-            display: 'flex', 
-            gap: '12px', 
-            justifyContent: 'flex-end', 
+          <div slot="actions" style={{
+            display: 'flex',
+            gap: '12px',
+            justifyContent: 'flex-end',
             padding: '0 20px 20px 20px',
             boxSizing: 'border-box',
             fontFamily: "var(--font-body, 'DM Sans', sans-serif)"
           }}>
-            <md-text-button 
+            <md-text-button
               onClick={() => { setCancelDialogOpen(false); setBookingToCancel(null); }}
               disabled={cancelLoading}
               style={{

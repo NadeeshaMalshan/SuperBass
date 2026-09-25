@@ -1074,9 +1074,9 @@ export default function Find() {
 
           {/* Loading or Empty States */}
           {loading ? (
-            <div style={{ textAlign: 'center', padding: '80px 0', color: '#64748b', fontSize: '1.1rem' }}>
-              <i className="fa-solid fa-circle-notch fa-spin" style={{ fontSize: '2rem', marginBottom: '12px', color: '#0f172a' }}></i>
-              <p>Loading available verified workers...</p>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 20px', gap: '16px' }}>
+              <Loader size={56} />
+              <span style={{ fontSize: '0.95rem', fontWeight: 600, color: '#64748b' }}>Loading available verified workers...</span>
             </div>
           ) : filteredWorkers.length === 0 ? (
             <div style={{

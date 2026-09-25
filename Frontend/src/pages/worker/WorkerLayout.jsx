@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import M3TopNavbar from '../../components/M3TopNavbar.jsx';
+import '../../App.css';
 import './worker.css';
 import { API_BASE_URL } from '../../config.js';
+import '@material/web/icon/icon.js';
 
 export default function WorkerLayout({ children, activeTab = 'dashboard' }) {
   const savedAvailable = localStorage.getItem('workerIsAvailable');
   const [isOnline, setIsOnline] = useState(savedAvailable !== null ? savedAvailable === 'true' : true);
   const [workerId, setWorkerId] = useState(null);
   const [toggling, setToggling] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const userEmail = localStorage.getItem('workerEmail') || localStorage.getItem('email');
   const token = localStorage.getItem('token');
@@ -64,74 +68,120 @@ export default function WorkerLayout({ children, activeTab = 'dashboard' }) {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.clear();
-    sessionStorage.clear();
-    navigate('/join');
-  };
-
   return (
-    <div className="worker-app-wrapper">
-      {/* Top Header Navbar */}
-      <header className="worker-navbar">
-        <div className="worker-brand" onClick={() => navigate('/worker/dashboard')}>
-          <img src="/iconWithText-cropped.png" alt="SuperBass Logo" className="worker-brand-logo" />
-          <span className="worker-badge-pill">Worker Portal</span>
-        </div>
+    <div className="find-page-container" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      {/* Google Workspace / Material 3 Top Navbar */}
+      <M3TopNavbar
+        activePage="worker-dashboard"
+        showSearch={true}
+        searchPlaceholder="Search jobs, requests, or tools..."
+        showSidebarToggle={true}
+        isSidebarCollapsed={isSidebarCollapsed}
+        onToggleSidebar={() => setIsSidebarCollapsed(prev => !prev)}
+      />
 
-        <div className="worker-navbar-actions">
-          {/* Live Availability Switch */}
-          <div className="status-toggle-container" onClick={toggleStatus} title="Click to toggle real database availability">
-            <span className={`status-indicator ${isOnline ? 'online' : 'offline'}`}></span>
-            <span className="status-text">{isOnline ? 'Available for Work' : 'Currently Offline'}</span>
-          </div>
-
-          <button className="worker-btn-outlined" style={{ padding: '8px 16px', fontSize: '0.85rem' }} onClick={handleLogout}>
-            <i className="fa-solid fa-right-from-bracket" style={{ marginRight: '6px' }}></i>
-            Logout
-          </button>
-        </div>
-      </header>
-
-      {/* Main Content Area with Sidebar */}
-      <div className="worker-main-layout">
+      {/* Main Content Area with Material 3 Sidebar */}
+      <div className="find-layout" style={{ flex: 1, display: 'flex' }}>
         {/* Navigation Sidebar */}
-        <aside className="worker-sidebar">
-          <div 
-            className={`worker-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
-            onClick={() => navigate('/worker/dashboard')}
+        <aside className={`find-sidebar m3-drawer ${isSidebarCollapsed ? 'minimized' : ''}`}>
+          {/* Live Availability Status Card in Sidebar */}
+          <div
+            onClick={toggleStatus}
+            style={{
+              margin: '8px 12px 16px 12px',
+              padding: isSidebarCollapsed ? '10px 6px' : '12px 14px',
+              backgroundColor: isOnline ? '#eff6ff' : '#f8fafc',
+              border: `1.5px solid ${isOnline ? '#bfdbfe' : '#e2e8f0'}`,
+              borderRadius: '16px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: isSidebarCollapsed ? 'center' : 'space-between',
+              gap: '10px',
+              transition: 'all 0.2s ease',
+              userSelect: 'none'
+            }}
+            title="Click to toggle availability"
           >
-            <i className="fa-solid fa-chart-pie"></i>
-            <span>Dashboard</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{
+                width: '10px',
+                height: '10px',
+                borderRadius: '50%',
+                backgroundColor: isOnline ? '#16a34a' : '#94a3b8',
+                boxShadow: isOnline ? '0 0 0 3px rgba(22, 163, 74, 0.25)' : 'none',
+                flexShrink: 0
+              }} />
+              {!isSidebarCollapsed && (
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 800, color: isOnline ? '#1e40af' : '#475569' }}>
+                    {isOnline ? 'Available for Work' : 'Currently Offline'}
+                  </span>
+                  <span style={{ fontSize: '0.7rem', color: isOnline ? '#3b82f6' : '#94a3b8' }}>
+                    {isOnline ? 'Ready for bookings' : 'Tap to go online'}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
 
-          <div 
-            className={`worker-nav-item ${activeTab === 'jobs' ? 'active' : ''}`}
-            onClick={() => navigate('/worker/jobs')}
-          >
-            <i className="fa-solid fa-briefcase"></i>
-            <span>My Jobs</span>
-          </div>
+          <nav className="m3-drawer-nav">
+            <div
+              className={`m3-drawer-item ${activeTab === 'dashboard' ? 'active' : ''}`}
+              onClick={() => navigate('/worker/dashboard')}
+            >
+              <div className="m3-drawer-item-left">
+                <md-icon className="m3-drawer-icon">dashboard</md-icon>
+                <span className="m3-drawer-label">Dashboard</span>
+              </div>
+            </div>
 
-          <div 
-            className={`worker-nav-item ${activeTab === 'performance' ? 'active' : ''}`}
-            onClick={() => navigate('/worker/performance')}
-          >
-            <i className="fa-solid fa-star"></i>
-            <span>Performance</span>
-          </div>
+            <div
+              className={`m3-drawer-item ${activeTab === 'jobs' ? 'active' : ''}`}
+              onClick={() => navigate('/worker/jobs')}
+            >
+              <div className="m3-drawer-item-left">
+                <md-icon className="m3-drawer-icon">work</md-icon>
+                <span className="m3-drawer-label">My Jobs</span>
+              </div>
+            </div>
 
-          <div 
-            className={`worker-nav-item ${activeTab === 'profile' ? 'active' : ''}`}
-            onClick={() => navigate('/worker/profile')}
-          >
-            <i className="fa-solid fa-user-gear"></i>
-            <span>Profile & Settings</span>
-          </div>
+            <div
+              className={`m3-drawer-item ${activeTab === 'performance' ? 'active' : ''}`}
+              onClick={() => navigate('/worker/performance')}
+            >
+              <div className="m3-drawer-item-left">
+                <md-icon className="m3-drawer-icon">star</md-icon>
+                <span className="m3-drawer-label">Performance</span>
+              </div>
+            </div>
+
+            <div
+              className={`m3-drawer-item ${activeTab === 'profile' ? 'active' : ''}`}
+              onClick={() => navigate('/worker/profile')}
+            >
+              <div className="m3-drawer-item-left">
+                <md-icon className="m3-drawer-icon">person</md-icon>
+                <span className="m3-drawer-label">Profile & Skills</span>
+              </div>
+            </div>
+
+            <div style={{ height: '1px', backgroundColor: '#e2e8f0', margin: '12px 16px' }} />
+
+            <div
+              className="m3-drawer-item"
+              onClick={() => navigate('/bookings')}
+            >
+              <div className="m3-drawer-item-left">
+                <md-icon className="m3-drawer-icon">inbox</md-icon>
+                <span className="m3-drawer-label">Bookings View</span>
+              </div>
+            </div>
+          </nav>
         </aside>
 
         {/* Dynamic Page Content */}
-        <main className="worker-content">
+        <main className="find-main" style={{ flex: 1, minWidth: 0, padding: '28px 36px' }}>
           {children}
         </main>
       </div>
