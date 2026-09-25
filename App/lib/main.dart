@@ -1066,6 +1066,34 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                 ),
                 const SizedBox(height: 12),
               ],
+              if (b.status.toLowerCase() == 'completed') ...[
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: FilledButton.icon(
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      _showReviewSheet(b);
+                    },
+                    icon: const Icon(Icons.star_rounded, color: Colors.black),
+                    label: Text(
+                      'Leave a Review',
+                      style: GoogleFonts.dmSans(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        color: Colors.black,
+                      ),
+                    ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.brandYellow,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
 
               // Close Button
               SizedBox(
@@ -1189,6 +1217,157 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
         }
       }
     }
+  }
+
+  void _showReviewSheet(BookingModel b) {
+    int quality = 5;
+    int punctuality = 5;
+    int communication = 5;
+    final TextEditingController commentController = TextEditingController();
+    bool isSubmitting = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => Container(
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 20,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 32,
+          ),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.outlineVariant,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Leave a Review',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Rate your experience with ${b.workerName}',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 14,
+                    color: AppColors.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                
+                Text('Quality & Craftsmanship', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
+                Slider(
+                  value: quality.toDouble(),
+                  min: 1,
+                  max: 5,
+                  divisions: 4,
+                  label: quality.toString(),
+                  onChanged: (v) => setModalState(() => quality = v.toInt()),
+                ),
+                
+                Text('Punctuality', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
+                Slider(
+                  value: punctuality.toDouble(),
+                  min: 1,
+                  max: 5,
+                  divisions: 4,
+                  label: punctuality.toString(),
+                  onChanged: (v) => setModalState(() => punctuality = v.toInt()),
+                ),
+                
+                Text('Communication', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
+                Slider(
+                  value: communication.toDouble(),
+                  min: 1,
+                  max: 5,
+                  divisions: 4,
+                  label: communication.toString(),
+                  onChanged: (v) => setModalState(() => communication = v.toInt()),
+                ),
+                const SizedBox(height: 16),
+                
+                Text('Comment', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: commentController,
+                  maxLines: 4,
+                  decoration: InputDecoration(
+                    hintText: 'Tell us about your experience with this worker...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    contentPadding: const EdgeInsets.all(12),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: FilledButton(
+                    onPressed: isSubmitting ? null : () async {
+                      setModalState(() => isSubmitting = true);
+                      final updated = await ApiService().submitReview(
+                        b.id,
+                        qualityRating: quality,
+                        punctualityRating: punctuality,
+                        communicationRating: communication,
+                        reviewComment: commentController.text.trim(),
+                      );
+                      
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                        if (updated != null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Review submitted successfully!'), backgroundColor: AppColors.success),
+                          );
+                          _fetchBookings();
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Failed to submit review.'), backgroundColor: AppColors.error),
+                          );
+                        }
+                      }
+                    },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.brandYellow,
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: isSubmitting 
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                      : Text('Submit Review', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 15)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ).whenComplete(() => commentController.dispose());
   }
 
   @override
