@@ -581,6 +581,37 @@ class ApiService {
     }
   }
 
+  /// Submit a review for a completed booking: POST /api/bookings/{id}/review
+  Future<BookingModel?> submitReview(int bookingId, {
+    required int qualityRating,
+    required int punctualityRating,
+    required int communicationRating,
+    required String reviewComment,
+  }) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/bookings/$bookingId/review');
+      final response = await http.post(
+        uri,
+        headers: _headers,
+        body: jsonEncode({
+          'qualityRating': qualityRating,
+          'punctualityRating': punctualityRating,
+          'communicationRating': communicationRating,
+          'reviewComment': reviewComment,
+        }),
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        return BookingModel.fromJson(data as Map<String, dynamic>);
+      }
+      debugPrint('Failed to submit review (${response.statusCode}): ${response.body}');
+      return null;
+    } catch (e) {
+      debugPrint('Error submitting review: $e');
+      return null;
+    }
+  }
+
   /// Reschedule a booking: POST /api/bookings/{id}/reschedule
   Future<BookingModel?> rescheduleBooking(
     int bookingId, {
