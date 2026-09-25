@@ -65,9 +65,9 @@ export default function Bookings() {
   const [reviewForm, setReviewForm] = useState({
     qualityRating: 5,
     punctualityRating: 5,
-    communicationRating: 5,
-    comment: ''
+    communicationRating: 5
   });
+  const [reviewComment, setReviewComment] = useState('');
 
   const activeRole = localStorage.getItem('activeRole') || 'Resident';
   const isWorker = activeRole.toLowerCase() === 'worker' || localStorage.getItem('workerAuth') === 'true';
@@ -158,9 +158,9 @@ export default function Bookings() {
     setReviewForm({
       qualityRating: 5,
       punctualityRating: 5,
-      communicationRating: 5,
-      comment: ''
+      communicationRating: 5
     });
+    setReviewComment('');
     setReviewModalOpen(true);
   };
 
@@ -176,7 +176,11 @@ export default function Bookings() {
     if (!selectedBooking) return;
 
     try {
-      await axios.post(`${API_BASE_URL}/bookings/${selectedBooking.id}/review`, reviewForm, {
+      const payload = {
+        ...reviewForm,
+        reviewComment: reviewComment
+      };
+      await axios.post(`${API_BASE_URL}/bookings/${selectedBooking.id}/review`, payload, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       setReviewModalOpen(false);
@@ -801,6 +805,10 @@ export default function Bookings() {
                 <span style={{ fontSize: '0.85rem', color: '#64748b' }}>Reference ID: #{selectedViewBooking?.id}</span>
               </div>
             </div>
+
+            <md-icon-button onClick={() => setViewModalOpen(false)}>
+              <md-icon>close</md-icon>
+            </md-icon-button>
           </div>
 
           {/* Modal Content */}

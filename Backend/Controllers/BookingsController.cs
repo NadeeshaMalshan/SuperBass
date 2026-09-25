@@ -588,7 +588,7 @@ namespace Superbass.Controllers
             booking.PunctualityRating = p;
             booking.CommunicationRating = c;
             booking.ReviewRating = avgRating;
-            booking.ReviewComment = request.Comment;
+            booking.ReviewComment = request.ReviewComment;
             booking.ReviewedAt = DateTime.UtcNow;
             booking.Status = "Reviewed";
             booking.UpdatedAt = DateTime.UtcNow;
@@ -621,7 +621,7 @@ namespace Superbass.Controllers
                         SenderEmail = booking.ResidentEmail,
                         SenderRole = "Resident",
                         MessageType = "BookingUpdate",
-                        Content = $"⭐ Resident left a {avgRating}★ review: \"{request.Comment}\""
+                        Content = $"⭐ Resident left a {avgRating}★ review: \"{request.ReviewComment}\""
                     });
                 }
                 catch { }
