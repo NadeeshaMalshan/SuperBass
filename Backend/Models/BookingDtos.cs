@@ -33,7 +33,7 @@ namespace Superbass.Models
         public int QualityRating { get; set; } = 5;
         public int PunctualityRating { get; set; } = 5;
         public int CommunicationRating { get; set; } = 5;
-        public string? Comment { get; set; }
+        public string? ReviewComment { get; set; }
     }
 
     public class BookingResponseDto
