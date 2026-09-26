@@ -4,6 +4,7 @@ using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Superbass.Models;
@@ -13,6 +14,7 @@ namespace Superbass.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [EnableCors("AllowFrontend")]
     public class BookingsController : ControllerBase
     {
         private readonly SuperbassDbContext _context;

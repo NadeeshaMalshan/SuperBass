@@ -60,14 +60,21 @@ builder.Services.AddScoped<WorkerRepository, EfWorkerRepository>();
 // Configure CORS
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowFrontend",
-        policy =>
-        {
-            policy.SetIsOriginAllowed(_ => true)
-                  .AllowAnyHeader()
-                  .AllowAnyMethod()
-                  .AllowCredentials();
-        });
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.SetIsOriginAllowed(_ => true)
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.SetIsOriginAllowed(_ => true)
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
 });
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -126,7 +133,9 @@ if (app.Environment.IsDevelopment() || Environment.GetEnvironmentVariable("ENABL
 // app.UseHttpsRedirection();
 app.UseStaticFiles();
 
-app.UseCors("AllowFrontend"); // Use CORS
+app.UseRouting();
+
+app.UseCors("AllowFrontend"); // Use CORS after UseRouting and before Auth & Endpoints
 
 app.UseAuthentication();
 app.UseAuthorization();
