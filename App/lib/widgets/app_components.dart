@@ -184,10 +184,9 @@ class ServiceSearchBar extends StatelessWidget {
         borderRadius: BorderRadius.circular(9999),
         border: Border.all(color: AppColors.outlineVariant),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       child: Row(
         children: [
-          const SizedBox(width: 8),
           const Icon(Icons.search, color: AppColors.onSurfaceVariant, size: 22),
           const SizedBox(width: 10),
           Expanded(
@@ -208,14 +207,6 @@ class ServiceSearchBar extends StatelessWidget {
               ),
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.tune_rounded, color: AppColors.onSurfaceVariant, size: 20),
-            onPressed: onFilterTap ?? () {},
-            style: IconButton.styleFrom(
-              backgroundColor: AppColors.surface,
-              shape: const CircleBorder(),
-            ),
-          ),
         ],
       ),
     );
@@ -225,7 +216,8 @@ class ServiceSearchBar extends StatelessWidget {
 /// Category Item matching modern circular design (Uber/Grab style)
 class CategoryCard extends StatelessWidget {
   final String title;
-  final IconData icon;
+  final IconData? icon;
+  final String? imageAsset;
   final int count;
   final bool isSelected;
   final VoidCallback onTap;
@@ -233,7 +225,8 @@ class CategoryCard extends StatelessWidget {
   const CategoryCard({
     super.key,
     required this.title,
-    required this.icon,
+    this.icon,
+    this.imageAsset,
     this.count = 0,
     this.isSelected = false,
     required this.onTap,
@@ -258,10 +251,6 @@ class CategoryCard extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: isSelected ? const Color(0xFFFEF08A) : const Color(0xFFF3F4F6),
-              border: Border.all(
-                color: isSelected ? AppColors.brandYellow : const Color(0xFFE5E7EB),
-                width: isSelected ? 2.0 : 0.8,
-              ),
               boxShadow: isSelected
                   ? [
                       BoxShadow(
@@ -279,11 +268,26 @@ class CategoryCard extends StatelessWidget {
                     ],
             ),
             child: Center(
-              child: Icon(
-                icon,
-                color: isSelected ? const Color(0xFF18181B) : const Color(0xFF374151),
-                size: 28,
-              ),
+              child: imageAsset != null && imageAsset!.isNotEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.all(14.0),
+                      child: Image.asset(
+                        imageAsset!,
+                        width: 38,
+                        height: 38,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => Icon(
+                          icon ?? Icons.category_rounded,
+                          color: isSelected ? const Color(0xFF18181B) : const Color(0xFF374151),
+                          size: 28,
+                        ),
+                      ),
+                    )
+                  : Icon(
+                      icon ?? Icons.category_rounded,
+                      color: isSelected ? const Color(0xFF18181B) : const Color(0xFF374151),
+                      size: 28,
+                    ),
             ),
           ),
           const SizedBox(height: 8),
@@ -314,7 +318,9 @@ class WorkerCard extends StatelessWidget {
   final String distance;
   final String? price;
   final String? profileImage;
-  final VoidCallback onBookTap;
+  final VoidCallback? onBookTap;
+  final VoidCallback? onProfileTap;
+  final bool showBookNow;
 
   const WorkerCard({
     super.key,
@@ -326,7 +332,9 @@ class WorkerCard extends StatelessWidget {
     required this.distance,
     this.price,
     this.profileImage,
-    required this.onBookTap,
+    this.onBookTap,
+    this.onProfileTap,
+    this.showBookNow = true,
   });
 
   @override
@@ -336,11 +344,10 @@ class WorkerCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.outlineVariant),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x08000000),
-            blurRadius: 8,
+            color: Color(0x0A000000),
+            blurRadius: 10,
             offset: Offset(0, 2),
           ),
         ],
@@ -351,10 +358,9 @@ class WorkerCard extends StatelessWidget {
           Container(
             width: 56,
             height: 56,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               shape: BoxShape.circle,
               color: AppColors.surfaceVariant,
-              border: Border.all(color: AppColors.outlineVariant),
             ),
             child: ClipOval(
               child: (profileImage != null && profileImage!.isNotEmpty && profileImage != 'null')
@@ -391,71 +397,43 @@ class WorkerCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        name,
-                        style: GoogleFonts.dmSans(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
-                          color: AppColors.onSurface,
-                        ),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryContainer,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        trade,
-                        style: GoogleFonts.dmSans(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 11,
-                          color: AppColors.onPrimaryContainer,
-                        ),
-                      ),
-                    ),
-                  ],
+                Text(
+                  name,
+                  style: GoogleFonts.dmSans(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                    color: AppColors.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  trade,
+                  style: GoogleFonts.dmSans(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 13,
+                    color: AppColors.onSurfaceVariant,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    if (rating != null && rating! > 0) ...[
-                      const Icon(Icons.star_rounded, size: 18, color: AppColors.starRating),
+                    const Icon(Icons.star_rounded, size: 18, color: AppColors.starRating),
+                    const SizedBox(width: 4),
+                    Text(
+                      (rating != null && rating! > 0) ? rating!.toStringAsFixed(1) : '0',
+                      style: GoogleFonts.dmSans(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        color: AppColors.onSurface,
+                      ),
+                    ),
+                    if (reviewCount > 0) ...[
                       const SizedBox(width: 4),
                       Text(
-                        rating!.toStringAsFixed(1),
+                        '($reviewCount)',
                         style: GoogleFonts.dmSans(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                          color: AppColors.onSurface,
-                        ),
-                      ),
-                      if (reviewCount > 0)
-                        Text(
-                          ' ($reviewCount reviews)',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 12,
-                            color: AppColors.onSurfaceVariant,
-                          ),
-                        ),
-                    ] else ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceVariant,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          'New Pro',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.onSurfaceVariant,
-                          ),
+                          fontSize: 12,
+                          color: AppColors.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -489,7 +467,7 @@ class WorkerCard extends StatelessWidget {
                       child: SizedBox(
                         height: 38,
                         child: OutlinedButton(
-                          onPressed: () {},
+                          onPressed: onProfileTap ?? () {},
                           style: OutlinedButton.styleFrom(
                             side: const BorderSide(color: AppColors.outlineVariant),
                             shape: const StadiumBorder(),
@@ -506,30 +484,32 @@ class WorkerCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: SizedBox(
-                        height: 38,
-                        child: ElevatedButton(
-                          onPressed: onBookTap,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.brandYellow,
-                            foregroundColor: AppColors.onPrimary,
-                            elevation: 0,
-                            shape: const StadiumBorder(),
-                            padding: EdgeInsets.zero,
-                          ),
-                          child: Text(
-                            'Book Now',
-                            style: GoogleFonts.dmSans(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                              color: AppColors.onPrimary,
+                    if (showBookNow && onBookTap != null) ...[
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: SizedBox(
+                          height: 38,
+                          child: ElevatedButton(
+                            onPressed: onBookTap,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.brandYellow,
+                              foregroundColor: AppColors.onPrimary,
+                              elevation: 0,
+                              shape: const StadiumBorder(),
+                              padding: EdgeInsets.zero,
+                            ),
+                            child: Text(
+                              'Book Now',
+                              style: GoogleFonts.dmSans(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                                color: AppColors.onPrimary,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ],

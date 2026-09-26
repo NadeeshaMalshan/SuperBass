@@ -753,6 +753,38 @@ export default function WorkerDetail() {
                     View My Jobs & Bookings
                   </md-outlined-button>
                 </div>
+              ) : !isLoggedIn ? (
+                <div style={{
+                  backgroundColor: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '20px',
+                  padding: '20px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                  textAlign: 'center'
+                }}>
+                  <p style={{ margin: 0, color: '#64748b', fontSize: '0.92rem', lineHeight: 1.5 }}>
+                    Please sign in to your account to book services or chat with {getFirstName(worker.name)}.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/find')}
+                    style={{
+                      backgroundColor: '#000000',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '9999px',
+                      padding: '12px 24px',
+                      fontWeight: 700,
+                      fontSize: '0.95rem',
+                      cursor: 'pointer',
+                      fontFamily: "var(--font-body, 'DM Sans', sans-serif)"
+                    }}
+                  >
+                    Sign In to Book
+                  </button>
+                </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', justifyContent: 'center' }}>
                   <md-filled-button
