@@ -19,5 +19,6 @@
   { "id": "moving-transport", "name": "Moving & Transport", "icon": "fa-truck-ramp-box" },
   { "id": "furniture-repair-assembly", "name": "Furniture Repair & Assembly", "icon": "fa-couch" },
   { "id": "pest-control", "name": "Pest Control", "icon": "fa-shield-halved" },
+  { "id": "cctv-installation-repair", "name": "CCTV Installation & Repair", "icon": "fa-video" },
   { "id": "others", "name": "Others", "icon": "fa-circle-question" }
 ]

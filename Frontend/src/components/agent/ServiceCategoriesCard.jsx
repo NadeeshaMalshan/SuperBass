@@ -1,4 +1,5 @@
 import React from 'react';
+import { getCategoryIllustration } from '../ServiceCategories.jsx';
 
 export default function ServiceCategoriesCard({ data = {}, onAction }) {
   const categories = data.categories || [];
@@ -27,40 +28,51 @@ export default function ServiceCategoriesCard({ data = {}, onAction }) {
         overflowY: 'auto',
         paddingRight: '4px'
       }}>
-        {categories.map((cat, idx) => (
-          <button
-            key={cat.id || idx}
-            type="button"
-            onClick={() => onAction && onAction(`Show community posts in ${cat.name}`)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              padding: '8px 12px',
-              backgroundColor: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              borderRadius: '10px',
-              cursor: 'pointer',
-              textAlign: 'left',
-              transition: 'all 0.15s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#eff6ff';
-              e.currentTarget.style.borderColor = '#93c5fd';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#f8fafc';
-              e.currentTarget.style.borderColor = '#e2e8f0';
-            }}
-          >
-            <span style={{ fontSize: '1rem' }}>
-              <i className={`fa-solid ${cat.icon || 'fa-tag'}`} style={{ color: '#2563eb' }}></i>
-            </span>
-            <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#1e293b' }}>
-              {cat.name}
-            </span>
-          </button>
-        ))}
+        {categories.map((cat, idx) => {
+          const illustration = getCategoryIllustration(cat.name || cat.id);
+          return (
+            <button
+              key={cat.id || idx}
+              type="button"
+              onClick={() => onAction && onAction(`Show community posts in ${cat.name}`)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '8px 12px',
+                backgroundColor: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#eff6ff';
+                e.currentTarget.style.borderColor = '#93c5fd';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#f8fafc';
+                e.currentTarget.style.borderColor = '#e2e8f0';
+              }}
+            >
+              <span style={{ width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {illustration ? (
+                  <img
+                    src={illustration}
+                    alt={cat.name}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                  />
+                ) : (
+                  <i className={`fa-solid ${cat.icon || 'fa-tag'}`} style={{ color: '#2563eb' }}></i>
+                )}
+              </span>
+              <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#1e293b' }}>
+                {cat.name}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
