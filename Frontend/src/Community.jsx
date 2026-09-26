@@ -609,8 +609,18 @@ export default function Community() {
             </div>
 
             <div className="uber-cat-list">
+              <div
+                className={`uber-cat-item ${selectedCategory === 'all' ? 'active' : ''}`}
+                onClick={() => setSelectedCategory('all')}
+                title="All Categories"
+              >
+                <i className="fa-solid fa-border-all"></i>
+                <span>All Categories</span>
+              </div>
+
               {categoriesData.map((cat) => {
                 const isSelected = selectedCategory === cat.id;
+                const iconName = cat.icon || 'fa-tag';
                 return (
                   <div
                     key={cat.id}
@@ -618,7 +628,7 @@ export default function Community() {
                     onClick={() => setSelectedCategory(cat.id)}
                     title={`Filter by ${cat.name}`}
                   >
-                    <i className="fa-solid fa-tag" style={{ fontSize: '12px', opacity: isSelected ? 1 : 0.6 }}></i>
+                    <i className={`fa-solid ${iconName}`}></i>
                     <span>{cat.name}</span>
                   </div>
                 );

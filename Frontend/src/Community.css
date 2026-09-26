@@ -416,6 +416,20 @@
   font-weight: 700;
 }
 
+.uber-cat-item i {
+  width: 18px;
+  text-align: center;
+  font-size: 0.88rem;
+  color: #666666;
+  flex-shrink: 0;
+  transition: color 0.15s ease;
+}
+
+.uber-cat-item:hover i,
+.uber-cat-item.active i {
+  color: #000000;
+}
+
 /* Main Feed Column */
 .community-feed-column {
   flex: 1;
