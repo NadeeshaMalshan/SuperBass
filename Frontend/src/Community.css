@@ -222,7 +222,7 @@
 .community-layout-container {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 24px 20px 48px;
+  padding: 24px 20px 80px;
   display: flex;
   gap: 24px;
   box-sizing: border-box;
@@ -1133,4 +1133,90 @@
     padding-left: 20px;
     padding-right: 20px;
   }
+}
+
+/* ==========================================================================
+   Uber-Themed Pagination Controls (9 cards per page)
+   ========================================================================== */
+.uber-pagination-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 36px;
+  padding-top: 24px;
+  border-top: 1px solid #eeeeee;
+  user-select: none;
+}
+
+.uber-pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 1px solid #e5e5e5;
+  color: #000000;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.uber-pagination-btn:hover:not(:disabled) {
+  background: #000000;
+  color: #ffffff;
+  border-color: #000000;
+  transform: translateY(-1px);
+}
+
+.uber-pagination-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.uber-pagination-pages {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.uber-pagination-num {
+  min-width: 38px;
+  height: 38px;
+  padding: 0 10px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border: 1px solid #e5e5e5;
+  color: #000000;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.uber-pagination-num:hover:not(.active) {
+  background: #f6f6f6;
+  border-color: #000000;
+}
+
+.uber-pagination-num.active {
+  background: #000000;
+  color: #ffffff;
+  border-color: #000000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+.uber-pagination-ellipsis {
+  padding: 0 6px;
+  color: #757575;
+  font-weight: 700;
+  user-select: none;
 }

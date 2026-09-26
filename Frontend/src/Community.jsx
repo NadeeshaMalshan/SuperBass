@@ -8,8 +8,7 @@ import UserMenu from './components/UserMenu.jsx';
 import AiAssistantWidget from './components/AiAssistantWidget.jsx';
 import Loader from './components/Loader.jsx';
 import M3TopNavbar from './components/M3TopNavbar.jsx';
-import Footer from './components/Footer.jsx';
-import hero2Img from './assets/2.png';
+import hero2Img from './assets/community.png';
 import sriLankaDistricts from './data/sriLankaDistricts.json';
 import { BACKEND_URL } from './config.js';
 
@@ -30,10 +29,17 @@ export default function Community() {
   const [selectedProvince, setSelectedProvince] = useState('all');
   const [selectedDistrict, setSelectedDistrict] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
+  const [currentPage, setCurrentPage] = useState(1);
+  const CARDS_PER_PAGE = 9;
 
   // Active Tab: 'feed' or 'moderation'
   const [activeTab, setActiveTab] = useState('feed');
   const [moderationPosts, setModerationPosts] = useState([]);
+
+  // Reset page to 1 whenever filters, search, or activeTab change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedCategory, selectedProvince, selectedDistrict, sortBy, activeTab]);
 
   // Detail Modal State
   const [selectedPostForDetail, setSelectedPostForDetail] = useState(null);
@@ -460,6 +466,23 @@ export default function Community() {
     return date.toLocaleDateString();
   };
 
+  // Pagination calculations (9 cards per page)
+  const allCurrentPosts = activeTab === 'feed' ? posts : moderationPosts;
+  const totalPosts = allCurrentPosts.length;
+  const totalPages = Math.ceil(totalPosts / CARDS_PER_PAGE) || 1;
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (safeCurrentPage - 1) * CARDS_PER_PAGE;
+  const paginatedPosts = allCurrentPosts.slice(startIndex, startIndex + CARDS_PER_PAGE);
+
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages) return;
+    setCurrentPage(newPage);
+    const feedElement = document.getElementById('community-feed') || document.querySelector('.community-cards-grid');
+    if (feedElement) {
+      feedElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   return (
     <div className="community-page-wrapper">
       {/* Sleek Dark Top Navbar */}
@@ -696,7 +719,7 @@ export default function Community() {
               <Loader />
               <p style={{ fontSize: '1rem', fontWeight: '600' }}>Loading community listings...</p>
             </div>
-          ) : (activeTab === 'feed' ? posts : moderationPosts).length === 0 ? (
+          ) : allCurrentPosts.length === 0 ? (
             <div style={{
               backgroundColor: '#ffffff',
               borderRadius: '16px',
@@ -722,9 +745,26 @@ export default function Community() {
               )}
             </div>
           ) : (
-            <div className="community-cards-grid">
-              {(activeTab === 'feed' ? posts : moderationPosts).map(post => {
-                const catObj = categoriesData.find(c => c.id === post.category);
+            <>
+              {/* Pagination Info Header */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '16px',
+                fontSize: '0.85rem',
+                color: '#757575',
+                fontWeight: '600'
+              }}>
+                <span>
+                  Showing {startIndex + 1}–{Math.min(startIndex + CARDS_PER_PAGE, totalPosts)} of {totalPosts} listings
+                </span>
+                <span>Page {safeCurrentPage} of {totalPages}</span>
+              </div>
+
+              <div className="community-cards-grid">
+                {paginatedPosts.map(post => {
+                  const catObj = categoriesData.find(c => c.id === post.category);
                 return (
                   <div
                     key={post.postId}
@@ -838,7 +878,62 @@ export default function Community() {
                 );
               })}
             </div>
-          )}
+
+            {/* Uber-Themed Pagination (9 cards per page) */}
+            {totalPages > 1 && (
+              <div className="uber-pagination-container">
+                <button
+                  type="button"
+                  className="uber-pagination-btn"
+                  onClick={() => handlePageChange(safeCurrentPage - 1)}
+                  disabled={safeCurrentPage === 1}
+                  aria-label="Previous Page"
+                >
+                  <i className="fa-solid fa-chevron-left"></i>
+                  <span>Prev</span>
+                </button>
+
+                <div className="uber-pagination-pages">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNum => {
+                    if (
+                      pageNum === 1 ||
+                      pageNum === totalPages ||
+                      (pageNum >= safeCurrentPage - 1 && pageNum <= safeCurrentPage + 1)
+                    ) {
+                      return (
+                        <button
+                          key={pageNum}
+                          type="button"
+                          className={`uber-pagination-num ${safeCurrentPage === pageNum ? 'active' : ''}`}
+                          onClick={() => handlePageChange(pageNum)}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    } else if (
+                      pageNum === safeCurrentPage - 2 ||
+                      pageNum === safeCurrentPage + 2
+                    ) {
+                      return <span key={pageNum} className="uber-pagination-ellipsis">...</span>;
+                    }
+                    return null;
+                  })}
+                </div>
+
+                <button
+                  type="button"
+                  className="uber-pagination-btn"
+                  onClick={() => handlePageChange(safeCurrentPage + 1)}
+                  disabled={safeCurrentPage === totalPages}
+                  aria-label="Next Page"
+                >
+                  <span>Next</span>
+                  <i className="fa-solid fa-chevron-right"></i>
+                </button>
+              </div>
+            )}
+          </>
+        )}
         </main>
       </div>
 
@@ -1436,8 +1531,6 @@ export default function Community() {
         />
       )}
 
-      {/* Uber-style Whole Black Theme Footer */}
-      <Footer />
 
       {/* Floating AI Assistant Widget */}
       <AiAssistantWidget />
