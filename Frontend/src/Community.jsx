@@ -41,7 +41,8 @@ export default function Community() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [selectedLocation, setSelectedLocation] = useState('all');
+  const [selectedProvince, setSelectedProvince] = useState('all');
+  const [selectedDistrict, setSelectedDistrict] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
 
   // Active Tab: 'feed' or 'moderation'
@@ -57,7 +58,8 @@ export default function Community() {
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
   const [editCategory, setEditCategory] = useState('plumbing');
-  const [editLocation, setEditLocation] = useState('Colombo');
+  const [editProvince, setEditProvince] = useState('Western Province');
+  const [editDistrict, setEditDistrict] = useState('Colombo');
   const [editImages, setEditImages] = useState([]);
   const editFileInputRef = useRef(null);
 
@@ -67,7 +69,8 @@ export default function Community() {
   const [newContent, setNewContent] = useState('');
   const [newCategory, setNewCategory] = useState('plumbing');
   const [newPrice, setNewPrice] = useState('');
-  const [newLocation, setNewLocation] = useState('Colombo');
+  const [newProvince, setNewProvince] = useState('Western Province');
+  const [newDistrict, setNewDistrict] = useState('Colombo');
   const [newImages, setNewImages] = useState([]);
   const fileInputRef = useRef(null);
   const createDialogRef = useRef(null);
@@ -144,12 +147,25 @@ export default function Community() {
       const params = {};
       if (searchTerm) params.search = searchTerm;
       if (selectedCategory !== 'all') params.category = selectedCategory;
-      if (selectedLocation !== 'all') params.location = selectedLocation;
+      if (selectedDistrict !== 'all') {
+        params.location = selectedDistrict;
+      } else if (selectedProvince !== 'all') {
+        params.location = selectedProvince.replace(' Province', '');
+      }
       if (sortBy) params.sort = sortBy;
 
       const res = await axios.get(API_BASE_URL, { params });
       if (res.data && Array.isArray(res.data)) {
-        const enriched = res.data.map((p, idx) => ({
+        let results = res.data;
+        if (selectedProvince !== 'all' && selectedDistrict === 'all') {
+          const provinceDistricts = sriLankaDistricts[selectedProvince] || [];
+          const provKey = selectedProvince.toLowerCase().replace(' province', '');
+          results = results.filter(p => {
+            const loc = (p.location || '').toLowerCase();
+            return loc.includes(provKey) || provinceDistricts.some(d => loc.includes(d.toLowerCase()));
+          });
+        }
+        const enriched = results.map((p, idx) => ({
           ...p,
           condition: p.condition || 'Brand New',
           price: p.price || (p.priceVal ? `Rs ${p.priceVal.toLocaleString()}` : 'Inquire / Quote'),
@@ -181,7 +197,7 @@ export default function Community() {
 
   useEffect(() => {
     fetchPosts();
-  }, [searchTerm, selectedCategory, selectedLocation, sortBy]);
+  }, [searchTerm, selectedCategory, selectedProvince, selectedDistrict, sortBy]);
 
   useEffect(() => {
     if (activeTab === 'moderation') {
@@ -293,7 +309,22 @@ export default function Community() {
     setEditTitle(post.title);
     setEditContent(post.content);
     setEditCategory(post.serviceCategoryId || 'plumbing');
-    setEditLocation(post.location || 'Colombo');
+
+    let prov = 'Western Province';
+    let dist = 'Colombo';
+    if (post.location) {
+      for (const [pName, dists] of Object.entries(sriLankaDistricts)) {
+        for (const d of dists) {
+          if (post.location.toLowerCase().includes(d.toLowerCase())) {
+            prov = pName;
+            dist = d;
+            break;
+          }
+        }
+      }
+    }
+    setEditProvince(prov);
+    setEditDistrict(dist);
     setEditImages(post.images || []);
   };
 
@@ -322,7 +353,7 @@ export default function Community() {
         title: editTitle,
         content: editContent,
         serviceCategoryId: editCategory,
-        location: editLocation,
+        location: `${editDistrict}, ${editProvince}`,
         images: editImages,
         userEmail: userEmail,
         userName: userName
@@ -370,7 +401,7 @@ export default function Community() {
         content: newContent,
         priceVal: newPrice ? parseFloat(newPrice.replace(/[^0-9.]/g, '')) || null : null,
         serviceCategoryId: newCategory,
-        location: newLocation || 'Colombo',
+        location: `${newDistrict}, ${newProvince}`,
         images: newImages,
         userName: localStorage.getItem('userName') || "You (Resident)",
         userAvatar: localStorage.getItem('userPicture') || "https://api.dicebear.com/7.x/avataaars/svg?seed=CurrentUser",
@@ -390,7 +421,8 @@ export default function Community() {
     setNewTitle('');
     setNewContent('');
     setNewPrice('');
-    setNewLocation('Colombo');
+    setNewProvince('Western Province');
+    setNewDistrict('Colombo');
     setNewImages([]);
   };
 
@@ -510,12 +542,13 @@ export default function Community() {
           {/* Primary Navigation List */}
           <nav className="m3-drawer-nav">
             <div
-              className={`m3-drawer-item ${selectedCategory === 'all' && selectedLocation === 'all' && activeTab === 'feed' ? 'active' : ''}`}
+              className={`m3-drawer-item ${selectedCategory === 'all' && selectedProvince === 'all' && selectedDistrict === 'all' && activeTab === 'feed' ? 'active' : ''}`}
               onClick={() => {
                 setActiveTab('feed');
                 setSearchTerm('');
                 setSelectedCategory('all');
-                setSelectedLocation('all');
+                setSelectedProvince('all');
+                setSelectedDistrict('all');
                 setSortBy('newest');
               }}
               title="View all community posts"
@@ -544,64 +577,104 @@ export default function Community() {
 
           <hr className="m3-drawer-divider" />
 
-          {/* Location Section */}
+          {/* Location Filter Section: Province and District */}
           <div className="m3-drawer-section">
             {!isSidebarCollapsed ? (
               <>
                 <div className="m3-drawer-section-header">
-                  <span className="m3-drawer-section-title">Location (District)</span>
-                  {selectedLocation !== 'all' && (
+                  <span className="m3-drawer-section-title">Location</span>
+                  {(selectedProvince !== 'all' || selectedDistrict !== 'all') && (
                     <button
                       type="button"
                       className="m3-drawer-section-action"
-                      onClick={() => setSelectedLocation('all')}
+                      onClick={() => {
+                        setSelectedProvince('all');
+                        setSelectedDistrict('all');
+                      }}
                       title="Clear location selection"
                     >
                       Clear
                     </button>
                   )}
                 </div>
-                <div style={{ padding: '0 12px 10px' }}>
+                <div style={{ padding: '0 12px 10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {/* Province Select */}
                   <md-outlined-select
-                    value={selectedLocation}
-                    onInput={(e) => setSelectedLocation(e.target.value)}
-                    onChange={(e) => setSelectedLocation(e.target.value)}
+                    label="Province"
+                    value={selectedProvince}
+                    onInput={(e) => {
+                      setSelectedProvince(e.target.value);
+                      setSelectedDistrict('all');
+                    }}
+                    onChange={(e) => {
+                      setSelectedProvince(e.target.value);
+                      setSelectedDistrict('all');
+                    }}
                     style={{
                       width: '100%',
                       '--md-outlined-select-container-height': '40px',
                       '--md-outlined-select-container-shape': '10px',
                       '--md-outlined-select-leading-space': '10px',
                       '--md-outlined-select-trailing-space': '10px',
-                      '--md-outlined-select-input-text-size': '0.85rem',
+                      '--md-outlined-select-input-text-size': '0.825rem',
                       '--md-outlined-select-focus-outline-color': '#0f172a',
                       '--md-outlined-select-focus-icon-color': '#0f172a',
                       '--md-menu-container-color': '#ffffff',
                       '--md-menu-container-shape': '14px',
-                      '--md-sys-color-primary-container': '#f1f5f9',
-                      '--md-sys-color-on-primary-container': '#0f172a',
-                      '--md-sys-color-surface-container': '#ffffff',
-                      '--md-sys-color-surface-container-high': '#ffffff'
+                      '--md-menu-container-max-height': '260px'
+                    }}
+                  >
+                    <md-icon slot="leading-icon" style={{ fontSize: '18px', '--md-icon-size': '18px', color: '#64748b' }}>map</md-icon>
+                    <md-select-option value="all" selected={selectedProvince === 'all'}>
+                      <div slot="headline">All Provinces</div>
+                    </md-select-option>
+                    {Object.keys(sriLankaDistricts).map(prov => (
+                      <md-select-option key={prov} value={prov} selected={selectedProvince === prov}>
+                        <div slot="headline">{prov}</div>
+                      </md-select-option>
+                    ))}
+                  </md-outlined-select>
+
+                  {/* District Select */}
+                  <md-outlined-select
+                    label="District"
+                    value={selectedDistrict}
+                    onInput={(e) => setSelectedDistrict(e.target.value)}
+                    onChange={(e) => setSelectedDistrict(e.target.value)}
+                    style={{
+                      width: '100%',
+                      '--md-outlined-select-container-height': '40px',
+                      '--md-outlined-select-container-shape': '10px',
+                      '--md-outlined-select-leading-space': '10px',
+                      '--md-outlined-select-trailing-space': '10px',
+                      '--md-outlined-select-input-text-size': '0.825rem',
+                      '--md-outlined-select-focus-outline-color': '#0f172a',
+                      '--md-outlined-select-focus-icon-color': '#0f172a',
+                      '--md-menu-container-color': '#ffffff',
+                      '--md-menu-container-shape': '14px',
+                      '--md-menu-container-max-height': '260px'
                     }}
                   >
                     <md-icon slot="leading-icon" style={{ fontSize: '18px', '--md-icon-size': '18px', color: '#64748b' }}>location_on</md-icon>
-                    <md-select-option value="all" selected={selectedLocation === 'all'}>
-                      <div slot="headline">All Sri Lanka</div>
+                    <md-select-option value="all" selected={selectedDistrict === 'all'}>
+                      <div slot="headline">{selectedProvince === 'all' ? 'All Districts' : `All in ${selectedProvince.replace(' Province', '')}`}</div>
                     </md-select-option>
-                    {Object.entries(sriLankaDistricts).map(([province, districts]) =>
-                      districts.map(d => (
-                        <md-select-option key={d} value={d} selected={selectedLocation.toLowerCase() === d.toLowerCase()}>
-                          <div slot="headline">{d} ({province.replace(' Province', '')})</div>
-                        </md-select-option>
-                      ))
-                    )}
+                    {(selectedProvince === 'all'
+                      ? Object.values(sriLankaDistricts).flat()
+                      : (sriLankaDistricts[selectedProvince] || [])
+                    ).map(d => (
+                      <md-select-option key={d} value={d} selected={selectedDistrict === d}>
+                        <div slot="headline">{d}</div>
+                      </md-select-option>
+                    ))}
                   </md-outlined-select>
                 </div>
               </>
             ) : (
               <div
-                className={`m3-drawer-item ${selectedLocation !== 'all' ? 'active' : ''}`}
+                className={`m3-drawer-item ${(selectedProvince !== 'all' || selectedDistrict !== 'all') ? 'active' : ''}`}
                 onClick={() => setIsSidebarCollapsed(false)}
-                title={`Location: ${selectedLocation === 'all' ? 'All Locations' : selectedLocation} (Click to expand)`}
+                title={`Location: ${selectedDistrict !== 'all' ? selectedDistrict : selectedProvince !== 'all' ? selectedProvince : 'All Sri Lanka'} (Click to expand)`}
               >
                 <div className="m3-drawer-item-left">
                   <md-icon className="m3-drawer-icon">location_on</md-icon>
@@ -1127,32 +1200,45 @@ export default function Community() {
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <div style={{ flex: '1 1 160px' }}>
                   <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Category</label>
                   <select
                     value={editCategory}
                     onChange={(e) => setEditCategory(e.target.value)}
-                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', backgroundColor: '#fff', color: '#0f172a' }}
                   >
                     {categoriesData.map(c => (
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>
                 </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Location (District)</label>
+                <div style={{ flex: '1 1 160px' }}>
+                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Province</label>
                   <select
-                    value={editLocation}
-                    onChange={(e) => setEditLocation(e.target.value)}
+                    value={editProvince}
+                    onChange={(e) => {
+                      const prov = e.target.value;
+                      setEditProvince(prov);
+                      const firstDist = (sriLankaDistricts[prov] && sriLankaDistricts[prov][0]) || 'Colombo';
+                      setEditDistrict(firstDist);
+                    }}
                     style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', backgroundColor: '#fff', color: '#0f172a' }}
                   >
-                    {Object.entries(sriLankaDistricts).map(([province, districts]) => (
-                      <optgroup key={province} label={province}>
-                        {districts.map(d => (
-                          <option key={d} value={d}>{d}</option>
-                        ))}
-                      </optgroup>
+                    {Object.keys(sriLankaDistricts).map(prov => (
+                      <option key={prov} value={prov}>{prov}</option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ flex: '1 1 160px' }}>
+                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>District</label>
+                  <select
+                    value={editDistrict}
+                    onChange={(e) => setEditDistrict(e.target.value)}
+                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', backgroundColor: '#fff', color: '#0f172a' }}
+                  >
+                    {(sriLankaDistricts[editProvince] || []).map(d => (
+                      <option key={d} value={d}>{d}</option>
                     ))}
                   </select>
                 </div>
@@ -1275,8 +1361,8 @@ export default function Community() {
               <md-icon slot="leading-icon">title</md-icon>
             </md-outlined-text-field>
 
-            {/* Category, Location, and Price Row */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+            {/* Category and Price Row */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
               <md-outlined-select
                 label="Category *"
                 value={newCategory}
@@ -1292,23 +1378,6 @@ export default function Community() {
                 ))}
               </md-outlined-select>
 
-              <md-outlined-select
-                label="Location (District) *"
-                value={newLocation}
-                onInput={(e) => setNewLocation(e.target.value)}
-                onChange={(e) => setNewLocation(e.target.value)}
-                style={{ width: '100%', '--md-menu-container-max-height': '280px' }}
-              >
-                <md-icon slot="leading-icon">location_on</md-icon>
-                {Object.entries(sriLankaDistricts).map(([province, districts]) =>
-                  districts.map(d => (
-                    <md-select-option key={d} value={d} selected={newLocation === d}>
-                      <div slot="headline">{d} ({province.replace(' Province', '')})</div>
-                    </md-select-option>
-                  ))
-                )}
-              </md-outlined-select>
-
               <md-outlined-text-field
                 label="Price / Budget (Rs)"
                 placeholder="e.g. 30,000"
@@ -1318,6 +1387,49 @@ export default function Community() {
               >
                 <md-icon slot="leading-icon">payments</md-icon>
               </md-outlined-text-field>
+            </div>
+
+            {/* Location: Province and District Row */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+              <md-outlined-select
+                label="Province *"
+                value={newProvince}
+                onInput={(e) => {
+                  const prov = e.target.value;
+                  setNewProvince(prov);
+                  const firstDist = (sriLankaDistricts[prov] && sriLankaDistricts[prov][0]) || 'Colombo';
+                  setNewDistrict(firstDist);
+                }}
+                onChange={(e) => {
+                  const prov = e.target.value;
+                  setNewProvince(prov);
+                  const firstDist = (sriLankaDistricts[prov] && sriLankaDistricts[prov][0]) || 'Colombo';
+                  setNewDistrict(firstDist);
+                }}
+                style={{ width: '100%', '--md-menu-container-max-height': '280px' }}
+              >
+                <md-icon slot="leading-icon">map</md-icon>
+                {Object.keys(sriLankaDistricts).map(prov => (
+                  <md-select-option key={prov} value={prov} selected={newProvince === prov}>
+                    <div slot="headline">{prov}</div>
+                  </md-select-option>
+                ))}
+              </md-outlined-select>
+
+              <md-outlined-select
+                label="District *"
+                value={newDistrict}
+                onInput={(e) => setNewDistrict(e.target.value)}
+                onChange={(e) => setNewDistrict(e.target.value)}
+                style={{ width: '100%', '--md-menu-container-max-height': '280px' }}
+              >
+                <md-icon slot="leading-icon">location_on</md-icon>
+                {(sriLankaDistricts[newProvince] || Object.values(sriLankaDistricts)[0] || []).map(d => (
+                  <md-select-option key={d} value={d} selected={newDistrict === d}>
+                    <div slot="headline">{d}</div>
+                  </md-select-option>
+                ))}
+              </md-outlined-select>
             </div>
 
             {/* Description Textarea */}

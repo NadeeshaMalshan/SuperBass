@@ -56,7 +56,8 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
   const [editCategory, setEditCategory] = useState('plumbing');
-  const [editLocation, setEditLocation] = useState('Colombo');
+  const [editProvince, setEditProvince] = useState('Western Province');
+  const [editDistrict, setEditDistrict] = useState('Colombo');
   const [editImages, setEditImages] = useState([]);
   const editFileInputRef = useRef(null);
 
@@ -64,7 +65,8 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
   const [createTitle, setCreateTitle] = useState('');
   const [createContent, setCreateContent] = useState('');
   const [createCategory, setCreateCategory] = useState('plumbing');
-  const [createLocation, setCreateLocation] = useState('Colombo');
+  const [createProvince, setCreateProvince] = useState('Western Province');
+  const [createDistrict, setCreateDistrict] = useState('Colombo');
   const [createImages, setCreateImages] = useState([]);
   const fileInputRef = useRef(null);
 
@@ -409,7 +411,22 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     setEditTitle(post.title);
     setEditContent(post.content);
     setEditCategory(post.serviceCategoryId || 'plumbing');
-    setEditLocation(post.location || 'Colombo');
+
+    let prov = 'Western Province';
+    let dist = 'Colombo';
+    if (post.location) {
+      for (const [pName, dists] of Object.entries(sriLankaDistricts)) {
+        for (const d of dists) {
+          if (post.location.toLowerCase().includes(d.toLowerCase())) {
+            prov = pName;
+            dist = d;
+            break;
+          }
+        }
+      }
+    }
+    setEditProvince(prov);
+    setEditDistrict(dist);
     setEditImages(post.images || []);
   };
 
@@ -434,7 +451,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
         title: editTitle,
         content: editContent,
         serviceCategoryId: editCategory,
-        location: editLocation,
+        location: `${editDistrict}, ${editProvince}`,
         images: editImages,
         userEmail: userEmail,
         userName: userName
@@ -494,7 +511,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
         title: createTitle,
         content: createContent,
         serviceCategoryId: createCategory,
-        location: createLocation,
+        location: `${createDistrict}, ${createProvince}`,
         images: createImages,
         userName: userName || "You (Resident)",
         userAvatar: userPicture || "https://api.dicebear.com/7.x/avataaars/svg?seed=CurrentUser",
@@ -507,6 +524,8 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
       setIsCreateModalOpen(false);
       setCreateTitle('');
       setCreateContent('');
+      setCreateProvince('Western Province');
+      setCreateDistrict('Colombo');
       setCreateImages([]);
       fetchUserPosts();
     } catch (err) {
@@ -1516,8 +1535,8 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <div style={{ flex: '1 1 140px' }}>
                   <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>Category</label>
                   <select
                     value={editCategory}
@@ -1529,19 +1548,32 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                     ))}
                   </select>
                 </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>Location (District)</label>
+                <div style={{ flex: '1 1 140px' }}>
+                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>Province</label>
                   <select
-                    value={editLocation}
-                    onChange={(e) => setEditLocation(e.target.value)}
+                    value={editProvince}
+                    onChange={(e) => {
+                      const prov = e.target.value;
+                      setEditProvince(prov);
+                      const firstDist = (sriLankaDistricts[prov] && sriLankaDistricts[prov][0]) || 'Colombo';
+                      setEditDistrict(firstDist);
+                    }}
                     style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#0f172a' }}
                   >
-                    {Object.entries(sriLankaDistricts).map(([province, districts]) => (
-                      <optgroup key={province} label={province}>
-                        {districts.map(d => (
-                          <option key={d} value={d}>{d}</option>
-                        ))}
-                      </optgroup>
+                    {Object.keys(sriLankaDistricts).map(prov => (
+                      <option key={prov} value={prov}>{prov}</option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ flex: '1 1 140px' }}>
+                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>District</label>
+                  <select
+                    value={editDistrict}
+                    onChange={(e) => setEditDistrict(e.target.value)}
+                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#0f172a' }}
+                  >
+                    {(sriLankaDistricts[editProvince] || []).map(d => (
+                      <option key={d} value={d}>{d}</option>
                     ))}
                   </select>
                 </div>
@@ -1630,8 +1662,8 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <div style={{ flex: '1 1 140px' }}>
                   <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>Category</label>
                   <select
                     value={createCategory}
@@ -1643,19 +1675,32 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                     ))}
                   </select>
                 </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>Location (District)</label>
+                <div style={{ flex: '1 1 140px' }}>
+                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>Province</label>
                   <select
-                    value={createLocation}
-                    onChange={(e) => setCreateLocation(e.target.value)}
+                    value={createProvince}
+                    onChange={(e) => {
+                      const prov = e.target.value;
+                      setCreateProvince(prov);
+                      const firstDist = (sriLankaDistricts[prov] && sriLankaDistricts[prov][0]) || 'Colombo';
+                      setCreateDistrict(firstDist);
+                    }}
                     style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#0f172a' }}
                   >
-                    {Object.entries(sriLankaDistricts).map(([province, districts]) => (
-                      <optgroup key={province} label={province}>
-                        {districts.map(d => (
-                          <option key={d} value={d}>{d}</option>
-                        ))}
-                      </optgroup>
+                    {Object.keys(sriLankaDistricts).map(prov => (
+                      <option key={prov} value={prov}>{prov}</option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ flex: '1 1 140px' }}>
+                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>District</label>
+                  <select
+                    value={createDistrict}
+                    onChange={(e) => setCreateDistrict(e.target.value)}
+                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#0f172a' }}
+                  >
+                    {(sriLankaDistricts[createProvince] || []).map(d => (
+                      <option key={d} value={d}>{d}</option>
                     ))}
                   </select>
                 </div>
