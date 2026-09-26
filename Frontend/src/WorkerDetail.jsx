@@ -350,14 +350,6 @@ export default function WorkerDetail() {
       let finalAddress = bookingForm.locationAddress || worker?.primaryServiceArea || '';
       let updatedDesc = bookingForm.description;
 
-      if (bookingForm.shareGps && bookingForm.locationLat && bookingForm.locationLng) {
-        const gpsTag = ` [GPS: ${bookingForm.locationLat.toFixed(5)}, ${bookingForm.locationLng.toFixed(5)}]`;
-        if (!finalAddress.includes('GPS:')) {
-          finalAddress = `${finalAddress}${gpsTag}`;
-        }
-        updatedDesc = `${updatedDesc}\n\n📍 GPS Location: https://maps.google.com/?q=${bookingForm.locationLat},${bookingForm.locationLng}`;
-      }
-
       const payload = {
         workerId: parseInt(workerId),
         residentEmail: userEmail,
