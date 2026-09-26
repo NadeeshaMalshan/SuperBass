@@ -584,6 +584,55 @@
   }
 }
 
+@media (max-width: 600px) {
+  .uber-hero-section {
+    padding: 32px 16px 48px;
+  }
+
+  .uber-hero-title {
+    font-size: clamp(1.85rem, 5.5vw, 2.4rem);
+    letter-spacing: -0.02em;
+  }
+
+  .uber-hero-actions-row {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .uber-primary-black-btn,
+  .uber-ai-helper-btn {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+    box-sizing: border-box;
+  }
+
+  .uber-service-dropdown-menu {
+    max-height: 280px;
+  }
+}
+
+@media (max-width: 480px) {
+  .uber-hero-section {
+    padding: 24px 12px 36px;
+  }
+
+  .uber-input-group {
+    padding: 10px 14px;
+    gap: 10px;
+  }
+
+  .uber-input-field {
+    font-size: 0.95rem;
+  }
+
+  .uber-subnav-item {
+    font-size: 0.85rem;
+    gap: 6px;
+  }
+}
+
 /* ==========================================================================
    Landing Community Showcase Section (Hero Layout Style)
    ========================================================================== */
@@ -725,6 +774,37 @@
 
   .landing-community-section {
     padding: 56px 20px;
+  }
+}
+
+@media (max-width: 600px) {
+  .landing-community-section {
+    padding: 40px 16px;
+  }
+
+  .landing-community-title {
+    font-size: clamp(1.8rem, 5.5vw, 2.4rem);
+  }
+
+  .landing-community-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .landing-community-btn {
+    width: 100%;
+    justify-content: center;
+    box-sizing: border-box;
+  }
+}
+
+@media (max-width: 480px) {
+  .landing-community-section {
+    padding: 32px 14px;
+  }
+
+  .landing-community-feature-item {
+    font-size: 0.88rem;
   }
 }
 
@@ -1421,7 +1501,7 @@
   .ai-intro-container {
     flex-direction: column;
     text-align: center;
-    gap: 48px;
+    gap: 40px;
   }
 
   .ai-intro-content {
@@ -1435,35 +1515,55 @@
 
   .ai-intro-mockup-wrapper {
     width: 100%;
-    max-width: 380px;
-    height: 420px;
+    max-width: 320px;
+    height: 380px;
   }
 
-  .ai-blob-left {
+  .ai-blob-center {
     width: 320px;
     height: 320px;
-    left: 50%;
-    transform: translate(-55%, -50%);
+  }
+}
+
+@media (max-width: 600px) {
+  .ai-intro-section {
+    padding: 48px 16px;
   }
 
-  .ai-blob-right {
+  .ai-intro-title {
+    font-size: clamp(1.65rem, 5.5vw, 2.2rem);
+  }
+
+  .ai-intro-btn {
+    width: 100%;
+  }
+
+  .ai-mockup-image {
     width: 220px;
-    height: 220px;
-    right: 50%;
-    transform: translate(45%, -40%);
   }
 }
 
 @media (max-width: 480px) {
   .ai-intro-section {
-    padding: 64px 20px;
+    padding: 36px 14px;
   }
 
-  .ai-phone-frame {
-    width: 170px;
-    height: 340px;
+  .ai-intro-mockup-wrapper {
+    max-width: 260px;
+    height: 320px;
   }
-}.fade-in-step { animation: fadeInStep 0.4s ease-in-out; }
+
+  .ai-blob-center {
+    width: 260px;
+    height: 260px;
+  }
+
+  .ai-mockup-image {
+    width: 190px;
+  }
+}
+
+.fade-in-step { animation: fadeInStep 0.4s ease-in-out; }
 @keyframes fadeInStep { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ==========================================================================
@@ -2191,6 +2291,104 @@ input:checked + .toggle-slider:before {
 .custom-worker-marker:hover, .custom-worker-marker.selected {
   transform: scale(1.2);
   background: #2563eb;
+}
+
+/* ==========================================================================
+   Find Page & Worker Detail Mobile / Tablet Breakpoints
+   ========================================================================== */
+@media (max-width: 992px) {
+  .find-split-view-container {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .find-middle-cards-col {
+    width: 100%;
+    max-height: 480px;
+    padding-right: 0;
+  }
+
+  .find-map-pane {
+    width: 100%;
+    height: 360px;
+    position: static;
+    top: auto;
+  }
+
+  .find-main {
+    padding: 16px 12px 24px;
+  }
+}
+
+@media (max-width: 640px) {
+  .find-main-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .find-header-actions {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .find-sort-select,
+  .find-map-toggle-btn {
+    flex: 1;
+    min-width: 120px;
+    justify-content: center;
+  }
+
+  .worker-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .sleek-worker-card {
+    padding: 16px;
+    border-radius: 16px;
+  }
+
+  .card-photo-container {
+    height: 140px;
+  }
+
+  .map-search-overlay {
+    width: calc(100% - 24px);
+    left: 12px;
+    top: 12px;
+    padding: 6px 12px;
+  }
+
+  .map-floating-worker-card {
+    width: calc(100% - 24px);
+    right: 12px;
+    top: 60px;
+  }
+}
+
+@media (max-width: 480px) {
+  .find-results-title {
+    font-size: 1.3rem;
+  }
+
+  .card-worker-name {
+    font-size: 1.05rem;
+  }
+
+  .m3-card-horizontal-wrap {
+    gap: 12px;
+  }
+
+  .m3-card-avatar-wrap,
+  .m3-card-avatar-img,
+  .m3-card-avatar-fallback {
+    width: 60px;
+    height: 60px;
+  }
 }
 
 

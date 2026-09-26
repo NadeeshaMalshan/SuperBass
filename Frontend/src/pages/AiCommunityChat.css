@@ -418,3 +418,47 @@
   opacity: 0.6;
 }
 
+/* ==========================================================================
+   Mobile Responsive Rules for AI Community Chat Page
+   ========================================================================== */
+@media (max-width: 640px) {
+  .find-main.ai-chat-main-pane {
+    padding: 8px 8px 16px;
+  }
+
+  .ai-chat-card-container {
+    border-radius: 16px;
+  }
+
+  .ai-chat-card-header {
+    padding: 10px 14px;
+  }
+
+  .ai-chat-messages-stream {
+    padding: 12px 14px;
+    gap: 10px;
+  }
+
+  .ai-msg-wrapper {
+    max-width: 88%;
+  }
+
+  .ai-suggestions-bar {
+    padding: 8px 12px;
+  }
+
+  .ai-input-bar-area {
+    padding: 8px 12px 14px;
+    gap: 8px;
+  }
+
+  .ai-pill-input-box {
+    padding: 4px 12px;
+  }
+
+  .ai-send-fab-btn {
+    width: 40px;
+    height: 40px;
+  }
+}
+

@@ -940,7 +940,7 @@ body.worker-theme .m3-nav-btn.active {
 
 @media (max-width: 680px) {
   .m3-top-navbar {
-    padding: 0 8px;
+    padding: 0 10px;
     height: 60px;
   }
   .m3-navbar-center {
@@ -949,6 +949,53 @@ body.worker-theme .m3-nav-btn.active {
   .m3-search-pill {
     height: 42px;
     padding: 0 8px 0 12px;
+  }
+  .m3-signin-btn,
+  md-filled-button.m3-signin-btn {
+    min-width: auto;
+    height: 36px;
+    padding: 0 16px;
+    font-size: 0.85rem;
+    margin-left: 6px;
+  }
+}
+
+@media (max-width: 480px) {
+  .m3-top-navbar {
+    padding: 0 8px;
+    height: 56px;
+  }
+  .m3-navbar-brand-group {
+    gap: 6px;
+  }
+  .m3-brand-logo-img {
+    height: 30px;
+  }
+  .m3-hamburger-btn {
+    width: 36px;
+    height: 36px;
+    margin-right: 0;
+  }
+  .m3-navbar-right {
+    gap: 4px;
+  }
+  .m3-nav-btn {
+    width: 34px;
+    height: 34px;
+  }
+  .m3-signin-btn,
+  md-filled-button.m3-signin-btn {
+    padding: 0 12px;
+    font-size: 0.8rem;
+    height: 34px;
+    margin-left: 4px;
+  }
+  .m3-search-dropdown {
+    position: fixed;
+    top: 56px;
+    left: 8px;
+    right: 8px;
+    max-height: calc(100vh - 70px);
   }
 }
 

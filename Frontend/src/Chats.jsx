@@ -963,7 +963,7 @@ export default function Chats() {
         />
 
         {/* Messenger Body */}
-        <div className="chats-body">
+        <div className={`chats-body ${selectedChat ? 'has-selected-chat' : ''}`}>
           {/* Left Sidebar */}
           <aside className="chats-sidebar">
             <div className="chats-sidebar-header">
@@ -1099,6 +1099,15 @@ export default function Chats() {
                 {/* Header */}
                 <div className="chats-main-header">
                   <div className="chats-header-user-info">
+                    <button
+                      type="button"
+                      className="chats-mobile-back-btn"
+                      onClick={() => setSelectedChat(null)}
+                      title="Back to conversations"
+                      aria-label="Back to conversations"
+                    >
+                      <md-icon>arrow_back</md-icon>
+                    </button>
                     <div className="chats-header-avatar-wrapper">
                       {activeParty.avatarUrl ? (
                         <img
