@@ -35,7 +35,14 @@ var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__De
     ?? builder.Configuration.GetConnectionString("DefaultConnection");
 
 builder.Services.AddDbContext<SuperbassDbContext>(options =>
-    options.UseNpgsql(connectionString));
+    options.UseNpgsql(connectionString, npgsqlOptions =>
+    {
+        npgsqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 5,
+            maxRetryDelay: TimeSpan.FromSeconds(10),
+            null);
+        npgsqlOptions.CommandTimeout(60);
+    }));
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -116,6 +123,22 @@ using (var scope = app.Services.CreateScope())
         var services = scope.ServiceProvider;
         var context = services.GetRequiredService<SuperbassDbContext>();
         context.Database.Migrate();
+
+        // Ensure missing columns on Bookings table are auto-created if not present in existing database
+        try
+        {
+            context.Database.ExecuteSqlRaw(@"
+                ALTER TABLE ""Bookings"" ADD COLUMN IF NOT EXISTS ""LocationLat"" double precision;
+                ALTER TABLE ""Bookings"" ADD COLUMN IF NOT EXISTS ""LocationLng"" double precision;
+                ALTER TABLE ""Bookings"" ADD COLUMN IF NOT EXISTS ""PricingModel"" character varying(50) DEFAULT 'Hourly';
+                ALTER TABLE ""Bookings"" ADD COLUMN IF NOT EXISTS ""EstimatedPrice"" numeric;
+                ALTER TABLE ""Bookings"" ADD COLUMN IF NOT EXISTS ""AgreedPrice"" numeric;
+            ");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Bookings schema patch notice: {ex.Message}");
+        }
     }
     catch (Exception ex)
     {
