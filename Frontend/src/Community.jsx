@@ -66,7 +66,6 @@ export default function Community() {
   const [newTitle, setNewTitle] = useState('');
   const [newContent, setNewContent] = useState('');
   const [newCategory, setNewCategory] = useState('plumbing');
-  const [newCondition, setNewCondition] = useState('Brand New');
   const [newPrice, setNewPrice] = useState('');
   const [newLocation, setNewLocation] = useState('Colombo');
   const [newImages, setNewImages] = useState([]);
@@ -369,10 +368,9 @@ export default function Community() {
       await axios.post(API_BASE_URL, {
         title: newTitle,
         content: newContent,
-        condition: newCondition,
         priceVal: newPrice ? parseFloat(newPrice.replace(/[^0-9.]/g, '')) || null : null,
         serviceCategoryId: newCategory,
-        location: newLocation,
+        location: newLocation || 'Colombo',
         images: newImages,
         userName: localStorage.getItem('userName') || "You (Resident)",
         userAvatar: localStorage.getItem('userPicture') || "https://api.dicebear.com/7.x/avataaars/svg?seed=CurrentUser",
@@ -1277,28 +1275,38 @@ export default function Community() {
               <md-icon slot="leading-icon">title</md-icon>
             </md-outlined-text-field>
 
-            {/* Condition and Price Row */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+            {/* Category, Location, and Price Row */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
               <md-outlined-select
-                label="Condition / Type"
-                value={newCondition}
-                onInput={(e) => setNewCondition(e.target.value)}
-                onChange={(e) => setNewCondition(e.target.value)}
-                style={{ width: '100%' }}
+                label="Category *"
+                value={newCategory}
+                onInput={(e) => setNewCategory(e.target.value)}
+                onChange={(e) => setNewCategory(e.target.value)}
+                style={{ width: '100%', '--md-menu-container-max-height': '280px' }}
               >
-                <md-icon slot="leading-icon">category</md-icon>
-                <md-select-option value="Brand New" selected={newCondition === 'Brand New'}>
-                  <div slot="headline">Brand New</div>
-                </md-select-option>
-                <md-select-option value="Used" selected={newCondition === 'Used'}>
-                  <div slot="headline">Used</div>
-                </md-select-option>
-                <md-select-option value="Service Request" selected={newCondition === 'Service Request'}>
-                  <div slot="headline">Service Request</div>
-                </md-select-option>
-                <md-select-option value="Recommendation" selected={newCondition === 'Recommendation'}>
-                  <div slot="headline">Recommendation</div>
-                </md-select-option>
+                <md-icon slot="leading-icon">home_repair_service</md-icon>
+                {categoriesData.map(c => (
+                  <md-select-option key={c.id} value={c.id} selected={newCategory === c.id}>
+                    <div slot="headline">{c.name}</div>
+                  </md-select-option>
+                ))}
+              </md-outlined-select>
+
+              <md-outlined-select
+                label="Location (District) *"
+                value={newLocation}
+                onInput={(e) => setNewLocation(e.target.value)}
+                onChange={(e) => setNewLocation(e.target.value)}
+                style={{ width: '100%', '--md-menu-container-max-height': '280px' }}
+              >
+                <md-icon slot="leading-icon">location_on</md-icon>
+                {Object.entries(sriLankaDistricts).map(([province, districts]) =>
+                  districts.map(d => (
+                    <md-select-option key={d} value={d} selected={newLocation === d}>
+                      <div slot="headline">{d} ({province.replace(' Province', '')})</div>
+                    </md-select-option>
+                  ))
+                )}
               </md-outlined-select>
 
               <md-outlined-text-field
@@ -1310,41 +1318,6 @@ export default function Community() {
               >
                 <md-icon slot="leading-icon">payments</md-icon>
               </md-outlined-text-field>
-            </div>
-
-            {/* Category and Location Row */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
-              <md-outlined-select
-                label="Category"
-                value={newCategory}
-                onInput={(e) => setNewCategory(e.target.value)}
-                onChange={(e) => setNewCategory(e.target.value)}
-                style={{ width: '100%' }}
-              >
-                <md-icon slot="leading-icon">home_repair_service</md-icon>
-                {categoriesData.map(c => (
-                  <md-select-option key={c.id} value={c.id} selected={newCategory === c.id}>
-                    <div slot="headline">{c.name}</div>
-                  </md-select-option>
-                ))}
-              </md-outlined-select>
-
-              <md-outlined-select
-                label="Location (District)"
-                value={newLocation}
-                onInput={(e) => setNewLocation(e.target.value)}
-                onChange={(e) => setNewLocation(e.target.value)}
-                style={{ width: '100%' }}
-              >
-                <md-icon slot="leading-icon">location_on</md-icon>
-                {Object.entries(sriLankaDistricts).map(([province, districts]) =>
-                  districts.map(d => (
-                    <md-select-option key={d} value={d} selected={newLocation === d}>
-                      <div slot="headline">{d} ({province.replace(' Province', '')})</div>
-                    </md-select-option>
-                  ))
-                )}
-              </md-outlined-select>
             </div>
 
             {/* Description Textarea */}
