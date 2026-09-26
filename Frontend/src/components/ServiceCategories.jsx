@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './ServiceCategories.css';
 
 // Direct React/Vite asset imports from Frontend/src/assets/Icons
@@ -253,6 +253,22 @@ export default function ServiceCategories({
   showHeader = true,
   className = ''
 }) {
+  const [currentPage, setCurrentPage] = useState(0);
+
+  const CARDS_PER_PAGE = 6;
+  const pages = [];
+  for (let i = 0; i < SERVICE_CATEGORIES.length; i += CARDS_PER_PAGE) {
+    pages.push(SERVICE_CATEGORIES.slice(i, i + CARDS_PER_PAGE));
+  }
+
+  const handlePrev = () => {
+    setCurrentPage(prev => (prev > 0 ? prev - 1 : pages.length - 1));
+  };
+
+  const handleNext = () => {
+    setCurrentPage(prev => (prev < pages.length - 1 ? prev + 1 : 0));
+  };
+
   const navigateToCategory = (catName) => {
     if (onSelectCategory) {
       onSelectCategory(catName);
@@ -261,11 +277,6 @@ export default function ServiceCategories({
       window.history.pushState({}, '', searchUrl);
       window.dispatchEvent(new PopStateEvent('popstate'));
     }
-  };
-
-  const navigateToAllServices = () => {
-    window.history.pushState({}, '', '/find');
-    window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
   return (
@@ -279,54 +290,98 @@ export default function ServiceCategories({
                 Find the right professional for your needs
               </h2>
               <p className="services-directory-subheading">
-                Choose from a wide range of trusted service providers in your area.
+                Choose from 21 trusted trade categories across Sri Lanka.
               </p>
-            </div>
-            <div className="services-directory-action-col">
-              <button
-                type="button"
-                className="services-directory-view-all"
-                onClick={navigateToAllServices}
-              >
-                <span>View all services</span>
-                <span className="services-directory-arrow">→</span>
-              </button>
             </div>
           </div>
         )}
 
-        <div className="services-cards-grid">
-          {SERVICE_CATEGORIES.map((cat) => (
-            <div
-              key={cat.id}
-              className="service-card-item"
-              onClick={() => navigateToCategory(cat.name)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => e.key === 'Enter' && navigateToCategory(cat.name)}
-            >
-              <div className="service-card-text">
-                <h3 className="service-card-name">{cat.name}</h3>
-                <p className="service-card-desc">{cat.desc}</p>
-                <div className="service-card-btn-wrap">
-                  <span className="service-card-details-btn">
-                    <span>Details</span>
-                    <span className="service-card-details-chevron">›</span>
-                  </span>
+        {/* Carousel Slider with 6 Cards per Page */}
+        <div className="services-carousel-wrapper">
+          <div
+            className="services-carousel-track"
+            style={{
+              transform: `translateX(-${currentPage * 100}%)`,
+              transition: 'transform 0.45s cubic-bezier(0.25, 1, 0.5, 1)'
+            }}
+          >
+            {pages.map((pageCards, pageIdx) => (
+              <div key={pageIdx} className="services-carousel-page">
+                <div className="services-cards-grid">
+                  {pageCards.map((cat) => (
+                    <div
+                      key={cat.id}
+                      className="service-card-item"
+                      onClick={() => navigateToCategory(cat.name)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => e.key === 'Enter' && navigateToCategory(cat.name)}
+                    >
+                      <div className="service-card-text">
+                        <h3 className="service-card-name">{cat.name}</h3>
+                        <p className="service-card-desc">{cat.desc}</p>
+                        <div className="service-card-btn-wrap">
+                          <span className="service-card-details-btn">
+                            <span>Details</span>
+                            <span className="service-card-details-chevron">›</span>
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="service-card-image-wrap">
+                        <img
+                          src={cat.illustration}
+                          alt={cat.name}
+                          className="service-card-illustration"
+                          loading="lazy"
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-
-              <div className="service-card-image-wrap">
-                <img
-                  src={cat.illustration}
-                  alt={cat.name}
-                  className="service-card-illustration"
-                  loading="lazy"
-                />
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
+
+        {/* Bottom Paging Controls (Arrow Icons + Animated Dots Only) */}
+        <div className="services-pagination-bottom">
+          <button
+            type="button"
+            className="services-paging-arrow-btn"
+            onClick={handlePrev}
+            disabled={currentPage === 0}
+            title="Previous Page"
+            aria-label="Previous Page"
+          >
+            <md-icon>chevron_left</md-icon>
+          </button>
+
+          <div className="services-pagination-dots">
+            {pages.map((_, idx) => (
+              <button
+                key={idx}
+                type="button"
+                className={`services-pagination-dot ${currentPage === idx ? 'active' : ''}`}
+                onClick={() => setCurrentPage(idx)}
+                title={`Page ${idx + 1}`}
+                aria-label={`Page ${idx + 1}`}
+              />
+            ))}
+          </div>
+
+          <button
+            type="button"
+            className="services-paging-arrow-btn"
+            onClick={handleNext}
+            disabled={currentPage === pages.length - 1}
+            title="Next Page"
+            aria-label="Next Page"
+          >
+            <md-icon>chevron_right</md-icon>
+          </button>
+        </div>
+
       </div>
     </section>
   );

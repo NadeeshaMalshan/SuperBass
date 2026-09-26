@@ -56,42 +56,30 @@
   font-weight: 400;
 }
 
-.services-directory-action-col {
+/* Carousel Track & Pages (6 Cards per Page) */
+.services-carousel-wrapper {
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+  padding: 6px 2px 14px;
+  box-sizing: border-box;
+}
+
+.services-carousel-track {
+  display: flex;
+  width: 100%;
+  will-change: transform;
+}
+
+.services-carousel-page {
+  min-width: 100%;
+  width: 100%;
   flex-shrink: 0;
+  box-sizing: border-box;
+  padding: 0 2px;
 }
 
-.services-directory-view-all {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: transparent;
-  border: none;
-  color: #2563eb;
-  font-family: var(--font-heading, system-ui, -apple-system, sans-serif);
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 8px 0;
-  transition: color 0.2s ease, transform 0.2s ease;
-  outline: none;
-}
-
-.services-directory-view-all:hover {
-  color: #1d4ed8;
-  transform: translateX(2px);
-}
-
-.services-directory-arrow {
-  font-size: 1.15rem;
-  line-height: 1;
-  transition: transform 0.2s ease;
-}
-
-.services-directory-view-all:hover .services-directory-arrow {
-  transform: translateX(4px);
-}
-
-/* 3-Column Card Grid (7 Rows = 21 Cards) */
+/* 3-Column Card Grid (2 Rows = 6 Cards per Page) */
 .services-cards-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -224,6 +212,81 @@
 
 .service-card-item:hover .service-card-illustration {
   transform: scale(1.06);
+}
+
+/* Bottom Pagination Controls (Arrow Icons + Animated Expanding Dots) */
+.services-pagination-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 36px;
+}
+
+.services-paging-arrow-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  color: #1e293b;
+  cursor: pointer;
+  padding: 4px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+  line-height: 1;
+}
+
+.services-paging-arrow-btn md-icon {
+  font-size: 28px;
+  display: block;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.services-paging-arrow-btn:hover:not(:disabled) {
+  color: #000000;
+  transform: scale(1.15);
+}
+
+.services-paging-arrow-btn:disabled {
+  opacity: 0.2;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.services-pagination-dots {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px;
+}
+
+.services-pagination-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  border: none;
+  background: #cbd5e1;
+  cursor: pointer;
+  transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.35s ease, transform 0.2s ease, box-shadow 0.35s ease;
+  padding: 0;
+  outline: none;
+}
+
+.services-pagination-dot:hover:not(.active) {
+  background: #94a3b8;
+  transform: scale(1.2);
+}
+
+.services-pagination-dot.active {
+  width: 32px;
+  height: 10px;
+  border-radius: 9999px;
+  background: #0f172a;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.25);
 }
 
 /* Responsive Layout */

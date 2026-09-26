@@ -1893,6 +1893,91 @@ body.worker-theme .m3-card-profile-btn:hover {
   color: #ffffff;
 }
 
+/* ==========================================================================
+   Dark Theme Variant (Landing Page Navbar Matching Screenshot)
+   ========================================================================== */
+
+.m3-top-navbar.dark-theme {
+  background-color: #000000 !important;
+  border-bottom: 1px solid #1c1c1c !important;
+  color: #ffffff;
+}
+
+.m3-top-navbar.dark-theme .m3-brand-title {
+  color: #ffffff;
+}
+
+.m3-top-navbar.dark-theme .m3-brand-accent {
+  color: #FDC101;
+}
+
+.m3-top-navbar.dark-theme .m3-nav-btn {
+  color: #ffffff;
+}
+
+.m3-top-navbar.dark-theme .m3-nav-btn md-icon {
+  color: #ffffff;
+}
+
+.m3-top-navbar.dark-theme .m3-nav-btn:hover {
+  background-color: #1a1a1a;
+  color: #ffffff;
+}
+
+.m3-top-navbar.dark-theme .m3-nav-btn.active {
+  background-color: #262626;
+  color: #ffffff;
+}
+
+/* AI Pill Button on Dark Navbar */
+.m3-top-navbar.dark-theme .m3-nav-btn-ai {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border-radius: 9999px;
+  padding: 6px 16px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 8px rgba(255, 255, 255, 0.15);
+  transition: all 0.2s ease;
+}
+
+.m3-top-navbar.dark-theme .m3-nav-btn-ai md-icon,
+.m3-top-navbar.dark-theme .m3-nav-btn-ai span {
+  color: #000000 !important;
+}
+
+.m3-top-navbar.dark-theme .m3-nav-btn-ai:hover {
+  background-color: #f3f4f6 !important;
+  transform: translateY(-1px);
+}
+
+/* User Avatar Blue Circle with S */
+.m3-avatar-circle-s {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: #1a73e8;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-heading, system-ui, -apple-system, sans-serif);
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  flex-shrink: 0;
+}
+
+.m3-avatar-circle-s:hover {
+  transform: scale(1.06);
+  box-shadow: 0 0 14px rgba(29, 78, 216, 0.55);
+}
+
+
 
 
 

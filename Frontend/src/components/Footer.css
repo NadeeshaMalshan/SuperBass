@@ -1,0 +1,368 @@
+/* ==========================================================================
+   SuperBass Whole Black Theme Footer (Uber-Style Clean Architecture)
+   ========================================================================== */
+
+.uber-footer-wrapper {
+  width: 100%;
+  background-color: #000000 !important;
+  color: #ffffff;
+  padding: 80px 48px 48px;
+  box-sizing: border-box;
+  font-family: var(--font-heading, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+  border-top: 1px solid #171717;
+  position: relative;
+  z-index: 10;
+}
+
+.uber-footer-container {
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+/* Top Section: Brand & Help Center */
+.uber-footer-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 56px;
+  border-bottom: 1px solid #262626;
+  margin-bottom: 56px;
+}
+
+.uber-footer-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.uber-footer-logo-text {
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #ffffff;
+}
+
+.uber-footer-badge {
+  background: #FDC101;
+  color: #000000;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.uber-footer-help-link {
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.2s ease, opacity 0.2s ease;
+  opacity: 0.85;
+}
+
+.uber-footer-help-link:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+/* 4 Columns Directory Grid */
+.uber-footer-columns {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 40px;
+  margin-bottom: 64px;
+}
+
+.uber-footer-col-title {
+  font-size: 1.12rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 24px 0;
+  letter-spacing: -0.01em;
+}
+
+.uber-footer-links-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.uber-footer-links-list li {
+  margin-bottom: 14px;
+}
+
+.uber-footer-links-list a {
+  color: #a3a3a3;
+  text-decoration: none;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  transition: color 0.2s ease;
+}
+
+.uber-footer-links-list a:hover {
+  color: #ffffff;
+}
+
+/* Middle Row: Socials, App Badges & Locale Controls */
+.uber-footer-middle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 36px 0;
+  border-top: 1px solid #1f1f1f;
+  border-bottom: 1px solid #1f1f1f;
+  margin-bottom: 40px;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+
+.uber-footer-social-and-apps {
+  display: flex;
+  align-items: center;
+  gap: 36px;
+  flex-wrap: wrap;
+}
+
+.uber-footer-social-icons {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+
+.uber-social-icon {
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, opacity 0.2s ease, color 0.2s ease;
+  opacity: 0.85;
+  text-decoration: none;
+}
+
+.uber-social-icon:hover {
+  opacity: 1;
+  color: #FDC101;
+  transform: translateY(-2px);
+}
+
+/* App Download Badges (Google Play / App Store) */
+.uber-footer-app-badges {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.uber-app-badge-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background-color: #000000;
+  border: 1px solid #383838;
+  border-radius: 8px;
+  padding: 6px 14px;
+  text-decoration: none;
+  color: #ffffff;
+  transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+  user-select: none;
+}
+
+.uber-app-badge-btn:hover {
+  border-color: #ffffff;
+  background-color: #0d0d0d;
+  transform: translateY(-1px);
+}
+
+.uber-badge-icon {
+  flex-shrink: 0;
+}
+
+.uber-badge-text-wrap {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.uber-badge-sub {
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+  color: #a3a3a3;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+.uber-badge-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+/* Locale Switchers (Language & Location) */
+.uber-footer-locales {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.uber-locale-pill-wrapper {
+  position: relative;
+}
+
+.uber-locale-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 0.92rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+  outline: none;
+}
+
+.uber-locale-pill:hover {
+  background-color: #1a1a1a;
+}
+
+.uber-locale-icon {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.uber-locale-text {
+  font-family: inherit;
+}
+
+/* Dropdown Menu for Languages */
+.uber-locale-dropdown {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  background: #171717;
+  border: 1px solid #333333;
+  border-radius: 12px;
+  padding: 6px;
+  min-width: 170px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+  z-index: 50;
+}
+
+.uber-locale-option {
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  color: #d4d4d4;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.uber-locale-option:hover {
+  background-color: #262626;
+  color: #ffffff;
+}
+
+.uber-locale-option.active {
+  color: #FDC101;
+  font-weight: 600;
+}
+
+/* Bottom Legal & Copyright */
+.uber-footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.82rem;
+  color: #737373;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.uber-footer-copyright {
+  color: #737373;
+}
+
+.uber-footer-legal-links {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.uber-footer-legal-links a {
+  color: #737373;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.uber-footer-legal-links a:hover {
+  color: #ffffff;
+}
+
+/* Responsive Media Queries */
+@media (max-width: 992px) {
+  .uber-footer-columns {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 36px;
+  }
+
+  .uber-footer-wrapper {
+    padding: 60px 32px 40px;
+  }
+}
+
+@media (max-width: 640px) {
+  .uber-footer-wrapper {
+    padding: 48px 20px 36px;
+  }
+
+  .uber-footer-top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    padding-bottom: 36px;
+    margin-bottom: 36px;
+  }
+
+  .uber-footer-columns {
+    grid-template-columns: 1fr;
+    gap: 28px;
+    margin-bottom: 44px;
+  }
+
+  .uber-footer-middle {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 24px;
+  }
+
+  .uber-footer-social-and-apps {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+    width: 100%;
+  }
+
+  .uber-footer-app-badges {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .uber-footer-bottom {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .uber-footer-legal-links {
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+}
