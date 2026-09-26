@@ -4,6 +4,8 @@ import UserMenu from './components/UserMenu.jsx';
 import M3TopNavbar from './components/M3TopNavbar.jsx';
 import AiAssistantWidget from './components/AiAssistantWidget.jsx';
 import ServiceCategories, { getCategoryIllustration } from './components/ServiceCategories.jsx';
+import heroTopImage from './assets/1.png';
+import heroBottomImage from './assets/2.png';
 
 // Google Material 3 Web Components
 import '@material/web/button/filled-button.js';
@@ -317,11 +319,11 @@ export default function App() {
             </div>
           </div>
 
-          {/* Right Column: Hero Artwork Image (hero1.png) */}
+          {/* Right Column: Hero Artwork Image (1.png) */}
           <div className="uber-hero-image-col">
             <div className="uber-hero-image-card">
               <img
-                src="/hero/hero1.png"
+                src={heroTopImage}
                 alt="SuperBass Craftsman at Sunset"
                 className="uber-hero-artwork"
               />
@@ -385,11 +387,11 @@ export default function App() {
             </div>
           </div>
 
-          {/* Right Column: Hero2 Artwork Card */}
+          {/* Right Column: Hero2 Artwork Card (2.png) */}
           <div className="landing-community-image-col">
             <div className="landing-community-image-card">
               <img
-                src="/hero/hero2.png"
+                src={heroBottomImage}
                 alt="SuperBass Neighborhood Community & Craftsmen"
                 className="landing-community-artwork"
               />
