@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request, HTTPException
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List, Union
+from datetime import datetime
 import json
 import asyncio
 import os
@@ -281,11 +282,66 @@ async def call_get_worker_performance(args: Dict[str, Any]):
 
 async def call_check_worker_availability(args: Dict[str, Any]):
     worker_id = args["workerId"]
-    start_time = args["startTime"]
-    end_time = args["endTime"]
-    params = {"startTime": start_time, "endTime": end_time}
-    response = await backend_client.get(f"/api/Workers/{worker_id}/availability", params=params)
-    return response.json()
+    start_time = args.get("startTime", "")
+    end_time = args.get("endTime", "")
+
+    # Fetch worker profile
+    response = await backend_client.get(f"/api/Workers/{worker_id}")
+    if response.status_code != 200:
+        return {"workerId": worker_id, "isAvailable": False, "error": f"Worker not found ({response.status_code})"}
+
+    worker = response.json()
+    is_general_available = worker.get("isAvailable", True)
+    schedule_json_raw = worker.get("availabilityScheduleJson") or "{}"
+
+    schedule_obj = {}
+    if isinstance(schedule_json_raw, str):
+        try:
+            schedule_obj = json.loads(schedule_json_raw)
+        except Exception:
+            schedule_obj = {}
+    elif isinstance(schedule_json_raw, dict):
+        schedule_obj = schedule_json_raw
+
+    is_slot_available = is_general_available
+    reason = "Worker is available" if is_general_available else "Worker is currently unavailable"
+
+    if is_general_available and start_time:
+        try:
+            clean_date = start_time.replace("Z", "+00:00")
+            dt = datetime.fromisoformat(clean_date)
+            weekday_abbr = dt.strftime("%a")
+
+            work_days = schedule_obj.get("workDays")
+            if isinstance(work_days, dict):
+                if not work_days.get(weekday_abbr, True):
+                    is_slot_available = False
+                    reason = f"Worker does not work on {dt.strftime('%A')}s"
+            elif isinstance(work_days, list):
+                if weekday_abbr not in work_days:
+                    is_slot_available = False
+                    reason = f"Worker does not work on {dt.strftime('%A')}s"
+
+            start_hour = schedule_obj.get("startTime")
+            end_hour = schedule_obj.get("endTime")
+            if start_hour and end_hour and is_slot_available:
+                req_time = dt.strftime("%H:%M")
+                if req_time < start_hour or req_time > end_hour:
+                    is_slot_available = False
+                    reason = f"Requested time {req_time} is outside worker hours ({start_hour} - {end_hour})"
+        except Exception:
+            pass
+
+    return {
+        "workerId": worker.get("id", worker_id),
+        "workerName": worker.get("name"),
+        "isAvailable": is_general_available,
+        "isSlotAvailable": is_slot_available,
+        "status": "Available" if is_slot_available else "Unavailable",
+        "reason": reason,
+        "schedule": schedule_obj,
+        "requestedSlot": {"startTime": start_time, "endTime": end_time}
+    }
 
 async def call_create_booking(args: Dict[str, Any]):
     worker_id = int(args.get("workerId", 0))

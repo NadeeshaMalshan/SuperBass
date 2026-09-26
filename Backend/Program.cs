@@ -35,14 +35,7 @@ var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__De
     ?? builder.Configuration.GetConnectionString("DefaultConnection");
 
 builder.Services.AddDbContext<SuperbassDbContext>(options =>
-    options.UseNpgsql(connectionString, npgsqlOptions =>
-    {
-        npgsqlOptions.EnableRetryOnFailure(
-            maxRetryCount: 5,
-            maxRetryDelay: TimeSpan.FromSeconds(10),
-            null);
-        npgsqlOptions.CommandTimeout(60);
-    }));
+    options.UseNpgsql(connectionString));
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -67,21 +60,14 @@ builder.Services.AddScoped<WorkerRepository, EfWorkerRepository>();
 // Configure CORS
 builder.Services.AddCors(options =>
 {
-    options.AddDefaultPolicy(policy =>
-    {
-        policy.SetIsOriginAllowed(_ => true)
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
-    });
-
-    options.AddPolicy("AllowFrontend", policy =>
-    {
-        policy.SetIsOriginAllowed(_ => true)
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
-    });
+    options.AddPolicy("AllowFrontend",
+        policy =>
+        {
+            policy.SetIsOriginAllowed(_ => true)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        });
 });
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -123,22 +109,6 @@ using (var scope = app.Services.CreateScope())
         var services = scope.ServiceProvider;
         var context = services.GetRequiredService<SuperbassDbContext>();
         context.Database.Migrate();
-
-        // Ensure missing columns on Bookings table are auto-created if not present in existing database
-        try
-        {
-            context.Database.ExecuteSqlRaw(@"
-                ALTER TABLE ""Bookings"" ADD COLUMN IF NOT EXISTS ""LocationLat"" double precision;
-                ALTER TABLE ""Bookings"" ADD COLUMN IF NOT EXISTS ""LocationLng"" double precision;
-                ALTER TABLE ""Bookings"" ADD COLUMN IF NOT EXISTS ""PricingModel"" character varying(50) DEFAULT 'Hourly';
-                ALTER TABLE ""Bookings"" ADD COLUMN IF NOT EXISTS ""EstimatedPrice"" numeric;
-                ALTER TABLE ""Bookings"" ADD COLUMN IF NOT EXISTS ""AgreedPrice"" numeric;
-            ");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Bookings schema patch notice: {ex.Message}");
-        }
     }
     catch (Exception ex)
     {
@@ -156,33 +126,7 @@ if (app.Environment.IsDevelopment() || Environment.GetEnvironmentVariable("ENABL
 // app.UseHttpsRedirection();
 app.UseStaticFiles();
 
-app.UseRouting();
-
-app.UseCors("AllowFrontend"); // Use CORS after UseRouting and before Auth & Endpoints
-
-// Global Exception Handler to preserve CORS headers on errors
-app.Use(async (context, next) =>
-{
-    try
-    {
-        await next();
-    }
-    catch (Exception ex)
-    {
-        Console.Error.WriteLine($"[Error] Unhandled exception on {context.Request.Path}: {ex}");
-        if (!context.Response.HasStarted)
-        {
-            context.Response.StatusCode = 500;
-            context.Response.ContentType = "application/json";
-            var errorJson = System.Text.Json.JsonSerializer.Serialize(new
-            {
-                message = ex.Message,
-                type = ex.GetType().Name
-            });
-            await context.Response.WriteAsync(errorJson);
-        }
-    }
-});
+app.UseCors("AllowFrontend"); // Use CORS
 
 app.UseAuthentication();
 app.UseAuthorization();
