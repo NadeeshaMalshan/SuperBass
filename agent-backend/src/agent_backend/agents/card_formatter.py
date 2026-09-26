@@ -218,6 +218,16 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
                 metadata={"agent": "community_agent", "user_email": email}
             )
 
+        # 6. get_service_categories
+        if tool_name == "get_service_categories":
+            categories_list = data if isinstance(data, list) else (data.get("value") if isinstance(data, dict) else [])
+            return AgentCardResponse(
+                response_type="service_categories",
+                message=last_ai_content or f"Here are the official service categories available on SuperBass:",
+                card_data={"categories": categories_list},
+                metadata={"agent": "community_agent", "user_email": email}
+            )
+
     # Check if the assistant has prepared a post draft awaiting confirmation
     lower_content = last_ai_content.lower()
     if any(keyword in lower_content for keyword in ["draft", "confirm", "review", "would you like me to publish"]):

@@ -7,6 +7,7 @@ import PostDeletedCard from './PostDeletedCard.jsx';
 import UserProfileCard from './UserProfileCard.jsx';
 import TextMessageCard from './TextMessageCard.jsx';
 import ErrorCard from './ErrorCard.jsx';
+import ServiceCategoriesCard from './ServiceCategoriesCard.jsx';
 
 /**
  * Dispatcher component that examines `response_type` and renders the matching UI card.
@@ -41,6 +42,8 @@ export default function AgentCardDispatcher({ response, onAction }) {
             return <PostDeletedCard data={card_data} onAction={onAction} />;
           case 'user_profile':
             return <UserProfileCard data={card_data} onAction={onAction} />;
+          case 'service_categories':
+            return <ServiceCategoriesCard data={card_data} onAction={onAction} />;
           case 'error':
             return <ErrorCard data={card_data} onAction={onAction} />;
           case 'text_message':

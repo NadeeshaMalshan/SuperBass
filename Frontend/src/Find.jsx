@@ -14,6 +14,7 @@ import Loader from './components/Loader.jsx';
 import UserMenu from './components/UserMenu.jsx';
 import './components/M3Navbar.css';
 import { API_BASE_URL } from './config.js';
+import categoriesData from './data/categories.json';
 
 export default function Find() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -72,18 +73,11 @@ export default function Find() {
   const markersRef = useRef([]);
   const polylineRef = useRef(null);
 
-  const categories = [
-    { id: 'Plumbing', label: 'Plumbing', icon: 'plumbing' },
-    { id: 'Electrical', label: 'Electrical', icon: 'electrical_services' },
-    { id: 'Carpentry', label: 'Carpentry', icon: 'carpenter' },
-    { id: 'Masonry', label: 'Masonry', icon: 'foundation' },
-    { id: 'Painting', label: 'Painting', icon: 'format_paint' },
-    { id: 'AC Repair', label: 'AC Repair', icon: 'ac_unit' },
-    { id: 'Appliance Repair', label: 'Appliance Repair', icon: 'home_repair_service' },
-    { id: 'Roofing', label: 'Roofing', icon: 'roofing' },
-    { id: 'Cleaning', label: 'Cleaning & Maid', icon: 'cleaning_services' },
-    { id: 'Gardening', label: 'Lawn & Gardening', icon: 'yard' }
-  ];
+  const categories = categoriesData.map(c => ({
+    id: c.name,
+    label: c.name,
+    icon: c.materialIcon || 'handyman'
+  }));
 
   // Sync state with URL params on popstate or URL changes
   useEffect(() => {

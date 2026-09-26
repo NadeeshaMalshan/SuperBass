@@ -29,6 +29,13 @@ namespace Superbass.Controllers
             return Ok(workers);
         }
 
+        // GET: /api/workers/categories
+        [HttpGet("categories")]
+        public IActionResult GetCategories()
+        {
+            return Ok(ServiceCategoryConstants.CategoryDefinitions);
+        }
+
         // GET: /api/workers/5
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
@@ -95,7 +102,16 @@ namespace Superbass.Controllers
         [HttpPost("{id}/skills")]
         public async Task<IActionResult> AddSkill(int id, [FromBody] WorkerSkillDto dto)
         {
-            var service = !string.IsNullOrWhiteSpace(dto.ServiceName) ? dto.ServiceName : (!string.IsNullOrWhiteSpace(dto.Service) ? dto.Service : (dto.SkillName ?? "General"));
+            var rawService = !string.IsNullOrWhiteSpace(dto.ServiceName) ? dto.ServiceName : (!string.IsNullOrWhiteSpace(dto.Service) ? dto.Service : dto.SkillName);
+            if (!ServiceCategoryConstants.IsValidCategory(rawService))
+            {
+                return BadRequest(new
+                {
+                    message = $"Invalid service category '{rawService}'. Workers can only select from the 21 official categories: {string.Join(", ", ServiceCategoryConstants.Categories)}"
+                });
+            }
+
+            var service = ServiceCategoryConstants.NormalizeCategoryName(rawService);
             var subSkills = dto.Skills != null && dto.Skills.Count > 0 ? dto.Skills : (!string.IsNullOrWhiteSpace(dto.SkillName) && dto.SkillName != service ? new List<string> { dto.SkillName } : new List<string>());
 
             var skill = new WorkerSkill
@@ -188,8 +204,27 @@ namespace Superbass.Controllers
 
             try
             {
+                if (dto.Skills == null || !dto.Skills.Any())
+                {
+                    return BadRequest(new { message = "At least one skill category is required." });
+                }
+
+                // Strict validation: Worker can ONLY select from the 21 official categories
+                foreach (var s in dto.Skills)
+                {
+                    var rawService = !string.IsNullOrWhiteSpace(s.ServiceName) ? s.ServiceName : (!string.IsNullOrWhiteSpace(s.Service) ? s.Service : s.SkillName);
+                    if (!ServiceCategoryConstants.IsValidCategory(rawService))
+                    {
+                        return BadRequest(new
+                        {
+                            message = $"Invalid service category '{rawService}'. Workers can only select from the 21 official categories: {string.Join(", ", ServiceCategoryConstants.Categories)}"
+                        });
+                    }
+                }
+
                 var skills = dto.Skills.Select(s => {
-                    var service = !string.IsNullOrWhiteSpace(s.ServiceName) ? s.ServiceName : (!string.IsNullOrWhiteSpace(s.Service) ? s.Service : (s.SkillName ?? "General"));
+                    var rawService = !string.IsNullOrWhiteSpace(s.ServiceName) ? s.ServiceName : (!string.IsNullOrWhiteSpace(s.Service) ? s.Service : s.SkillName);
+                    var service = ServiceCategoryConstants.NormalizeCategoryName(rawService);
                     var subSkills = s.Skills != null && s.Skills.Count > 0 ? s.Skills : (!string.IsNullOrWhiteSpace(s.SkillName) && s.SkillName != service ? new List<string> { s.SkillName } : new List<string>());
                     return new WorkerSkill
                     {
