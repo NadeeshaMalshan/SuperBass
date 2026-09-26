@@ -1,6 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import UserMenu from './components/UserMenu.jsx';
+import M3TopNavbar from './components/M3TopNavbar.jsx';
 import AiAssistantWidget from './components/AiAssistantWidget.jsx';
 
 // Google Material 3 Web Components
@@ -49,23 +50,44 @@ const generateM3CookiePath9 = (cx = 250, cy = 250, rOuter = 230, rInner = 190) =
   return d;
 };
 
+const POPULAR_SERVICES = [
+  { name: 'Electrician', category: 'Electrical', icon: 'electrical_services', desc: 'Wiring, tripping, repairs & power switches' },
+  { name: 'Plumber', category: 'Plumbing', icon: 'plumbing', desc: 'Pipe leaks, taps, bathroom & water lines' },
+  { name: 'Carpenter', category: 'Carpentry', icon: 'carpenter', desc: 'Furniture, doors, locks & woodcraft' },
+  { name: 'Mason', category: 'Masonry', icon: 'foundation', desc: 'Brickwork, tiling, plastering & foundations' },
+  { name: 'Painter', category: 'Painting', icon: 'format_paint', desc: 'Interior & exterior painting, wall finishing' },
+  { name: 'AC Repair', category: 'AC Repair', icon: 'ac_unit', desc: 'AC installation, servicing & cooling repair' },
+  { name: 'Appliance Repair', category: 'Appliance Repair', icon: 'home_repair_service', desc: 'Washing machines, fridges & ovens' },
+  { name: 'Roofing', category: 'Roofing', icon: 'roofing', desc: 'Tile replacement, roof leaks & gutter repair' },
+  { name: 'Cleaning & Maid', category: 'Cleaning', icon: 'cleaning_services', desc: 'Deep house cleaning, dusting & sanitization' },
+  { name: 'Gardener', category: 'Gardening', icon: 'yard', desc: 'Lawn mowing, landscaping & tree trimming' },
+  { name: 'CCTV & Security', category: 'CCTV & Security', icon: 'videocam', desc: 'Camera setup, alarm systems & security wiring' },
+  { name: 'Welder / Iron Works', category: 'Welding', icon: 'handyman', desc: 'Gates, metal grills, railings & welding' }
+];
+
 export default function App() {
   const navigate = (newPath) => {
     window.history.pushState({}, '', newPath);
     window.dispatchEvent(new PopStateEvent('popstate'));
   };
-  const [uploadedImage, setUploadedImage] = useState(null);
+  const [heroLocation, setHeroLocation] = useState('');
+  const [heroService, setHeroService] = useState('');
+  const [isServiceDropdownOpen, setIsServiceDropdownOpen] = useState(false);
+  const [scheduleType, setScheduleType] = useState('now');
+  const [isLocating, setIsLocating] = useState(false);
   const [aiUploadedImage, setAiUploadedImage] = useState(null);
-  const fileInputRef = useRef(null);
   const aiFileInputRef = useRef(null);
+  const serviceDropdownRef = useRef(null);
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setUploadedImage(url);
-    }
-  };
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (serviceDropdownRef.current && !serviceDropdownRef.current.contains(e.target)) {
+        setIsServiceDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleAiImageUpload = (e) => {
     const file = e.target.files?.[0];
@@ -75,112 +97,226 @@ export default function App() {
     }
   };
 
+  const handleHeroSearch = (serviceOverride) => {
+    const serviceToUse = typeof serviceOverride === 'string' ? serviceOverride : heroService;
+    const params = new URLSearchParams();
+    if (serviceToUse.trim()) params.set('q', serviceToUse.trim());
+    if (heroLocation.trim()) params.set('location', heroLocation.trim());
+    const queryStr = params.toString();
+    navigate(queryStr ? `/find?${queryStr}` : '/find');
+  };
+
+  const handleSelectService = (svcName) => {
+    setHeroService(svcName);
+    setIsServiceDropdownOpen(false);
+  };
+
+  const filteredServices = POPULAR_SERVICES.filter(s =>
+    !heroService.trim() ||
+    s.name.toLowerCase().includes(heroService.toLowerCase()) ||
+    s.desc.toLowerCase().includes(heroService.toLowerCase()) ||
+    s.category.toLowerCase().includes(heroService.toLowerCase())
+  );
+
+  const handleDetectLocation = () => {
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported by your browser.');
+      return;
+    }
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14&addressdetails=1`);
+          const data = await res.json();
+          const city = data.address?.city || data.address?.town || data.address?.suburb || data.address?.village || data.address?.county || 'Current Location';
+          setHeroLocation(city);
+        } catch {
+          setHeroLocation('Current Location');
+        } finally {
+          setIsLocating(false);
+        }
+      },
+      (err) => {
+        console.warn('Geolocation denied or failed:', err);
+        setHeroLocation('Current Location');
+        setIsLocating(false);
+      },
+      { timeout: 8000 }
+    );
+  };
+
   return (
     <div className="app-container">
       {/* Background ambient lighting */}
       <div className="hero-glow-bg" />
 
-      {/* Modern Top Navigation Bar */}
-      <header className="navbar">
-        <a href="#home" className="brand-logo">
-          <img src="/iconWithText-cropped.png" alt="Super බාස් Logo" className="brand-logo-img" />
-        </a>
-
-        <ul className="nav-links">
-          <li className="nav-link" onClick={() => navigate('/find')}>Services</li>
-          <li className="nav-link" onClick={() => navigate('/community')}>Community</li>
-          <li className="nav-link" onClick={() => navigate('/ai-chat')} style={{ color: '#b45309', fontWeight: 600 }}>
-            <i className="fa-solid fa-wand-magic-sparkles" style={{ marginRight: '5px', color: '#f59e0b' }}></i>
-            AI Assistant
-          </li>
-          <li className="nav-link">How it Works</li>
-          <li className="nav-link">For Baas / Pros</li>
-        </ul>
-
-        <div className="nav-actions" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          {localStorage.getItem('token') ? (
-            <>
-              <md-filled-button class="header-cta-btn" onClick={() => navigate('/find')}>
-                Find Workers
-              </md-filled-button>
-              <UserMenu />
-            </>
-          ) : (
-            <md-filled-button class="header-cta-btn" onClick={() => navigate('/find')}>
-              Get Started
-            </md-filled-button>
-          )}
-        </div>
-      </header>
-
-      {/* Main Hero Section cloned from UI Mockup */}
-      <main className="hero-section" id="home">
+      {/* Material 3 Top Navigation Bar (Uniform with Chats / Find / Community) */}
+      <M3TopNavbar showSearch={false} activePage="home" />
 
 
-        {/* Cloned Main Headline */}
-        <div className="hero-title-container">
-          <h1 className="hero-main-title">
-            <span className="highlight-line">Your Home.</span>
-            <span className="highlight-line">Our Trusted Hands.</span>
-          </h1>
-        </div>
 
-        {/* Cloned Subtitle */}
+      {/* Main Hero Section — Uber Clone Layout */}
+      <main className="uber-hero-section" id="home">
+        <div className="uber-hero-container">
 
-        {/* Cloned Material 3 'Get started' Button */}
-        <div className="hero-cta-container">
+          {/* Left Column: Interactive Request & Worker Search Module */}
+          <div className="uber-hero-form-col">
+            <h1 className="uber-hero-title">
+              Request a Worker
+            </h1>
 
 
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleImageUpload}
-            accept="image/*"
-            style={{ display: 'none' }}
-          />
-        </div>
 
-        {/* Phone Mockup Area */}
-        <div className="hero-mockup-wrapper">
-          <div className="mockup-ambient-glow" />
+            {/* Connected Location & Service Inputs Box */}
+            <div className="uber-connected-inputs-box">
+              {/* Vertical Connector Line */}
+              <div className="uber-inputs-connector-line" />
 
-          {/* Material 3 9-Sided Yellow Cookie Shape (Below Phone Mockup Layer) */}
-          <div className="m3-cookie-layer">
-            <svg viewBox="0 0 500 500" className="m3-cookie-svg">
-              <path d={generateM3CookiePath9(250, 250, 235, 195)} fill="#FDC101" />
-            </svg>
-          </div>
+              {/* Location Input Row */}
+              <div className="uber-input-row">
+                <div className="uber-marker-circle" />
+                <input
+                  type="text"
+                  className="uber-text-input"
+                  placeholder="Your location (e.g. Colombo...)"
+                  value={heroLocation}
+                  onChange={(e) => setHeroLocation(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleHeroSearch()}
+                />
+                <button
+                  type="button"
+                  className="uber-gps-btn"
+                  title="Detect my current location"
+                  onClick={handleDetectLocation}
+                  disabled={isLocating}
+                >
+                  <md-icon style={{ fontSize: '20px', color: isLocating ? '#94a3b8' : '#000000' }}>
+                    {isLocating ? 'sync' : 'near_me'}
+                  </md-icon>
+                </button>
+              </div>
 
-          {/* Floating Feature Badges */}
-
-
-          {/* Central Phone Mockup */}
-          <div className="phone-mockup-container">
-            <div style={{ position: 'relative' }}>
-              <img
-                src="/hero/mockup.png"
-                alt="SuperBass Mobile App Mockup"
-                className="phone-mockup-image"
-              />
-              {uploadedImage && (
-                <img
-                  src={uploadedImage}
-                  alt="Uploaded App Preview"
-                  style={{
-                    position: 'absolute',
-                    top: '2.5%',
-                    left: '4%',
-                    width: '92%',
-                    height: '95%',
-                    objectFit: 'cover',
-                    borderRadius: '0'
+              {/* Service Needed Input Row with Search & Suggestions */}
+              <div className="uber-input-row uber-service-input-row" ref={serviceDropdownRef}>
+                <div className="uber-marker-square" />
+                <input
+                  type="text"
+                  className="uber-text-input"
+                  placeholder="What is your service?"
+                  value={heroService}
+                  onChange={(e) => {
+                    setHeroService(e.target.value);
+                    setIsServiceDropdownOpen(true);
+                  }}
+                  onFocus={() => setIsServiceDropdownOpen(true)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      setIsServiceDropdownOpen(false);
+                      handleHeroSearch();
+                    }
                   }}
                 />
-              )}
+                {heroService ? (
+                  <button
+                    type="button"
+                    className="uber-clear-btn"
+                    title="Clear service"
+                    onClick={() => {
+                      setHeroService('');
+                      setIsServiceDropdownOpen(true);
+                    }}
+                  >
+                    <md-icon style={{ fontSize: '18px', color: '#6b7280' }}>close</md-icon>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="uber-dropdown-toggle-btn"
+                    title="Browse services"
+                    onClick={() => setIsServiceDropdownOpen(prev => !prev)}
+                  >
+                    <md-icon style={{ fontSize: '20px', color: '#6b7280' }}>
+                      {isServiceDropdownOpen ? 'expand_less' : 'search'}
+                    </md-icon>
+                  </button>
+                )}
+
+                {/* Interactive Service Suggestions Dropdown */}
+                {isServiceDropdownOpen && (
+                  <div className="uber-service-dropdown-menu">
+                    <div className="uber-dropdown-header">
+                      <span>{heroService.trim() ? `Matching "${heroService}"` : 'Popular Services & Baas Categories'}</span>
+                      <span className="uber-dropdown-count">{filteredServices.length} available</span>
+                    </div>
+
+                    <div className="uber-dropdown-list">
+                      {filteredServices.length > 0 ? (
+                        filteredServices.map((svc) => (
+                          <div
+                            key={svc.name}
+                            className={`uber-service-item ${heroService.toLowerCase() === svc.name.toLowerCase() ? 'selected' : ''}`}
+                            onClick={() => handleSelectService(svc.name)}
+                          >
+                            <div className="uber-service-item-icon">
+                              <md-icon style={{ fontSize: '20px' }}>{svc.icon}</md-icon>
+                            </div>
+                            <div className="uber-service-item-info">
+                              <div className="uber-service-item-name">{svc.name}</div>
+                              <div className="uber-service-item-desc">{svc.desc}</div>
+                            </div>
+                            <md-icon className="uber-service-item-arrow" style={{ fontSize: '18px' }}>
+                              arrow_forward
+                            </md-icon>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="uber-dropdown-empty">
+                          <md-icon style={{ fontSize: '28px', color: '#9ca3af' }}>search_off</md-icon>
+                          <p>No matching service found for "{heroService}"</p>
+                          <button
+                            type="button"
+                            className="uber-search-custom-btn"
+                            onClick={() => handleHeroSearch()}
+                          >
+                            Search anyway for "{heroService}"
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Primary Action Button */}
+            <div className="uber-hero-actions-row">
+              <button
+                type="button"
+                className="uber-primary-black-btn"
+                onClick={handleHeroSearch}
+              >
+                See available workers
+              </button>
+
+
             </div>
           </div>
-        </div>
 
+          {/* Right Column: Hero Artwork Image (hero1.png) */}
+          <div className="uber-hero-image-col">
+            <div className="uber-hero-image-card">
+              <img
+                src="/hero/hero1.png"
+                alt="SuperBass Craftsman at Sunset"
+                className="uber-hero-artwork"
+              />
+            </div>
+          </div>
+
+        </div>
       </main>
 
       {/* Black Background Banner Section */}
@@ -217,6 +353,69 @@ export default function App() {
         </div>
       </section>
 
+      {/* Community Showcase Section (Hero Layout Style) */}
+      <section className="landing-community-section" id="community-showcase">
+        <div className="landing-community-container">
+
+          {/* Left Column: Community Info & CTA */}
+          <div className="landing-community-content-col">
+
+
+            <h2 className="landing-community-title">
+              Connect with your local community & find trusted help
+            </h2>
+
+            <p className="landing-community-desc">
+              Share recommendations, ask neighborhood home repair questions, post free classified ads for tools & leftover materials, and discover trusted craftsmen recommended by local residents.
+            </p>
+
+            <div className="landing-community-features-list">
+              <div className="landing-community-feature-item">
+                <div className="landing-feature-check">
+                  <md-icon style={{ fontSize: '16px' }}>check</md-icon>
+                </div>
+                <span>Free classified ads & local home service requests</span>
+              </div>
+              <div className="landing-community-feature-item">
+                <div className="landing-feature-check">
+                  <md-icon style={{ fontSize: '16px' }}>check</md-icon>
+                </div>
+                <span>Direct recommendations & reviews from neighbors</span>
+              </div>
+              <div className="landing-community-feature-item">
+                <div className="landing-feature-check">
+                  <md-icon style={{ fontSize: '16px' }}>check</md-icon>
+                </div>
+                <span>Community discussions with verified home pros</span>
+              </div>
+            </div>
+
+            <div className="landing-community-actions">
+              <button
+                type="button"
+                className="uber-primary-black-btn landing-community-btn"
+                onClick={() => navigate('/community')}
+              >
+                <span>Explore Community</span>
+                <md-icon style={{ fontSize: '20px' }}>arrow_forward</md-icon>
+              </button>
+            </div>
+          </div>
+
+          {/* Right Column: Hero2 Artwork Card */}
+          <div className="landing-community-image-col">
+            <div className="landing-community-image-card">
+              <img
+                src="/hero/hero2.png"
+                alt="SuperBass Neighborhood Community & Craftsmen"
+                className="landing-community-artwork"
+              />
+            </div>
+          </div>
+
+        </div>
+      </section>
+
       {/* AI Feature Introduction Section */}
       <section className="ai-intro-section" id="ai-diagnostic">
         <div className="ai-intro-container">
@@ -225,7 +424,7 @@ export default function App() {
               Now, you can manage your work with SuperBass AI
             </h2>
             <md-filled-button
-              class="ai-intro-btn"
+              className="ai-intro-btn"
               onClick={() => aiFileInputRef.current?.click()}
             >
               SuperBass AI

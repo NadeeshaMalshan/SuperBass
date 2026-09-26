@@ -170,27 +170,31 @@ export default function M3TopNavbar({
           <span>AI</span>
         </button>
 
-        {/* 4. Messages Button */}
-        <button
-          type="button"
-          className={`m3-nav-btn ${activePage === 'chats' ? 'active' : ''}`}
-          onClick={() => navigate('/chats')}
-          title="Direct Messages"
-        >
-          <md-icon>chat</md-icon>
-          <span>Messages</span>
-        </button>
+        {/* 4. Messages Button (Only when logged in) */}
+        {isLoggedIn && (
+          <button
+            type="button"
+            className={`m3-nav-btn ${activePage === 'chats' ? 'active' : ''}`}
+            onClick={() => navigate('/chats')}
+            title="Direct Messages"
+          >
+            <md-icon>chat</md-icon>
+            <span>Messages</span>
+          </button>
+        )}
 
-        {/* 5. Bookings Button */}
-        <button
-          type="button"
-          className={`m3-nav-btn ${activePage === 'bookings' ? 'active' : ''}`}
-          onClick={() => navigate('/bookings')}
-          title="My Bookings"
-        >
-          <md-icon>calendar_today</md-icon>
-          <span>Bookings</span>
-        </button>
+        {/* 5. Bookings Button (Only when logged in) */}
+        {isLoggedIn && (
+          <button
+            type="button"
+            className={`m3-nav-btn ${activePage === 'bookings' ? 'active' : ''}`}
+            onClick={() => navigate('/bookings')}
+            title="My Bookings"
+          >
+            <md-icon>calendar_today</md-icon>
+            <span>Bookings</span>
+          </button>
+        )}
 
         {/* 6. User Profile Avatar or Sign In */}
         {isLoggedIn ? (

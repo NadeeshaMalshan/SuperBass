@@ -20,8 +20,8 @@ export default function AiCommunityChat() {
     window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
-  const currentUserEmail = localStorage.getItem('email') || 'resident@superbass.lk';
-  const currentUserName = localStorage.getItem('userName') || currentUserEmail.split('@')[0];
+  const currentUserEmail = localStorage.getItem('email') || '';
+  const currentUserName = localStorage.getItem('userName') || (currentUserEmail ? currentUserEmail.split('@')[0] : 'Resident');
   const activeRole = localStorage.getItem('activeRole') || 'Resident';
 
   const [conversations, setConversations] = useState([]);

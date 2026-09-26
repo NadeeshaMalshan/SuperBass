@@ -957,7 +957,7 @@ body.worker-theme .m3-nav-btn.active {
    -------------------------------------------------------------------------- */
 .m3-signin-btn,
 md-filled-button.m3-signin-btn {
-  --md-filled-button-container-color: #1a73e8;
+  --md-filled-button-container-color: #000000;
   --md-filled-button-label-text-color: #ffffff;
   --md-filled-button-container-shape: 9999px;
   --md-filled-button-container-height: 40px;
@@ -967,11 +967,11 @@ md-filled-button.m3-signin-btn {
   height: 40px;
   padding: 0 22px;
   margin-left: 10px;
-  background-color: #1a73e8;
+  background-color: #000000;
   color: #ffffff;
   border-radius: 9999px;
   font-family: var(--font-body, 'DM Sans', sans-serif);
-  font-weight: 600;
+  font-weight: 700;
   font-size: 0.9rem;
   border: none;
   cursor: pointer;
@@ -980,20 +980,21 @@ md-filled-button.m3-signin-btn {
   justify-content: center;
   white-space: nowrap;
   flex-shrink: 0;
-  box-shadow: 0 1px 3px rgba(26, 115, 232, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
   transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
   text-decoration: none;
 }
 
 .m3-signin-btn:hover,
 md-filled-button.m3-signin-btn:hover {
-  background-color: #1557b0;
-  box-shadow: 0 3px 10px rgba(26, 115, 232, 0.45);
+  background-color: #1f2937;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
   transform: translateY(-1px);
 }
 
 .m3-signin-btn:active,
 md-filled-button.m3-signin-btn:active {
+  background-color: #111827;
   transform: translateY(0);
 }
 

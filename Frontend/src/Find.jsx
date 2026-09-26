@@ -31,6 +31,15 @@ export default function Find() {
   });
   const [appliedSearchQuery, setAppliedSearchQuery] = useState(searchQuery);
 
+  const [locationQuery, setLocationQuery] = useState(() => {
+    try {
+      return new URLSearchParams(window.location.search).get('location') || '';
+    } catch {
+      return '';
+    }
+  });
+  const [appliedLocationQuery, setAppliedLocationQuery] = useState(locationQuery);
+
   // Real User Geolocation State
   const [userLocation, setUserLocation] = useState([6.9271, 79.8612]); // Default Colombo [lat, lng]
   const [isLocating, setIsLocating] = useState(false);
@@ -75,6 +84,21 @@ export default function Find() {
     { id: 'Cleaning', label: 'Cleaning & Maid', icon: 'cleaning_services' },
     { id: 'Gardening', label: 'Lawn & Gardening', icon: 'yard' }
   ];
+
+  // Sync state with URL params on popstate or URL changes
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const q = params.get('q') || '';
+      const loc = params.get('location') || '';
+      setSearchQuery(q);
+      setAppliedSearchQuery(q);
+      setLocationQuery(loc);
+      setAppliedLocationQuery(loc);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Get Real User Location via Geolocation API
   const getRealUserLocation = () => {
@@ -144,7 +168,7 @@ export default function Find() {
     window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
-  const hasActiveFilters = rateType !== 'Any' || availableNowOnly || favoritesOnly || minPrice !== '' || maxPrice !== '' || selectedCategories.length > 0 || minRating !== 'Any';
+  const hasActiveFilters = rateType !== 'Any' || availableNowOnly || favoritesOnly || minPrice !== '' || maxPrice !== '' || selectedCategories.length > 0 || minRating !== 'Any' || appliedSearchQuery !== '' || appliedLocationQuery !== '';
 
   const handleResetFilters = () => {
     setRateType('Any');
@@ -156,7 +180,10 @@ export default function Find() {
     setMinRating('Any');
     setSearchQuery('');
     setAppliedSearchQuery('');
+    setLocationQuery('');
+    setAppliedLocationQuery('');
     setSortBy('recommended');
+    navigate('/find');
   };
 
   const toggleCategory = (catId) => {
@@ -213,13 +240,31 @@ export default function Find() {
 
   // Filtering Logic
   const filteredWorkers = workers.filter(w => {
-    // 1. Search Query
+    // 1. Search Query (Skills, sub-skills, service names, craftsman name, description)
     if (appliedSearchQuery.trim() !== '') {
       const q = appliedSearchQuery.toLowerCase();
       const nameMatch = w.name && w.name.toLowerCase().includes(q);
       const locMatch = w.primaryServiceArea && w.primaryServiceArea.toLowerCase().includes(q);
-      const skillMatch = w.skills && w.skills.some(s => s.skillName.toLowerCase().includes(q));
-      if (!nameMatch && !locMatch && !skillMatch) return false;
+      const skillMatch = w.skills && w.skills.some(s => {
+        const sName = typeof s === 'string' ? s : (s.skillName || s.serviceName || '');
+        const subSkills = Array.isArray(s.skills) ? s.skills : [];
+        return sName.toLowerCase().includes(q) || subSkills.some(sub => sub.toLowerCase().includes(q));
+      });
+      const descMatch = w.description && w.description.toLowerCase().includes(q);
+      if (!nameMatch && !locMatch && !skillMatch && !descMatch) return false;
+    }
+
+    // 1.5 Location Query Filter (PrimaryServiceArea, address, name, city)
+    if (appliedLocationQuery.trim() !== '') {
+      const loc = appliedLocationQuery.toLowerCase().trim();
+      if (loc !== 'current location' && loc !== 'my location') {
+        const locMatch = 
+          (w.primaryServiceArea && w.primaryServiceArea.toLowerCase().includes(loc)) ||
+          (w.resident?.address && w.resident.address.toLowerCase().includes(loc)) ||
+          (w.description && w.description.toLowerCase().includes(loc)) ||
+          (w.name && w.name.toLowerCase().includes(loc));
+        if (!locMatch) return false;
+      }
     }
 
     // 2. Rate Type
@@ -803,27 +848,31 @@ export default function Find() {
             <span>AI</span>
           </button>
 
-          {/* 3. Messages Button */}
-          <button
-            type="button"
-            className="m3-nav-btn"
-            onClick={() => navigate('/chats')}
-            title="Direct Messages"
-          >
-            <md-icon>chat</md-icon>
-            <span>Messages</span>
-          </button>
+          {/* 3. Messages Button (Only when logged in) */}
+          {isLoggedIn && (
+            <button
+              type="button"
+              className="m3-nav-btn"
+              onClick={() => navigate('/chats')}
+              title="Direct Messages"
+            >
+              <md-icon>chat</md-icon>
+              <span>Messages</span>
+            </button>
+          )}
 
-          {/* 4. Bookings Button */}
-          <button
-            type="button"
-            className="m3-nav-btn"
-            onClick={() => navigate('/bookings')}
-            title="My Bookings"
-          >
-            <md-icon>calendar_today</md-icon>
-            <span>Bookings</span>
-          </button>
+          {/* 4. Bookings Button (Only when logged in) */}
+          {isLoggedIn && (
+            <button
+              type="button"
+              className="m3-nav-btn"
+              onClick={() => navigate('/bookings')}
+              title="My Bookings"
+            >
+              <md-icon>calendar_today</md-icon>
+              <span>Bookings</span>
+            </button>
+          )}
 
           {/* 5. User Profile Avatar or Sign In */}
           {isLoggedIn ? (
@@ -957,6 +1006,60 @@ export default function Find() {
 
           <hr className="m3-drawer-divider" />
 
+          {/* Location Filter Section */}
+          <div className="m3-drawer-section">
+            <div className="m3-drawer-section-header">
+              <span className="m3-drawer-section-title">City / Area</span>
+            </div>
+            <div style={{ position: 'relative', padding: '0 8px' }}>
+              <input
+                type="text"
+                placeholder="e.g. Ratnapura, Colombo..."
+                value={locationQuery}
+                onChange={(e) => {
+                  setLocationQuery(e.target.value);
+                  setAppliedLocationQuery(e.target.value);
+                }}
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  background: '#ffffff',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '8px',
+                  padding: '8px 12px',
+                  fontSize: '0.85rem',
+                  outline: 'none',
+                  color: '#0f172a'
+                }}
+              />
+              {locationQuery && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLocationQuery('');
+                    setAppliedLocationQuery('');
+                  }}
+                  style={{
+                    position: 'absolute',
+                    right: '16px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: '#94a3b8',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                >
+                  <md-icon style={{ fontSize: '16px' }}>close</md-icon>
+                </button>
+              )}
+            </div>
+          </div>
+
+          <hr className="m3-drawer-divider" />
+
           {/* Budget & Rate Filter Section */}
           <div className="m3-drawer-section m3-rates-section">
             <div className="m3-drawer-section-header">
@@ -1071,6 +1174,73 @@ export default function Find() {
               </button>
             </div>
           </div>
+
+          {/* Active Search & Location Filter Chips Bar */}
+          {(appliedSearchQuery || appliedLocationQuery) && (
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
+              {appliedSearchQuery && (
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#f1f5f9',
+                  border: '1px solid #cbd5e1',
+                  padding: '4px 12px',
+                  borderRadius: '9999px',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  color: '#0f172a'
+                }}>
+                  <md-icon style={{ fontSize: '16px' }}>search</md-icon>
+                  <span>Service: {appliedSearchQuery}</span>
+                  <md-icon
+                    style={{ fontSize: '16px', cursor: 'pointer', marginLeft: '4px' }}
+                    onClick={() => {
+                      setSearchQuery('');
+                      setAppliedSearchQuery('');
+                      const params = new URLSearchParams(window.location.search);
+                      params.delete('q');
+                      const qs = params.toString();
+                      navigate(qs ? `/find?${qs}` : '/find');
+                    }}
+                  >
+                    close
+                  </md-icon>
+                </div>
+              )}
+
+              {appliedLocationQuery && (
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#eff6ff',
+                  border: '1px solid #bfdbfe',
+                  padding: '4px 12px',
+                  borderRadius: '9999px',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  color: '#1e40af'
+                }}>
+                  <md-icon style={{ fontSize: '16px', color: '#2563eb' }}>location_on</md-icon>
+                  <span>Location: {appliedLocationQuery}</span>
+                  <md-icon
+                    style={{ fontSize: '16px', cursor: 'pointer', marginLeft: '4px' }}
+                    onClick={() => {
+                      setLocationQuery('');
+                      setAppliedLocationQuery('');
+                      const params = new URLSearchParams(window.location.search);
+                      params.delete('location');
+                      const qs = params.toString();
+                      navigate(qs ? `/find?${qs}` : '/find');
+                    }}
+                  >
+                    close
+                  </md-icon>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Loading or Empty States */}
           {loading ? (

@@ -119,7 +119,7 @@ export default function Chats() {
   const typingDebounceRef = useRef(null);
   const workerDropdownRef = useRef(null);
 
-  const currentUserEmail = localStorage.getItem('email') || 'resident@superbass.lk';
+  const currentUserEmail = localStorage.getItem('email') || '';
   const token = localStorage.getItem('token');
   const activeRole = localStorage.getItem('activeRole') || 'Resident';
   const isWorker = activeRole.toLowerCase() === 'worker' || localStorage.getItem('workerAuth') === 'true';
