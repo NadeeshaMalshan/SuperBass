@@ -380,6 +380,50 @@
   box-shadow: 0 0 0 1px #000000;
 }
 
+/* Card Layout Switcher in Sidebar */
+.uber-grid-switcher-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.uber-grid-switch-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: 1px solid #e5e5e5;
+  background: #ffffff;
+  color: #333333;
+  border-radius: 12px;
+  padding: 9px 12px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.uber-grid-switch-btn:hover {
+  background: #f6f6f6;
+  border-color: #000000;
+  color: #000000;
+}
+
+.uber-grid-switch-btn.active {
+  background: #000000;
+  border-color: #000000;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.uber-grid-switch-btn i {
+  font-size: 0.95rem;
+  width: 16px;
+  text-align: center;
+}
+
 /* Category List in Sidebar */
 .uber-cat-list {
   display: flex;
@@ -505,13 +549,252 @@
   box-shadow: 0 0 0 1px #000000;
 }
 
+.uber-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Card Grid View Mode Switcher Pill Group */
+.uber-view-mode-group {
+  display: inline-flex;
+  align-items: center;
+  background: #f6f6f6;
+  border: 1px solid #e5e5e5;
+  border-radius: 9999px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.uber-view-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  color: #666666;
+  border-radius: 9999px;
+  padding: 6px 14px;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.uber-view-mode-btn:hover {
+  color: #000000;
+  background: #eeeeee;
+}
+
+.uber-view-mode-btn.active {
+  background: #000000;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+.uber-view-mode-btn i {
+  font-size: 0.85rem;
+}
+
 /* ==========================================================================
    3. Modern Community Post Cards Grid (Uber Card Style)
    ========================================================================== */
 .community-cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 20px;
+  transition: all 0.2s ease;
+}
+
+/* Large Cards View */
+.community-cards-grid.view-large {
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 24px;
+}
+
+.uber-card-large {
+  padding: 20px;
+}
+
+.uber-card-large .uber-card-img-wrap {
+  height: 220px;
+}
+
+.uber-card-large .uber-card-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.uber-card-large .uber-card-desc {
+  font-size: 0.88rem;
+  -webkit-line-clamp: 3;
+}
+
+/* Small Cards View */
+.community-cards-grid.view-small {
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px;
+}
+
+.uber-card-small {
+  padding: 12px 14px;
+  border-radius: 14px;
+}
+
+.uber-card-small .uber-card-header {
+  margin-bottom: 8px;
+}
+
+.uber-card-small .uber-card-avatar {
+  width: 28px;
+  height: 28px;
+}
+
+.uber-card-small .uber-card-author-name {
+  font-size: 0.8rem;
+}
+
+.uber-card-small .uber-category-pill {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+}
+
+.uber-card-small .uber-card-img-wrap {
+  height: 130px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
+.uber-card-small .uber-card-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.uber-card-small .uber-card-desc {
+  font-size: 0.78rem;
+  -webkit-line-clamp: 2;
+  margin-bottom: 6px;
+}
+
+.uber-card-small .uber-card-location-row {
+  font-size: 0.74rem;
+  gap: 4px;
+}
+
+.uber-card-small .uber-card-footer {
+  padding-top: 8px;
+}
+
+.uber-card-small .uber-card-details-btn {
+  font-size: 0.76rem;
+  padding: 5px 10px;
+}
+
+/* List View */
+.community-cards-grid.view-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.uber-card-list {
+  padding: 16px 20px;
+  border-radius: 16px;
+  width: 100%;
+}
+
+.uber-list-card-inner {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 20px;
+  width: 100%;
+}
+
+.uber-list-card-media {
+  width: 240px;
+  min-width: 240px;
+  height: 160px;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  background: #f6f6f6;
+  flex-shrink: 0;
+}
+
+.uber-list-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+  display: block;
+}
+
+.uber-post-card:hover .uber-list-img {
+  transform: scale(1.04);
+}
+
+.uber-list-cat-pill {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(0, 0, 0, 0.78);
+  color: #ffffff;
+  backdrop-filter: blur(4px);
+}
+
+.uber-list-card-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.uber-list-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.uber-list-body {
+  margin-bottom: 10px;
+}
+
+.uber-list-body .uber-card-title {
+  font-size: 1.12rem;
+  font-weight: 800;
+  color: #000000;
+  margin: 0 0 6px 0;
+}
+
+.uber-list-body .uber-card-desc {
+  font-size: 0.88rem;
+  color: #666666;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .uber-list-card-inner {
+    flex-direction: column;
+  }
+  .uber-list-card-media {
+    width: 100%;
+    min-width: unset;
+    height: 180px;
+  }
 }
 
 .uber-post-card {

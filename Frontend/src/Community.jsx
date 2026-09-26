@@ -29,16 +29,22 @@ export default function Community() {
   const [selectedDistrict, setSelectedDistrict] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
   const [currentPage, setCurrentPage] = useState(1);
-  const CARDS_PER_PAGE = 6;
+  const CARDS_PER_PAGE = 9;
 
-  // Active Tab: 'feed' or 'moderation'
-  const [activeTab, setActiveTab] = useState('feed');
-  const [moderationPosts, setModerationPosts] = useState([]);
+  // Community Card Grid View Mode: 'large' | 'small' | 'list'
+  const [viewMode, setViewMode] = useState(() => {
+    return localStorage.getItem('community_view_mode') || 'large';
+  });
 
-  // Reset page to 1 whenever filters, search, or activeTab change
+  const handleViewModeChange = (mode) => {
+    setViewMode(mode);
+    localStorage.setItem('community_view_mode', mode);
+  };
+
+  // Reset page to 1 whenever filters, search, or sort change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, selectedCategory, selectedProvince, selectedDistrict, sortBy, activeTab]);
+  }, [searchTerm, selectedCategory, selectedProvince, selectedDistrict, sortBy]);
 
   // Detail Modal State
   const [selectedPostForDetail, setSelectedPostForDetail] = useState(null);
@@ -124,6 +130,16 @@ export default function Community() {
             return loc.includes(provKey) || provinceDistricts.some(d => loc.includes(d.toLowerCase()));
           });
         }
+        // Apply sorting
+        if (sortBy === 'popular') {
+          results.sort((a, b) => (b.likesCount || 0) - (a.likesCount || 0) || new Date(b.createdAt) - new Date(a.createdAt));
+        } else if (sortBy === 'oldest') {
+          results.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        } else {
+          // default newest first
+          results.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        }
+
         const enriched = results.map((p, idx) => ({
           ...p,
           condition: p.condition || null,
@@ -143,26 +159,9 @@ export default function Community() {
     }
   };
 
-  // Fetch Moderation Queue from DB
-  const fetchModerationQueue = async () => {
-    try {
-      const res = await axios.get(`${API_BASE_URL}/moderation`);
-      setModerationPosts(res.data || []);
-    } catch (err) {
-      console.error("Error fetching moderation queue:", err);
-      setModerationPosts([]);
-    }
-  };
-
   useEffect(() => {
     fetchPosts();
   }, [searchTerm, selectedCategory, selectedProvince, selectedDistrict, sortBy]);
-
-  useEffect(() => {
-    if (activeTab === 'moderation') {
-      fetchModerationQueue();
-    }
-  }, [activeTab]);
 
   // Handle Like
   const handleLike = async (postId, e) => {
@@ -466,7 +465,7 @@ export default function Community() {
   };
 
   // Pagination calculations (9 cards per page)
-  const allCurrentPosts = activeTab === 'feed' ? posts : moderationPosts;
+  const allCurrentPosts = posts;
   const totalPosts = allCurrentPosts.length;
   const totalPages = Math.ceil(totalPosts / CARDS_PER_PAGE) || 1;
   const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
@@ -548,9 +547,8 @@ export default function Community() {
           {/* Primary Navigation List */}
           <div className="uber-sidebar-nav">
             <div
-              className={`uber-sidebar-item ${selectedCategory === 'all' && selectedProvince === 'all' && selectedDistrict === 'all' && activeTab === 'feed' ? 'active' : ''}`}
+              className={`uber-sidebar-item ${selectedCategory === 'all' && selectedProvince === 'all' && selectedDistrict === 'all' ? 'active' : ''}`}
               onClick={() => {
-                setActiveTab('feed');
                 setSearchTerm('');
                 setSelectedCategory('all');
                 setSelectedProvince('all');
@@ -560,24 +558,48 @@ export default function Community() {
               title="View all community posts"
             >
               <div className="uber-sidebar-item-left">
-                <i className="fa-solid fa-table-cells-large"></i>
+                <i className="fa-solid fa-house"></i>
                 <span>All Posts</span>
               </div>
               <span className="uber-sidebar-badge">{posts.length}</span>
             </div>
+          </div>
 
-            <div
-              className={`uber-sidebar-item ${activeTab === 'moderation' ? 'active' : ''}`}
-              onClick={() => setActiveTab('moderation')}
-              title="Review reported and flagged posts"
-            >
-              <div className="uber-sidebar-item-left">
-                <i className="fa-solid fa-shield-halved"></i>
-                <span>Moderation Queue</span>
-              </div>
-              {moderationPosts.length > 0 && (
-                <span className="uber-sidebar-badge">{moderationPosts.length}</span>
-              )}
+          <hr className="uber-sidebar-divider" />
+
+          {/* Grid Layout Switcher Section in Sidebar */}
+          <div className="uber-sidebar-section">
+            <div className="uber-sidebar-section-title">
+              <span>Card Layout</span>
+            </div>
+            <div className="uber-grid-switcher-list">
+              <button
+                type="button"
+                className={`uber-grid-switch-btn ${viewMode === 'large' ? 'active' : ''}`}
+                onClick={() => handleViewModeChange('large')}
+                title="Large Cards View"
+              >
+                <i className="fa-solid fa-table-cells-large"></i>
+                <span>Large Cards</span>
+              </button>
+              <button
+                type="button"
+                className={`uber-grid-switch-btn ${viewMode === 'small' ? 'active' : ''}`}
+                onClick={() => handleViewModeChange('small')}
+                title="Small Cards View"
+              >
+                <i className="fa-solid fa-grip"></i>
+                <span>Small Cards</span>
+              </button>
+              <button
+                type="button"
+                className={`uber-grid-switch-btn ${viewMode === 'list' ? 'active' : ''}`}
+                onClick={() => handleViewModeChange('list')}
+                title="List View"
+              >
+                <i className="fa-solid fa-list-ul"></i>
+                <span>List View</span>
+              </button>
             </div>
           </div>
 
@@ -678,7 +700,7 @@ export default function Community() {
 
         {/* Right Main Content Area */}
         <main className="community-feed-column" id="community-feed">
-          {/* Uber Styled Search & Sort Bar */}
+          {/* Uber Styled Search & Sort Bar with Grid View Mode Switcher */}
           <div className="uber-search-card">
             <div className="uber-search-input-wrap">
               <i className="fa-solid fa-magnifying-glass uber-search-icon"></i>
@@ -700,7 +722,7 @@ export default function Community() {
               )}
             </div>
 
-            {activeTab === 'feed' && (
+            <div className="uber-toolbar-actions">
               <select
                 className="uber-sort-select"
                 value={sortBy}
@@ -708,8 +730,40 @@ export default function Community() {
               >
                 <option value="newest">Sort: Newest First</option>
                 <option value="popular">Sort: Most Popular</option>
+                <option value="oldest">Sort: Oldest First</option>
               </select>
-            )}
+
+              {/* Grid View Mode Switcher Button Group */}
+              <div className="uber-view-mode-group" role="group" aria-label="Card grid view mode">
+                <button
+                  type="button"
+                  className={`uber-view-mode-btn ${viewMode === 'large' ? 'active' : ''}`}
+                  onClick={() => handleViewModeChange('large')}
+                  title="Large Cards"
+                >
+                  <i className="fa-solid fa-table-cells-large"></i>
+                  <span>Large Cards</span>
+                </button>
+                <button
+                  type="button"
+                  className={`uber-view-mode-btn ${viewMode === 'small' ? 'active' : ''}`}
+                  onClick={() => handleViewModeChange('small')}
+                  title="Small Cards"
+                >
+                  <i className="fa-solid fa-grip"></i>
+                  <span>Small Cards</span>
+                </button>
+                <button
+                  type="button"
+                  className={`uber-view-mode-btn ${viewMode === 'list' ? 'active' : ''}`}
+                  onClick={() => handleViewModeChange('list')}
+                  title="List View"
+                >
+                  <i className="fa-solid fa-list-ul"></i>
+                  <span>List</span>
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Listings Cards Container */}
@@ -728,12 +782,12 @@ export default function Community() {
             }}>
               <i className="fa-solid fa-box-open" style={{ fontSize: '3rem', color: '#cccccc', marginBottom: '1rem' }}></i>
               <h3 style={{ fontSize: '1.25rem', color: '#000000', fontWeight: '800', margin: '0 0 0.5rem 0' }}>
-                {activeTab === 'feed' ? 'No posts found in database' : 'No posts currently in moderation queue'}
+                No community listings found
               </h3>
               <p style={{ color: '#666666', fontSize: '0.95rem', marginBottom: '1.5rem' }}>
-                {activeTab === 'feed' ? 'Create a post to publish it to the community.' : 'All reported posts have been resolved.'}
+                Try adjusting your search or filters, or post a new ad in the community.
               </p>
-              {activeTab === 'feed' && isLoggedIn && (
+              {isLoggedIn && (
                 <button
                   type="button"
                   className="uber-btn-primary"
@@ -761,13 +815,147 @@ export default function Community() {
                 <span>Page {safeCurrentPage} of {totalPages}</span>
               </div>
 
-              <div className="community-cards-grid">
+              <div className={`community-cards-grid view-${viewMode}`}>
                 {paginatedPosts.map(post => {
                   const catObj = categoriesData.find(c => c.id === post.category);
+                  const isOwner = isPostOwner(post);
+
+                  if (viewMode === 'list') {
+                    return (
+                      <div
+                        key={post.postId}
+                        className="uber-post-card uber-card-list"
+                        onClick={() => handleCardClick(post)}
+                        role="button"
+                        tabIndex={0}
+                      >
+                        <div className="uber-list-card-inner">
+                          {/* Left: Thumbnail & Badges */}
+                          <div className="uber-list-card-media">
+                            {post.images && post.images.length > 0 ? (
+                              <img
+                                src={post.images[0]}
+                                alt={post.title}
+                                className="uber-list-img"
+                                loading="lazy"
+                                onError={(e) => {
+                                  e.target.src = 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=500&auto=format&fit=crop';
+                                }}
+                              />
+                            ) : (
+                              <div className="uber-card-img-placeholder">
+                                <i className="fa-solid fa-image"></i>
+                              </div>
+                            )}
+
+                            {post.images && post.images.length > 1 && (
+                              <div className="uber-card-photos-badge">
+                                <i className="fa-solid fa-camera"></i>
+                                <span>{post.images.length}</span>
+                              </div>
+                            )}
+
+                            <span className="uber-category-pill uber-list-cat-pill">
+                              <i className="fa-solid fa-tag" style={{ fontSize: '11px' }}></i>
+                              <span>{catObj?.name || post.category}</span>
+                            </span>
+                          </div>
+
+                          {/* Right: Content details */}
+                          <div className="uber-list-card-content">
+                            <div>
+                              <div className="uber-list-header-row">
+                                <div className="uber-card-author">
+                                  <img
+                                    src={post.userAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.postId}`}
+                                    alt={post.userName || 'Resident'}
+                                    className="uber-card-avatar"
+                                    onError={(e) => {
+                                      e.target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.postId}`;
+                                    }}
+                                  />
+                                  <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                                    <span className="uber-card-author-name">{post.userName || 'Community Resident'}</span>
+                                    <span className="uber-card-time">{formatTimeAgo(post.createdAt)}</span>
+                                  </div>
+                                </div>
+
+                                <div className="uber-card-location-row" style={{ marginTop: 0 }}>
+                                  <i className="fa-solid fa-location-dot" style={{ color: '#000000' }}></i>
+                                  <span>{post.location || 'Sri Lanka'}</span>
+                                </div>
+                              </div>
+
+                              <div className="uber-list-body">
+                                <h3 className="uber-card-title">{post.title}</h3>
+                                <p className="uber-card-desc">
+                                  {post.content || 'Click to view full details, questions, or contact the poster...'}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Footer: Stats & Actions */}
+                            <div className="uber-card-footer" style={{ marginTop: 'auto', paddingTop: '10px' }}>
+                              <div className="uber-card-time-ago">
+                                <i className="fa-regular fa-clock" style={{ marginRight: '5px', fontSize: '0.75rem' }}></i>
+                                <span>{formatTimeAgo(post.createdAt)}</span>
+                                {post.likesCount > 0 && (
+                                  <span style={{ marginLeft: '12px', display: 'inline-flex', alignItems: 'center', gap: '3px', color: '#000000', fontWeight: '700' }} title={`${post.likesCount} stars / likes`}>
+                                    <i className="fa-solid fa-star" style={{ color: '#f59e0b', fontSize: '0.75rem' }}></i>
+                                    <span>{post.likesCount}</span>
+                                  </span>
+                                )}
+                                {post.commentsCount > 0 && (
+                                  <span style={{ marginLeft: '10px', display: 'inline-flex', alignItems: 'center', gap: '3px', color: '#555555', fontWeight: '600' }} title={`${post.commentsCount} reviews / questions`}>
+                                    <i className="fa-regular fa-comment" style={{ fontSize: '0.75rem' }}></i>
+                                    <span>{post.commentsCount}</span>
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="uber-card-actions" onClick={(e) => e.stopPropagation()}>
+                                {isOwner ? (
+                                  <div style={{ display: 'flex', gap: '6px' }}>
+                                    <button
+                                      type="button"
+                                      className="uber-icon-btn-edit"
+                                      onClick={(e) => handleOpenEdit(post, e)}
+                                      title="Edit listing"
+                                    >
+                                      <i className="fa-solid fa-pen"></i>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="uber-icon-btn-delete"
+                                      onClick={(e) => handleDeletePost(post.postId, e)}
+                                      title="Delete listing"
+                                    >
+                                      <i className="fa-solid fa-trash"></i>
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="uber-card-details-btn"
+                                    onClick={() => handleCardClick(post)}
+                                  >
+                                    <span>View Listing</span>
+                                    <span style={{ fontSize: '13px' }}>›</span>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Default / Grid cards (Large or Small)
                   return (
                     <div
                       key={post.postId}
-                      className="uber-post-card"
+                      className={`uber-post-card ${viewMode === 'small' ? 'uber-card-small' : 'uber-card-large'}`}
                       onClick={() => handleCardClick(post)}
                       role="button"
                       tabIndex={0}
@@ -838,11 +1026,23 @@ export default function Community() {
                       <div className="uber-card-footer">
                         <div className="uber-card-time-ago">
                           <i className="fa-regular fa-clock" style={{ marginRight: '5px', fontSize: '0.75rem' }}></i>
-                          {formatTimeAgo(post.createdAt)}
+                          <span>{formatTimeAgo(post.createdAt)}</span>
+                          {post.likesCount > 0 && (
+                            <span style={{ marginLeft: '8px', display: 'inline-flex', alignItems: 'center', gap: '3px', color: '#000000', fontWeight: '700' }} title={`${post.likesCount} stars / likes`}>
+                              <i className="fa-solid fa-star" style={{ color: '#f59e0b', fontSize: '0.75rem' }}></i>
+                              <span>{post.likesCount}</span>
+                            </span>
+                          )}
+                          {post.commentsCount > 0 && (
+                            <span style={{ marginLeft: '8px', display: 'inline-flex', alignItems: 'center', gap: '3px', color: '#555555', fontWeight: '600' }} title={`${post.commentsCount} reviews / questions`}>
+                              <i className="fa-regular fa-comment" style={{ fontSize: '0.75rem' }}></i>
+                              <span>{post.commentsCount}</span>
+                            </span>
+                          )}
                         </div>
 
                         <div className="uber-card-actions" onClick={(e) => e.stopPropagation()}>
-                          {isPostOwner(post) ? (
+                          {isOwner ? (
                             <div style={{ display: 'flex', gap: '6px' }}>
                               <button
                                 type="button"
