@@ -533,18 +533,6 @@ export default function Community() {
       <div className="community-layout-container">
         {/* Left Sidebar Navigation (Uber Style) */}
         <aside className={`community-sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
-          {/* Post Ad Button (Uber Solid Black Pill Button) */}
-          <button
-            type="button"
-            className="uber-compose-btn"
-            onClick={handleOpenCreate}
-            title="Post a new ad or service request"
-          >
-            <i className="fa-solid fa-plus"></i>
-            <span>Post an Ad</span>
-          </button>
-
-          <hr className="uber-sidebar-divider" />
 
           {/* Location Filter Section: Two Separate Fields (Province and District) */}
           <div className="uber-sidebar-section">
