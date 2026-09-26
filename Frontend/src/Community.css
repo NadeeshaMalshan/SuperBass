@@ -663,6 +663,25 @@
   padding-top: 8px;
 }
 
+.uber-card-small .uber-card-stats-wrap {
+  gap: 8px;
+}
+
+.uber-card-small .uber-card-time-text {
+  font-size: 0.74rem;
+}
+
+.uber-card-small .uber-card-counter-btn,
+.uber-card-small .uber-card-counter-item {
+  font-size: 0.74rem;
+  gap: 3px;
+}
+
+.uber-card-small .uber-card-counter-btn i,
+.uber-card-small .uber-card-counter-item i {
+  font-size: 0.74rem;
+}
+
 .uber-card-small .uber-card-details-btn {
   font-size: 0.76rem;
   padding: 5px 10px;
@@ -940,13 +959,92 @@
   gap: 12px;
 }
 
-.uber-card-time-ago {
+.uber-card-stats-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.uber-card-time-text {
   display: inline-flex;
   align-items: center;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #757575;
+  white-space: nowrap;
+}
+
+.uber-card-counters {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.uber-card-counter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-family: inherit;
   font-size: 0.8rem;
   font-weight: 600;
+  color: #555555;
+  cursor: pointer;
+  transition: color 0.15s ease;
+  line-height: 1;
+}
+
+.uber-card-counter-btn i {
+  font-size: 0.82rem;
   color: #757575;
-  letter-spacing: -0.01em;
+  transition: color 0.15s ease;
+}
+
+.uber-card-counter-btn:hover {
+  color: #000000;
+}
+
+.uber-card-counter-btn:hover i {
+  color: #ef4444;
+}
+
+.uber-card-counter-btn.active {
+  color: #ef4444;
+}
+
+.uber-card-counter-btn.active i {
+  color: #ef4444;
+}
+
+.uber-card-counter-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #555555;
+  line-height: 1;
+  transition: color 0.15s ease;
+}
+
+.uber-card-counter-item:hover {
+  color: #000000;
+}
+
+.uber-card-counter-item:hover i {
+  color: #000000;
+}
+
+.uber-card-counter-item i {
+  font-size: 0.82rem;
+  color: #757575;
 }
 
 .uber-card-details-btn {

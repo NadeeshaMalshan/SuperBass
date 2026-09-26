@@ -20,9 +20,9 @@ export default function PostConfirmationCard({ data, onAction }) {
 
   return (
     <div className="agent-card-container">
-      <div className="agent-base-card" style={{ borderLeft: '4px solid #f59e0b', background: '#fffdfa' }}>
+      <div className="agent-base-card" style={{ borderLeft: '4px solid #000000', background: '#fafafa' }}>
         <div className="agent-card-header">
-          <span className="agent-card-badge" style={{ background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a' }}>
+          <span className="agent-card-badge success">
             <i className="fa-solid fa-clipboard-check"></i>
             {isUpdate ? ' Review Update Draft' : ' Review Draft & Confirm'}
           </span>
@@ -31,17 +31,17 @@ export default function PostConfirmationCard({ data, onAction }) {
           </span>
         </div>
 
-        <div style={{ background: '#fefce8', border: '1px solid #fef08a', borderRadius: '10px', padding: '10px 14px' }}>
-          <div style={{ fontSize: '0.785rem', fontWeight: 700, color: '#854d0e', textTransform: 'uppercase', marginBottom: '4px' }}>
+        <div style={{ background: '#ffffff', border: '1px solid #e5e5e5', borderRadius: '12px', padding: '12px 16px' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#757575', textTransform: 'uppercase', marginBottom: '4px', letterSpacing: '0.04em' }}>
             {validationNotes || 'Please review your post details before publishing:'}
           </div>
-          <h4 style={{ margin: '4px 0', fontSize: '1rem', color: '#0f172a', fontWeight: 700 }}>
+          <h4 style={{ margin: '4px 0', fontSize: '1.05rem', color: '#000000', fontWeight: 800 }}>
             {title}
           </h4>
-          <p style={{ margin: '4px 0 8px 0', fontSize: '0.875rem', color: '#334155', lineHeight: '1.45' }}>
+          <p style={{ margin: '4px 0 8px 0', fontSize: '0.885rem', color: '#333333', lineHeight: '1.45' }}>
             {content}
           </p>
-          <div className="agent-card-meta" style={{ color: '#713f12' }}>
+          <div className="agent-card-meta">
             <span><i className="fa-solid fa-location-dot"></i> {location || 'Colombo'}</span>
             <span><i className="fa-solid fa-tag"></i> {communityId || 'General'}</span>
             {postId && <span><i className="fa-solid fa-hashtag"></i> Post #{postId}</span>}

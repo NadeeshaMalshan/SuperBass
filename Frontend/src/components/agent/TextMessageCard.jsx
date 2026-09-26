@@ -9,7 +9,7 @@ export default function TextMessageCard({ data, onAction }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
       {text && (
-        <div style={{ fontSize: '0.935rem', lineHeight: '1.55', color: '#1e293b', whiteSpace: 'pre-wrap' }}>
+        <div style={{ fontSize: '0.935rem', lineHeight: '1.55', color: '#000000', whiteSpace: 'pre-wrap' }}>
           {text}
         </div>
       )}
@@ -22,7 +22,7 @@ export default function TextMessageCard({ data, onAction }) {
               className="agent-chip-btn"
               onClick={() => onAction && onAction('send_prompt', suggestion)}
             >
-              <i className="fa-regular fa-lightbulb" style={{ color: '#f59e0b' }}></i>
+              <i className="fa-regular fa-lightbulb"></i>
               {suggestion}
             </button>
           ))}

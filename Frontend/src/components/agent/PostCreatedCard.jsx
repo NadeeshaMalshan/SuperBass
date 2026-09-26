@@ -8,7 +8,7 @@ export default function PostCreatedCard({ data, onAction }) {
 
   return (
     <div className="agent-card-container">
-      <div className="agent-base-card" style={{ borderLeft: '4px solid #16a34a' }}>
+      <div className="agent-base-card" style={{ borderLeft: '4px solid #000000' }}>
         <div className="agent-card-header">
           <span className="agent-card-badge success">
             <i className="fa-solid fa-circle-check"></i> Post Published
