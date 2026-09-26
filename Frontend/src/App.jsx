@@ -560,7 +560,7 @@ export default function App() {
               <button
                 type="button"
                 className="uber-primary-black-btn landing-ai-btn"
-                onClick={() => navigate('/community/chat')}
+                onClick={() => navigate('/ai/chat')}
               >
                 <span>Try SuperBass AI</span>
 
