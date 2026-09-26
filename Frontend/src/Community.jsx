@@ -492,10 +492,10 @@ export default function Community() {
           <div className="community-hero-left">
             <span className="community-hero-overline">SuperBass Community Network</span>
             <h1 className="community-hero-title">
-              Neighborhood Classifieds, Repair Advice & Services
+              Community Classifieds, Repair Advice & Services
             </h1>
             <p className="community-hero-desc">
-              Share recommendations, ask neighborhood home repair questions, post free classified ads for tools & leftover materials, and discover trusted craftsmen recommended by local residents.
+              Share repair requests, ask for home improvement advice, post free classified ads for tools and leftover materials, and discover trusted workers recommended by other community members.
             </p>
             <div className="community-hero-actions">
               <button
@@ -835,21 +835,33 @@ export default function Community() {
 
                             {/* Footer: Stats & Actions */}
                             <div className="uber-card-footer" style={{ marginTop: 'auto', paddingTop: '10px' }}>
-                              <div className="uber-card-time-ago">
-                                <i className="fa-regular fa-clock" style={{ marginRight: '5px', fontSize: '0.75rem' }}></i>
-                                <span>{formatTimeAgo(post.createdAt)}</span>
-                                {post.likesCount > 0 && (
-                                  <span style={{ marginLeft: '12px', display: 'inline-flex', alignItems: 'center', gap: '3px', color: '#000000', fontWeight: '700' }} title={`${post.likesCount} stars / likes`}>
-                                    <i className="fa-solid fa-star" style={{ color: '#f59e0b', fontSize: '0.75rem' }}></i>
-                                    <span>{post.likesCount}</span>
+                              <div className="uber-card-stats-wrap">
+                                <span className="uber-card-time-text">
+                                  <i className="fa-regular fa-clock" style={{ marginRight: '4px' }}></i>
+                                  {formatTimeAgo(post.createdAt)}
+                                </span>
+
+                                <div className="uber-card-counters">
+                                  <button
+                                    type="button"
+                                    className={`uber-card-counter-btn ${post.isLiked ? 'active' : ''}`}
+                                    onClick={(e) => handleLike(post.postId, e)}
+                                    title={`${post.likesCount || 0} Likes (Click to like)`}
+                                  >
+                                    <i className={post.isLiked ? 'fa-solid fa-heart' : 'fa-regular fa-heart'}></i>
+                                    <span>{post.likesCount || 0}</span>
+                                  </button>
+
+                                  <span
+                                    className="uber-card-counter-item"
+                                    title={`${post.commentsCount || 0} Comments`}
+                                    onClick={(e) => { e.stopPropagation(); handleCardClick(post); }}
+                                    style={{ cursor: 'pointer' }}
+                                  >
+                                    <i className="fa-regular fa-comment"></i>
+                                    <span>{post.commentsCount || 0}</span>
                                   </span>
-                                )}
-                                {post.commentsCount > 0 && (
-                                  <span style={{ marginLeft: '10px', display: 'inline-flex', alignItems: 'center', gap: '3px', color: '#555555', fontWeight: '600' }} title={`${post.commentsCount} reviews / questions`}>
-                                    <i className="fa-regular fa-comment" style={{ fontSize: '0.75rem' }}></i>
-                                    <span>{post.commentsCount}</span>
-                                  </span>
-                                )}
+                                </div>
                               </div>
 
                               <div className="uber-card-actions" onClick={(e) => e.stopPropagation()}>
@@ -963,21 +975,33 @@ export default function Community() {
 
                       {/* Card Footer: Timestamp & Actions */}
                       <div className="uber-card-footer">
-                        <div className="uber-card-time-ago">
-                          <i className="fa-regular fa-clock" style={{ marginRight: '5px', fontSize: '0.75rem' }}></i>
-                          <span>{formatTimeAgo(post.createdAt)}</span>
-                          {post.likesCount > 0 && (
-                            <span style={{ marginLeft: '8px', display: 'inline-flex', alignItems: 'center', gap: '3px', color: '#000000', fontWeight: '700' }} title={`${post.likesCount} stars / likes`}>
-                              <i className="fa-solid fa-star" style={{ color: '#f59e0b', fontSize: '0.75rem' }}></i>
-                              <span>{post.likesCount}</span>
+                        <div className="uber-card-stats-wrap">
+                          <span className="uber-card-time-text">
+                            <i className="fa-regular fa-clock" style={{ marginRight: '4px' }}></i>
+                            {formatTimeAgo(post.createdAt)}
+                          </span>
+
+                          <div className="uber-card-counters">
+                            <button
+                              type="button"
+                              className={`uber-card-counter-btn ${post.isLiked ? 'active' : ''}`}
+                              onClick={(e) => handleLike(post.postId, e)}
+                              title={`${post.likesCount || 0} Likes (Click to like)`}
+                            >
+                              <i className={post.isLiked ? 'fa-solid fa-heart' : 'fa-regular fa-heart'}></i>
+                              <span>{post.likesCount || 0}</span>
+                            </button>
+
+                            <span
+                              className="uber-card-counter-item"
+                              title={`${post.commentsCount || 0} Comments`}
+                              onClick={(e) => { e.stopPropagation(); handleCardClick(post); }}
+                              style={{ cursor: 'pointer' }}
+                            >
+                              <i className="fa-regular fa-comment"></i>
+                              <span>{post.commentsCount || 0}</span>
                             </span>
-                          )}
-                          {post.commentsCount > 0 && (
-                            <span style={{ marginLeft: '8px', display: 'inline-flex', alignItems: 'center', gap: '3px', color: '#555555', fontWeight: '600' }} title={`${post.commentsCount} reviews / questions`}>
-                              <i className="fa-regular fa-comment" style={{ fontSize: '0.75rem' }}></i>
-                              <span>{post.commentsCount}</span>
-                            </span>
-                          )}
+                          </div>
                         </div>
 
                         <div className="uber-card-actions" onClick={(e) => e.stopPropagation()}>
