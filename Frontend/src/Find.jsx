@@ -32,9 +32,22 @@ export default function Find() {
   });
   const [appliedSearchQuery, setAppliedSearchQuery] = useState(searchQuery);
 
+  const sanitizeLocationParam = (raw) => {
+    if (!raw) return '';
+    try {
+      let cleaned = decodeURIComponent(raw);
+      // Remove '%2C', ',', 'LK', '+LK', '+', etc.
+      cleaned = cleaned.replace(/%2c/gi, ' ').replace(/,?\s*\+?\s*lk\b/gi, '').replace(/,/g, '').trim();
+      return cleaned;
+    } catch {
+      return String(raw).replace(/%2c/gi, ' ').replace(/,?\s*\+?\s*lk\b/gi, '').replace(/,/g, '').trim();
+    }
+  };
+
   const [locationQuery, setLocationQuery] = useState(() => {
     try {
-      return new URLSearchParams(window.location.search).get('location') || '';
+      const raw = new URLSearchParams(window.location.search).get('location') || '';
+      return sanitizeLocationParam(raw);
     } catch {
       return '';
     }
@@ -81,10 +94,29 @@ export default function Find() {
 
   // Sync state with URL params on popstate or URL changes
   useEffect(() => {
+    // Sanitize any existing URL location parameter on initial mount
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const rawLoc = params.get('location');
+      if (rawLoc && (rawLoc.includes('%2C') || rawLoc.includes('%2c') || /lk/i.test(rawLoc) || rawLoc.includes(','))) {
+        const cleaned = sanitizeLocationParam(rawLoc);
+        if (cleaned) {
+          params.set('location', cleaned);
+        } else {
+          params.delete('location');
+        }
+        const newUrl = `${window.location.pathname}?${params.toString()}`;
+        window.history.replaceState({}, '', newUrl);
+      }
+    } catch (e) {
+      console.warn('Error sanitizing location URL:', e);
+    }
+
     const handlePopState = () => {
       const params = new URLSearchParams(window.location.search);
       const q = params.get('q') || '';
-      const loc = params.get('location') || '';
+      const rawLoc = params.get('location') || '';
+      const loc = sanitizeLocationParam(rawLoc);
       setSearchQuery(q);
       setAppliedSearchQuery(q);
       setLocationQuery(loc);

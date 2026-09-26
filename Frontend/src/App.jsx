@@ -94,9 +94,9 @@ export default function App() {
     window.history.pushState({}, '', newPath);
     window.dispatchEvent(new PopStateEvent('popstate'));
   };
-  const [heroLocation, setHeroLocation] = useState('Colombo, LK');
+  const [heroLocation, setHeroLocation] = useState('Colombo');
   const [isChangingCity, setIsChangingCity] = useState(false);
-  const [tempCity, setTempCity] = useState('Colombo, LK');
+  const [tempCity, setTempCity] = useState('Colombo');
   const [districtSearch, setDistrictSearch] = useState('');
   const [heroService, setHeroService] = useState('');
   const [isServiceDropdownOpen, setIsServiceDropdownOpen] = useState(false);
@@ -124,7 +124,8 @@ export default function App() {
   }, {});
 
   const handleSelectDistrict = (district) => {
-    const locStr = `${district}, LK`;
+    // Pure district name only (e.g. 'Colombo', 'Ratnapura') - no ', LK' or '%2C'
+    const locStr = district.replace(/%2c/gi, '').replace(/,?\s*\+?\s*lk\b/gi, '').replace(/,/g, '').trim();
     setHeroLocation(locStr);
     setTempCity(locStr);
     setIsChangingCity(false);
@@ -132,8 +133,8 @@ export default function App() {
 
   const handleApplyCustomCity = () => {
     if (tempCity.trim()) {
-      const formatted = tempCity.includes(',') ? tempCity.trim() : `${tempCity.trim()}, LK`;
-      setHeroLocation(formatted);
+      const cleanCity = tempCity.replace(/%2c/gi, '').replace(/,?\s*\+?\s*lk\b/gi, '').replace(/,/g, '').trim();
+      setHeroLocation(cleanCity);
     }
     setIsChangingCity(false);
   };
@@ -163,7 +164,12 @@ export default function App() {
     const serviceToUse = typeof serviceOverride === 'string' ? serviceOverride : heroService;
     const params = new URLSearchParams();
     if (serviceToUse.trim()) params.set('q', serviceToUse.trim());
-    if (heroLocation.trim()) params.set('location', heroLocation.trim());
+    if (heroLocation.trim()) {
+      const cleanLoc = heroLocation.replace(/%2c/gi, '').replace(/,?\s*\+?\s*lk\b/gi, '').replace(/,/g, '').trim();
+      if (cleanLoc && cleanLoc.toLowerCase() !== 'current location') {
+        params.set('location', cleanLoc);
+      }
+    }
     const queryStr = params.toString();
     navigate(queryStr ? `/find?${queryStr}` : '/find');
   };
@@ -193,17 +199,18 @@ export default function App() {
           const lng = pos.coords.longitude;
           const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14&addressdetails=1`);
           const data = await res.json();
-          const city = data.address?.city || data.address?.town || data.address?.suburb || data.address?.village || data.address?.county || 'Current Location';
+          let city = data.address?.city || data.address?.town || data.address?.suburb || data.address?.village || data.address?.county || 'Colombo';
+          city = city.replace(/%2c/gi, '').replace(/,?\s*\+?\s*lk\b/gi, '').replace(/,/g, '').trim();
           setHeroLocation(city);
         } catch {
-          setHeroLocation('Current Location');
+          setHeroLocation('Colombo');
         } finally {
           setIsLocating(false);
         }
       },
       (err) => {
         console.warn('Geolocation denied or failed:', err);
-        setHeroLocation('Current Location');
+        setHeroLocation('Colombo');
         setIsLocating(false);
       },
       { timeout: 8000 }
@@ -224,12 +231,12 @@ export default function App() {
             {/* Location Line */}
             <div className="landing-hero-location-row">
               <md-icon className="landing-hero-location-pin">location_on</md-icon>
-              <span className="landing-hero-location-name">{heroLocation || 'Colombo, LK'}</span>
+              <span className="landing-hero-location-name">{heroLocation || 'Colombo'}</span>
               <button
                 type="button"
                 className="landing-hero-change-city-btn"
                 onClick={() => {
-                  setTempCity(heroLocation || 'Colombo, LK');
+                  setTempCity(heroLocation || 'Colombo');
                   setDistrictSearch('');
                   setIsChangingCity(prev => !prev);
                 }}
