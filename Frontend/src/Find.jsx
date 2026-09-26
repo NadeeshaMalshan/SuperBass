@@ -15,7 +15,6 @@ import UserMenu from './components/UserMenu.jsx';
 import './components/M3Navbar.css';
 import { API_BASE_URL } from './config.js';
 import categoriesData from './data/categories.json';
-import { getCategoryIllustration } from './components/ServiceCategories.jsx';
 
 export default function Find() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -962,7 +961,7 @@ export default function Find() {
           {/* Categories Section ("Labels" in Gmail) */}
           <div className="m3-drawer-section">
             <div className="m3-drawer-section-header">
-              <span className="m3-drawer-section-title">Trade Services</span>
+              <span className="m3-drawer-section-title">CATEGORIES</span>
               {selectedCategories.length > 0 && (
                 <button
                   type="button"
@@ -979,7 +978,6 @@ export default function Find() {
               {categories.map((cat) => {
                 const count = getCategoryCount(cat.id);
                 const isSelected = selectedCategories.includes(cat.id);
-                const illustration = getCategoryIllustration(cat.id || cat.label);
                 return (
                   <div
                     key={cat.id}
@@ -988,23 +986,9 @@ export default function Find() {
                     title={`Filter by ${cat.label}`}
                   >
                     <div className="m3-drawer-item-left">
-                      {illustration ? (
-                        <img
-                          src={illustration}
-                          alt={cat.label}
-                          style={{
-                            width: '20px',
-                            height: '20px',
-                            objectFit: 'contain',
-                            marginRight: '8px',
-                            filter: isSelected ? 'drop-shadow(0 0 4px rgba(253, 193, 1, 0.6))' : 'none'
-                          }}
-                        />
-                      ) : (
-                        <md-icon className="m3-drawer-icon">
-                          {isSelected ? 'label' : (cat.icon || 'label_outline')}
-                        </md-icon>
-                      )}
+                      <md-icon className="m3-drawer-icon">
+                        {cat.icon || 'handyman'}
+                      </md-icon>
                       <span className="m3-drawer-label">{cat.label}</span>
                     </div>
                     <span className="m3-drawer-badge">{count}</span>

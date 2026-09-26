@@ -260,12 +260,13 @@
   position: absolute;
   top: calc(100% + 10px);
   left: 0;
-  width: 310px;
+  width: 380px;
+  max-width: calc(100vw - 32px);
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.18), 0 4px 12px rgba(0, 0, 0, 0.06);
-  padding: 16px;
+  border-radius: 18px;
+  box-shadow: 0 18px 40px -4px rgba(0, 0, 0, 0.2), 0 4px 14px rgba(0, 0, 0, 0.08);
+  padding: 18px;
   z-index: 200;
   display: flex;
   flex-direction: column;
@@ -278,7 +279,7 @@
   align-items: center;
   justify-content: space-between;
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   color: #0f172a;
 }
 
@@ -339,32 +340,76 @@
   opacity: 0.85;
 }
 
-.landing-city-chips {
+.landing-city-provinces-list {
+  max-height: 270px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-right: 4px;
+}
+
+.landing-city-provinces-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.landing-city-provinces-list::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.landing-province-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.landing-province-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+}
+
+.landing-district-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
 
-.landing-city-chip {
+.landing-district-chip {
   background: #f1f5f9;
   border: 1px solid transparent;
   border-radius: 9999px;
-  padding: 4px 10px;
-  font-size: 0.78rem;
-  font-weight: 500;
+  padding: 5px 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
   color: #334155;
   cursor: pointer;
   transition: all 0.15s ease;
+  font-family: inherit;
 }
 
-.landing-city-chip:hover {
-  background: #e2e8f0;
-  color: #000000;
-}
-
-.landing-city-chip.active {
+.landing-district-chip:hover {
   background: #000000;
   color: #ffffff;
+}
+
+.landing-district-chip.active {
+  background: #000000;
+  color: #ffffff;
+}
+
+.landing-district-empty {
+  padding: 16px 8px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: #64748b;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .landing-city-detect-btn {
@@ -727,7 +772,7 @@
 }
 
 .uber-dropdown-list {
-  max-height: 280px;
+  max-height: 340px;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
@@ -778,6 +823,15 @@
   background: #000000;
   color: #ffffff;
   border-color: #000000;
+}
+
+.uber-service-item-icon md-icon {
+  font-size: 20px !important;
+  --md-icon-size: 20px;
+  color: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .uber-service-item-info {

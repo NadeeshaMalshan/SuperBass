@@ -3,8 +3,10 @@ import './App.css';
 import UserMenu from './components/UserMenu.jsx';
 import M3TopNavbar from './components/M3TopNavbar.jsx';
 import AiAssistantWidget from './components/AiAssistantWidget.jsx';
-import ServiceCategories, { getCategoryIllustration } from './components/ServiceCategories.jsx';
+import ServiceCategories from './components/ServiceCategories.jsx';
 import Footer from './components/Footer.jsx';
+import categoriesData from './data/categories.json';
+import sriLankaDistricts from './data/sriLankaDistricts.json';
 import hero1Img from './assets/1.png';
 import hero2Img from './assets/2.png';
 import hero3Img from './assets/3.png';
@@ -55,29 +57,47 @@ const generateM3CookiePath9 = (cx = 250, cy = 250, rOuter = 230, rInner = 190) =
   return d;
 };
 
-const POPULAR_SERVICES = [
-  { name: 'Electrician', category: 'Electrical', icon: 'electrical_services', desc: 'Wiring, tripping, repairs & power switches' },
-  { name: 'Plumber', category: 'Plumbing', icon: 'plumbing', desc: 'Pipe leaks, taps, bathroom & water lines' },
-  { name: 'Carpenter', category: 'Carpentry', icon: 'carpenter', desc: 'Furniture, doors, locks & woodcraft' },
-  { name: 'Mason', category: 'Masonry', icon: 'foundation', desc: 'Brickwork, tiling, plastering & foundations' },
-  { name: 'Painter', category: 'Painting', icon: 'format_paint', desc: 'Interior & exterior painting, wall finishing' },
-  { name: 'AC Repair', category: 'AC Repair', icon: 'ac_unit', desc: 'AC installation, servicing & cooling repair' },
-  { name: 'Appliance Repair', category: 'Appliance Repair', icon: 'home_repair_service', desc: 'Washing machines, fridges & ovens' },
-  { name: 'Roofing', category: 'Roofing', icon: 'roofing', desc: 'Tile replacement, roof leaks & gutter repair' },
-  { name: 'Cleaning & Maid', category: 'Cleaning', icon: 'cleaning_services', desc: 'Deep house cleaning, dusting & sanitization' },
-  { name: 'Gardener', category: 'Gardening', icon: 'yard', desc: 'Lawn mowing, landscaping & tree trimming' },
-  { name: 'CCTV & Security', category: 'CCTV & Security', icon: 'videocam', desc: 'Camera setup, alarm systems & security wiring' },
-  { name: 'Welder / Iron Works', category: 'Welding', icon: 'handyman', desc: 'Gates, metal grills, railings & welding' }
-];
+const CATEGORY_DESCRIPTIONS = {
+  'plumbing': 'Pipe leaks, taps, bathroom & water lines',
+  'electrical': 'Wiring, tripping, repairs & power switches',
+  'carpentry': 'Furniture, doors, locks & woodcraft',
+  'painting': 'Interior & exterior painting, wall finishing',
+  'masonry-construction': 'Brickwork, tiling, plastering & foundations',
+  'ac-air-conditioning': 'AC installation, servicing & cooling repair',
+  'welding': 'Gates, metal grills, railings & welding',
+  'cleaning': 'Deep house cleaning, dusting & sanitization',
+  'gardening-landscaping': 'Lawn mowing, landscaping & tree trimming',
+  'handyman-services': 'General repairs, fixture installation & maintenance',
+  'vehicle-repair-mechanic': 'Auto maintenance, engine tuning & breakdowns',
+  'roofing': 'Tile replacement, roof leaks & gutter repair',
+  'glass-window-services': 'Window glass fitting, aluminum & glass repairs',
+  'locksmith': 'Lock picking, key duplication & lock changes',
+  'appliance-repair': 'Washing machines, fridges, microwaves & ovens',
+  'computer-it-services': 'Laptop repairs, PC setup, networking & OS',
+  'phone-repair': 'Screen replacement, battery & mobile diagnostics',
+  'moving-transport': 'Lorry transport, house moving & logistics',
+  'furniture-repair-assembly': 'Sofa upholstery, table & chair repairs',
+  'pest-control': 'Termite treatment, bed bug & pest extermination',
+  'cctv-installation-repair': 'Camera setup, alarm systems & security wiring',
+  'others': 'Specialized tasks & miscellaneous trade work'
+};
+
+const ALL_SERVICES = categoriesData.map(c => ({
+  name: c.name,
+  category: c.name,
+  icon: c.materialIcon || 'handyman',
+  desc: CATEGORY_DESCRIPTIONS[c.id] || `${c.name} services & repairs`
+}));
 
 export default function App() {
   const navigate = (newPath) => {
     window.history.pushState({}, '', newPath);
     window.dispatchEvent(new PopStateEvent('popstate'));
   };
-  const [heroLocation, setHeroLocation] = useState('Matale, LK');
+  const [heroLocation, setHeroLocation] = useState('Colombo, LK');
   const [isChangingCity, setIsChangingCity] = useState(false);
-  const [tempCity, setTempCity] = useState('Matale, LK');
+  const [tempCity, setTempCity] = useState('Colombo, LK');
+  const [districtSearch, setDistrictSearch] = useState('');
   const [heroService, setHeroService] = useState('');
   const [isServiceDropdownOpen, setIsServiceDropdownOpen] = useState(false);
   const [scheduleType, setScheduleType] = useState('now');
@@ -86,6 +106,37 @@ export default function App() {
   const aiFileInputRef = useRef(null);
   const serviceDropdownRef = useRef(null);
   const cityModalRef = useRef(null);
+
+  const filteredProvinces = Object.entries(sriLankaDistricts).reduce((acc, [province, districts]) => {
+    const searchLower = districtSearch.trim().toLowerCase();
+    if (!searchLower) {
+      acc[province] = districts;
+    } else {
+      const matchedDistricts = districts.filter(d =>
+        d.toLowerCase().includes(searchLower) ||
+        province.toLowerCase().includes(searchLower)
+      );
+      if (matchedDistricts.length > 0) {
+        acc[province] = matchedDistricts;
+      }
+    }
+    return acc;
+  }, {});
+
+  const handleSelectDistrict = (district) => {
+    const locStr = `${district}, LK`;
+    setHeroLocation(locStr);
+    setTempCity(locStr);
+    setIsChangingCity(false);
+  };
+
+  const handleApplyCustomCity = () => {
+    if (tempCity.trim()) {
+      const formatted = tempCity.includes(',') ? tempCity.trim() : `${tempCity.trim()}, LK`;
+      setHeroLocation(formatted);
+    }
+    setIsChangingCity(false);
+  };
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -122,7 +173,7 @@ export default function App() {
     setIsServiceDropdownOpen(false);
   };
 
-  const filteredServices = POPULAR_SERVICES.filter(s =>
+  const filteredServices = ALL_SERVICES.filter(s =>
     !heroService.trim() ||
     s.name.toLowerCase().includes(heroService.toLowerCase()) ||
     s.desc.toLowerCase().includes(heroService.toLowerCase()) ||
@@ -173,12 +224,13 @@ export default function App() {
             {/* Location Line */}
             <div className="landing-hero-location-row">
               <md-icon className="landing-hero-location-pin">location_on</md-icon>
-              <span className="landing-hero-location-name">{heroLocation || 'Matale, LK'}</span>
+              <span className="landing-hero-location-name">{heroLocation || 'Colombo, LK'}</span>
               <button
                 type="button"
                 className="landing-hero-change-city-btn"
                 onClick={() => {
-                  setTempCity(heroLocation || 'Matale, LK');
+                  setTempCity(heroLocation || 'Colombo, LK');
+                  setDistrictSearch('');
                   setIsChangingCity(prev => !prev);
                 }}
               >
@@ -189,56 +241,83 @@ export default function App() {
               {isChangingCity && (
                 <div className="landing-city-popover" ref={cityModalRef}>
                   <div className="landing-city-popover-header">
-                    <span>Change City</span>
+                    <span>Select District (Sri Lanka)</span>
                     <button
                       type="button"
                       className="landing-city-close-btn"
                       onClick={() => setIsChangingCity(false)}
+                      title="Close"
                     >
                       <md-icon style={{ fontSize: '18px' }}>close</md-icon>
                     </button>
                   </div>
+
                   <div className="landing-city-input-wrap">
                     <input
                       type="text"
                       className="landing-city-input"
-                      placeholder="Enter city (e.g. Colombo, Kandy...)"
-                      value={tempCity}
-                      onChange={(e) => setTempCity(e.target.value)}
+                      placeholder="Search district or province..."
+                      value={districtSearch}
+                      onChange={(e) => {
+                        setDistrictSearch(e.target.value);
+                        setTempCity(e.target.value);
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
-                          setHeroLocation(tempCity || 'Matale, LK');
-                          setIsChangingCity(false);
+                          handleApplyCustomCity();
                         }
                       }}
                       autoFocus
                     />
-                    <button
-                      type="button"
-                      className="landing-city-apply-btn"
-                      onClick={() => {
-                        setHeroLocation(tempCity || 'Matale, LK');
-                        setIsChangingCity(false);
-                      }}
-                    >
-                      Set
-                    </button>
-                  </div>
-                  <div className="landing-city-chips">
-                    {['Matale, LK', 'Colombo, LK', 'Kandy, LK', 'Galle, LK', 'Kurunegala, LK', 'Negombo, LK'].map(c => (
+                    {districtSearch && (
                       <button
-                        key={c}
                         type="button"
-                        className={`landing-city-chip ${heroLocation === c ? 'active' : ''}`}
-                        onClick={() => {
-                          setHeroLocation(c);
-                          setIsChangingCity(false);
-                        }}
+                        className="landing-city-apply-btn"
+                        onClick={handleApplyCustomCity}
                       >
-                        {c}
+                        Set
                       </button>
-                    ))}
+                    )}
                   </div>
+
+                  {/* 9 Provinces & 25 Districts Grouped List */}
+                  <div className="landing-city-provinces-list">
+                    {Object.keys(filteredProvinces).length > 0 ? (
+                      Object.entries(filteredProvinces).map(([province, districts]) => (
+                        <div key={province} className="landing-province-group">
+                          <span className="landing-province-title">{province}</span>
+                          <div className="landing-district-chips">
+                            {districts.map((district) => {
+                              const isSelected = heroLocation.toLowerCase().startsWith(district.toLowerCase());
+                              return (
+                                <button
+                                  key={district}
+                                  type="button"
+                                  className={`landing-district-chip ${isSelected ? 'active' : ''}`}
+                                  onClick={() => handleSelectDistrict(district)}
+                                >
+                                  {district}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="landing-district-empty">
+                        <span>No district found matching "{districtSearch}"</span>
+                        <button
+                          type="button"
+                          className="landing-city-apply-btn"
+                          style={{ marginTop: '8px' }}
+                          onClick={handleApplyCustomCity}
+                        >
+                          Use "{districtSearch}" anyway
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
                   <button
                     type="button"
                     className="landing-city-detect-btn"
@@ -248,7 +327,7 @@ export default function App() {
                     }}
                   >
                     <md-icon style={{ fontSize: '18px' }}>near_me</md-icon>
-                    <span>Detect my location</span>
+                    <span>Detect my current location</span>
                   </button>
                 </div>
               )}
@@ -295,44 +374,33 @@ export default function App() {
               {isServiceDropdownOpen && (
                 <div className="landing-service-dropdown-menu">
                   <div className="uber-dropdown-header">
-                    <span>{heroService.trim() ? `Matching "${heroService}"` : 'Popular Services & Baas Categories'}</span>
+                    <span>{heroService.trim() ? `Matching "${heroService}"` : 'All Services & Baas Categories'}</span>
                     <span className="uber-dropdown-count">{filteredServices.length} available</span>
                   </div>
 
                   <div className="uber-dropdown-list">
                     {filteredServices.length > 0 ? (
-                      filteredServices.map((svc) => {
-                        const illustration = getCategoryIllustration(svc.category || svc.name);
-                        return (
-                          <div
-                            key={svc.name}
-                            className={`uber-service-item ${heroService.toLowerCase() === svc.name.toLowerCase() ? 'selected' : ''}`}
-                            onClick={() => {
-                              handleSelectService(svc.name);
-                              handleHeroSearch(svc.name);
-                            }}
-                          >
-                            <div className="uber-service-item-icon">
-                              {illustration ? (
-                                <img
-                                  src={illustration}
-                                  alt={svc.name}
-                                  style={{ width: '22px', height: '22px', objectFit: 'contain' }}
-                                />
-                              ) : (
-                                <md-icon style={{ fontSize: '20px' }}>{svc.icon}</md-icon>
-                              )}
-                            </div>
-                            <div className="uber-service-item-info">
-                              <div className="uber-service-item-name">{svc.name}</div>
-                              <div className="uber-service-item-desc">{svc.desc}</div>
-                            </div>
-                            <md-icon className="uber-service-item-arrow" style={{ fontSize: '18px' }}>
-                              arrow_forward
-                            </md-icon>
+                      filteredServices.map((svc) => (
+                        <div
+                          key={svc.name}
+                          className={`uber-service-item ${heroService.toLowerCase() === svc.name.toLowerCase() ? 'selected' : ''}`}
+                          onClick={() => {
+                            handleSelectService(svc.name);
+                            handleHeroSearch(svc.name);
+                          }}
+                        >
+                          <div className="uber-service-item-icon">
+                            <md-icon style={{ fontSize: '20px' }}>{svc.icon}</md-icon>
                           </div>
-                        );
-                      })
+                          <div className="uber-service-item-info">
+                            <div className="uber-service-item-name">{svc.name}</div>
+                            <div className="uber-service-item-desc">{svc.desc}</div>
+                          </div>
+                          <md-icon className="uber-service-item-arrow" style={{ fontSize: '18px' }}>
+                            arrow_forward
+                          </md-icon>
+                        </div>
+                      ))
                     ) : (
                       <div className="uber-dropdown-empty">
                         <md-icon style={{ fontSize: '28px', color: '#9ca3af' }}>search_off</md-icon>
