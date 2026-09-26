@@ -53,6 +53,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
   const [newCommentText, setNewCommentText] = useState('');
 
   const [editingPost, setEditingPost] = useState(null);
+  const [isSavingPost, setIsSavingPost] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
   const [editCategory, setEditCategory] = useState('plumbing');
@@ -62,6 +63,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
   const editFileInputRef = useRef(null);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCreatingPost, setIsCreatingPost] = useState(false);
   const [createTitle, setCreateTitle] = useState('');
   const [createContent, setCreateContent] = useState('');
   const [createCategory, setCreateCategory] = useState('plumbing');
@@ -447,6 +449,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     if (!editingPost || !editTitle.trim() || !editContent.trim()) return;
 
     try {
+      setIsSavingPost(true);
       await axios.put(`${API_BASE_URL}/community-posts/${editingPost.postId}`, {
         title: editTitle,
         content: editContent,
@@ -459,13 +462,15 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
 
-      alert("Post updated successfully!");
+      // Automatically close modal after saving
       setEditingPost(null);
-      fetchUserPosts();
+      await fetchUserPosts();
     } catch (err) {
       console.error("Error updating post:", err);
       const msg = err.response?.data?.message || "Failed to update post.";
       alert(msg);
+    } finally {
+      setIsSavingPost(false);
     }
   };
 
@@ -507,6 +512,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     if (!createTitle.trim() || !createContent.trim()) return;
 
     try {
+      setIsCreatingPost(true);
       await axios.post(`${API_BASE_URL}/community-posts`, {
         title: createTitle,
         content: createContent,
@@ -520,17 +526,19 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
 
-      alert("Post published successfully!");
+      // Automatically close modal after saving
       setIsCreateModalOpen(false);
       setCreateTitle('');
       setCreateContent('');
       setCreateProvince('Western Province');
       setCreateDistrict('Colombo');
       setCreateImages([]);
-      fetchUserPosts();
+      await fetchUserPosts();
     } catch (err) {
       console.error("Error creating post:", err);
       alert("Failed to publish post.");
+    } finally {
+      setIsCreatingPost(false);
     }
   };
 
@@ -1616,15 +1624,23 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                 <button
                   type="button"
                   onClick={() => setEditingPost(null)}
+                  disabled={isSavingPost}
                   style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  style={{ padding: '8px 20px', borderRadius: '6px', border: 'none', backgroundColor: '#3b82f6', color: '#fff', fontWeight: '700', cursor: 'pointer' }}
+                  disabled={isSavingPost}
+                  style={{ padding: '8px 20px', borderRadius: '6px', border: 'none', backgroundColor: '#3b82f6', color: '#fff', fontWeight: '700', cursor: isSavingPost ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
-                  Save Changes
+                  {isSavingPost ? (
+                    <>
+                      <i className="fa-solid fa-spinner fa-spin"></i> Saving...
+                    </>
+                  ) : (
+                    'Save Changes'
+                  )}
                 </button>
               </div>
             </form>
@@ -1744,15 +1760,23 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
+                  disabled={isCreatingPost}
                   style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  style={{ padding: '8px 20px', borderRadius: '6px', border: 'none', backgroundColor: '#009688', color: '#fff', fontWeight: '700', cursor: 'pointer' }}
+                  disabled={isCreatingPost}
+                  style={{ padding: '8px 20px', borderRadius: '6px', border: 'none', backgroundColor: '#009688', color: '#fff', fontWeight: '700', cursor: isCreatingPost ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
-                  Publish Post
+                  {isCreatingPost ? (
+                    <>
+                      <i className="fa-solid fa-spinner fa-spin"></i> Publishing...
+                    </>
+                  ) : (
+                    'Publish Post'
+                  )}
                 </button>
               </div>
             </form>

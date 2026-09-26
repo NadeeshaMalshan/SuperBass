@@ -30,15 +30,16 @@ const EMOJI_CATEGORIES = {
 export default function ChatModal({
   isOpen,
   onClose,
-  recipient = {
+  recipient: propRecipient = null,
+  postContext = null
+}) {
+  const recipient = propRecipient || {
     name: 'Jayashan Manodya',
     email: 'jayashan@superbass.lk',
     avatar: null,
     workerId: null,
     userId: null
-  },
-  postContext = null
-}) {
+  };
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [conversationId, setConversationId] = useState(null);
