@@ -26,17 +26,17 @@
 }
 
 .community-hero-container {
-  max-width: 1280px;
+  max-width: 1240px;
   margin: 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 48px;
+  gap: 40px;
 }
 
 .community-hero-left {
   flex: 1;
-  max-width: 600px;
+  max-width: 680px;
 }
 
 .community-hero-overline {
@@ -197,61 +197,23 @@
 }
 
 .community-hero-right {
-  flex: 0 0 540px;
-  max-width: 580px;
+  flex: 0 0 380px;
 }
 
 .community-hero-artwork-card {
   background: #121212;
   border: 1px solid #282828;
-  border-radius: 24px;
+  border-radius: 20px;
   overflow: hidden;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.community-hero-artwork-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 28px 64px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
 }
 
 .community-hero-artwork-img {
   width: 100%;
   height: 100%;
-  max-height: 380px;
+  max-height: 250px;
   object-fit: cover;
   display: block;
-}
-
-@media (max-width: 1100px) {
-  .community-hero-right {
-    flex: 0 0 450px;
-  }
-  .community-hero-artwork-img {
-    max-height: 320px;
-  }
-}
-
-@media (max-width: 860px) {
-  .community-hero-container {
-    flex-direction: column;
-    text-align: center;
-    gap: 32px;
-  }
-  .community-hero-left {
-    max-width: 100%;
-  }
-  .community-hero-actions {
-    justify-content: center;
-  }
-  .community-hero-right {
-    flex: 1;
-    width: 100%;
-    max-width: 540px;
-  }
-  .community-hero-artwork-img {
-    max-height: 320px;
-  }
 }
 
 /* ==========================================================================
