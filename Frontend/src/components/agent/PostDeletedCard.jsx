@@ -8,7 +8,7 @@ export default function PostDeletedCard({ data, onAction }) {
 
   return (
     <div className="agent-card-container">
-      <div className="agent-base-card" style={{ borderLeft: '4px solid #ef4444' }}>
+      <div className="agent-base-card" style={{ borderLeft: '4px solid #000000' }}>
         <div className="agent-card-header">
           <span className="agent-card-badge removed">
             <i className="fa-solid fa-trash-can"></i> Post Removed
