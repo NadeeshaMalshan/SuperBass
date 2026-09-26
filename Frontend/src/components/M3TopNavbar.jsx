@@ -15,6 +15,8 @@ export default function M3TopNavbar({
   isSidebarCollapsed = false,
   onToggleSidebar = null,
   searchDropdown = null,
+  theme = 'light',
+  alwaysShowLinks = false,
 }) {
   const [internalSearch, setInternalSearch] = useState(searchValue || '');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -60,7 +62,7 @@ export default function M3TopNavbar({
   };
 
   return (
-    <header className="m3-top-navbar">
+    <header className={`m3-top-navbar ${theme === 'dark' ? 'dark-theme' : ''}`}>
       {/* Left: App Logo & Name with Optional Hamburger Toggle */}
       <div className="m3-navbar-brand-group">
         {showSidebarToggle && (
@@ -131,7 +133,7 @@ export default function M3TopNavbar({
           onClick={() => navigate('/find')}
           title="Find Craftsmen & Workers"
         >
-          <md-icon>handyman</md-icon>
+          <md-icon>build</md-icon>
           <span>Services</span>
         </button>
 
@@ -150,32 +152,19 @@ export default function M3TopNavbar({
         <button
           type="button"
           className={`m3-nav-btn m3-nav-btn-ai ${activePage === 'ai' ? 'active' : ''}`}
-          onClick={() => navigate('/ai-chat')}
+          onClick={() => navigate('/community/chat')}
           title="AI Home Assistant"
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <defs>
-              <linearGradient id="topNavGeminiGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#4285F4" />
-                <stop offset="35%" stopColor="#9B72CB" />
-                <stop offset="70%" stopColor="#D96570" />
-                <stop offset="100%" stopColor="#F4B400" />
-              </linearGradient>
-            </defs>
-            <path
-              d="M12 0C12 6.627 6.627 12 0 12C6.627 12 12 17.373 12 24C12 17.373 17.373 12 24 12C17.373 12 12 6.627 12 0Z"
-              fill="url(#topNavGeminiGrad)"
-            />
-          </svg>
+          <md-icon style={{ fontSize: '18px' }}>auto_awesome</md-icon>
           <span>AI</span>
         </button>
 
-        {/* 4. Messages Button (Only when logged in) */}
-        {isLoggedIn && (
+        {/* 4. Messages Button */}
+        {(isLoggedIn || alwaysShowLinks) && (
           <button
             type="button"
             className={`m3-nav-btn ${activePage === 'chats' ? 'active' : ''}`}
-            onClick={() => navigate('/chats')}
+            onClick={() => navigate(isLoggedIn ? '/chats' : '/join')}
             title="Direct Messages"
           >
             <md-icon>chat</md-icon>
@@ -183,12 +172,12 @@ export default function M3TopNavbar({
           </button>
         )}
 
-        {/* 5. Bookings Button (Only when logged in) */}
-        {isLoggedIn && (
+        {/* 5. Bookings Button */}
+        {(isLoggedIn || alwaysShowLinks) && (
           <button
             type="button"
             className={`m3-nav-btn ${activePage === 'bookings' ? 'active' : ''}`}
-            onClick={() => navigate('/bookings')}
+            onClick={() => navigate(isLoggedIn ? '/bookings' : '/join')}
             title="My Bookings"
           >
             <md-icon>calendar_today</md-icon>
@@ -196,9 +185,19 @@ export default function M3TopNavbar({
           </button>
         )}
 
-        {/* 6. User Profile Avatar or Sign In */}
+        {/* 6. User Profile Avatar or Blue S circle */}
         {isLoggedIn ? (
           <UserMenu variant="m3-google" />
+        ) : theme === 'dark' || alwaysShowLinks ? (
+          <div
+            className="m3-avatar-circle-s"
+            onClick={() => navigate('/resident-profile')}
+            title="Profile"
+            role="button"
+            tabIndex={0}
+          >
+            S
+          </div>
         ) : (
           <button
             type="button"

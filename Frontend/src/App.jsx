@@ -4,6 +4,10 @@ import UserMenu from './components/UserMenu.jsx';
 import M3TopNavbar from './components/M3TopNavbar.jsx';
 import AiAssistantWidget from './components/AiAssistantWidget.jsx';
 import ServiceCategories, { getCategoryIllustration } from './components/ServiceCategories.jsx';
+import Footer from './components/Footer.jsx';
+import hero1Img from './assets/1.png';
+import hero2Img from './assets/2.png';
+import hero3Img from './assets/3.png';
 
 // Google Material 3 Web Components
 import '@material/web/button/filled-button.js';
@@ -71,7 +75,9 @@ export default function App() {
     window.history.pushState({}, '', newPath);
     window.dispatchEvent(new PopStateEvent('popstate'));
   };
-  const [heroLocation, setHeroLocation] = useState('');
+  const [heroLocation, setHeroLocation] = useState('Matale, LK');
+  const [isChangingCity, setIsChangingCity] = useState(false);
+  const [tempCity, setTempCity] = useState('Matale, LK');
   const [heroService, setHeroService] = useState('');
   const [isServiceDropdownOpen, setIsServiceDropdownOpen] = useState(false);
   const [scheduleType, setScheduleType] = useState('now');
@@ -79,11 +85,15 @@ export default function App() {
   const [aiUploadedImage, setAiUploadedImage] = useState(null);
   const aiFileInputRef = useRef(null);
   const serviceDropdownRef = useRef(null);
+  const cityModalRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (serviceDropdownRef.current && !serviceDropdownRef.current.contains(e.target)) {
         setIsServiceDropdownOpen(false);
+      }
+      if (cityModalRef.current && !cityModalRef.current.contains(e.target) && !e.target.closest('.landing-hero-change-city-btn')) {
+        setIsChangingCity(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -151,68 +161,124 @@ export default function App() {
 
   return (
     <div className="app-container">
-      {/* Background ambient lighting */}
-      <div className="hero-glow-bg" />
+      {/* Material 3 Top Navigation Bar (Dark Theme Matching Screenshot) */}
+      <M3TopNavbar showSearch={false} activePage="home" theme="dark" alwaysShowLinks={true} />
 
-      {/* Material 3 Top Navigation Bar (Uniform with Chats / Find / Community) */}
-      <M3TopNavbar showSearch={false} activePage="home" />
+      {/* Main Top Hero Section Matching Screenshot */}
+      <main className="landing-top-hero-section" id="home">
+        <div className="landing-top-hero-container">
 
+          {/* Left Column: Location, Title, and Pill Service Selector */}
+          <div className="landing-top-hero-left">
+            {/* Location Line */}
+            <div className="landing-hero-location-row">
+              <md-icon className="landing-hero-location-pin">location_on</md-icon>
+              <span className="landing-hero-location-name">{heroLocation || 'Matale, LK'}</span>
+              <button
+                type="button"
+                className="landing-hero-change-city-btn"
+                onClick={() => {
+                  setTempCity(heroLocation || 'Matale, LK');
+                  setIsChangingCity(prev => !prev);
+                }}
+              >
+                Change city
+              </button>
 
+              {/* City Selection Popover */}
+              {isChangingCity && (
+                <div className="landing-city-popover" ref={cityModalRef}>
+                  <div className="landing-city-popover-header">
+                    <span>Change City</span>
+                    <button
+                      type="button"
+                      className="landing-city-close-btn"
+                      onClick={() => setIsChangingCity(false)}
+                    >
+                      <md-icon style={{ fontSize: '18px' }}>close</md-icon>
+                    </button>
+                  </div>
+                  <div className="landing-city-input-wrap">
+                    <input
+                      type="text"
+                      className="landing-city-input"
+                      placeholder="Enter city (e.g. Colombo, Kandy...)"
+                      value={tempCity}
+                      onChange={(e) => setTempCity(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          setHeroLocation(tempCity || 'Matale, LK');
+                          setIsChangingCity(false);
+                        }
+                      }}
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      className="landing-city-apply-btn"
+                      onClick={() => {
+                        setHeroLocation(tempCity || 'Matale, LK');
+                        setIsChangingCity(false);
+                      }}
+                    >
+                      Set
+                    </button>
+                  </div>
+                  <div className="landing-city-chips">
+                    {['Matale, LK', 'Colombo, LK', 'Kandy, LK', 'Galle, LK', 'Kurunegala, LK', 'Negombo, LK'].map(c => (
+                      <button
+                        key={c}
+                        type="button"
+                        className={`landing-city-chip ${heroLocation === c ? 'active' : ''}`}
+                        onClick={() => {
+                          setHeroLocation(c);
+                          setIsChangingCity(false);
+                        }}
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    className="landing-city-detect-btn"
+                    onClick={() => {
+                      handleDetectLocation();
+                      setIsChangingCity(false);
+                    }}
+                  >
+                    <md-icon style={{ fontSize: '18px' }}>near_me</md-icon>
+                    <span>Detect my location</span>
+                  </button>
+                </div>
+              )}
+            </div>
 
-      {/* Main Hero Section — Uber Clone Layout */}
-      <main className="uber-hero-section" id="home">
-        <div className="uber-hero-container">
-
-          {/* Left Column: Interactive Request & Worker Search Module */}
-          <div className="uber-hero-form-col">
-            <h1 className="uber-hero-title">
+            {/* Request a Worker Title */}
+            <h1 className="landing-top-hero-title">
               Request a Worker
             </h1>
 
-
-
-            {/* Connected Location & Service Inputs Box */}
-            <div className="uber-connected-inputs-box">
-              {/* Vertical Connector Line */}
-              <div className="uber-inputs-connector-line" />
-
-              {/* Location Input Row */}
-              <div className="uber-input-row">
-                <div className="uber-marker-circle" />
+            {/* Single Rounded Pill Search / Service Selector */}
+            <div className="landing-hero-service-pill-wrap" ref={serviceDropdownRef}>
+              <div
+                className="landing-hero-service-pill"
+                onClick={() => setIsServiceDropdownOpen(prev => !prev)}
+              >
+                <md-icon className="landing-pill-list-icon">format_list_bulleted</md-icon>
                 <input
                   type="text"
-                  className="uber-text-input"
-                  placeholder="Your location (e.g. Colombo...)"
-                  value={heroLocation}
-                  onChange={(e) => setHeroLocation(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleHeroSearch()}
-                />
-                <button
-                  type="button"
-                  className="uber-gps-btn"
-                  title="Detect my current location"
-                  onClick={handleDetectLocation}
-                  disabled={isLocating}
-                >
-                  <md-icon style={{ fontSize: '20px', color: isLocating ? '#94a3b8' : '#000000' }}>
-                    {isLocating ? 'sync' : 'near_me'}
-                  </md-icon>
-                </button>
-              </div>
-
-              {/* Service Needed Input Row with Search & Suggestions */}
-              <div className="uber-input-row uber-service-input-row" ref={serviceDropdownRef}>
-                <div className="uber-marker-square" />
-                <input
-                  type="text"
-                  className="uber-text-input"
-                  placeholder="What is your service?"
+                  className="landing-pill-input"
+                  placeholder="Which service do you need?"
                   value={heroService}
                   onChange={(e) => {
                     setHeroService(e.target.value);
                     setIsServiceDropdownOpen(true);
                   }}
-                  onFocus={() => setIsServiceDropdownOpen(true)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsServiceDropdownOpen(true);
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       setIsServiceDropdownOpen(false);
@@ -220,110 +286,80 @@ export default function App() {
                     }
                   }}
                 />
-                {heroService ? (
-                  <button
-                    type="button"
-                    className="uber-clear-btn"
-                    title="Clear service"
-                    onClick={() => {
-                      setHeroService('');
-                      setIsServiceDropdownOpen(true);
-                    }}
-                  >
-                    <md-icon style={{ fontSize: '18px', color: '#6b7280' }}>close</md-icon>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    className="uber-dropdown-toggle-btn"
-                    title="Browse services"
-                    onClick={() => setIsServiceDropdownOpen(prev => !prev)}
-                  >
-                    <md-icon style={{ fontSize: '20px', color: '#6b7280' }}>
-                      {isServiceDropdownOpen ? 'expand_less' : 'search'}
-                    </md-icon>
-                  </button>
-                )}
-
-                {/* Interactive Service Suggestions Dropdown */}
-                {isServiceDropdownOpen && (
-                  <div className="uber-service-dropdown-menu">
-                    <div className="uber-dropdown-header">
-                      <span>{heroService.trim() ? `Matching "${heroService}"` : 'Popular Services & Baas Categories'}</span>
-                      <span className="uber-dropdown-count">{filteredServices.length} available</span>
-                    </div>
-
-                    <div className="uber-dropdown-list">
-                      {filteredServices.length > 0 ? (
-                        filteredServices.map((svc) => {
-                          const illustration = getCategoryIllustration(svc.category || svc.name);
-                          return (
-                            <div
-                              key={svc.name}
-                              className={`uber-service-item ${heroService.toLowerCase() === svc.name.toLowerCase() ? 'selected' : ''}`}
-                              onClick={() => handleSelectService(svc.name)}
-                            >
-                              <div className="uber-service-item-icon">
-                                {illustration ? (
-                                  <img
-                                    src={illustration}
-                                    alt={svc.name}
-                                    style={{ width: '22px', height: '22px', objectFit: 'contain' }}
-                                  />
-                                ) : (
-                                  <md-icon style={{ fontSize: '20px' }}>{svc.icon}</md-icon>
-                                )}
-                              </div>
-                              <div className="uber-service-item-info">
-                                <div className="uber-service-item-name">{svc.name}</div>
-                                <div className="uber-service-item-desc">{svc.desc}</div>
-                              </div>
-                              <md-icon className="uber-service-item-arrow" style={{ fontSize: '18px' }}>
-                                arrow_forward
-                              </md-icon>
-                            </div>
-                          );
-                        })
-                      ) : (
-                        <div className="uber-dropdown-empty">
-                          <md-icon style={{ fontSize: '28px', color: '#9ca3af' }}>search_off</md-icon>
-                          <p>No matching service found for "{heroService}"</p>
-                          <button
-                            type="button"
-                            className="uber-search-custom-btn"
-                            onClick={() => handleHeroSearch()}
-                          >
-                            Search anyway for "{heroService}"
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
+                <md-icon className={`landing-pill-chevron-icon ${isServiceDropdownOpen ? 'open' : ''}`}>
+                  keyboard_arrow_down
+                </md-icon>
               </div>
+
+              {/* Interactive Service Suggestions Dropdown */}
+              {isServiceDropdownOpen && (
+                <div className="landing-service-dropdown-menu">
+                  <div className="uber-dropdown-header">
+                    <span>{heroService.trim() ? `Matching "${heroService}"` : 'Popular Services & Baas Categories'}</span>
+                    <span className="uber-dropdown-count">{filteredServices.length} available</span>
+                  </div>
+
+                  <div className="uber-dropdown-list">
+                    {filteredServices.length > 0 ? (
+                      filteredServices.map((svc) => {
+                        const illustration = getCategoryIllustration(svc.category || svc.name);
+                        return (
+                          <div
+                            key={svc.name}
+                            className={`uber-service-item ${heroService.toLowerCase() === svc.name.toLowerCase() ? 'selected' : ''}`}
+                            onClick={() => {
+                              handleSelectService(svc.name);
+                              handleHeroSearch(svc.name);
+                            }}
+                          >
+                            <div className="uber-service-item-icon">
+                              {illustration ? (
+                                <img
+                                  src={illustration}
+                                  alt={svc.name}
+                                  style={{ width: '22px', height: '22px', objectFit: 'contain' }}
+                                />
+                              ) : (
+                                <md-icon style={{ fontSize: '20px' }}>{svc.icon}</md-icon>
+                              )}
+                            </div>
+                            <div className="uber-service-item-info">
+                              <div className="uber-service-item-name">{svc.name}</div>
+                              <div className="uber-service-item-desc">{svc.desc}</div>
+                            </div>
+                            <md-icon className="uber-service-item-arrow" style={{ fontSize: '18px' }}>
+                              arrow_forward
+                            </md-icon>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="uber-dropdown-empty">
+                        <md-icon style={{ fontSize: '28px', color: '#9ca3af' }}>search_off</md-icon>
+                        <p>No matching service found for "{heroService}"</p>
+                        <button
+                          type="button"
+                          className="uber-search-custom-btn"
+                          onClick={() => handleHeroSearch()}
+                        >
+                          Search anyway for "{heroService}"
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Primary Action Button */}
-            <div className="uber-hero-actions-row">
-              <button
-                type="button"
-                className="uber-primary-black-btn"
-                onClick={handleHeroSearch}
-              >
-                See available workers
-              </button>
-
-
-            </div>
           </div>
 
-          {/* Right Column: Hero Artwork Image (hero1.png) */}
-          <div className="uber-hero-image-col">
-            <div className="uber-hero-image-card">
+          {/* Right Column: Hero Artwork Card (1.png) */}
+          <div className="landing-top-hero-right">
+            <div className="landing-top-hero-card">
               <img
-                src="/hero/hero1.png"
+                src={hero1Img}
                 alt="SuperBass Craftsman at Sunset"
-                className="uber-hero-artwork"
+                className="landing-top-hero-img"
               />
             </div>
           </div>
@@ -385,11 +421,11 @@ export default function App() {
             </div>
           </div>
 
-          {/* Right Column: Hero2 Artwork Card */}
+          {/* Right Column: Hero2 Artwork Card (2.png) */}
           <div className="landing-community-image-col">
             <div className="landing-community-image-card">
               <img
-                src="/hero/hero2.png"
+                src={hero2Img}
                 alt="SuperBass Neighborhood Community & Craftsmen"
                 className="landing-community-artwork"
               />
@@ -403,11 +439,11 @@ export default function App() {
       <section className="landing-ai-section" id="ai-diagnostic">
         <div className="landing-ai-container">
 
-          {/* Left Column: Hero3 Artwork Card */}
+          {/* Left Column: Hero3 Artwork Card (3.png) */}
           <div className="landing-ai-image-col">
             <div className="landing-ai-image-card">
               <img
-                src="/hero/hero3.png"
+                src={aiUploadedImage || hero3Img}
                 alt="SuperBass AI Intelligent Home Repair Assistant"
                 className="landing-ai-artwork"
               />
@@ -469,6 +505,9 @@ export default function App() {
 
         </div>
       </section>
+
+      {/* Whole Black Theme Uber-style Footer */}
+      <Footer />
 
       {/* Floating AI Assistant Widget */}
       <AiAssistantWidget />
