@@ -263,7 +263,7 @@ export default function AiCommunityChat() {
   );
 
   return (
-    <div className="find-page-container">
+    <div className="find-page-container ai-chat-uber-page">
       {/* SuperBass Material 3 Top Navbar (Dark Theme matching Landing Page) */}
       <M3TopNavbar
         theme="dark"
@@ -277,13 +277,13 @@ export default function AiCommunityChat() {
         alwaysShowLinks={true}
       />
 
-      <div className="find-layout">
+      <div className="find-layout ai-chat-uber-layout">
         {/* Left Material 3 Drawer Sidebar */}
-        <aside className={`find-sidebar m3-drawer ${isSidebarCollapsed ? 'minimized' : ''}`}>
+        <aside className={`find-sidebar m3-drawer ai-chat-uber-sidebar ${isSidebarCollapsed ? 'minimized' : ''}`}>
           {/* New Chat Extended FAB */}
           <button
             type="button"
-            className="m3-compose-fab"
+            className="m3-compose-fab ai-uber-compose-btn"
             onClick={handleNewChat}
             title="Start New AI Conversation"
           >
@@ -299,7 +299,7 @@ export default function AiCommunityChat() {
               title="SuperBass Community AI"
             >
               <div className="m3-drawer-item-left">
-                <md-icon className="m3-drawer-icon" style={{ color: '#d97706' }}>smart_toy</md-icon>
+                <md-icon className="m3-drawer-icon">smart_toy</md-icon>
                 <span className="m3-drawer-label">AI Assistant</span>
               </div>
             </div>
@@ -328,49 +328,22 @@ export default function AiCommunityChat() {
           </nav>
 
           {/* Section Divider */}
-          <div className="m3-drawer-divider" style={{ margin: '14px 0 8px', borderBottom: '1px solid #e8edf3' }}></div>
+          <div className="m3-drawer-divider"></div>
 
           {/* Section Header */}
-          <div
-            className="m3-drawer-section-header"
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '4px 8px 8px 12px',
-            }}
-          >
-            <span
-              className="m3-drawer-section-title"
-              style={{
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                color: '#94a3b8',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-              }}
-            >
+          <div className="m3-drawer-section-header">
+            <span className="m3-drawer-section-title">
               Conversations
             </span>
-            <span
-              className="m3-drawer-badge"
-              style={{
-                background: '#f1f5f9',
-                color: '#64748b',
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                padding: '2px 8px',
-                borderRadius: '9999px',
-              }}
-            >
+            <span className="m3-drawer-badge">
               {conversations.length}
             </span>
           </div>
 
           {/* Conversations Threads List */}
-          <div className="m3-drawer-nav" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          <div className="m3-drawer-nav ai-conversations-list">
             {filteredConversations.length === 0 ? (
-              <div style={{ fontSize: '0.8rem', color: '#94a3b8', textAlign: 'center', padding: '1.25rem 0.5rem' }}>
+              <div className="ai-empty-conversations">
                 {searchQuery ? 'No matching chats' : 'No previous chats'}
               </div>
             ) : (
@@ -381,46 +354,21 @@ export default function AiCommunityChat() {
                     key={c.id}
                     className={`m3-drawer-item ${isActive ? 'active' : ''}`}
                     onClick={() => handleSelectConversation(c.id, conversations)}
-                    style={{ position: 'relative', paddingRight: '36px' }}
                     title={c.title || 'Conversation'}
                   >
-                    <div className="m3-drawer-item-left" style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <md-icon className="m3-drawer-icon" style={{ fontSize: '18px', color: isActive ? '#b45309' : '#64748b' }}>
+                    <div className="m3-drawer-item-left">
+                      <md-icon className="m3-drawer-icon">
                         {isActive ? 'chat' : 'chat_bubble_outline'}
                       </md-icon>
-                      <span
-                        className="m3-drawer-label"
-                        style={{
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          fontSize: '0.84rem',
-                        }}
-                      >
+                      <span className="m3-drawer-label">
                         {c.title || 'New Conversation'}
                       </span>
                     </div>
                     <button
                       type="button"
                       title="Delete chat"
+                      className="ai-conv-delete-btn"
                       onClick={(e) => handleDeleteConversation(c.id, e)}
-                      style={{
-                        position: 'absolute',
-                        right: '8px',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        background: 'none',
-                        border: 'none',
-                        color: '#94a3b8',
-                        cursor: 'pointer',
-                        padding: '4px',
-                        borderRadius: '50%',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.color = '#ef4444')}
-                      onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}
                     >
                       <md-icon style={{ fontSize: '16px' }}>delete</md-icon>
                     </button>
@@ -438,12 +386,12 @@ export default function AiCommunityChat() {
             <div className="ai-chat-card-header">
               <div className="ai-chat-title-group">
                 <div className="ai-chat-bot-avatar">
-                  <i className="fa-solid fa-robot"></i>
+                  <md-icon style={{ fontSize: '22px', color: '#ffffff' }}>auto_awesome</md-icon>
                 </div>
                 <div className="ai-chat-title-text">
                   <h2>SuperBass AI Assistant</h2>
                   <p>
-                    <span className="ai-status-dot" style={{ display: 'inline-block' }}></span>
+                    <span className="ai-status-dot online"></span>
                     LangGraph &bull; OpenAI &bull; MCP Tools Online
                   </p>
                 </div>
@@ -451,11 +399,11 @@ export default function AiCommunityChat() {
 
               <div className="ai-chat-status-badges">
                 <span className={`ai-status-pill ${agentHealth === 'online' ? 'online' : ''}`}>
-                  <span className="ai-status-dot" style={{ background: agentHealth === 'online' ? '#22c55e' : '#f59e0b' }}></span>
+                  <span className="ai-status-dot"></span>
                   Agent
                 </span>
                 <span className={`ai-status-pill ${mcpHealth === 'online' ? 'online' : ''}`}>
-                  <span className="ai-status-dot" style={{ background: mcpHealth === 'online' ? '#22c55e' : '#f59e0b' }}></span>
+                  <span className="ai-status-dot"></span>
                   MCP
                 </span>
                 <button className="ai-clear-btn" title="Reset chat" onClick={clearChat}>
@@ -475,7 +423,7 @@ export default function AiCommunityChat() {
                   <div key={msg.id} className={`ai-bubble-row ${isUser ? 'resident' : 'assistant'}`}>
                     {!isUser && (
                       <div className="ai-msg-avatar bot-av">
-                        <i className="fa-solid fa-sparkles"></i>
+                        <md-icon style={{ fontSize: '18px', color: '#ffffff' }}>auto_awesome</md-icon>
                       </div>
                     )}
 
@@ -493,7 +441,7 @@ export default function AiCommunityChat() {
                       <span className="ai-msg-time">
                         {msg.time}
                         {isUser && (
-                          <i className="fa-solid fa-check-double" style={{ fontSize: '0.7rem', color: '#0284c7' }}></i>
+                          <i className="fa-solid fa-check-double ai-check-icon"></i>
                         )}
                       </span>
                     </div>
@@ -504,7 +452,7 @@ export default function AiCommunityChat() {
               {loading && (
                 <div className="ai-bubble-row assistant">
                   <div className="ai-msg-avatar bot-av">
-                    <i className="fa-solid fa-sparkles"></i>
+                    <md-icon style={{ fontSize: '18px', color: '#ffffff' }}>auto_awesome</md-icon>
                   </div>
                   <div className="ai-msg-wrapper">
                     <div className="ai-typing-bubble">
@@ -529,7 +477,7 @@ export default function AiCommunityChat() {
                 className="agent-chip-btn"
                 onClick={() => handleSendMessage('Show recent community posts in Colombo')}
               >
-                <i className="fa-solid fa-bullhorn" style={{ color: '#d97706' }}></i>
+                <i className="fa-solid fa-bullhorn"></i>
                 Recent Posts
               </button>
               <button
@@ -537,7 +485,7 @@ export default function AiCommunityChat() {
                 className="agent-chip-btn"
                 onClick={() => handleSendMessage('Create a community post: Need emergency plumber for leaky pipe in Colombo')}
               >
-                <i className="fa-solid fa-wrench" style={{ color: '#2563eb' }}></i>
+                <i className="fa-solid fa-wrench"></i>
                 Plumber Request
               </button>
               <button
@@ -545,7 +493,7 @@ export default function AiCommunityChat() {
                 className="agent-chip-btn"
                 onClick={() => handleSendMessage('Create a community post: Looking for AC repair technician')}
               >
-                <i className="fa-solid fa-snowflake" style={{ color: '#0284c7' }}></i>
+                <i className="fa-solid fa-snowflake"></i>
                 AC Repair
               </button>
               <button
@@ -553,7 +501,7 @@ export default function AiCommunityChat() {
                 className="agent-chip-btn"
                 onClick={() => handleSendMessage('Show all my community posts')}
               >
-                <i className="fa-solid fa-user-pen" style={{ color: '#7c3aed' }}></i>
+                <i className="fa-solid fa-user-pen"></i>
                 My Posts
               </button>
               <button
@@ -561,7 +509,7 @@ export default function AiCommunityChat() {
                 className="agent-chip-btn"
                 onClick={() => handleSendMessage('What is my user role and profile details?')}
               >
-                <i className="fa-regular fa-id-badge" style={{ color: '#16a34a' }}></i>
+                <i className="fa-regular fa-id-badge"></i>
                 My Profile
               </button>
             </div>
@@ -569,7 +517,7 @@ export default function AiCommunityChat() {
             {/* Bottom Input Area */}
             <div className="ai-input-bar-area">
               <div className="ai-pill-input-box">
-                <md-icon style={{ color: '#d97706', fontSize: '20px' }}>auto_awesome</md-icon>
+                <md-icon className="ai-input-sparkle-icon">auto_awesome</md-icon>
                 <input
                   ref={inputRef}
                   type="text"

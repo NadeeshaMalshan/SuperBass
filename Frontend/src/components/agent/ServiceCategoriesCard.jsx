@@ -40,20 +40,20 @@ export default function ServiceCategoriesCard({ data = {}, onAction }) {
                 alignItems: 'center',
                 gap: '10px',
                 padding: '8px 12px',
-                backgroundColor: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                borderRadius: '10px',
+                backgroundColor: '#ffffff',
+                border: '1px solid #e5e5e5',
+                borderRadius: '12px',
                 cursor: 'pointer',
                 textAlign: 'left',
                 transition: 'all 0.15s ease'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#eff6ff';
-                e.currentTarget.style.borderColor = '#93c5fd';
+                e.currentTarget.style.backgroundColor = '#f3f3f3';
+                e.currentTarget.style.borderColor = '#000000';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#f8fafc';
-                e.currentTarget.style.borderColor = '#e2e8f0';
+                e.currentTarget.style.backgroundColor = '#ffffff';
+                e.currentTarget.style.borderColor = '#e5e5e5';
               }}
             >
               <span style={{ width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -64,10 +64,10 @@ export default function ServiceCategoriesCard({ data = {}, onAction }) {
                     style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                   />
                 ) : (
-                  <i className={`fa-solid ${cat.icon || 'fa-tag'}`} style={{ color: '#2563eb' }}></i>
+                  <i className={`fa-solid ${cat.icon || 'fa-tag'}`} style={{ color: '#000000' }}></i>
                 )}
               </span>
-              <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#1e293b' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#000000' }}>
                 {cat.name}
               </span>
             </button>
