@@ -56,7 +56,7 @@ export default function Footer() {
               <li><a href="/find" onClick={(e) => { e.preventDefault(); navigate('/find'); }}>Hire a Baas</a></li>
               <li><a href="/join" onClick={(e) => { e.preventDefault(); navigate('/join'); }}>Become a Baas / Pro</a></li>
               <li><a href="/find" onClick={(e) => { e.preventDefault(); navigate('/find'); }}>Trade Categories</a></li>
-              <li><a href="/ai-chat" onClick={(e) => { e.preventDefault(); navigate('/community/chat'); }}>SuperBass AI Diagnostic</a></li>
+              <li><a href="/ai/chat" onClick={(e) => { e.preventDefault(); navigate('/ai/chat'); }}>SuperBass AI Diagnostic</a></li>
               <li><a href="/community" onClick={(e) => { e.preventDefault(); navigate('/community'); }}>Community Classifieds</a></li>
               <li><a href="/find?q=Emergency" onClick={(e) => { e.preventDefault(); navigate('/find?q=Emergency'); }}>Emergency Repairs</a></li>
               <li><a href="/find" onClick={(e) => { e.preventDefault(); navigate('/find'); }}>Price Guide</a></li>

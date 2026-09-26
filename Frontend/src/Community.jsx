@@ -509,7 +509,7 @@ export default function Community() {
               <button
                 type="button"
                 className="community-hero-secondary-btn"
-                onClick={() => navigate('/community/chat')}
+                onClick={() => navigate('/ai/chat')}
               >
                 <i className="fa-solid fa-wand-magic-sparkles"></i>
                 <span>Ask SuperBass AI</span>

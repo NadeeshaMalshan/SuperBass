@@ -125,7 +125,7 @@ function Router() {
   if (path === '/join' || path === '/join.jsx') {
     return <Join />;
   }
-  if (path === '/community/chat' || path === '/community/chat.jsx' || path === '/ai-chat' || path === '/agent' || path === '/ai-chat.jsx') {
+  if (path === '/ai/chat' || path === '/community/chat' || path === '/ai-chat' || path === '/agent') {
     return <AiCommunityChat />;
   }
   if (path === '/community' || path === '/community.jsx') {

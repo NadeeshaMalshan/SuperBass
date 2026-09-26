@@ -274,20 +274,12 @@ export default function AiCommunityChat() {
                   <h2>SuperBass AI Assistant</h2>
                   <p>
                     <span className="ai-status-dot online"></span>
-                    LangGraph &bull; OpenAI &bull; MCP Tools Online
+                    SuperBass AI &bull; Community Assistant
                   </p>
                 </div>
               </div>
 
               <div className="ai-chat-status-badges">
-                <span className={`ai-status-pill ${agentHealth === 'online' ? 'online' : ''}`}>
-                  <span className="ai-status-dot"></span>
-                  Agent
-                </span>
-                <span className={`ai-status-pill ${mcpHealth === 'online' ? 'online' : ''}`}>
-                  <span className="ai-status-dot"></span>
-                  MCP
-                </span>
                 <button className="ai-clear-btn" title="Reset chat" onClick={clearChat}>
                   <md-icon style={{ fontSize: '16px' }}>refresh</md-icon>
                   <span>Reset</span>
@@ -352,49 +344,7 @@ export default function AiCommunityChat() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Quick Suggestions Chips Bar */}
-            <div className="ai-suggestions-bar">
-              <button
-                type="button"
-                className="agent-chip-btn"
-                onClick={() => handleSendMessage('Show recent community posts in Colombo')}
-              >
-                <i className="fa-solid fa-bullhorn"></i>
-                Recent Posts
-              </button>
-              <button
-                type="button"
-                className="agent-chip-btn"
-                onClick={() => handleSendMessage('Create a community post: Need emergency plumber for leaky pipe in Colombo')}
-              >
-                <i className="fa-solid fa-wrench"></i>
-                Plumber Request
-              </button>
-              <button
-                type="button"
-                className="agent-chip-btn"
-                onClick={() => handleSendMessage('Create a community post: Looking for AC repair technician')}
-              >
-                <i className="fa-solid fa-snowflake"></i>
-                AC Repair
-              </button>
-              <button
-                type="button"
-                className="agent-chip-btn"
-                onClick={() => handleSendMessage('Show all my community posts')}
-              >
-                <i className="fa-solid fa-user-pen"></i>
-                My Posts
-              </button>
-              <button
-                type="button"
-                className="agent-chip-btn"
-                onClick={() => handleSendMessage('What is my user role and profile details?')}
-              >
-                <i className="fa-regular fa-id-badge"></i>
-                My Profile
-              </button>
-            </div>
+
 
             {/* Bottom Input Area */}
             <div className="ai-input-bar-area">

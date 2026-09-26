@@ -152,7 +152,7 @@ export default function M3TopNavbar({
         <button
           type="button"
           className={`m3-nav-btn m3-nav-btn-ai ${activePage === 'ai' ? 'active' : ''}`}
-          onClick={() => navigate('/community/chat')}
+          onClick={() => navigate('/ai/chat')}
           title="AI Home Assistant"
         >
           <md-icon style={{ fontSize: '18px' }}>auto_awesome</md-icon>
