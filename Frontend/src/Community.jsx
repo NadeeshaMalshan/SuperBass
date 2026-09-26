@@ -544,65 +544,6 @@ export default function Community() {
             <span>Post an Ad</span>
           </button>
 
-          {/* Primary Navigation List */}
-          <div className="uber-sidebar-nav">
-            <div
-              className={`uber-sidebar-item ${selectedCategory === 'all' && selectedProvince === 'all' && selectedDistrict === 'all' ? 'active' : ''}`}
-              onClick={() => {
-                setSearchTerm('');
-                setSelectedCategory('all');
-                setSelectedProvince('all');
-                setSelectedDistrict('all');
-                setSortBy('newest');
-              }}
-              title="View all community posts"
-            >
-              <div className="uber-sidebar-item-left">
-                <i className="fa-solid fa-house"></i>
-                <span>All Posts</span>
-              </div>
-              <span className="uber-sidebar-badge">{posts.length}</span>
-            </div>
-          </div>
-
-          <hr className="uber-sidebar-divider" />
-
-          {/* Grid Layout Switcher Section in Sidebar */}
-          <div className="uber-sidebar-section">
-            <div className="uber-sidebar-section-title">
-              <span>Card Layout</span>
-            </div>
-            <div className="uber-grid-switcher-list">
-              <button
-                type="button"
-                className={`uber-grid-switch-btn ${viewMode === 'large' ? 'active' : ''}`}
-                onClick={() => handleViewModeChange('large')}
-                title="Large Cards View"
-              >
-                <i className="fa-solid fa-table-cells-large"></i>
-                <span>Large Cards</span>
-              </button>
-              <button
-                type="button"
-                className={`uber-grid-switch-btn ${viewMode === 'small' ? 'active' : ''}`}
-                onClick={() => handleViewModeChange('small')}
-                title="Small Cards View"
-              >
-                <i className="fa-solid fa-grip"></i>
-                <span>Small Cards</span>
-              </button>
-              <button
-                type="button"
-                className={`uber-grid-switch-btn ${viewMode === 'list' ? 'active' : ''}`}
-                onClick={() => handleViewModeChange('list')}
-                title="List View"
-              >
-                <i className="fa-solid fa-list-ul"></i>
-                <span>List View</span>
-              </button>
-            </div>
-          </div>
-
           <hr className="uber-sidebar-divider" />
 
           {/* Location Filter Section: Two Separate Fields (Province and District) */}
@@ -733,34 +674,34 @@ export default function Community() {
                 <option value="oldest">Sort: Oldest First</option>
               </select>
 
-              {/* Grid View Mode Switcher Button Group */}
+              {/* Grid View Mode Switcher Button Group (Icon Only) */}
               <div className="uber-view-mode-group" role="group" aria-label="Card grid view mode">
                 <button
                   type="button"
                   className={`uber-view-mode-btn ${viewMode === 'large' ? 'active' : ''}`}
                   onClick={() => handleViewModeChange('large')}
-                  title="Large Cards"
+                  title="Large Cards View"
+                  aria-label="Large Cards View"
                 >
                   <i className="fa-solid fa-table-cells-large"></i>
-                  <span>Large Cards</span>
                 </button>
                 <button
                   type="button"
                   className={`uber-view-mode-btn ${viewMode === 'small' ? 'active' : ''}`}
                   onClick={() => handleViewModeChange('small')}
-                  title="Small Cards"
+                  title="Small Cards View"
+                  aria-label="Small Cards View"
                 >
                   <i className="fa-solid fa-grip"></i>
-                  <span>Small Cards</span>
                 </button>
                 <button
                   type="button"
                   className={`uber-view-mode-btn ${viewMode === 'list' ? 'active' : ''}`}
                   onClick={() => handleViewModeChange('list')}
                   title="List View"
+                  aria-label="List View"
                 >
                   <i className="fa-solid fa-list-ul"></i>
-                  <span>List</span>
                 </button>
               </div>
             </div>

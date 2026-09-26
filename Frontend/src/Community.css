@@ -380,49 +380,7 @@
   box-shadow: 0 0 0 1px #000000;
 }
 
-/* Card Layout Switcher in Sidebar */
-.uber-grid-switcher-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
 
-.uber-grid-switch-btn {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  border: 1px solid #e5e5e5;
-  background: #ffffff;
-  color: #333333;
-  border-radius: 12px;
-  padding: 9px 12px;
-  font-family: inherit;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  text-align: left;
-}
-
-.uber-grid-switch-btn:hover {
-  background: #f6f6f6;
-  border-color: #000000;
-  color: #000000;
-}
-
-.uber-grid-switch-btn.active {
-  background: #000000;
-  border-color: #000000;
-  color: #ffffff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-}
-
-.uber-grid-switch-btn i {
-  font-size: 0.95rem;
-  width: 16px;
-  text-align: center;
-}
 
 /* Category List in Sidebar */
 .uber-cat-list {
@@ -556,7 +514,7 @@
   flex-wrap: wrap;
 }
 
-/* Card Grid View Mode Switcher Pill Group */
+/* Card Grid View Mode Switcher Pill Group (Icon Only) */
 .uber-view-mode-group {
   display: inline-flex;
   align-items: center;
@@ -564,24 +522,25 @@
   border: 1px solid #e5e5e5;
   border-radius: 9999px;
   padding: 3px;
-  gap: 2px;
+  gap: 3px;
+  height: 44px;
+  box-sizing: border-box;
 }
 
 .uber-view-mode-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
   border: none;
   background: transparent;
   color: #666666;
-  border-radius: 9999px;
-  padding: 6px 14px;
-  font-family: inherit;
-  font-size: 0.82rem;
-  font-weight: 600;
+  border-radius: 50%;
   cursor: pointer;
   transition: all 0.15s ease;
-  white-space: nowrap;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 .uber-view-mode-btn:hover {
@@ -592,11 +551,11 @@
 .uber-view-mode-btn.active {
   background: #000000;
   color: #ffffff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
 .uber-view-mode-btn i {
-  font-size: 0.85rem;
+  font-size: 0.95rem;
 }
 
 /* ==========================================================================
