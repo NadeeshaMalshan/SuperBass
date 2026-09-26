@@ -6,7 +6,6 @@ import categoriesData from './data/categories.json';
 import ChatModal from './components/ChatModal.jsx';
 import UserMenu from './components/UserMenu.jsx';
 import AiAssistantWidget from './components/AiAssistantWidget.jsx';
-import Loader from './components/Loader.jsx';
 import M3TopNavbar from './components/M3TopNavbar.jsx';
 import hero2Img from './assets/community.png';
 import sriLankaDistricts from './data/sriLankaDistricts.json';
@@ -30,7 +29,7 @@ export default function Community() {
   const [selectedDistrict, setSelectedDistrict] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
   const [currentPage, setCurrentPage] = useState(1);
-  const CARDS_PER_PAGE = 9;
+  const CARDS_PER_PAGE = 6;
 
   // Active Tab: 'feed' or 'moderation'
   const [activeTab, setActiveTab] = useState('feed');
@@ -715,9 +714,9 @@ export default function Community() {
 
           {/* Listings Cards Container */}
           {loading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '4rem', color: '#757575' }}>
-              <Loader />
-              <p style={{ fontSize: '1rem', fontWeight: '600' }}>Loading community listings...</p>
+            <div className="uber-loading-box">
+              <div className="uber-spinner-ring"></div>
+              <p className="uber-loading-text">Loading community listings...</p>
             </div>
           ) : allCurrentPosts.length === 0 ? (
             <div style={{
@@ -765,175 +764,175 @@ export default function Community() {
               <div className="community-cards-grid">
                 {paginatedPosts.map(post => {
                   const catObj = categoriesData.find(c => c.id === post.category);
-                return (
-                  <div
-                    key={post.postId}
-                    className="uber-post-card"
-                    onClick={() => handleCardClick(post)}
-                    role="button"
-                    tabIndex={0}
-                  >
-                    {/* Card Top: Author & Category Pill */}
-                    <div className="uber-card-header">
-                      <div className="uber-card-author">
-                        <img
-                          src={post.userAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.postId}`}
-                          alt={post.userName || 'Resident'}
-                          className="uber-card-avatar"
-                          onError={(e) => {
-                            e.target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.postId}`;
-                          }}
-                        />
-                        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                          <span className="uber-card-author-name">{post.userName || 'Community Resident'}</span>
-                          <span className="uber-card-time">{formatTimeAgo(post.createdAt)}</span>
-                        </div>
-                      </div>
-
-                      <span className="uber-category-pill">
-                        <i className="fa-solid fa-tag" style={{ fontSize: '11px' }}></i>
-                        <span>{catObj?.name || post.category}</span>
-                      </span>
-                    </div>
-
-                    {/* Card Image Preview with 16:10 Aspect Ratio */}
-                    <div className="uber-card-img-wrap">
-                      {post.images && post.images.length > 0 ? (
-                        <img
-                          src={post.images[0]}
-                          alt={post.title}
-                          className="uber-card-img"
-                          loading="lazy"
-                          onError={(e) => {
-                            e.target.src = 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=500&auto=format&fit=crop';
-                          }}
-                        />
-                      ) : (
-                        <div className="uber-card-img-placeholder">
-                          <i className="fa-solid fa-image"></i>
-                        </div>
-                      )}
-
-                      {post.images && post.images.length > 1 && (
-                        <div className="uber-card-photos-badge">
-                          <i className="fa-solid fa-camera"></i>
-                          <span>{post.images.length}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Card Body */}
-                    <div className="uber-card-body">
-                      <h3 className="uber-card-title">{post.title}</h3>
-                      <p className="uber-card-desc">
-                        {post.content || 'Click to view full details, questions, or contact the poster...'}
-                      </p>
-
-                      <div className="uber-card-location-row">
-                        <i className="fa-solid fa-location-dot" style={{ color: '#000000' }}></i>
-                        <span>{post.location || 'Sri Lanka'}</span>
-                      </div>
-                    </div>
-
-                    {/* Card Footer: Timestamp & Actions */}
-                    <div className="uber-card-footer">
-                      <div className="uber-card-time-ago">
-                        <i className="fa-regular fa-clock" style={{ marginRight: '5px', fontSize: '0.75rem' }}></i>
-                        {formatTimeAgo(post.createdAt)}
-                      </div>
-
-                      <div className="uber-card-actions" onClick={(e) => e.stopPropagation()}>
-                        {isPostOwner(post) ? (
-                          <div style={{ display: 'flex', gap: '6px' }}>
-                            <button
-                              type="button"
-                              className="uber-icon-btn-edit"
-                              onClick={(e) => handleOpenEdit(post, e)}
-                              title="Edit listing"
-                            >
-                              <i className="fa-solid fa-pen"></i>
-                            </button>
-                            <button
-                              type="button"
-                              className="uber-icon-btn-delete"
-                              onClick={(e) => handleDeletePost(post.postId, e)}
-                              title="Delete listing"
-                            >
-                              <i className="fa-solid fa-trash"></i>
-                            </button>
+                  return (
+                    <div
+                      key={post.postId}
+                      className="uber-post-card"
+                      onClick={() => handleCardClick(post)}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      {/* Card Top: Author & Category Pill */}
+                      <div className="uber-card-header">
+                        <div className="uber-card-author">
+                          <img
+                            src={post.userAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.postId}`}
+                            alt={post.userName || 'Resident'}
+                            className="uber-card-avatar"
+                            onError={(e) => {
+                              e.target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.postId}`;
+                            }}
+                          />
+                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                            <span className="uber-card-author-name">{post.userName || 'Community Resident'}</span>
+                            <span className="uber-card-time">{formatTimeAgo(post.createdAt)}</span>
                           </div>
+                        </div>
+
+                        <span className="uber-category-pill">
+                          <i className="fa-solid fa-tag" style={{ fontSize: '11px' }}></i>
+                          <span>{catObj?.name || post.category}</span>
+                        </span>
+                      </div>
+
+                      {/* Card Image Preview with 16:10 Aspect Ratio */}
+                      <div className="uber-card-img-wrap">
+                        {post.images && post.images.length > 0 ? (
+                          <img
+                            src={post.images[0]}
+                            alt={post.title}
+                            className="uber-card-img"
+                            loading="lazy"
+                            onError={(e) => {
+                              e.target.src = 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=500&auto=format&fit=crop';
+                            }}
+                          />
                         ) : (
-                          <button
-                            type="button"
-                            className="uber-card-details-btn"
-                            onClick={() => handleCardClick(post)}
-                          >
-                            <span>Details</span>
-                            <span style={{ fontSize: '13px' }}>›</span>
-                          </button>
+                          <div className="uber-card-img-placeholder">
+                            <i className="fa-solid fa-image"></i>
+                          </div>
+                        )}
+
+                        {post.images && post.images.length > 1 && (
+                          <div className="uber-card-photos-badge">
+                            <i className="fa-solid fa-camera"></i>
+                            <span>{post.images.length}</span>
+                          </div>
                         )}
                       </div>
+
+                      {/* Card Body */}
+                      <div className="uber-card-body">
+                        <h3 className="uber-card-title">{post.title}</h3>
+                        <p className="uber-card-desc">
+                          {post.content || 'Click to view full details, questions, or contact the poster...'}
+                        </p>
+
+                        <div className="uber-card-location-row">
+                          <i className="fa-solid fa-location-dot" style={{ color: '#000000' }}></i>
+                          <span>{post.location || 'Sri Lanka'}</span>
+                        </div>
+                      </div>
+
+                      {/* Card Footer: Timestamp & Actions */}
+                      <div className="uber-card-footer">
+                        <div className="uber-card-time-ago">
+                          <i className="fa-regular fa-clock" style={{ marginRight: '5px', fontSize: '0.75rem' }}></i>
+                          {formatTimeAgo(post.createdAt)}
+                        </div>
+
+                        <div className="uber-card-actions" onClick={(e) => e.stopPropagation()}>
+                          {isPostOwner(post) ? (
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                              <button
+                                type="button"
+                                className="uber-icon-btn-edit"
+                                onClick={(e) => handleOpenEdit(post, e)}
+                                title="Edit listing"
+                              >
+                                <i className="fa-solid fa-pen"></i>
+                              </button>
+                              <button
+                                type="button"
+                                className="uber-icon-btn-delete"
+                                onClick={(e) => handleDeletePost(post.postId, e)}
+                                title="Delete listing"
+                              >
+                                <i className="fa-solid fa-trash"></i>
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              className="uber-card-details-btn"
+                              onClick={() => handleCardClick(post)}
+                            >
+                              <span>Details</span>
+                              <span style={{ fontSize: '13px' }}>›</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Uber-Themed Pagination (9 cards per page) */}
-            {totalPages > 1 && (
-              <div className="uber-pagination-container">
-                <button
-                  type="button"
-                  className="uber-pagination-btn"
-                  onClick={() => handlePageChange(safeCurrentPage - 1)}
-                  disabled={safeCurrentPage === 1}
-                  aria-label="Previous Page"
-                >
-                  <i className="fa-solid fa-chevron-left"></i>
-                  <span>Prev</span>
-                </button>
-
-                <div className="uber-pagination-pages">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNum => {
-                    if (
-                      pageNum === 1 ||
-                      pageNum === totalPages ||
-                      (pageNum >= safeCurrentPage - 1 && pageNum <= safeCurrentPage + 1)
-                    ) {
-                      return (
-                        <button
-                          key={pageNum}
-                          type="button"
-                          className={`uber-pagination-num ${safeCurrentPage === pageNum ? 'active' : ''}`}
-                          onClick={() => handlePageChange(pageNum)}
-                        >
-                          {pageNum}
-                        </button>
-                      );
-                    } else if (
-                      pageNum === safeCurrentPage - 2 ||
-                      pageNum === safeCurrentPage + 2
-                    ) {
-                      return <span key={pageNum} className="uber-pagination-ellipsis">...</span>;
-                    }
-                    return null;
-                  })}
-                </div>
-
-                <button
-                  type="button"
-                  className="uber-pagination-btn"
-                  onClick={() => handlePageChange(safeCurrentPage + 1)}
-                  disabled={safeCurrentPage === totalPages}
-                  aria-label="Next Page"
-                >
-                  <span>Next</span>
-                  <i className="fa-solid fa-chevron-right"></i>
-                </button>
+                  );
+                })}
               </div>
-            )}
-          </>
-        )}
+
+              {/* Uber-Themed Pagination (9 cards per page) */}
+              {totalPages > 1 && (
+                <div className="uber-pagination-container">
+                  <button
+                    type="button"
+                    className="uber-pagination-btn"
+                    onClick={() => handlePageChange(safeCurrentPage - 1)}
+                    disabled={safeCurrentPage === 1}
+                    aria-label="Previous Page"
+                  >
+                    <i className="fa-solid fa-chevron-left"></i>
+                    <span>Prev</span>
+                  </button>
+
+                  <div className="uber-pagination-pages">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNum => {
+                      if (
+                        pageNum === 1 ||
+                        pageNum === totalPages ||
+                        (pageNum >= safeCurrentPage - 1 && pageNum <= safeCurrentPage + 1)
+                      ) {
+                        return (
+                          <button
+                            key={pageNum}
+                            type="button"
+                            className={`uber-pagination-num ${safeCurrentPage === pageNum ? 'active' : ''}`}
+                            onClick={() => handlePageChange(pageNum)}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      } else if (
+                        pageNum === safeCurrentPage - 2 ||
+                        pageNum === safeCurrentPage + 2
+                      ) {
+                        return <span key={pageNum} className="uber-pagination-ellipsis">...</span>;
+                      }
+                      return null;
+                    })}
+                  </div>
+
+                  <button
+                    type="button"
+                    className="uber-pagination-btn"
+                    onClick={() => handlePageChange(safeCurrentPage + 1)}
+                    disabled={safeCurrentPage === totalPages}
+                    aria-label="Next Page"
+                  >
+                    <span>Next</span>
+                    <i className="fa-solid fa-chevron-right"></i>
+                  </button>
+                </div>
+              )}
+            </>
+          )}
         </main>
       </div>
 
