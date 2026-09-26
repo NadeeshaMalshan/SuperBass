@@ -1,535 +1,1521 @@
-/* Ikman-style Classified Listings UI for Community Page */
+/* ==========================================================================
+   SuperBass Community Stylesheet (Uber Design System: Black, White & Gray)
+   Typography: DM Sans / Inter | Corner Radius: Sleek Pills & Rounded Rects
+   ========================================================================== */
 
+/* Main Page Container */
 .community-page-wrapper {
-  background-color: #f4f6f8;
+  background-color: #f7f7f7;
   min-height: 100vh;
-  font-family: var(--font-body);
-  color: #1e293b;
-  padding-bottom: 3rem;
+  font-family: var(--font-heading, 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+  color: #000000;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Header & Nav */
-.community-navbar {
-  background-color: #ffffff;
-  border-bottom: 1px solid #e2e8f0;
-  padding: 0.75rem 2rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+/* ==========================================================================
+   1. Community Hero Showcase Banner (Uber Pitch Black Aesthetic)
+   ========================================================================== */
+.community-hero-banner {
+  width: 100%;
+  background: #000000;
+  padding: 48px 32px 56px;
+  box-sizing: border-box;
+  border-bottom: 1px solid #1f1f1f;
+  position: relative;
+  overflow: hidden;
 }
 
-.community-main {
-  max-width: 1040px;
+.community-hero-container {
+  max-width: 1240px;
   margin: 0 auto;
-  padding: 1.5rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 40px;
 }
 
-/* Page Header & Filter Toolbar */
-.filter-toolbar {
-  background-color: #ffffff;
-  padding: 16px 20px;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
-  margin-bottom: 1.25rem;
+.community-hero-left {
+  flex: 1;
+  max-width: 680px;
+}
+
+.community-hero-overline {
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #a3a3a3;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.community-hero-title {
+  font-size: clamp(2.1rem, 4vw, 3rem);
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+  margin: 0 0 16px 0;
+}
+
+.community-hero-desc {
+  font-size: 1.05rem;
+  color: #a3a3a3;
+  line-height: 1.5;
+  margin: 0 0 28px 0;
+  max-width: 580px;
+}
+
+.community-hero-actions {
   display: flex;
-  gap: 12px;
   align-items: center;
+  gap: 14px;
   flex-wrap: wrap;
 }
 
-.search-input-wrapper {
-  flex: 1;
-  min-width: 260px;
-  position: relative;
-}
-
-.search-input-wrapper i {
-  position: absolute;
-  left: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #94a3b8;
-  font-size: 0.95rem;
-}
-
-.search-input {
-  width: 100%;
-  padding: 10px 14px 10px 40px;
-  border-radius: 10px;
-  border: 1px solid #cbd5e1;
-  font-size: 0.925rem;
-  outline: none;
-  transition: all 0.2s ease;
-}
-
-.search-input:focus {
-  border-color: #FDC101;
-  box-shadow: 0 0 0 3px rgba(253, 193, 1, 0.15);
-}
-
-.filter-select {
-  padding: 10px 14px;
-  border-radius: 10px;
-  border: 1px solid #cbd5e1;
-  background-color: #ffffff;
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: #334155;
-  cursor: pointer;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.filter-select:focus {
-  border-color: #FDC101;
-}
-
-/* Category Filter Chips horizontal scroll */
-.category-chips-scroll {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding-bottom: 8px;
-  margin-bottom: 1.25rem;
-  scrollbar-width: thin;
-}
-
-.category-chip {
-  padding: 8px 16px;
-  border-radius: 20px;
-  border: 1px solid #e2e8f0;
-  background-color: #ffffff;
-  color: #475569;
-  font-weight: 500;
-  font-size: 0.875rem;
-  cursor: pointer;
-  white-space: nowrap;
-  display: flex;
+/* Corner Radius Buttons (Uber Style) */
+.uber-btn-primary {
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  transition: all 0.2s ease;
-}
-
-.category-chip.active {
-  background-color: #FDC101;
-  color: #000000;
-  border-color: #FDC101;
+  justify-content: center;
+  gap: 8px;
+  background: #000000;
+  color: #ffffff;
+  border: 1.5px solid #000000;
+  border-radius: 9999px;
+  padding: 11px 24px;
+  font-family: inherit;
+  font-size: 0.925rem;
   font-weight: 700;
-  box-shadow: 0 2px 8px rgba(253, 193, 1, 0.3);
-}
-
-.category-chip:hover:not(.active) {
-  border-color: #cbd5e1;
-  background-color: #f8fafc;
-}
-
-/* Ikman Listing Container */
-.ikman-listings-container {
-  display: flex;
-  flex-direction: column;
-  background-color: #ffffff;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  overflow: hidden;
-}
-
-/* Ikman Item Row Card */
-.ikman-card {
-  display: flex;
-  gap: 18px;
-  padding: 16px 20px;
-  background-color: #ffffff;
-  border-bottom: 1px solid #f1f5f9;
-  transition: background-color 0.15s ease, box-shadow 0.15s ease;
   cursor: pointer;
-  position: relative;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   text-decoration: none;
 }
 
-.ikman-card:last-child {
-  border-bottom: none;
+.uber-btn-primary:hover {
+  background: #262626;
+  border-color: #262626;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
 }
 
-.ikman-card:hover {
-  background-color: #f8fafc;
+.uber-btn-primary:active {
+  transform: translateY(0);
 }
 
-/* Thumbnail Column */
-.ikman-image-col {
-  width: 170px;
-  height: 125px;
-  min-width: 170px;
-  position: relative;
-  border-radius: 8px;
+.uber-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #eeeeee;
+  color: #000000;
+  border: 1.5px solid #eeeeee;
+  border-radius: 9999px;
+  padding: 11px 24px;
+  font-family: inherit;
+  font-size: 0.925rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-decoration: none;
+}
+
+.uber-btn-secondary:hover {
+  background: #e2e2e2;
+  border-color: #e2e2e2;
+}
+
+.uber-btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #ffffff;
+  color: #000000;
+  border: 1.5px solid #000000;
+  border-radius: 9999px;
+  padding: 11px 24px;
+  font-family: inherit;
+  font-size: 0.925rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-decoration: none;
+}
+
+.uber-btn-outline:hover {
+  background: #f3f3f3;
+  transform: translateY(-1px);
+}
+
+/* White Hero Button */
+.community-hero-primary-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  color: #000000;
+  border: none;
+  border-radius: 9999px;
+  padding: 12px 28px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 4px 16px rgba(255, 255, 255, 0.12);
+}
+
+.community-hero-primary-btn:hover {
+  background: #f1f1f1;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(255, 255, 255, 0.22);
+}
+
+.community-hero-secondary-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  color: #ffffff;
+  border: 1.5px solid #444444;
+  border-radius: 9999px;
+  padding: 12px 24px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.community-hero-secondary-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #ffffff;
+  transform: translateY(-2px);
+}
+
+.community-hero-right {
+  flex: 0 0 380px;
+}
+
+.community-hero-artwork-card {
+  background: #121212;
+  border: 1px solid #282828;
+  border-radius: 20px;
   overflow: hidden;
-  background-color: #f1f5f9;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+}
+
+.community-hero-artwork-img {
+  width: 100%;
+  height: 100%;
+  max-height: 250px;
+  object-fit: cover;
+  display: block;
+}
+
+/* ==========================================================================
+   2. Main Layout (Sidebar + Content Feed)
+   ========================================================================== */
+.community-layout-container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px 20px 80px;
+  display: flex;
+  gap: 24px;
+  box-sizing: border-box;
+}
+
+/* Uber Styled Sidebar */
+.community-sidebar {
+  width: 270px;
+  flex-shrink: 0;
+  background: #ffffff;
+  border: 1px solid #e5e5e5;
+  border-radius: 16px;
+  padding: 18px 14px;
+  box-sizing: border-box;
+  height: fit-content;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  transition: width 0.25s ease;
+}
+
+.community-sidebar.collapsed {
+  width: 76px;
+  padding: 16px 10px;
+  align-items: center;
+}
+
+.uber-compose-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #e2e8f0;
+  gap: 8px;
+  width: 100%;
+  height: 48px;
+  background: #000000;
+  color: #ffffff;
+  border: none;
+  border-radius: 9999px;
+  font-family: inherit;
+  font-size: 0.925rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
 }
 
-.ikman-img {
+.uber-compose-btn:hover {
+  background: #262626;
+  transform: translateY(-1px);
+}
+
+.uber-sidebar-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  color: #000000;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.15s ease;
+  user-select: none;
+  text-decoration: none;
+}
+
+.uber-sidebar-item:hover {
+  background: #f3f3f3;
+}
+
+.uber-sidebar-item.active {
+  background: #000000;
+  color: #ffffff;
+}
+
+.uber-sidebar-item-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.uber-sidebar-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: #eeeeee;
+  color: #000000;
+}
+
+.uber-sidebar-item.active .uber-sidebar-badge {
+  background: #333333;
+  color: #ffffff;
+}
+
+.uber-sidebar-divider {
+  height: 1px;
+  background-color: #eeeeee;
+  border: none;
+  margin: 4px 0;
+}
+
+.uber-sidebar-section-title {
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #757575;
+  padding: 0 10px 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.uber-sidebar-clear-btn {
+  background: transparent;
+  border: none;
+  color: #000000;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.uber-sidebar-clear-btn:hover {
+  opacity: 0.7;
+}
+
+/* Uber Select in Sidebar */
+.uber-sidebar-select {
+  width: 100%;
+  height: 42px;
+  background-color: #f6f6f6;
+  border: 1px solid #e5e5e5;
+  border-radius: 10px;
+  padding: 0 34px 0 12px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  font-weight: 500;
+  color: #000000;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23000000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.uber-sidebar-select:focus {
+  border-color: #000000;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 1px #000000;
+}
+
+
+
+/* Category List in Sidebar */
+.uber-cat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.uber-cat-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: #333333;
+  font-size: 0.86rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.uber-cat-item:hover {
+  background: #f3f3f3;
+  color: #000000;
+}
+
+.uber-cat-item.active {
+  background: #f0f0f0;
+  color: #000000;
+  font-weight: 700;
+}
+
+.uber-cat-item i {
+  width: 18px;
+  text-align: center;
+  font-size: 0.88rem;
+  color: #666666;
+  flex-shrink: 0;
+  transition: color 0.15s ease;
+}
+
+.uber-cat-item:hover i,
+.uber-cat-item.active i {
+  color: #000000;
+}
+
+/* Main Feed Column */
+.community-feed-column {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* Top Search Bar & Sort */
+.uber-search-card {
+  background: #ffffff;
+  border: 1px solid #e5e5e5;
+  border-radius: 16px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.uber-search-input-wrap {
+  flex: 1;
+  min-width: 240px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f6f6f6;
+  border: 1px solid #e5e5e5;
+  border-radius: 9999px;
+  height: 44px;
+  padding: 0 16px;
+  box-sizing: border-box;
+  transition: all 0.15s ease;
+}
+
+.uber-search-input-wrap:focus-within {
+  background: #ffffff;
+  border-color: #000000;
+  box-shadow: 0 0 0 1px #000000;
+}
+
+.uber-search-icon {
+  font-size: 16px;
+  color: #757575;
+}
+
+.uber-search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: #000000;
+}
+
+.uber-search-input::placeholder {
+  color: #8c8c8c;
+}
+
+.uber-sort-select {
+  height: 44px;
+  background-color: #ffffff;
+  border: 1px solid #e5e5e5;
+  border-radius: 9999px;
+  padding: 0 34px 0 16px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  font-weight: 600;
+  color: #000000;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23000000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  transition: all 0.15s ease;
+}
+
+.uber-sort-select:hover {
+  background-color: #f6f6f6;
+}
+
+.uber-sort-select:focus {
+  border-color: #000000;
+  box-shadow: 0 0 0 1px #000000;
+}
+
+.uber-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Card Grid View Mode Switcher Pill Group (Icon Only) */
+.uber-view-mode-group {
+  display: inline-flex;
+  align-items: center;
+  background: #f6f6f6;
+  border: 1px solid #e5e5e5;
+  border-radius: 9999px;
+  padding: 3px;
+  gap: 3px;
+  height: 44px;
+  box-sizing: border-box;
+}
+
+.uber-view-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  color: #666666;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.uber-view-mode-btn:hover {
+  color: #000000;
+  background: #eeeeee;
+}
+
+.uber-view-mode-btn.active {
+  background: #000000;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.uber-view-mode-btn i {
+  font-size: 0.95rem;
+}
+
+/* ==========================================================================
+   3. Modern Community Post Cards Grid (Uber Card Style)
+   ========================================================================== */
+.community-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+  transition: all 0.2s ease;
+}
+
+/* Large Cards View */
+.community-cards-grid.view-large {
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 24px;
+}
+
+.uber-card-large {
+  padding: 20px;
+}
+
+.uber-card-large .uber-card-img-wrap {
+  height: 220px;
+}
+
+.uber-card-large .uber-card-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.uber-card-large .uber-card-desc {
+  font-size: 0.88rem;
+  -webkit-line-clamp: 3;
+}
+
+/* Small Cards View */
+.community-cards-grid.view-small {
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px;
+}
+
+.uber-card-small {
+  padding: 12px 14px;
+  border-radius: 14px;
+}
+
+.uber-card-small .uber-card-header {
+  margin-bottom: 8px;
+}
+
+.uber-card-small .uber-card-avatar {
+  width: 28px;
+  height: 28px;
+}
+
+.uber-card-small .uber-card-author-name {
+  font-size: 0.8rem;
+}
+
+.uber-card-small .uber-category-pill {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+}
+
+.uber-card-small .uber-card-img-wrap {
+  height: 130px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
+.uber-card-small .uber-card-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.uber-card-small .uber-card-desc {
+  font-size: 0.78rem;
+  -webkit-line-clamp: 2;
+  margin-bottom: 6px;
+}
+
+.uber-card-small .uber-card-location-row {
+  font-size: 0.74rem;
+  gap: 4px;
+}
+
+.uber-card-small .uber-card-footer {
+  padding-top: 8px;
+}
+
+.uber-card-small .uber-card-details-btn {
+  font-size: 0.76rem;
+  padding: 5px 10px;
+}
+
+/* List View */
+.community-cards-grid.view-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.uber-card-list {
+  padding: 16px 20px;
+  border-radius: 16px;
+  width: 100%;
+}
+
+.uber-list-card-inner {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 20px;
+  width: 100%;
+}
+
+.uber-list-card-media {
+  width: 240px;
+  min-width: 240px;
+  height: 160px;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  background: #f6f6f6;
+  flex-shrink: 0;
+}
+
+.uber-list-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+  display: block;
+}
+
+.uber-post-card:hover .uber-list-img {
+  transform: scale(1.04);
+}
+
+.uber-list-cat-pill {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(0, 0, 0, 0.78);
+  color: #ffffff;
+  backdrop-filter: blur(4px);
+}
+
+.uber-list-card-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.uber-list-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.uber-list-body {
+  margin-bottom: 10px;
+}
+
+.uber-list-body .uber-card-title {
+  font-size: 1.12rem;
+  font-weight: 800;
+  color: #000000;
+  margin: 0 0 6px 0;
+}
+
+.uber-list-body .uber-card-desc {
+  font-size: 0.88rem;
+  color: #666666;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .uber-list-card-inner {
+    flex-direction: column;
+  }
+  .uber-list-card-media {
+    width: 100%;
+    min-width: unset;
+    height: 180px;
+  }
+}
+
+.uber-post-card {
+  background: #ffffff;
+  border: 1px solid #e5e5e5;
+  border-radius: 16px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  text-align: left;
+}
+
+.uber-post-card:hover {
+  transform: translateY(-3px);
+  border-color: #b5b5b5;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+}
+
+.uber-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  gap: 10px;
+}
+
+.uber-card-author {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.uber-card-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid #e5e5e5;
+  flex-shrink: 0;
+  background-color: #f3f3f3;
+}
+
+.uber-card-author-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #000000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.uber-card-time {
+  font-size: 0.75rem;
+  color: #757575;
+}
+
+.uber-category-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background: #f3f3f3;
+  color: #000000;
+  font-size: 0.75rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.uber-card-img-wrap {
+  width: 100%;
+  height: 180px;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  background: #f6f6f6;
+  margin-bottom: 14px;
+}
+
+.uber-card-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   transition: transform 0.3s ease;
 }
 
-.ikman-card:hover .ikman-img {
+.uber-post-card:hover .uber-card-img {
   transform: scale(1.04);
 }
 
-.ikman-img-count {
+.uber-card-img-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f6f6f6;
+  color: #cccccc;
+  font-size: 32px;
+}
+
+.uber-card-photos-badge {
   position: absolute;
-  bottom: 6px;
-  right: 6px;
-  background: rgba(15, 23, 42, 0.75);
+  bottom: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.75);
   color: #ffffff;
-  font-size: 0.72rem;
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
   font-weight: 600;
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
-/* Thumbnail Fallback Placeholder */
-.ikman-img-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-  color: #64748b;
-  font-size: 1.8rem;
-}
-
-/* Right Content Details Column */
-.ikman-content-col {
+.uber-card-body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  min-width: 0;
 }
 
-.ikman-title {
-  font-size: 1.125rem;
+.uber-card-title {
+  font-size: 1.08rem;
   font-weight: 700;
-  color: #0f172a;
-  margin: 0 0 4px 0;
+  color: #000000;
+  letter-spacing: -0.015em;
+  margin: 0 0 6px 0;
   line-height: 1.35;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  transition: color 0.2s ease;
 }
 
-.ikman-card:hover .ikman-title {
-  color: #FDC101;
-}
-
-.ikman-condition {
+.uber-card-desc {
   font-size: 0.85rem;
-  color: #64748b;
-  font-weight: 500;
-  margin-bottom: 4px;
+  color: #545454;
+  line-height: 1.45;
+  margin: 0 0 12px 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-/* Badges Container */
-.ikman-badges {
+.uber-card-location-row {
   display: flex;
   align-items: center;
   gap: 6px;
-  flex-wrap: wrap;
-  margin-bottom: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #666666;
+  margin-top: auto;
+  margin-bottom: 12px;
 }
 
-/* MEMBER Badge (Grey / Yellow) */
-.badge-member-grey {
-  background-color: #94a3b8;
-  color: #ffffff;
-  font-size: 0.65rem;
-  font-weight: 800;
-  padding: 2px 6px;
-  border-radius: 3px;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
+.uber-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 12px;
+  border-top: 1px solid #eeeeee;
+  gap: 12px;
 }
 
-.badge-member-yellow {
-  background-color: #fef9c3;
-  color: #854d0e;
-  border: 1px solid #fde047;
-  font-size: 0.68rem;
-  font-weight: 800;
-  padding: 2px 7px;
-  border-radius: 4px;
+.uber-card-time-ago {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #757575;
+  letter-spacing: -0.01em;
 }
 
-/* VERIFIED Badge (Cyan / Blue) */
-.badge-verified {
-  background-color: #e0f2fe;
-  color: #0284c7;
-  font-size: 0.7rem;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 4px;
+.uber-card-details-btn {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
-}
-
-.badge-category-chip {
-  background-color: #f1f5f9;
-  color: #475569;
-  font-size: 0.72rem;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-}
-
-.ikman-location-cat {
-  font-size: 0.875rem;
-  color: #64748b;
-  margin-bottom: 4px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.ikman-price {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: #FDC101;
-  margin-top: 2px;
-}
-
-/* Bottom Right Meta (Time & Bump Icon) */
-.ikman-footer-meta {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
+  background: #000000;
+  color: #ffffff;
+  border: none;
+  border-radius: 9999px;
+  padding: 7px 16px;
+  font-family: inherit;
   font-size: 0.825rem;
-  color: #64748b;
-  font-weight: 500;
-  margin-top: auto;
-  padding-top: 4px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
 }
 
-.ikman-bump-icon {
-  display: inline-flex;
+.uber-card-details-btn:hover {
+  background: #262626;
+  transform: translateY(-1px);
+}
+
+/* Edit & Delete Action Buttons on Card */
+.uber-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.uber-icon-btn-edit,
+.uber-icon-btn-delete {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
-  background-color: #f59e0b;
-  color: #ffffff;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: bold;
+  cursor: pointer;
+  border: 1px solid #e5e5e5;
+  background: #ffffff;
+  font-size: 13px;
+  transition: all 0.15s ease;
 }
 
-/* Detail Modal Styling */
-.modal-overlay {
+.uber-icon-btn-edit:hover {
+  background: #000000;
+  color: #ffffff;
+  border-color: #000000;
+}
+
+.uber-icon-btn-delete:hover {
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #ef4444;
+}
+
+/* ==========================================================================
+   4. Uber Modals & Popups (Create, Edit, Detail, Report)
+   ========================================================================== */
+.uber-modal-backdrop {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(15, 23, 42, 0.6);
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.65);
   backdrop-filter: blur(4px);
   display: flex;
-  justify-content: center;
   align-items: center;
-  z-index: 1000;
-  padding: 1rem;
+  justify-content: center;
+  z-index: 9999;
+  padding: 16px;
+  box-sizing: border-box;
+  animation: uberFadeIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.detail-modal-box {
+@keyframes uberFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.uber-modal-window {
   background-color: #ffffff;
-  border-radius: 16px;
-  max-width: 720px;
+  border-radius: 20px;
+  max-width: 680px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+  border: 1px solid #e5e5e5;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
+  animation: uberScaleIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.modal-header {
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
+@keyframes uberScaleIn {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.uber-modal-header {
+  padding: 22px 28px 18px;
+  border-bottom: 1px solid #eeeeee;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   position: sticky;
   top: 0;
   background-color: #ffffff;
   z-index: 10;
 }
 
-.modal-body {
-  padding: 1.5rem;
+.uber-modal-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #000000;
+  letter-spacing: -0.025em;
+  margin: 0;
+}
+
+.uber-modal-subtitle {
+  font-size: 0.85rem;
+  color: #666666;
+  margin: 4px 0 0 0;
+}
+
+.uber-modal-close-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #f3f3f3;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #000000;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.uber-modal-close-btn:hover {
+  background: #e2e2e2;
+}
+
+.uber-modal-body {
+  padding: 24px 28px;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 18px;
+  box-sizing: border-box;
 }
 
-.detail-gallery-main {
-  width: 100%;
-  max-height: 360px;
-  border-radius: 12px;
-  object-fit: cover;
-  background-color: #0f172a;
+.uber-form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
 }
 
-.detail-thumbnails {
+.uber-field-group {
   display: flex;
-  gap: 8px;
-  overflow-x: auto;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.detail-thumb-img {
-  width: 70px;
-  height: 55px;
-  border-radius: 6px;
-  object-fit: cover;
+.uber-field-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #000000;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Uber Styled Input, Select, and Textarea */
+.uber-input,
+.uber-select,
+.uber-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background-color: #f6f6f6;
+  border: 1.5px solid #e5e5e5;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  font-weight: 500;
+  color: #000000;
+  outline: none;
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.uber-input:focus,
+.uber-select:focus,
+.uber-textarea:focus {
+  border-color: #000000;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 1px #000000;
+}
+
+.uber-input::placeholder,
+.uber-textarea::placeholder {
+  color: #8c8c8c;
+}
+
+.uber-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23000000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 38px;
   cursor: pointer;
-  border: 2px solid transparent;
-  transition: all 0.2s;
 }
 
-.detail-thumb-img.active {
-  border-color: #FDC101;
+.uber-textarea {
+  resize: vertical;
+  min-height: 100px;
+  line-height: 1.5;
 }
 
-/* Poster Card inside Detail */
-.poster-info-card {
+/* Photo Upload Box */
+.uber-upload-box {
+  background: #fbfbfb;
+  border: 1.5px dashed #d5d5d5;
+  border-radius: 14px;
+  padding: 18px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: #f8fafc;
-  padding: 14px 18px;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  flex-wrap: wrap;
+  gap: 14px;
+  box-sizing: border-box;
 }
 
-.poster-left {
+.uber-upload-info {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
 
-.poster-avatar {
+.uber-upload-icon {
+  font-size: 26px;
+  color: #000000;
+}
+
+.uber-upload-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #000000;
+}
+
+.uber-upload-count {
+  color: #10b981;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.uber-upload-desc {
+  font-size: 0.775rem;
+  color: #666666;
+  margin-top: 2px;
+}
+
+.uber-image-preview-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 6px;
+}
+
+.uber-image-preview-thumb {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #e5e5e5;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+.uber-image-preview-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.uber-thumb-remove-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.85);
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  padding: 0;
+}
+
+.uber-modal-footer {
+  padding: 16px 28px 24px;
+  border-top: 1px solid #eeeeee;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  background-color: #ffffff;
+  box-sizing: border-box;
+}
+
+/* Detail Modal Specifics */
+.uber-detail-modal {
+  max-width: 760px;
+}
+
+.uber-detail-gallery-main {
+  width: 100%;
+  max-height: 380px;
+  border-radius: 14px;
+  object-fit: cover;
+  background-color: #000000;
+}
+
+.uber-detail-thumbnails {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.uber-detail-thumb-img {
+  width: 76px;
+  height: 60px;
+  border-radius: 8px;
+  object-fit: cover;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.uber-detail-thumb-img.active {
+  border-color: #000000;
+  transform: scale(1.04);
+}
+
+.uber-poster-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f7f7f7;
+  padding: 16px 20px;
+  border-radius: 14px;
+  border: 1px solid #eeeeee;
+}
+
+.uber-poster-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.uber-poster-avatar {
   width: 48px;
   height: 48px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid #FDC101;
+  border: 1.5px solid #e5e5e5;
 }
 
-@media (max-width: 640px) {
-  .community-main {
-    padding: 1rem 8px;
-  }
+.uber-poster-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #000000;
+}
 
-  .filter-toolbar {
-    flex-direction: column;
-    align-items: stretch;
-    padding: 12px 14px;
-    gap: 10px;
-  }
+.uber-poster-email {
+  font-size: 0.8rem;
+  color: #666666;
+}
 
-  .search-input-wrapper {
-    min-width: 100%;
-    width: 100%;
-  }
+.uber-detail-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding-top: 10px;
+}
 
-  .filter-select {
-    width: 100%;
-  }
-
-  .ikman-card {
-    flex-direction: column;
-    gap: 12px;
-    padding: 14px 16px;
-  }
-
-  .ikman-image-col {
-    width: 100%;
-    height: 180px;
-    min-width: 100%;
-  }
-
-  .modal-overlay {
-    padding: 8px;
-  }
-
-  .detail-modal-box {
-    max-height: 95vh;
-    border-radius: 14px;
-  }
-
-  .modal-header {
-    padding: 1rem 1.25rem;
-  }
-
-  .modal-body {
-    padding: 1.25rem;
-    gap: 1rem;
-  }
-
-  .detail-gallery-main {
-    max-height: 240px;
-  }
-
-  .poster-info-card {
+/* ==========================================================================
+   5. Responsive Breakpoints
+   ========================================================================== */
+@media (max-width: 900px) {
+  .community-hero-container {
     flex-direction: column;
     align-items: flex-start;
-    gap: 12px;
   }
 
-  .poster-info-card button,
-  .poster-info-card a {
+  .community-hero-right {
     width: 100%;
-    text-align: center;
-    justify-content: center;
+    flex: none;
+    max-width: 500px;
+  }
+
+  .community-layout-container {
+    flex-direction: column;
+  }
+
+  .community-sidebar {
+    width: 100%;
+  }
+
+  .community-sidebar.collapsed {
+    width: 100%;
   }
 }
 
-@media (max-width: 480px) {
-  .ikman-title {
-    font-size: 1rem;
+@media (max-width: 680px) {
+  .community-hero-banner {
+    padding: 36px 16px 44px;
   }
 
-  .ikman-price {
-    font-size: 0.95rem;
+  .community-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
   }
 
-  .category-chip {
-    padding: 6px 12px;
-    font-size: 0.8rem;
+  .uber-modal-window {
+    border-radius: 16px;
+    max-height: 94vh;
   }
+
+  .uber-modal-header,
+  .uber-modal-body,
+  .uber-modal-footer {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+}
+
+/* ==========================================================================
+   Uber-Themed Pagination Controls (9 cards per page)
+   ========================================================================== */
+.uber-pagination-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 36px;
+  padding-top: 24px;
+  border-top: 1px solid #eeeeee;
+  user-select: none;
+}
+
+.uber-pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 1px solid #e5e5e5;
+  color: #000000;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.uber-pagination-btn:hover:not(:disabled) {
+  background: #000000;
+  color: #ffffff;
+  border-color: #000000;
+  transform: translateY(-1px);
+}
+
+.uber-pagination-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.uber-pagination-pages {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.uber-pagination-num {
+  min-width: 38px;
+  height: 38px;
+  padding: 0 10px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border: 1px solid #e5e5e5;
+  color: #000000;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.uber-pagination-num:hover:not(.active) {
+  background: #f6f6f6;
+  border-color: #000000;
+}
+
+.uber-pagination-num.active {
+  background: #000000;
+  color: #ffffff;
+  border-color: #000000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+.uber-pagination-ellipsis {
+  padding: 0 6px;
+  color: #757575;
+  font-weight: 700;
+  user-select: none;
+}
+
+/* ==========================================================================
+   Uber-Themed Loading State (Black, White & Subtle Gray)
+   ========================================================================== */
+.uber-loading-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 4.5rem 2rem;
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #e5e5e5;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+}
+
+.uber-spinner-ring {
+  width: 42px;
+  height: 42px;
+  border: 3.5px solid #eeeeee;
+  border-top-color: #000000;
+  border-radius: 50%;
+  animation: uber-spin 0.75s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes uber-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.uber-loading-text {
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #000000;
+  letter-spacing: -0.01em;
+  margin: 0;
 }

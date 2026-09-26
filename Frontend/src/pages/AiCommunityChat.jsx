@@ -264,8 +264,9 @@ export default function AiCommunityChat() {
 
   return (
     <div className="find-page-container">
-      {/* SuperBass Material 3 Top Navbar */}
+      {/* SuperBass Material 3 Top Navbar (Dark Theme matching Landing Page) */}
       <M3TopNavbar
+        theme="dark"
         activePage="ai"
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
@@ -273,6 +274,7 @@ export default function AiCommunityChat() {
         showSidebarToggle={true}
         isSidebarCollapsed={isSidebarCollapsed}
         onToggleSidebar={() => setIsSidebarCollapsed((prev) => !prev)}
+        alwaysShowLinks={true}
       />
 
       <div className="find-layout">

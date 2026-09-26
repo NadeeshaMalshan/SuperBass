@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import categoriesData from './data/categories.json';
+import sriLankaDistricts from './data/sriLankaDistricts.json';
 import M3TopNavbar from './components/M3TopNavbar.jsx';
 import UserMenu from './components/UserMenu.jsx';
 import '@material/web/button/filled-button.js';
@@ -52,18 +53,22 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
   const [newCommentText, setNewCommentText] = useState('');
 
   const [editingPost, setEditingPost] = useState(null);
+  const [isSavingPost, setIsSavingPost] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
   const [editCategory, setEditCategory] = useState('plumbing');
-  const [editLocation, setEditLocation] = useState('Colombo 05');
+  const [editProvince, setEditProvince] = useState('Western Province');
+  const [editDistrict, setEditDistrict] = useState('Colombo');
   const [editImages, setEditImages] = useState([]);
   const editFileInputRef = useRef(null);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCreatingPost, setIsCreatingPost] = useState(false);
   const [createTitle, setCreateTitle] = useState('');
   const [createContent, setCreateContent] = useState('');
   const [createCategory, setCreateCategory] = useState('plumbing');
-  const [createLocation, setCreateLocation] = useState('Colombo 05');
+  const [createProvince, setCreateProvince] = useState('Western Province');
+  const [createDistrict, setCreateDistrict] = useState('Colombo');
   const [createImages, setCreateImages] = useState([]);
   const fileInputRef = useRef(null);
 
@@ -408,7 +413,22 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     setEditTitle(post.title);
     setEditContent(post.content);
     setEditCategory(post.serviceCategoryId || 'plumbing');
-    setEditLocation(post.location || 'Colombo 05');
+
+    let prov = 'Western Province';
+    let dist = 'Colombo';
+    if (post.location) {
+      for (const [pName, dists] of Object.entries(sriLankaDistricts)) {
+        for (const d of dists) {
+          if (post.location.toLowerCase().includes(d.toLowerCase())) {
+            prov = pName;
+            dist = d;
+            break;
+          }
+        }
+      }
+    }
+    setEditProvince(prov);
+    setEditDistrict(dist);
     setEditImages(post.images || []);
   };
 
@@ -429,11 +449,12 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     if (!editingPost || !editTitle.trim() || !editContent.trim()) return;
 
     try {
+      setIsSavingPost(true);
       await axios.put(`${API_BASE_URL}/community-posts/${editingPost.postId}`, {
         title: editTitle,
         content: editContent,
         serviceCategoryId: editCategory,
-        location: editLocation,
+        location: `${editDistrict}, ${editProvince}`,
         images: editImages,
         userEmail: userEmail,
         userName: userName
@@ -441,13 +462,15 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
 
-      alert("Post updated successfully!");
+      // Automatically close modal after saving
       setEditingPost(null);
-      fetchUserPosts();
+      await fetchUserPosts();
     } catch (err) {
       console.error("Error updating post:", err);
       const msg = err.response?.data?.message || "Failed to update post.";
       alert(msg);
+    } finally {
+      setIsSavingPost(false);
     }
   };
 
@@ -489,11 +512,12 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     if (!createTitle.trim() || !createContent.trim()) return;
 
     try {
+      setIsCreatingPost(true);
       await axios.post(`${API_BASE_URL}/community-posts`, {
         title: createTitle,
         content: createContent,
         serviceCategoryId: createCategory,
-        location: createLocation,
+        location: `${createDistrict}, ${createProvince}`,
         images: createImages,
         userName: userName || "You (Resident)",
         userAvatar: userPicture || "https://api.dicebear.com/7.x/avataaars/svg?seed=CurrentUser",
@@ -502,15 +526,19 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
 
-      alert("Post published successfully!");
+      // Automatically close modal after saving
       setIsCreateModalOpen(false);
       setCreateTitle('');
       setCreateContent('');
+      setCreateProvince('Western Province');
+      setCreateDistrict('Colombo');
       setCreateImages([]);
-      fetchUserPosts();
+      await fetchUserPosts();
     } catch (err) {
       console.error("Error creating post:", err);
       alert("Failed to publish post.");
+    } finally {
+      setIsCreatingPost(false);
     }
   };
 
@@ -1515,8 +1543,8 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <div style={{ flex: '1 1 140px' }}>
                   <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>Category</label>
                   <select
                     value={editCategory}
@@ -1528,14 +1556,34 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                     ))}
                   </select>
                 </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>Location</label>
-                  <input
-                    type="text"
-                    value={editLocation}
-                    onChange={(e) => setEditLocation(e.target.value)}
-                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-                  />
+                <div style={{ flex: '1 1 140px' }}>
+                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>Province</label>
+                  <select
+                    value={editProvince}
+                    onChange={(e) => {
+                      const prov = e.target.value;
+                      setEditProvince(prov);
+                      const firstDist = (sriLankaDistricts[prov] && sriLankaDistricts[prov][0]) || 'Colombo';
+                      setEditDistrict(firstDist);
+                    }}
+                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#0f172a' }}
+                  >
+                    {Object.keys(sriLankaDistricts).map(prov => (
+                      <option key={prov} value={prov}>{prov}</option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ flex: '1 1 140px' }}>
+                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>District</label>
+                  <select
+                    value={editDistrict}
+                    onChange={(e) => setEditDistrict(e.target.value)}
+                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#0f172a' }}
+                  >
+                    {(sriLankaDistricts[editProvince] || []).map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -1576,15 +1624,23 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                 <button
                   type="button"
                   onClick={() => setEditingPost(null)}
+                  disabled={isSavingPost}
                   style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  style={{ padding: '8px 20px', borderRadius: '6px', border: 'none', backgroundColor: '#3b82f6', color: '#fff', fontWeight: '700', cursor: 'pointer' }}
+                  disabled={isSavingPost}
+                  style={{ padding: '8px 20px', borderRadius: '6px', border: 'none', backgroundColor: '#3b82f6', color: '#fff', fontWeight: '700', cursor: isSavingPost ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
-                  Save Changes
+                  {isSavingPost ? (
+                    <>
+                      <i className="fa-solid fa-spinner fa-spin"></i> Saving...
+                    </>
+                  ) : (
+                    'Save Changes'
+                  )}
                 </button>
               </div>
             </form>
@@ -1622,8 +1678,8 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <div style={{ flex: '1 1 140px' }}>
                   <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>Category</label>
                   <select
                     value={createCategory}
@@ -1635,15 +1691,34 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                     ))}
                   </select>
                 </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>Location</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Colombo 05"
-                    value={createLocation}
-                    onChange={(e) => setCreateLocation(e.target.value)}
-                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-                  />
+                <div style={{ flex: '1 1 140px' }}>
+                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>Province</label>
+                  <select
+                    value={createProvince}
+                    onChange={(e) => {
+                      const prov = e.target.value;
+                      setCreateProvince(prov);
+                      const firstDist = (sriLankaDistricts[prov] && sriLankaDistricts[prov][0]) || 'Colombo';
+                      setCreateDistrict(firstDist);
+                    }}
+                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#0f172a' }}
+                  >
+                    {Object.keys(sriLankaDistricts).map(prov => (
+                      <option key={prov} value={prov}>{prov}</option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ flex: '1 1 140px' }}>
+                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>District</label>
+                  <select
+                    value={createDistrict}
+                    onChange={(e) => setCreateDistrict(e.target.value)}
+                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#0f172a' }}
+                  >
+                    {(sriLankaDistricts[createProvince] || []).map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -1685,15 +1760,23 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
+                  disabled={isCreatingPost}
                   style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  style={{ padding: '8px 20px', borderRadius: '6px', border: 'none', backgroundColor: '#009688', color: '#fff', fontWeight: '700', cursor: 'pointer' }}
+                  disabled={isCreatingPost}
+                  style={{ padding: '8px 20px', borderRadius: '6px', border: 'none', backgroundColor: '#009688', color: '#fff', fontWeight: '700', cursor: isCreatingPost ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
-                  Publish Post
+                  {isCreatingPost ? (
+                    <>
+                      <i className="fa-solid fa-spinner fa-spin"></i> Publishing...
+                    </>
+                  ) : (
+                    'Publish Post'
+                  )}
                 </button>
               </div>
             </form>
