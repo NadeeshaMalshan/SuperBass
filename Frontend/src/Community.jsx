@@ -21,6 +21,10 @@ import '@material/web/select/select-option.js';
 import '@material/web/progress/circular-progress.js';
 import Loader from './components/Loader.jsx';
 import './components/M3Navbar.css';
+import M3TopNavbar from './components/M3TopNavbar.jsx';
+import Footer from './components/Footer.jsx';
+import hero2Img from './assets/2.png';
+import sriLankaDistricts from './data/sriLankaDistricts.json';
 import { BACKEND_URL } from './config.js';
 
 const API_BASE_URL = `${BACKEND_URL}/api/community-posts`;
@@ -53,7 +57,7 @@ export default function Community() {
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
   const [editCategory, setEditCategory] = useState('plumbing');
-  const [editLocation, setEditLocation] = useState('Colombo 05');
+  const [editLocation, setEditLocation] = useState('Colombo');
   const [editImages, setEditImages] = useState([]);
   const editFileInputRef = useRef(null);
 
@@ -64,7 +68,7 @@ export default function Community() {
   const [newCategory, setNewCategory] = useState('plumbing');
   const [newCondition, setNewCondition] = useState('Brand New');
   const [newPrice, setNewPrice] = useState('');
-  const [newLocation, setNewLocation] = useState('Colombo 05');
+  const [newLocation, setNewLocation] = useState('Colombo');
   const [newImages, setNewImages] = useState([]);
   const fileInputRef = useRef(null);
   const createDialogRef = useRef(null);
@@ -290,7 +294,7 @@ export default function Community() {
     setEditTitle(post.title);
     setEditContent(post.content);
     setEditCategory(post.serviceCategoryId || 'plumbing');
-    setEditLocation(post.location || 'Colombo 05');
+    setEditLocation(post.location || 'Colombo');
     setEditImages(post.images || []);
   };
 
@@ -388,6 +392,7 @@ export default function Community() {
     setNewTitle('');
     setNewContent('');
     setNewPrice('');
+    setNewLocation('Colombo');
     setNewImages([]);
   };
 
@@ -420,168 +425,96 @@ export default function Community() {
 
   return (
     <div className="find-page-container">
-      {/* Google Workspace / Gmail Style Material 3 Top Navbar */}
-      <header className="m3-top-navbar">
-        {/* Left: App Logo & Name with Hamburger Drawer Toggle */}
-        <div className="m3-navbar-brand-group">
-          <button
-            type="button"
-            className="m3-hamburger-btn"
-            onClick={() => setIsSidebarCollapsed(prev => !prev)}
-            title={isSidebarCollapsed ? "Expand panel" : "Collapse panel"}
-            aria-label="Toggle navigation drawer"
-          >
-            <md-icon>menu</md-icon>
-          </button>
+      {/* Google Workspace / Gmail Style Material 3 Top Navbar (Dark Theme matching Landing Page) */}
+      <M3TopNavbar
+        theme="dark"
+        activePage="community"
+        searchValue={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="Search community posts, questions, and requests..."
+        showSidebarToggle={true}
+        isSidebarCollapsed={isSidebarCollapsed}
+        onToggleSidebar={() => setIsSidebarCollapsed(prev => !prev)}
+        alwaysShowLinks={true}
+      />
 
-          <a
-            href="/"
-            onClick={(e) => { e.preventDefault(); navigate('/'); }}
-            className="m3-brand-link"
-            title="superබාස් - Home"
-          >
-            <img src="/icon.png" alt="superබාස්" className="m3-brand-logo-img" />
-            <span className="m3-brand-title">
-              super<span className="m3-brand-accent">බාස්</span>
-            </span>
-          </a>
-        </div>
-
-        {/* Center: Search Pill */}
-        <div className="m3-navbar-center">
-          <div className="m3-search-pill">
-            <div className="m3-search-leading-icon" title="Search Community">
-              <md-icon>search</md-icon>
-            </div>
-
-            <input
-              type="text"
-              className="m3-search-input"
-              placeholder="Search community posts, questions, and requests..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') setSearchTerm('');
-              }}
-            />
-
-            {searchTerm && (
+      {/* Community Hero Showcase Banner Matching Landing Page UI */}
+      <section className="community-hero-banner">
+        <div className="community-hero-container">
+          <div className="community-hero-left">
+            <span className="community-hero-overline">SUPERBASS NEIGHBORHOOD COMMUNITY</span>
+            <h1 className="community-hero-title">
+              Connect with your local community & find trusted help
+            </h1>
+            <p className="community-hero-desc">
+              Share recommendations, ask neighborhood home repair questions, post free classified ads for tools & leftover materials, and discover trusted craftsmen recommended by local residents.
+            </p>
+            <div className="community-hero-actions">
               <button
                 type="button"
-                className="m3-search-clear-btn"
-                onClick={() => setSearchTerm('')}
-                title="Clear search"
-                aria-label="Clear search"
+                className="community-hero-primary-btn"
+                onClick={() => {
+                  if (isLoggedIn) {
+                    setIsCreateModalOpen(true);
+                  } else {
+                    navigate('/join');
+                  }
+                }}
               >
-                <md-icon>close</md-icon>
+                <md-icon style={{ fontSize: '18px' }}>add</md-icon>
+                <span>Post Free Ad / Request</span>
               </button>
-            )}
+              <button
+                type="button"
+                className="community-hero-secondary-btn"
+                onClick={() => navigate('/community/chat')}
+              >
+                <md-icon style={{ fontSize: '18px' }}>auto_awesome</md-icon>
+                <span>Ask SuperBass AI</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="community-hero-right">
+            <div className="community-hero-artwork-card">
+              <img
+                src={hero2Img}
+                alt="SuperBass Neighborhood Community & Craftsmen"
+                className="community-hero-artwork-img"
+              />
+            </div>
           </div>
         </div>
-
-        {/* Right: Navigation Buttons (Find Workers, Community, AI, Messages, Bookings) & User Avatar */}
-        <div className="m3-navbar-right">
-          {/* 1. Find Workers */}
-          <button
-            type="button"
-            className="m3-nav-btn"
-            onClick={() => navigate('/find')}
-            title="Find Craftsmen & Workers"
-          >
-            <md-icon>search</md-icon>
-            <span>Find Workers</span>
-          </button>
-
-          {/* 2. AI Assistant Button */}
-          <button
-            type="button"
-            className="m3-nav-btn m3-nav-btn-ai"
-            onClick={() => navigate('/ai-chat')}
-            title="AI Home Assistant"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <defs>
-                <linearGradient id="commGeminiGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#4285F4" />
-                  <stop offset="35%" stopColor="#9B72CB" />
-                  <stop offset="70%" stopColor="#D96570" />
-                  <stop offset="100%" stopColor="#F4B400" />
-                </linearGradient>
-              </defs>
-              <path
-                d="M12 0C12 6.627 6.627 12 0 12C6.627 12 12 17.373 12 24C12 17.373 17.373 12 24 12C17.373 12 12 6.627 12 0Z"
-                fill="url(#commGeminiGrad)"
-              />
-            </svg>
-            <span>AI</span>
-          </button>
-
-          {/* 4. Messages Button (Only when logged in) */}
-          {localStorage.getItem('token') && (
-            <button
-              type="button"
-              className="m3-nav-btn"
-              onClick={() => navigate('/chats')}
-              title="Direct Messages"
-            >
-              <md-icon>chat</md-icon>
-              <span>Messages</span>
-            </button>
-          )}
-
-          {/* 5. Bookings Button (Only when logged in) */}
-          {localStorage.getItem('token') && (
-            <button
-              type="button"
-              className="m3-nav-btn"
-              onClick={() => navigate('/bookings')}
-              title="My Bookings"
-            >
-              <md-icon>calendar_today</md-icon>
-              <span>Bookings</span>
-            </button>
-          )}
-
-          {/* 6. User Profile Avatar or Sign In */}
-          {localStorage.getItem('token') ? (
-            <UserMenu variant="m3-google" />
-          ) : (
-            <button
-              type="button"
-              className="m3-signin-btn"
-              onClick={() => navigate('/join')}
-              title="Sign in to superබාස්"
-            >
-              Sign in
-            </button>
-          )}
-        </div>
-      </header>
+      </section>
 
       {/* Main Content Container */}
-      {/* Main Layout Container */}
       <div className="find-layout">
         {/* Left Sidebar Navigation (Google Workspace Style) */}
         <aside className={`find-sidebar m3-drawer ${isSidebarCollapsed ? 'minimized' : ''}`}>
-          {/* Post Ad / Compose Action Button (Material 3 Extended FAB) - Only when logged in */}
-          {isLoggedIn && (
-            <button
-              type="button"
-              className="m3-compose-fab"
-              onClick={() => setIsCreateModalOpen(true)}
-              title="Post a new ad or service request"
-              aria-label="Post Ad"
-            >
-              <md-icon>edit</md-icon>
-              <span>Post Ad</span>
-            </button>
-          )}
+          {/* Post Ad / Compose Action Button (Material 3 Extended FAB) */}
+          <button
+            type="button"
+            className="m3-compose-fab"
+            onClick={() => {
+              if (isLoggedIn) {
+                setIsCreateModalOpen(true);
+              } else {
+                navigate('/join');
+              }
+            }}
+            title="Post a new ad or service request"
+            aria-label="Post Ad"
+          >
+            <md-icon>add</md-icon>
+            <span>Post Ad</span>
+          </button>
 
           {/* Primary Navigation List */}
           <nav className="m3-drawer-nav">
             <div
-              className={`m3-drawer-item ${selectedCategory === 'all' && selectedLocation === 'all' ? 'active' : ''}`}
+              className={`m3-drawer-item ${selectedCategory === 'all' && selectedLocation === 'all' && activeTab === 'feed' ? 'active' : ''}`}
               onClick={() => {
+                setActiveTab('feed');
                 setSearchTerm('');
                 setSelectedCategory('all');
                 setSelectedLocation('all');
@@ -618,7 +551,7 @@ export default function Community() {
             {!isSidebarCollapsed ? (
               <>
                 <div className="m3-drawer-section-header">
-                  <span className="m3-drawer-section-title">Location</span>
+                  <span className="m3-drawer-section-title">Location (District)</span>
                   {selectedLocation !== 'all' && (
                     <button
                       type="button"
@@ -642,41 +575,27 @@ export default function Community() {
                       '--md-outlined-select-leading-space': '10px',
                       '--md-outlined-select-trailing-space': '10px',
                       '--md-outlined-select-input-text-size': '0.85rem',
-                      '--md-outlined-select-focus-outline-color': '#FDC101',
-                      '--md-outlined-select-focus-icon-color': '#d97706',
+                      '--md-outlined-select-focus-outline-color': '#0f172a',
+                      '--md-outlined-select-focus-icon-color': '#0f172a',
                       '--md-menu-container-color': '#ffffff',
                       '--md-menu-container-shape': '14px',
-                      '--md-sys-color-primary-container': '#fef3c7',
-                      '--md-sys-color-on-primary-container': '#78350f',
+                      '--md-sys-color-primary-container': '#f1f5f9',
+                      '--md-sys-color-on-primary-container': '#0f172a',
                       '--md-sys-color-surface-container': '#ffffff',
                       '--md-sys-color-surface-container-high': '#ffffff'
                     }}
                   >
                     <md-icon slot="leading-icon" style={{ fontSize: '18px', '--md-icon-size': '18px', color: '#64748b' }}>location_on</md-icon>
                     <md-select-option value="all" selected={selectedLocation === 'all'}>
-                      <div slot="headline">All Locations</div>
+                      <div slot="headline">All Sri Lanka</div>
                     </md-select-option>
-                    <md-select-option value="Colombo" selected={selectedLocation === 'Colombo'}>
-                      <div slot="headline">Colombo</div>
-                    </md-select-option>
-                    <md-select-option value="Colombo 03" selected={selectedLocation === 'Colombo 03'}>
-                      <div slot="headline">Colombo 03</div>
-                    </md-select-option>
-                    <md-select-option value="Colombo 05" selected={selectedLocation === 'Colombo 05'}>
-                      <div slot="headline">Colombo 05</div>
-                    </md-select-option>
-                    <md-select-option value="Kandy" selected={selectedLocation === 'Kandy'}>
-                      <div slot="headline">Kandy</div>
-                    </md-select-option>
-                    <md-select-option value="Rajagiriya" selected={selectedLocation === 'Rajagiriya'}>
-                      <div slot="headline">Rajagiriya</div>
-                    </md-select-option>
-                    <md-select-option value="Nugegoda" selected={selectedLocation === 'Nugegoda'}>
-                      <div slot="headline">Nugegoda</div>
-                    </md-select-option>
-                    <md-select-option value="Dehiwala" selected={selectedLocation === 'Dehiwala'}>
-                      <div slot="headline">Dehiwala</div>
-                    </md-select-option>
+                    {Object.entries(sriLankaDistricts).map(([province, districts]) =>
+                      districts.map(d => (
+                        <md-select-option key={d} value={d} selected={selectedLocation.toLowerCase() === d.toLowerCase()}>
+                          <div slot="headline">{d} ({province.replace(' Province', '')})</div>
+                        </md-select-option>
+                      ))
+                    )}
                   </md-outlined-select>
                 </div>
               </>
@@ -808,106 +727,138 @@ export default function Community() {
               )}
             </div>
           ) : (
-            <div style={{ display: 'grid', gap: '20px', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
+            <div className="community-cards-grid">
               {(activeTab === 'feed' ? posts : moderationPosts).map(post => {
                 const catObj = categoriesData.find(c => c.id === post.category);
                 return (
                   <div
                     key={post.postId}
-                    className="sleek-worker-card"
+                    className="community-modern-card"
                     onClick={() => handleCardClick(post)}
-                    style={{ cursor: 'pointer' }}
+                    role="button"
+                    tabIndex={0}
                   >
-                    {/* Top Meta */}
-                    <div className="card-top-meta" style={{ justifyContent: 'space-between', padding: '0 16px 12px 16px', borderBottom: '1px solid #f1f5f9' }}>
-                      <div className="card-distance-pill">
-                        <i className={`fa-solid ${catObj?.icon || 'fa-tag'}`} style={{ color: '#64748b' }}></i>
-                        <span>{post.category}</span>
+                    {/* Card Top: Author & Category Badge */}
+                    <div className="community-card-header">
+                      <div className="community-card-author">
+                        <img
+                          src={post.userAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.postId}`}
+                          alt={post.userName || 'Resident'}
+                          className="community-card-avatar"
+                          onError={(e) => {
+                            e.target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.postId}`;
+                          }}
+                        />
+                        <div className="community-card-author-info">
+                          <span className="community-card-author-name">{post.userName || 'Community Resident'}</span>
+                          <span className="community-card-time">{formatTimeAgo(post.createdAt)}</span>
+                        </div>
                       </div>
-                      <div className="card-rating-pill" style={{ background: 'transparent', padding: 0 }}>
-                        <span style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 500 }}>
-                          <i className="fa-solid fa-clock"></i> {formatTimeAgo(post.createdAt)}
-                        </span>
-                      </div>
+
+                      <span className="community-category-pill">
+                        <md-icon style={{ fontSize: '15px' }}>{catObj?.materialIcon || 'label'}</md-icon>
+                        <span>{catObj?.name || post.category}</span>
+                      </span>
                     </div>
 
-                    {/* Photo Banner */}
-                    <div className="card-photo-container" style={{ margin: '16px', height: '180px', borderRadius: '12px' }}>
+                    {/* Card Image Preview with 16:10 Aspect Ratio & Zoom Hover */}
+                    <div className="community-card-image-wrap">
                       {post.images && post.images.length > 0 ? (
                         <img
                           src={post.images[0]}
                           alt={post.title}
-                          className="card-photo-img"
+                          className="community-card-img"
+                          loading="lazy"
                           onError={(e) => {
                             e.target.src = 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=500&auto=format&fit=crop';
                           }}
                         />
                       ) : (
-                        <div className="card-photo-avatar-placeholder" style={{ borderRadius: '12px', background: '#f1f5f9' }}>
-                          <i className="fa-solid fa-image" style={{ color: '#cbd5e1', fontSize: '3rem' }}></i>
+                        <div className="community-card-img-placeholder">
+                          <md-icon style={{ fontSize: '42px', color: '#cbd5e1' }}>image</md-icon>
                         </div>
                       )}
+
                       {post.images && post.images.length > 1 && (
-                        <div style={{ position: 'absolute', bottom: '8px', right: '8px', background: 'rgba(15, 23, 42, 0.75)', color: '#ffffff', fontSize: '0.75rem', padding: '4px 8px', borderRadius: '6px', fontWeight: 600 }}>
-                          <i className="fa-solid fa-camera"></i> {post.images.length}
+                        <div className="community-card-photos-badge">
+                          <md-icon style={{ fontSize: '14px' }}>photo_library</md-icon>
+                          <span>{post.images.length}</span>
                         </div>
+                      )}
+
+                      {post.condition && (
+                        <span className="community-card-condition-badge">{post.condition}</span>
                       )}
                     </div>
 
-                    <div style={{ padding: '0 16px' }}>
-                      {/* Title and Edit/Delete Actions */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-                        <h3 className="card-worker-name" style={{ margin: 0, fontSize: '1.1rem', WebkitLineClamp: 2, display: '-webkit-box', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                          {post.title}
-                        </h3>
-                      </div>
-
-                      <p className="card-worker-role" style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '6px 0 0 0' }}>
-                        <i className="fa-solid fa-location-dot" style={{ color: '#94a3b8' }}></i> {post.location}
+                    {/* Card Body */}
+                    <div className="community-card-body">
+                      <h3 className="community-card-title">{post.title}</h3>
+                      <p className="community-card-desc">
+                        {post.content || 'Click to view full details, questions, or contact the poster...'}
                       </p>
 
-                      <div className="card-skills-row" style={{ marginTop: '12px' }}>
-                        {post.condition && <span className="card-skill-tag">{post.condition}</span>}
+                      <div className="community-card-meta-row">
+                        <span className="community-card-location">
+                          <md-icon style={{ fontSize: '16px' }}>location_on</md-icon>
+                          <span>{post.location || 'Sri Lanka'}</span>
+                        </span>
                         {post.badgeType === 'verified_member' && (
-                          <span className="card-skill-tag" style={{ background: '#e0f2fe', color: '#0284c7', borderColor: '#bae6fd' }}>
-                            <i className="fa-solid fa-circle-check"></i> Verified
+                          <span className="community-card-verified">
+                            <md-icon style={{ fontSize: '14px' }}>verified</md-icon>
+                            <span>Verified</span>
                           </span>
                         )}
                         {(post.likesCount != null && post.likesCount > 0) && (
-                          <span className="card-skill-tag" style={{ background: '#fffbeb', color: '#b45309', borderColor: '#fef3c7' }}>
-                            <i className="fa-solid fa-thumbs-up" style={{ marginRight: '4px' }}></i> {post.likesCount}
+                          <span className="community-card-likes">
+                            <md-icon style={{ fontSize: '14px' }}>thumb_up</md-icon>
+                            <span>{post.likesCount}</span>
                           </span>
                         )}
                       </div>
                     </div>
 
-                    <div className="card-bottom-row" style={{ marginTop: '16px', padding: '16px', background: '#f8fafc', borderTop: '1px solid #f1f5f9', borderRadius: '0 0 20px 20px' }}>
-                      <div className="card-price-display">
-                        <span className="card-price-amount" style={{ color: '#0f172a', fontSize: '1.1rem' }}>{post.price || (post.priceVal ? `Rs ${post.priceVal.toLocaleString()}` : 'Inquire / Quote')}</span>
+                    {/* Card Bottom Footer: Price & Actions */}
+                    <div className="community-card-footer">
+                      <div className="community-card-price">
+                        <span className="community-card-price-label">Budget / Price</span>
+                        <span className="community-card-price-val">
+                          {post.price || (post.priceVal ? `Rs. ${post.priceVal.toLocaleString()}` : 'Negotiable')}
+                        </span>
                       </div>
 
-                      {isPostOwner(post) ? (
-                        <div style={{ display: 'flex', gap: '8px' }} onClick={(e) => e.stopPropagation()}>
+                      <div className="community-card-actions" onClick={(e) => e.stopPropagation()}>
+                        {isPostOwner(post) ? (
+                          <div className="community-card-owner-actions">
+                            <button
+                              type="button"
+                              className="community-btn-edit"
+                              onClick={(e) => handleOpenEdit(post, e)}
+                              title="Edit listing"
+                            >
+                              <md-icon style={{ fontSize: '16px' }}>edit</md-icon>
+                              <span>Edit</span>
+                            </button>
+                            <button
+                              type="button"
+                              className="community-btn-delete"
+                              onClick={(e) => handleDeletePost(post.postId, e)}
+                              title="Delete listing"
+                            >
+                              <md-icon style={{ fontSize: '16px' }}>delete</md-icon>
+                            </button>
+                          </div>
+                        ) : (
                           <button
-                            onClick={(e) => handleOpenEdit(post, e)}
-                            style={{ padding: '6px 12px', borderRadius: '6px', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem' }}
-                            title="Edit"
+                            type="button"
+                            className="community-btn-details"
+                            onClick={() => handleCardClick(post)}
                           >
-                            <i className="fa-solid fa-pen"></i> Edit
+                            <span>Details</span>
+                            <span className="community-btn-chevron">›</span>
                           </button>
-                          <button
-                            onClick={(e) => handleDeletePost(post.postId, e)}
-                            style={{ padding: '6px 12px', borderRadius: '6px', background: '#fef2f2', color: '#ef4444', border: '1px solid #fecaca', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem' }}
-                            title="Delete"
-                          >
-                            <i className="fa-solid fa-trash"></i> Delete
-                          </button>
-                        </div>
-                      ) : (
-                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          View Ad <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.75rem' }}></i>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
@@ -1192,13 +1143,20 @@ export default function Community() {
                   </select>
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Location</label>
-                  <input
-                    type="text"
+                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Location (District)</label>
+                  <select
                     value={editLocation}
                     onChange={(e) => setEditLocation(e.target.value)}
-                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
-                  />
+                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', backgroundColor: '#fff', color: '#0f172a' }}
+                  >
+                    {Object.entries(sriLankaDistricts).map(([province, districts]) => (
+                      <optgroup key={province} label={province}>
+                        {districts.map(d => (
+                          <option key={d} value={d}>{d}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -1371,15 +1329,22 @@ export default function Community() {
                 ))}
               </md-outlined-select>
 
-              <md-outlined-text-field
-                label="Location"
-                placeholder="e.g. Colombo 05"
+              <md-outlined-select
+                label="Location (District)"
                 value={newLocation}
                 onInput={(e) => setNewLocation(e.target.value)}
+                onChange={(e) => setNewLocation(e.target.value)}
                 style={{ width: '100%' }}
               >
                 <md-icon slot="leading-icon">location_on</md-icon>
-              </md-outlined-text-field>
+                {Object.entries(sriLankaDistricts).map(([province, districts]) =>
+                  districts.map(d => (
+                    <md-select-option key={d} value={d} selected={newLocation === d}>
+                      <div slot="headline">{d} ({province.replace(' Province', '')})</div>
+                    </md-select-option>
+                  ))
+                )}
+              </md-outlined-select>
             </div>
 
             {/* Description Textarea */}
@@ -1575,6 +1540,9 @@ export default function Community() {
         recipient={chatRecipient}
         postContext={chatPostContext}
       />
+
+      {/* Uber-style Whole Black Theme Footer */}
+      <Footer />
 
       {/* Floating AI Assistant Widget */}
       <AiAssistantWidget />

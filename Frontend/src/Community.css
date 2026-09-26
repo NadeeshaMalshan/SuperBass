@@ -1,386 +1,548 @@
-/* Ikman-style Classified Listings UI for Community Page */
+/* ==========================================================================
+   SuperBass Community Stylesheet (Matching Landing Page UI Aesthetic)
+   ========================================================================== */
 
+/* Main Page Container */
 .community-page-wrapper {
-  background-color: #f4f6f8;
+  background-color: #f8fafc;
   min-height: 100vh;
-  font-family: var(--font-body);
+  font-family: var(--font-body, system-ui, -apple-system, sans-serif);
   color: #1e293b;
-  padding-bottom: 3rem;
 }
 
-/* Header & Nav */
-.community-navbar {
-  background-color: #ffffff;
-  border-bottom: 1px solid #e2e8f0;
-  padding: 0.75rem 2rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+/* ==========================================================================
+   1. Community Hero Showcase Banner (Matches Landing Page Hero Aesthetic)
+   ========================================================================== */
+.community-hero-banner {
+  width: 100%;
+  background: #000000;
+  padding: 48px 24px 56px;
+  box-sizing: border-box;
+  border-bottom: 1px solid #1e293b;
+  position: relative;
+  overflow: hidden;
 }
 
-.community-main {
-  max-width: 1040px;
+.community-hero-container {
+  max-width: 1240px;
   margin: 0 auto;
-  padding: 1.5rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 40px;
 }
 
-/* Page Header & Filter Toolbar */
-.filter-toolbar {
-  background-color: #ffffff;
-  padding: 16px 20px;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
-  margin-bottom: 1.25rem;
+.community-hero-left {
+  flex: 1;
+  max-width: 680px;
+}
+
+.community-hero-overline {
+  display: inline-block;
+  font-family: var(--font-heading, system-ui, -apple-system, sans-serif);
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #94a3b8;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.community-hero-title {
+  font-family: var(--font-heading, system-ui, -apple-system, sans-serif);
+  font-size: clamp(2rem, 3.8vw, 2.75rem);
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  margin: 0 0 16px 0;
+}
+
+.community-hero-desc {
+  font-size: 1.05rem;
+  color: #94a3b8;
+  line-height: 1.55;
+  margin: 0 0 28px 0;
+}
+
+.community-hero-actions {
   display: flex;
-  gap: 12px;
   align-items: center;
+  gap: 16px;
   flex-wrap: wrap;
 }
 
-.search-input-wrapper {
-  flex: 1;
-  min-width: 260px;
-  position: relative;
-}
-
-.search-input-wrapper i {
-  position: absolute;
-  left: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #94a3b8;
-  font-size: 0.95rem;
-}
-
-.search-input {
-  width: 100%;
-  padding: 10px 14px 10px 40px;
-  border-radius: 10px;
-  border: 1px solid #cbd5e1;
-  font-size: 0.925rem;
-  outline: none;
-  transition: all 0.2s ease;
-}
-
-.search-input:focus {
-  border-color: #FDC101;
-  box-shadow: 0 0 0 3px rgba(253, 193, 1, 0.15);
-}
-
-.filter-select {
-  padding: 10px 14px;
-  border-radius: 10px;
-  border: 1px solid #cbd5e1;
-  background-color: #ffffff;
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: #334155;
-  cursor: pointer;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.filter-select:focus {
-  border-color: #FDC101;
-}
-
-/* Category Filter Chips horizontal scroll */
-.category-chips-scroll {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding-bottom: 8px;
-  margin-bottom: 1.25rem;
-  scrollbar-width: thin;
-}
-
-.category-chip {
-  padding: 8px 16px;
-  border-radius: 20px;
-  border: 1px solid #e2e8f0;
-  background-color: #ffffff;
-  color: #475569;
-  font-weight: 500;
-  font-size: 0.875rem;
-  cursor: pointer;
-  white-space: nowrap;
-  display: flex;
+.community-hero-primary-btn {
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  background: #ffffff;
+  color: #0f172a;
+  border: none;
+  border-radius: 9999px;
+  padding: 12px 26px;
+  font-family: var(--font-heading, system-ui, -apple-system, sans-serif);
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 14px rgba(255, 255, 255, 0.15);
+}
+
+.community-hero-primary-btn:hover {
+  background: #f1f5f9;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(255, 255, 255, 0.25);
+}
+
+.community-hero-secondary-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  color: #ffffff;
+  border: 1px solid #334155;
+  border-radius: 9999px;
+  padding: 12px 24px;
+  font-family: var(--font-heading, system-ui, -apple-system, sans-serif);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.category-chip.active {
-  background-color: #FDC101;
-  color: #000000;
-  border-color: #FDC101;
-  font-weight: 700;
-  box-shadow: 0 2px 8px rgba(253, 193, 1, 0.3);
+.community-hero-secondary-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: #64748b;
+  transform: translateY(-2px);
 }
 
-.category-chip:hover:not(.active) {
-  border-color: #cbd5e1;
-  background-color: #f8fafc;
+.community-hero-right {
+  flex: 0 0 400px;
 }
 
-/* Ikman Listing Container */
-.ikman-listings-container {
-  display: flex;
-  flex-direction: column;
-  background-color: #ffffff;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+.community-hero-artwork-card {
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 24px;
   overflow: hidden;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
 }
 
-/* Ikman Item Row Card */
-.ikman-card {
-  display: flex;
-  gap: 18px;
-  padding: 16px 20px;
-  background-color: #ffffff;
-  border-bottom: 1px solid #f1f5f9;
-  transition: background-color 0.15s ease, box-shadow 0.15s ease;
-  cursor: pointer;
-  position: relative;
-  text-decoration: none;
+.community-hero-artwork-img {
+  width: 100%;
+  height: 100%;
+  max-height: 270px;
+  object-fit: cover;
+  display: block;
 }
 
-.ikman-card:last-child {
-  border-bottom: none;
-}
-
-.ikman-card:hover {
-  background-color: #f8fafc;
-}
-
-/* Thumbnail Column */
-.ikman-image-col {
-  width: 170px;
-  height: 125px;
-  min-width: 170px;
-  position: relative;
-  border-radius: 8px;
-  overflow: hidden;
-  background-color: #f1f5f9;
+/* ==========================================================================
+   2. Compose FAB Button (Matching Pitch-Black Pill Style)
+   ========================================================================== */
+.m3-compose-fab {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #e2e8f0;
+  gap: 10px;
+  background: #000000;
+  color: #ffffff;
+  border: none;
+  border-radius: 9999px;
+  padding: 13px 22px;
+  font-family: var(--font-heading, system-ui, -apple-system, sans-serif);
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin: 14px 12px 18px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.ikman-img {
+.m3-compose-fab:hover {
+  background: #1e293b;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.m3-compose-fab md-icon {
+  font-size: 20px;
+}
+
+/* ==========================================================================
+   3. Modern Community Post Cards Grid (Landing Page Card Style)
+   ========================================================================== */
+.community-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  gap: 22px;
+}
+
+.community-modern-card {
+  background: #ffffff;
+  border: 1px solid #eef2f6;
+  border-radius: 20px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-sizing: border-box;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  text-align: left;
+}
+
+.community-modern-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
+  border-color: #cbd5e1;
+}
+
+/* Card Header */
+.community-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  gap: 10px;
+}
+
+.community-card-author {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.community-card-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid #e2e8f0;
+  flex-shrink: 0;
+  background-color: #f1f5f9;
+}
+
+.community-card-author-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.community-card-author-name {
+  font-family: var(--font-heading, system-ui, -apple-system, sans-serif);
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.community-card-time {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.community-category-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+  font-family: var(--font-heading, system-ui, -apple-system, sans-serif);
+  font-size: 0.78rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* Card Image Preview */
+.community-card-image-wrap {
+  width: 100%;
+  height: 180px;
+  border-radius: 14px;
+  overflow: hidden;
+  position: relative;
+  background: #f1f5f9;
+  margin-bottom: 14px;
+}
+
+.community-card-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.3s ease;
+  transition: transform 0.35s ease;
 }
 
-.ikman-card:hover .ikman-img {
-  transform: scale(1.04);
+.community-modern-card:hover .community-card-img {
+  transform: scale(1.05);
 }
 
-.ikman-img-count {
+.community-card-img-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8fafc;
+}
+
+.community-card-photos-badge {
   position: absolute;
-  bottom: 6px;
-  right: 6px;
+  bottom: 8px;
+  right: 8px;
   background: rgba(15, 23, 42, 0.75);
   color: #ffffff;
-  font-size: 0.72rem;
-  padding: 2px 6px;
-  border-radius: 4px;
+  backdrop-filter: blur(4px);
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
   font-weight: 600;
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
-/* Thumbnail Fallback Placeholder */
-.ikman-img-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-  color: #64748b;
-  font-size: 1.8rem;
+.community-card-condition-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #0f172a;
+  backdrop-filter: blur(4px);
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-/* Right Content Details Column */
-.ikman-content-col {
+/* Card Body */
+.community-card-body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  min-width: 0;
 }
 
-.ikman-title {
-  font-size: 1.125rem;
+.community-card-title {
+  font-family: var(--font-heading, system-ui, -apple-system, sans-serif);
+  font-size: 1.1rem;
   font-weight: 700;
   color: #0f172a;
-  margin: 0 0 4px 0;
+  letter-spacing: -0.015em;
+  margin: 0 0 6px 0;
   line-height: 1.35;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  transition: color 0.2s ease;
 }
 
-.ikman-card:hover .ikman-title {
-  color: #FDC101;
-}
-
-.ikman-condition {
+.community-card-desc {
   font-size: 0.85rem;
   color: #64748b;
-  font-weight: 500;
-  margin-bottom: 4px;
+  line-height: 1.45;
+  margin: 0 0 12px 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-/* Badges Container */
-.ikman-badges {
+.community-card-meta-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
+  margin-top: auto;
+  margin-bottom: 14px;
   flex-wrap: wrap;
-  margin-bottom: 6px;
 }
 
-/* MEMBER Badge (Grey / Yellow) */
-.badge-member-grey {
-  background-color: #94a3b8;
-  color: #ffffff;
-  font-size: 0.65rem;
-  font-weight: 800;
-  padding: 2px 6px;
-  border-radius: 3px;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-}
-
-.badge-member-yellow {
-  background-color: #fef9c3;
-  color: #854d0e;
-  border: 1px solid #fde047;
-  font-size: 0.68rem;
-  font-weight: 800;
-  padding: 2px 7px;
-  border-radius: 4px;
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
-}
-
-/* VERIFIED Badge (Cyan / Blue) */
-.badge-verified {
-  background-color: #e0f2fe;
-  color: #0284c7;
-  font-size: 0.7rem;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 4px;
+.community-card-location {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
+  font-size: 0.82rem;
+  color: #64748b;
 }
 
-.badge-category-chip {
-  background-color: #f1f5f9;
+.community-card-verified {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #e0f2fe;
+  color: #0284c7;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.community-card-likes {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #f1f5f9;
   color: #475569;
+  padding: 2px 7px;
+  border-radius: 4px;
   font-size: 0.72rem;
   font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 12px;
+}
+
+/* Card Bottom Footer */
+.community-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 14px;
+  border-top: 1px solid #f1f5f9;
+  gap: 12px;
+}
+
+.community-card-price {
+  display: flex;
+  flex-direction: column;
+}
+
+.community-card-price-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.community-card-price-val {
+  font-family: var(--font-heading, system-ui, -apple-system, sans-serif);
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+/* "Details >" Pill Button Matching Landing Page */
+.community-btn-details {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   border: 1px solid #e2e8f0;
+  background: #ffffff;
+  border-radius: 9999px;
+  padding: 6px 14px;
+  font-family: var(--font-heading, system-ui, -apple-system, sans-serif);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #0f172a;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  transition: all 0.2s ease;
+  cursor: pointer;
 }
 
-.ikman-location-cat {
-  font-size: 0.875rem;
+.community-modern-card:hover .community-btn-details {
+  background: #0f172a;
+  color: #ffffff;
+  border-color: #0f172a;
+}
+
+.community-btn-chevron {
+  font-size: 1rem;
+  line-height: 1;
   color: #64748b;
-  margin-bottom: 4px;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.community-modern-card:hover .community-btn-chevron {
+  color: #ffffff;
+  transform: translateX(2px);
+}
+
+.community-card-owner-actions {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.ikman-price {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: #FDC101;
-  margin-top: 2px;
-}
-
-/* Bottom Right Meta (Time & Bump Icon) */
-.ikman-footer-meta {
-  display: flex;
+.community-btn-edit {
+  display: inline-flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
-  font-size: 0.825rem;
-  color: #64748b;
-  font-weight: 500;
-  margin-top: auto;
-  padding-top: 4px;
+  gap: 4px;
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  border-radius: 9999px;
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.ikman-bump-icon {
+.community-btn-edit:hover {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.community-btn-delete {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
-  background-color: #f59e0b;
-  color: #ffffff;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: bold;
+  width: 32px;
+  height: 32px;
+  background: #fef2f2;
+  color: #ef4444;
+  border: 1px solid #fecaca;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-/* Detail Modal Styling */
+.community-btn-delete:hover {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+/* ==========================================================================
+   4. Modals & Dialogs (Detail, Edit, Create, Report)
+   ========================================================================== */
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(4px);
+  background-color: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(8px);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
-  padding: 1rem;
+  padding: 1.5rem;
+  box-sizing: border-box;
 }
 
 .detail-modal-box {
   background-color: #ffffff;
-  border-radius: 16px;
-  max-width: 720px;
+  border-radius: 24px;
+  max-width: 760px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
   display: flex;
   flex-direction: column;
+  border: 1px solid #e2e8f0;
 }
 
 .modal-header {
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
+  padding: 1.5rem 1.75rem;
+  border-bottom: 1px solid #f1f5f9;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -391,145 +553,115 @@
 }
 
 .modal-body {
-  padding: 1.5rem;
+  padding: 1.75rem;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.5rem;
 }
 
 .detail-gallery-main {
   width: 100%;
-  max-height: 360px;
-  border-radius: 12px;
+  max-height: 380px;
+  border-radius: 16px;
   object-fit: cover;
   background-color: #0f172a;
 }
 
 .detail-thumbnails {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   overflow-x: auto;
+  padding-bottom: 4px;
 }
 
 .detail-thumb-img {
-  width: 70px;
-  height: 55px;
-  border-radius: 6px;
+  width: 75px;
+  height: 60px;
+  border-radius: 8px;
   object-fit: cover;
   cursor: pointer;
   border: 2px solid transparent;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 
 .detail-thumb-img.active {
-  border-color: #FDC101;
+  border-color: #0f172a;
+  transform: scale(1.05);
 }
 
-/* Poster Card inside Detail */
 .poster-info-card {
   display: flex;
   align-items: center;
   justify-content: space-between;
   background-color: #f8fafc;
-  padding: 14px 18px;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  padding: 16px 20px;
+  border-radius: 16px;
+  border: 1px solid #eef2f6;
 }
 
 .poster-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
 
 .poster-avatar {
-  width: 48px;
-  height: 48px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid #FDC101;
+  border: 2px solid #e2e8f0;
 }
 
-@media (max-width: 640px) {
-  .community-main {
-    padding: 1rem 8px;
-  }
-
-  .filter-toolbar {
+/* ==========================================================================
+   5. Responsive Breakpoints
+   ========================================================================== */
+@media (max-width: 900px) {
+  .community-hero-container {
     flex-direction: column;
-    align-items: stretch;
-    padding: 12px 14px;
-    gap: 10px;
+    align-items: flex-start;
   }
 
-  .search-input-wrapper {
-    min-width: 100%;
+  .community-hero-right {
     width: 100%;
+    flex: none;
+    max-width: 500px;
   }
 
-  .filter-select {
-    width: 100%;
+  .community-cards-grid {
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .community-hero-banner {
+    padding: 36px 16px 44px;
   }
 
-  .ikman-card {
-    flex-direction: column;
-    gap: 12px;
-    padding: 14px 16px;
+  .community-hero-title {
+    font-size: 1.85rem;
   }
 
-  .ikman-image-col {
-    width: 100%;
-    height: 180px;
-    min-width: 100%;
+  .community-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
   }
 
-  .modal-overlay {
-    padding: 8px;
+  .community-modern-card {
+    padding: 16px;
+    border-radius: 16px;
   }
 
   .detail-modal-box {
-    max-height: 95vh;
-    border-radius: 14px;
+    max-height: 94vh;
+    border-radius: 18px;
   }
 
   .modal-header {
-    padding: 1rem 1.25rem;
+    padding: 1.25rem;
   }
 
   .modal-body {
     padding: 1.25rem;
-    gap: 1rem;
-  }
-
-  .detail-gallery-main {
-    max-height: 240px;
-  }
-
-  .poster-info-card {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  .poster-info-card button,
-  .poster-info-card a {
-    width: 100%;
-    text-align: center;
-    justify-content: center;
-  }
-}
-
-@media (max-width: 480px) {
-  .ikman-title {
-    font-size: 1rem;
-  }
-
-  .ikman-price {
-    font-size: 0.95rem;
-  }
-
-  .category-chip {
-    padding: 6px 12px;
-    font-size: 0.8rem;
   }
 }
