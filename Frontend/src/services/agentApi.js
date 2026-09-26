@@ -29,7 +29,7 @@ export async function sendAgentMessage({ message, email, user_type = 'Resident',
   try {
     const payload = {
       message,
-      email: email || localStorage.getItem('email') || 'resident@superbass.lk',
+      email: email || localStorage.getItem('email') || '',
       user_type: user_type || localStorage.getItem('activeRole') || 'Resident',
       conversation_id: conversation_id || undefined,
       metadata: metadata || {},

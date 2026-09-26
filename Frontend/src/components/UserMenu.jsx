@@ -9,10 +9,12 @@ export default function UserMenu({ variant = 'default' }) {
   const menuRef = useRef(null);
 
   const token = localStorage.getItem('token');
-  const userName = localStorage.getItem('userName') || 'Resident User';
-  const userEmail = localStorage.getItem('email') || 'resident@superbass.lk';
+  const userEmail = localStorage.getItem('email') || '';
+  const userName = localStorage.getItem('userName') || (userEmail ? userEmail.split('@')[0] : 'Account');
   const userPicture = localStorage.getItem('userPicture');
-  const activeRole = localStorage.getItem('activeRole');
+  const activeRole = localStorage.getItem('activeRole') || 'Resident';
+
+  if (!token) return null;
 
   const navigate = (newPath) => {
     setIsOpen(false);

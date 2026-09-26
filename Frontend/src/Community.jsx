@@ -77,6 +77,8 @@ export default function Community() {
     }
   }, [isCreateModalOpen]);
 
+  const token = localStorage.getItem('token');
+  const isLoggedIn = !!token;
   const currentUserEmail = localStorage.getItem('email');
   const currentUserName = localStorage.getItem('userName');
   const activeRole = localStorage.getItem('activeRole') || 'Resident';
@@ -514,27 +516,31 @@ export default function Community() {
             <span>AI</span>
           </button>
 
-          {/* 4. Messages Button */}
-          <button
-            type="button"
-            className="m3-nav-btn"
-            onClick={() => navigate('/chats')}
-            title="Direct Messages"
-          >
-            <md-icon>chat</md-icon>
-            <span>Messages</span>
-          </button>
+          {/* 4. Messages Button (Only when logged in) */}
+          {localStorage.getItem('token') && (
+            <button
+              type="button"
+              className="m3-nav-btn"
+              onClick={() => navigate('/chats')}
+              title="Direct Messages"
+            >
+              <md-icon>chat</md-icon>
+              <span>Messages</span>
+            </button>
+          )}
 
-          {/* 5. Bookings Button */}
-          <button
-            type="button"
-            className="m3-nav-btn"
-            onClick={() => navigate('/bookings')}
-            title="My Bookings"
-          >
-            <md-icon>calendar_today</md-icon>
-            <span>Bookings</span>
-          </button>
+          {/* 5. Bookings Button (Only when logged in) */}
+          {localStorage.getItem('token') && (
+            <button
+              type="button"
+              className="m3-nav-btn"
+              onClick={() => navigate('/bookings')}
+              title="My Bookings"
+            >
+              <md-icon>calendar_today</md-icon>
+              <span>Bookings</span>
+            </button>
+          )}
 
           {/* 6. User Profile Avatar or Sign In */}
           {localStorage.getItem('token') ? (
@@ -557,17 +563,19 @@ export default function Community() {
       <div className="find-layout">
         {/* Left Sidebar Navigation (Google Workspace Style) */}
         <aside className={`find-sidebar m3-drawer ${isSidebarCollapsed ? 'minimized' : ''}`}>
-          {/* Post Ad / Compose Action Button (Material 3 Extended FAB) */}
-          <button
-            type="button"
-            className="m3-compose-fab"
-            onClick={() => setIsCreateModalOpen(true)}
-            title="Post a new ad or service request"
-            aria-label="Post Ad"
-          >
-            <md-icon>edit</md-icon>
-            <span>Post Ad</span>
-          </button>
+          {/* Post Ad / Compose Action Button (Material 3 Extended FAB) - Only when logged in */}
+          {isLoggedIn && (
+            <button
+              type="button"
+              className="m3-compose-fab"
+              onClick={() => setIsCreateModalOpen(true)}
+              title="Post a new ad or service request"
+              aria-label="Post Ad"
+            >
+              <md-icon>edit</md-icon>
+              <span>Post Ad</span>
+            </button>
+          )}
 
           {/* Primary Navigation List */}
           <nav className="m3-drawer-nav">
@@ -782,7 +790,7 @@ export default function Community() {
               <p style={{ color: '#64748b', fontSize: '0.95rem', marginBottom: '1.5rem' }}>
                 {activeTab === 'feed' ? 'Create a post to publish it to the database.' : 'All reported posts have been resolved.'}
               </p>
-              {activeTab === 'feed' && (
+              {activeTab === 'feed' && isLoggedIn && (
                 <button
                   onClick={() => setIsCreateModalOpen(true)}
                   style={{
@@ -863,6 +871,11 @@ export default function Community() {
                         {post.badgeType === 'verified_member' && (
                           <span className="card-skill-tag" style={{ background: '#e0f2fe', color: '#0284c7', borderColor: '#bae6fd' }}>
                             <i className="fa-solid fa-circle-check"></i> Verified
+                          </span>
+                        )}
+                        {(post.likesCount != null && post.likesCount > 0) && (
+                          <span className="card-skill-tag" style={{ background: '#fffbeb', color: '#b45309', borderColor: '#fef3c7' }}>
+                            <i className="fa-solid fa-thumbs-up" style={{ marginRight: '4px' }}></i> {post.likesCount}
                           </span>
                         )}
                       </div>
@@ -1007,16 +1020,37 @@ export default function Community() {
 
               {/* Like / Comment / Edit / Delete Actions Bar */}
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center', borderTop: '1px solid #e2e8f0', paddingTop: '1rem', flexWrap: 'wrap' }}>
-                <md-filled-button
-                  onClick={(e) => handleLike(selectedPostForDetail.postId, e)}
-                  style={{
-                    '--md-sys-color-primary': selectedPostForDetail.isLiked ? '#FDC101' : '#f1f5f9',
-                    '--md-sys-color-on-primary': selectedPostForDetail.isLiked ? '#000000' : '#475569',
-                  }}
-                >
-                  <i slot="icon" className="fa-solid fa-thumbs-up"></i>
-                  Interested ({selectedPostForDetail.likesCount || 0})
-                </md-filled-button>
+                {isLoggedIn ? (
+                  <md-filled-button
+                    onClick={(e) => handleLike(selectedPostForDetail.postId, e)}
+                    style={{
+                      '--md-sys-color-primary': selectedPostForDetail.isLiked ? '#FDC101' : '#f1f5f9',
+                      '--md-sys-color-on-primary': selectedPostForDetail.isLiked ? '#000000' : '#475569',
+                    }}
+                  >
+                    <i slot="icon" className="fa-solid fa-thumbs-up"></i>
+                    Interested ({selectedPostForDetail.likesCount || 0})
+                  </md-filled-button>
+                ) : (
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      background: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      padding: '8px 16px',
+                      borderRadius: '9999px',
+                      fontSize: '0.88rem',
+                      fontWeight: 600,
+                      color: '#475569'
+                    }}
+                    title="Sign in to express interest"
+                  >
+                    <i className="fa-solid fa-thumbs-up" style={{ color: '#b45309' }}></i>
+                    <span>{selectedPostForDetail.likesCount || 0} Interested</span>
+                  </div>
+                )}
 
                 {/* Author Controls in Detail Modal */}
                 {isPostOwner(selectedPostForDetail) && (
@@ -1087,34 +1121,36 @@ export default function Community() {
                   )}
                 </div>
 
-                {/* Add Comment Input Box */}
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input
-                    type="text"
-                    placeholder="Write a message or question..."
-                    value={newCommentText}
-                    onChange={(e) => setNewCommentText(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleAddComment(selectedPostForDetail.postId)}
-                    style={{
-                      flex: 1,
-                      padding: '10px 14px',
-                      borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      fontSize: '0.9rem',
-                      outline: 'none'
-                    }}
-                  />
-                  <md-filled-button
-                    onClick={() => handleAddComment(selectedPostForDetail.postId)}
-                    style={{
-                      '--md-sys-color-primary': '#FDC101',
-                      '--md-sys-color-on-primary': '#000000',
-                      padding: '0 24px'
-                    }}
-                  >
-                    Send
-                  </md-filled-button>
-                </div>
+                {/* Add Comment Input Box - Only when logged in */}
+                {isLoggedIn && (
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      type="text"
+                      placeholder="Write a message or question..."
+                      value={newCommentText}
+                      onChange={(e) => setNewCommentText(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddComment(selectedPostForDetail.postId)}
+                      style={{
+                        flex: 1,
+                        padding: '10px 14px',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '0.9rem',
+                        outline: 'none'
+                      }}
+                    />
+                    <md-filled-button
+                      onClick={() => handleAddComment(selectedPostForDetail.postId)}
+                      style={{
+                        '--md-sys-color-primary': '#FDC101',
+                        '--md-sys-color-on-primary': '#000000',
+                        padding: '0 24px'
+                      }}
+                    >
+                      Send
+                    </md-filled-button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

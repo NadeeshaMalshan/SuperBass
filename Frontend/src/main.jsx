@@ -1,4 +1,4 @@
-import { StrictMode, useState, useEffect } from 'react'
+import { Component, StrictMode, useState, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
@@ -20,6 +20,61 @@ import WorkerJobs from './pages/worker/WorkerJobs.jsx'
 import WorkerPerformance from './pages/worker/WorkerPerformance.jsx'
 import WorkerProfile from './pages/worker/WorkerProfile.jsx'
 import ResidentProfile from './ResidentProfile.jsx'
+
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('SuperBass Application Error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100vh',
+          padding: '24px',
+          fontFamily: "'DM Sans', sans-serif",
+          textAlign: 'center',
+          background: '#f9fafb',
+          color: '#111827'
+        }}>
+          <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '8px' }}>Something went wrong</h2>
+          <p style={{ color: '#6b7280', maxWidth: '460px', marginBottom: '20px' }}>
+            An unexpected error occurred. Please reload the page or navigate back to the home screen.
+          </p>
+          <button
+            onClick={() => window.location.href = '/'}
+            style={{
+              background: '#000000',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '9999px',
+              padding: '12px 24px',
+              fontWeight: 700,
+              fontSize: '0.95rem',
+              cursor: 'pointer'
+            }}
+          >
+            Go to Home
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function Router() {
   const [path, setPath] = useState(window.location.pathname);
@@ -118,6 +173,8 @@ function Router() {
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <Router />
+    <ErrorBoundary>
+      <Router />
+    </ErrorBoundary>
   </StrictMode>,
 )

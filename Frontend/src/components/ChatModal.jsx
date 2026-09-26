@@ -55,8 +55,8 @@ export default function ChatModal({
   const typingTimerRef = useRef(null);
   const typingDebounceRef = useRef(null);
 
-  const currentUserEmail = localStorage.getItem('email') || 'resident@superbass.lk';
-  const currentUserName = localStorage.getItem('userName') || 'You';
+  const currentUserEmail = localStorage.getItem('email') || '';
+  const currentUserName = localStorage.getItem('userName') || (currentUserEmail ? currentUserEmail.split('@')[0] : 'You');
   const token = localStorage.getItem('token');
 
   // Check recipient presence initially & via SignalR
