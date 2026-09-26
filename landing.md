@@ -104,18 +104,26 @@
 
 ---
 
-## 5. SuperBass AI Feature Section
+## 5. SuperBass AI Feature Section (Redesigned Hero Style)
 
-### 5.1 Section Title & CTA
-- **Title:**
+### 5.1 Section Title & Key Message
+- **Headline:**
   > **"Now, you can manage your work with SuperBass AI"**
-- **Action Button:**
-  - Label: `SuperBass AI`
-  - Interactive preview image upload trigger.
+- **Core Concept:**
+  > Residents can describe their repair or maintenance problem in simple words. The AI understands the context, matches the most qualified verified local craftsmen, and streamlines the booking & review process.
 
-### 5.2 Visuals
-- **Background Blobs:** Custom SVG bun shape in `#FDC101`.
-- **Mockup:** Mobile phone mockup (`/hero/mockup.png`) showcasing AI-assisted diagnostic capabilities.
+### 5.2 Highlights & Capabilities
+- **Feature Highlights:**
+  - ✅ Describe your repair or maintenance problem in simple words
+  - ✅ Instantly find & match verified local workers tailored to your job
+  - ✅ Book trusted craftsmen directly, manage requests, and leave ratings & reviews
+- **Primary CTA Button:**
+  - **"Try SuperBass AI"** (Routes to `/community/chat`).
+
+### 5.3 Visual Showcase
+- **Layout:** Responsive 2-column layout with image on the **LEFT** and content on the **RIGHT**.
+- **Artwork Asset:** `/hero/hero3.png` (SuperBass AI intelligent robot assisting a family and craftsmen in the home).
+- **Container Styling:** 16px border-radius, clean border outline, and soft elevation shadow (`box-shadow: 0 12px 36px rgba(0,0,0,0.08)`).
 
 ---
 

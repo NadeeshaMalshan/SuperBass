@@ -416,51 +416,74 @@ export default function App() {
         </div>
       </section>
 
-      {/* AI Feature Introduction Section */}
-      <section className="ai-intro-section" id="ai-diagnostic">
-        <div className="ai-intro-container">
-          <div className="ai-intro-content">
-            <h2 className="ai-intro-title">
+      {/* Redesigned AI Section with hero3.png on Left */}
+      <section className="landing-ai-section" id="ai-diagnostic">
+        <div className="landing-ai-container">
+
+          {/* Left Column: Hero3 Artwork Card */}
+          <div className="landing-ai-image-col">
+            <div className="landing-ai-image-card">
+              <img
+                src="/hero/hero3.png"
+                alt="SuperBass AI Intelligent Home Repair Assistant"
+                className="landing-ai-artwork"
+              />
+            </div>
+          </div>
+
+          {/* Right Column: AI Info & Features & CTAs */}
+          <div className="landing-ai-content-col">
+
+
+            <h2 className="landing-ai-title">
               Now, you can manage your work with SuperBass AI
             </h2>
-            <md-filled-button
-              className="ai-intro-btn"
-              onClick={() => aiFileInputRef.current?.click()}
-            >
-              SuperBass AI
-            </md-filled-button>
-            <input
-              type="file"
-              ref={aiFileInputRef}
-              onChange={handleAiImageUpload}
-              accept="image/*"
-              style={{ display: 'none' }}
-            />
-          </div>
 
-          <div className="ai-intro-mockup-wrapper">
-            {/* Dark M3 scalloped bun shapes behind mockup */}
-            <div className="ai-blob-layer ai-blob-center">
-              <svg viewBox="0 0 1 1" className="ai-blob-svg">
-                <path d="M0.796 0.5C0.79965 0.50115 0.80329 0.5023 0.80694 0.50345C0.83737 0.51306 0.86572 0.52834 0.89048 0.54847C0.95417 0.60024 0.98884 0.67965 0.98351 0.76156C0.9835 0.76173 0.98349 0.76191 0.98347 0.76208C0.97477 0.89591 0.86369 1 0.72958 1C0.57653 1 0.42347 1 0.27042 1C0.13631 1 0.02523 0.89591 0.01653 0.76208C0.01651 0.76191 0.0165 0.76173 0.01649 0.76156C0.01116 0.67965 0.04583 0.60024 0.10952 0.54847C0.13428 0.52834 0.16263 0.51306 0.19306 0.50345C0.19671 0.5023 0.20035 0.50115 0.204 0.5C0.20035 0.49885 0.19671 0.4977 0.19306 0.49655C0.16263 0.48694 0.13428 0.47166 0.10952 0.45153C0.04583 0.39976 0.01116 0.32035 0.01649 0.23844C0.0165 0.23827 0.01651 0.23809 0.01653 0.23792C0.02523 0.10409 0.13631 0 0.27042 0C0.42347 0 0.57653 0 0.72958 0C0.86369 0 0.97477 0.10409 0.98347 0.23792C0.98349 0.23809 0.9835 0.23827 0.98351 0.23844C0.98884 0.32035 0.95417 0.39976 0.89048 0.45153C0.86572 0.47166 0.83737 0.48694 0.80694 0.49655C0.80329 0.4977 0.79965 0.49885 0.796 0.5Z" fill="#FDC101" />
-              </svg>
+
+
+            <div className="landing-ai-features-list">
+              <div className="landing-ai-feature-item">
+                <div className="landing-feature-check">
+                  <md-icon style={{ fontSize: '16px' }}>check</md-icon>
+                </div>
+                <span>Describe your repair or maintenance problem in simple words</span>
+              </div>
+              <div className="landing-ai-feature-item">
+                <div className="landing-feature-check">
+                  <md-icon style={{ fontSize: '16px' }}>check</md-icon>
+                </div>
+                <span>Instantly find & match verified local workers tailored to your job</span>
+              </div>
+              <div className="landing-ai-feature-item">
+                <div className="landing-feature-check">
+                  <md-icon style={{ fontSize: '16px' }}>check</md-icon>
+                </div>
+                <span>Book trusted craftsmen directly, manage requests, and leave ratings & reviews</span>
+              </div>
             </div>
 
-            {/* CSS Phone Mockup */}
-            <div
-              className="ai-phone-mockup"
-              onClick={() => aiFileInputRef.current?.click()}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => e.key === 'Enter' && aiFileInputRef.current?.click()}
-            >
-              {aiUploadedImage ? (
-                <img src={aiUploadedImage} alt="SuperBass AI Preview" className="ai-mockup-image" />
-              ) : (
-                <img src="/hero/mockup.png" alt="SuperBass AI Mockup" className="ai-mockup-image" />
-              )}
+            <div className="landing-ai-actions">
+              <button
+                type="button"
+                className="uber-primary-black-btn landing-ai-btn"
+                onClick={() => navigate('/community/chat')}
+              >
+                <span>Try SuperBass AI</span>
+
+              </button>
+
+
+
+              <input
+                type="file"
+                ref={aiFileInputRef}
+                onChange={handleAiImageUpload}
+                accept="image/*"
+                style={{ display: 'none' }}
+              />
             </div>
           </div>
+
         </div>
       </section>
 
