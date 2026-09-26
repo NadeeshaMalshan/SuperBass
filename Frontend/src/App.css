@@ -1393,173 +1393,172 @@
   }
 }
 
-/* AI Feature Introduction Section */
-.ai-intro-section {
+/* ==========================================================================
+   Landing AI Assistant Section (Hero Layout Style with Image on Left)
+   ========================================================================== */
+.landing-ai-section {
   width: 100%;
-  background: #ffffff;
-  padding: 96px 24px;
+  background: #f8fafc;
+  padding: 80px 24px;
   position: relative;
+  border-bottom: 1px solid #e5e7eb;
 }
 
-.ai-intro-container {
-  max-width: 1180px;
+.landing-ai-container {
+  max-width: 1240px;
   margin: 0 auto;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
   align-items: center;
-  justify-content: space-between;
-  gap: 64px;
+  gap: 56px;
 }
 
-.ai-intro-content {
-  flex: 1;
-  max-width: 520px;
+/* Left Column: Image */
+.landing-ai-image-col {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.landing-ai-image-card {
+  width: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.08);
+  background: #ffffff;
+  line-height: 0;
+  border: 1px solid #e5e7eb;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.landing-ai-image-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.12);
+}
+
+.landing-ai-artwork {
+  width: 100%;
+  height: auto;
+  max-height: 520px;
+  object-fit: cover;
+  display: block;
+}
+
+/* Right Column: Content */
+.landing-ai-content-col {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 32px;
+  gap: 20px;
+  max-width: 540px;
 }
 
-.ai-intro-title {
-  font-family: var(--font-heading);
-  font-size: clamp(2rem, 3.5vw, 3rem);
+.landing-ai-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #fffbeb;
+  color: #92400e;
+  border: 1px solid #fef3c7;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  width: fit-content;
+}
+
+.landing-ai-title {
+  font-family: var(--font-heading, 'DM Sans', sans-serif);
+  font-size: clamp(2.2rem, 3.8vw, 3rem);
   font-weight: 800;
-  line-height: 1.2;
-  letter-spacing: -0.03em;
   color: #000000;
-  text-align: left;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  margin: 0;
 }
 
-.ai-intro-btn {
-  --md-outlined-button-outline-color: #000000;
-  --md-outlined-button-label-text-color: #000000;
-  --md-outlined-button-container-color: #ffffff;
-  --md-outlined-button-hover-outline-color: #000000;
-  --md-outlined-button-focus-outline-color: #000000;
-  --md-outlined-button-container-shape: 9999px;
-  --md-outlined-button-container-height: 52px;
-  --md-outlined-button-leading-space: 36px;
-  --md-outlined-button-trailing-space: 36px;
-  --md-outlined-button-label-text-weight: 700;
-  --md-outlined-button-label-text-size: 1rem;
-  --md-outlined-button-outline-width: 3px;
-  min-width: 180px;
-  cursor: pointer;
+.landing-ai-desc {
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: #4b5563;
+  margin: 0;
 }
 
-/* AI Mockup Area */
-.ai-intro-mockup-wrapper {
-  position: relative;
-  flex: 0 0 auto;
-  width: min(420px, 42vw);
-  height: 480px;
+.landing-ai-features-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 6px 0;
+}
+
+.landing-ai-feature-item {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1f2937;
 }
 
-.ai-blob-layer {
-  position: absolute;
-  pointer-events: none;
-  z-index: 0;
+.landing-ai-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 8px;
+  flex-wrap: wrap;
 }
 
-.ai-blob-center {
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%) rotate(45deg);
-  width: 420px;
-  height: 420px;
+.landing-ai-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.ai-blob-svg {
-  width: 100%;
-  height: 100%;
-  filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.18));
-}
-
-/* CSS Phone Mockup */
-.ai-phone-mockup {
-  position: relative;
-  z-index: 1;
-  cursor: pointer;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-
-
-.ai-mockup-image {
-  width: 250px;
-  max-width: 100%;
-  height: auto;
-  border-radius: 28px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
-  object-fit: cover;
-  transition: transform 0.3s ease;
-}
-
-@media (max-width: 900px) {
-  .ai-intro-container {
-    flex-direction: column;
-    text-align: center;
+@media (max-width: 960px) {
+  .landing-ai-container {
+    grid-template-columns: 1fr;
     gap: 40px;
   }
 
-  .ai-intro-content {
-    align-items: center;
+  .landing-ai-content-col {
     max-width: 100%;
   }
 
-  .ai-intro-title {
-    text-align: center;
-  }
-
-  .ai-intro-mockup-wrapper {
-    width: 100%;
-    max-width: 320px;
-    height: 380px;
-  }
-
-  .ai-blob-center {
-    width: 320px;
-    height: 320px;
+  .landing-ai-section {
+    padding: 56px 20px;
   }
 }
 
 @media (max-width: 600px) {
-  .ai-intro-section {
-    padding: 48px 16px;
+  .landing-ai-section {
+    padding: 40px 16px;
   }
 
-  .ai-intro-title {
-    font-size: clamp(1.65rem, 5.5vw, 2.2rem);
+  .landing-ai-title {
+    font-size: clamp(1.8rem, 5.5vw, 2.4rem);
   }
 
-  .ai-intro-btn {
+  .landing-ai-actions {
+    flex-direction: column;
     width: 100%;
+    align-items: stretch;
   }
 
-  .ai-mockup-image {
-    width: 220px;
+  .landing-ai-btn,
+  .landing-ai-actions .uber-ai-helper-btn {
+    width: 100%;
+    justify-content: center;
+    box-sizing: border-box;
+    text-align: center;
   }
 }
 
 @media (max-width: 480px) {
-  .ai-intro-section {
-    padding: 36px 14px;
+  .landing-ai-section {
+    padding: 32px 14px;
   }
 
-  .ai-intro-mockup-wrapper {
-    max-width: 260px;
-    height: 320px;
-  }
-
-  .ai-blob-center {
-    width: 260px;
-    height: 260px;
-  }
-
-  .ai-mockup-image {
-    width: 190px;
+  .landing-ai-feature-item {
+    font-size: 0.88rem;
   }
 }
 
