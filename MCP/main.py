@@ -261,6 +261,17 @@ tools = [
             },
             "required": ["email"]
         }
+    },
+    {
+        "name": "get_service_categories",
+        "description": "Get the official list of 21 standardized service categories available across SuperBass for workers and community posts",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "includeDetails": {"type": "boolean", "description": "Include icons and IDs (default true)"}
+            },
+            "required": []
+        }
     }
 ]
 
@@ -515,6 +526,16 @@ async def call_get_user_details(args: Dict[str, Any]):
         "worker": worker_profile
     }
 
+async def call_get_service_categories(args: Dict[str, Any]):
+    try:
+        response = await backend_client.get("/api/categories")
+        if response.status_code == 200:
+            return response.json()
+    except Exception:
+        pass
+    fallback_res = await backend_client.get("/api/community-posts/categories")
+    return fallback_res.json()
+
 # Map tool names to functions
 TOOL_FUNCTIONS = {
     "search_workers": call_search_workers,
@@ -533,6 +554,7 @@ TOOL_FUNCTIONS = {
     "create_worker_review": call_create_worker_review,
     "get_user_community_posts": call_get_user_community_posts,
     "get_user_details": call_get_user_details,
+    "get_service_categories": call_get_service_categories,
 }
 
 @app.get("/")

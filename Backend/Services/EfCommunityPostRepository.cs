@@ -45,19 +45,10 @@ namespace Superbass.Services
             }
 
             // Fallback default categories if json file is unavailable
-            _categories.AddRange(new[]
+            if (_categories.Count == 0)
             {
-                new ServiceCategory { Id = "plumbing", Name = "Plumbing", Icon = "fa-faucet-drip" },
-                new ServiceCategory { Id = "electrical", Name = "Electrical", Icon = "fa-bolt" },
-                new ServiceCategory { Id = "carpentry", Name = "Carpentry", Icon = "fa-hammer" },
-                new ServiceCategory { Id = "masonry", Name = "Masonry", Icon = "fa-trowel-bricks" },
-                new ServiceCategory { Id = "painting", Name = "Painting", Icon = "fa-paint-roller" },
-                new ServiceCategory { Id = "ac-repair", Name = "AC Repair", Icon = "fa-snowflake" },
-                new ServiceCategory { Id = "roofing", Name = "Roofing", Icon = "fa-house-chimney" },
-                new ServiceCategory { Id = "appliance-repair", Name = "Appliance Repair", Icon = "fa-screwdriver-wrench" },
-                new ServiceCategory { Id = "cctv-security", Name = "CCTV & Security", Icon = "fa-video" },
-                new ServiceCategory { Id = "general", Name = "General Advice", Icon = "fa-circle-info" }
-            });
+                _categories.AddRange(ServiceCategoryConstants.CategoryDefinitions);
+            }
         }
 
         public IEnumerable<ServiceCategory> GetCategories() => _categories;
@@ -103,8 +94,8 @@ namespace Superbass.Services
 
         public CommunityPost CreatePost(CreatePostRequest request, string userId)
         {
-            var category = _categories.FirstOrDefault(c => c.Id.Equals(request.ServiceCategoryId, StringComparison.OrdinalIgnoreCase));
-            string categoryName = category != null ? category.Name : (request.ServiceCategoryId ?? "General Advice");
+            string categoryName = ServiceCategoryConstants.NormalizeCategoryName(request.ServiceCategoryId);
+            string categoryId = ServiceCategoryConstants.ToCategoryId(categoryName);
 
             var post = new CommunityPost
             {
@@ -113,7 +104,7 @@ namespace Superbass.Services
                 UserAvatar = !string.IsNullOrWhiteSpace(request.UserAvatar) ? request.UserAvatar : $"https://api.dicebear.com/7.x/avataaars/svg?seed={userId}",
                 Title = request.Title,
                 Content = request.Content,
-                ServiceCategoryId = request.ServiceCategoryId ?? "general",
+                ServiceCategoryId = categoryId,
                 ServiceCategoryName = categoryName,
                 Location = !string.IsNullOrWhiteSpace(request.Location) ? request.Location : "Colombo",
                 Images = request.Images ?? new List<string>(),
@@ -135,12 +126,15 @@ namespace Superbass.Services
             var post = _context.CommunityPosts.FirstOrDefault(p => p.PostId == id);
             if (post == null) return null;
 
-            var category = _categories.FirstOrDefault(c => c.Id.Equals(request.ServiceCategoryId, StringComparison.OrdinalIgnoreCase));
+            string categoryName = !string.IsNullOrWhiteSpace(request.ServiceCategoryId)
+                ? ServiceCategoryConstants.NormalizeCategoryName(request.ServiceCategoryId)
+                : post.ServiceCategoryName;
+            string categoryId = ServiceCategoryConstants.ToCategoryId(categoryName);
 
             post.Title = request.Title;
             post.Content = request.Content;
-            post.ServiceCategoryId = request.ServiceCategoryId;
-            post.ServiceCategoryName = category?.Name ?? request.ServiceCategoryId;
+            post.ServiceCategoryId = categoryId;
+            post.ServiceCategoryName = categoryName;
             post.Location = request.Location;
             if (request.Images != null) post.Images = request.Images;
             post.UpdatedAt = DateTime.UtcNow;

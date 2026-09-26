@@ -40,7 +40,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     pricingModel: 'Hourly',
     hourlyRate: '',
     dailyRate: '',
-    skills: [{ skillName: '', experienceYears: 1 }]
+    skills: [{ skillName: categoriesData[0]?.name || 'Plumbing', experienceYears: 1 }]
   });
   const [submittingWorker, setSubmittingWorker] = useState(false);
   const [workerError, setWorkerError] = useState(null);
@@ -263,7 +263,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
   const handleAddSkill = () => {
     setWorkerForm({
       ...workerForm,
-      skills: [...workerForm.skills, { skillName: '', experienceYears: 1 }]
+      skills: [...workerForm.skills, { skillName: categoriesData[0]?.name || 'Plumbing', experienceYears: 1 }]
     });
   };
 
@@ -1348,13 +1348,19 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
 
                     {workerForm.skills.map((skill, index) => (
                       <div key={index} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '0.75rem' }}>
-                        <input
-                          type="text"
-                          placeholder="Skill Name (e.g. Electrical Wiring, Plumbing)"
+                        <select
                           value={skill.skillName}
                           onChange={(e) => handleSkillChange(index, 'skillName', e.target.value)}
-                          style={{ flex: 2, padding: '10px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '0.9rem' }}
-                        />
+                          style={{ flex: 2, padding: '10px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '0.9rem', backgroundColor: '#FFFFFF', color: '#111827' }}
+                          required
+                        >
+                          <option value="" disabled>Select Service Category</option>
+                          {categoriesData.map(cat => (
+                            <option key={cat.id} value={cat.name}>
+                              {cat.name}
+                            </option>
+                          ))}
+                        </select>
                         <input
                           type="number"
                           min="0"

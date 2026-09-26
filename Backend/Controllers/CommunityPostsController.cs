@@ -18,8 +18,9 @@ namespace Superbass.Controllers
             _repository = repository;
         }
 
-        // GET /api/community-posts/categories
+        // GET /api/community-posts/categories and GET /api/categories
         [HttpGet("categories")]
+        [HttpGet("/api/categories")]
         public IActionResult GetCategories()
         {
             var categories = _repository.GetCategories();
