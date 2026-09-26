@@ -137,6 +137,30 @@ app.UseRouting();
 
 app.UseCors("AllowFrontend"); // Use CORS after UseRouting and before Auth & Endpoints
 
+// Global Exception Handler to preserve CORS headers on errors
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"[Error] Unhandled exception on {context.Request.Path}: {ex}");
+        if (!context.Response.HasStarted)
+        {
+            context.Response.StatusCode = 500;
+            context.Response.ContentType = "application/json";
+            var errorJson = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                message = ex.Message,
+                type = ex.GetType().Name
+            });
+            await context.Response.WriteAsync(errorJson);
+        }
+    }
+});
+
 app.UseAuthentication();
 app.UseAuthorization();
 

@@ -85,133 +85,145 @@ namespace Superbass.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateBooking([FromBody] CreateBookingRequest request)
         {
-            if (request == null || request.WorkerId <= 0 || string.IsNullOrWhiteSpace(request.JobTitle))
-            {
-                return BadRequest(new { message = "Worker ID and Job Title are required." });
-            }
-
-            var residentEmail = request.ResidentEmail ?? GetCurrentUserEmail();
-            if (string.IsNullOrWhiteSpace(residentEmail))
-            {
-                residentEmail = "resident@superbass.lk";
-            }
-
-            // Reject if hiring account is a worker
-            var isWorkerAccount = await _context.Workers.AnyAsync(w => w.Email == residentEmail || w.ResidentEmail == residentEmail);
-            if (isWorkerAccount)
-            {
-                return BadRequest(new { message = "Workers are not permitted to hire or create bookings. Please switch to a Resident account to book services." });
-            }
-
-            // Ensure Resident exists
-            var resident = await _context.Residents.FindAsync(residentEmail);
-            if (resident == null)
-            {
-                resident = new Resident
-                {
-                    Email = residentEmail,
-                    Name = residentEmail.Split('@')[0],
-                    PhoneNo = request.ContactPhone ?? "0771234567"
-                };
-                _context.Residents.Add(resident);
-                await _context.SaveChangesAsync();
-            }
-
-            // Ensure Worker exists
-            var worker = await _context.Workers.FindAsync(request.WorkerId);
-            if (worker == null)
-            {
-                return NotFound(new { message = $"Worker with ID {request.WorkerId} not found." });
-            }
-
-            // Create or Link Conversation
-            int? conversationId = null;
             try
             {
-                var convSummary = await _communicationRepo.GetOrCreateConversationAsync(new CreateConversationRequest
+                if (request == null || request.WorkerId <= 0 || string.IsNullOrWhiteSpace(request.JobTitle))
                 {
-                    WorkerId = worker.Id,
-                    WorkerEmail = worker.Email,
-                    WorkerName = worker.Name,
-                    WorkerAvatar = worker.ProfileImage,
-                    ResidentEmail = residentEmail,
-                    InitialMessage = $"New Hire Request: {request.JobTitle} scheduled for {(request.ScheduledDate ?? DateTime.UtcNow.AddDays(1)):dd MMM yyyy, hh:mm tt}."
-                }, residentEmail);
-                conversationId = convSummary.Id;
-            }
-            catch (Exception)
-            {
-                // Fallback: Continue booking creation even if chat linking encounters a non-critical error
-            }
+                    return BadRequest(new { message = "Worker ID and Job Title are required." });
+                }
 
-            var scheduledUtc = request.ScheduledDate.HasValue 
-                ? (request.ScheduledDate.Value.Kind == DateTimeKind.Utc 
-                    ? request.ScheduledDate.Value 
-                    : DateTime.SpecifyKind(request.ScheduledDate.Value, DateTimeKind.Utc))
-                : DateTime.UtcNow.AddDays(1);
+                var residentEmail = request.ResidentEmail ?? GetCurrentUserEmail();
+                if (string.IsNullOrWhiteSpace(residentEmail))
+                {
+                    residentEmail = "resident@superbass.lk";
+                }
 
-            var booking = new Booking
-            {
-                ResidentEmail = residentEmail,
-                WorkerId = worker.Id,
-                JobTitle = request.JobTitle,
-                Description = request.Description ?? string.Empty,
-                Urgency = request.Urgency ?? "Medium",
-                ScheduledDate = scheduledUtc,
-                LocationAddress = request.LocationAddress ?? resident.Address ?? "Colombo",
-                LocationLat = request.LocationLat ?? resident.LocationLat,
-                LocationLng = request.LocationLng ?? resident.LocationLng,
-                ContactPhone = request.ContactPhone ?? resident.PhoneNo ?? string.Empty,
-                PricingModel = request.PricingModel ?? worker.PricingModel ?? "Hourly",
-                EstimatedPrice = request.EstimatedPrice ?? (worker.HourlyRate ?? worker.DailyRate),
-                Status = "Requested",
-                ConversationId = conversationId,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
+                // Reject if hiring account is a worker
+                var isWorkerAccount = await _context.Workers.AnyAsync(w => w.Email == residentEmail || w.ResidentEmail == residentEmail);
+                if (isWorkerAccount)
+                {
+                    return BadRequest(new { message = "Workers are not permitted to hire or create bookings. Please switch to a Resident account to book services." });
+                }
 
-            _context.Bookings.Add(booking);
-            await _context.SaveChangesAsync();
+                // Ensure Resident exists
+                var resident = await _context.Residents.FindAsync(residentEmail);
+                if (resident == null)
+                {
+                    resident = new Resident
+                    {
+                        Email = residentEmail,
+                        Name = residentEmail.Split('@')[0],
+                        PhoneNo = request.ContactPhone ?? "0771234567"
+                    };
+                    _context.Residents.Add(resident);
+                    await _context.SaveChangesAsync();
+                }
 
-            // Send notification message inside conversation
-            if (conversationId.HasValue)
-            {
+                // Ensure Worker exists
+                var worker = await _context.Workers.FindAsync(request.WorkerId);
+                if (worker == null)
+                {
+                    return NotFound(new { message = $"Worker with ID {request.WorkerId} not found." });
+                }
+
+                // Create or Link Conversation
+                int? conversationId = null;
                 try
                 {
-                    await _communicationRepo.SendMessageAsync(conversationId.Value, residentEmail, "Resident", new SendMessageRequest
+                    var convSummary = await _communicationRepo.GetOrCreateConversationAsync(new CreateConversationRequest
                     {
-                        SenderEmail = residentEmail,
-                        SenderRole = "Resident",
-                        MessageType = "BookingUpdate",
-                        Content = $"📋 Booking Requested #{booking.Id}: {booking.JobTitle} ({booking.Urgency} Priority)"
-                    });
+                        WorkerId = worker.Id,
+                        WorkerEmail = worker.Email,
+                        WorkerName = worker.Name,
+                        WorkerAvatar = worker.ProfileImage,
+                        ResidentEmail = residentEmail,
+                        InitialMessage = $"New Hire Request: {request.JobTitle} scheduled for {(request.ScheduledDate ?? DateTime.UtcNow.AddDays(1)):dd MMM yyyy, hh:mm tt}."
+                    }, residentEmail);
+                    conversationId = convSummary.Id;
                 }
-                catch { }
-            }
+                catch (Exception)
+                {
+                    // Fallback: Continue booking creation even if chat linking encounters a non-critical error
+                }
 
-            // Reload with navigations
-            var savedBooking = await _context.Bookings
-                .Include(b => b.Resident)
-                .Include(b => b.Worker)
-                .FirstAsync(b => b.Id == booking.Id);
+                var scheduledUtc = request.ScheduledDate.HasValue 
+                    ? (request.ScheduledDate.Value.Kind == DateTimeKind.Utc 
+                        ? request.ScheduledDate.Value 
+                        : DateTime.SpecifyKind(request.ScheduledDate.Value, DateTimeKind.Utc))
+                    : DateTime.UtcNow.AddDays(1);
 
-            // Send OneSignal push notification to worker
-            var workerTargetEmail = worker.ResidentEmail ?? worker.Email;
-            if (!string.IsNullOrWhiteSpace(workerTargetEmail))
-            {
-                _ = _pushNotificationService.SendPushNotificationAsync(
-                    recipientEmail: workerTargetEmail,
-                    title: "New Booking Request! 📋",
-                    message: $"New request for '{booking.JobTitle}' from {resident.Name}.",
-                    data: new Dictionary<string, string>
+                var booking = new Booking
+                {
+                    ResidentEmail = residentEmail,
+                    WorkerId = worker.Id,
+                    JobTitle = request.JobTitle,
+                    Description = request.Description ?? string.Empty,
+                    Urgency = request.Urgency ?? "Medium",
+                    ScheduledDate = scheduledUtc,
+                    LocationAddress = request.LocationAddress ?? resident.Address ?? "Colombo",
+                    LocationLat = request.LocationLat ?? resident.LocationLat,
+                    LocationLng = request.LocationLng ?? resident.LocationLng,
+                    ContactPhone = request.ContactPhone ?? resident.PhoneNo ?? string.Empty,
+                    PricingModel = request.PricingModel ?? worker.PricingModel ?? "Hourly",
+                    EstimatedPrice = request.EstimatedPrice ?? (worker.HourlyRate ?? worker.DailyRate),
+                    Status = "Requested",
+                    ConversationId = conversationId,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                _context.Bookings.Add(booking);
+                await _context.SaveChangesAsync();
+
+                // Send notification message inside conversation
+                if (conversationId.HasValue)
+                {
+                    try
                     {
-                        { "bookingId", booking.Id.ToString() },
-                        { "type", "booking" }
+                        await _communicationRepo.SendMessageAsync(conversationId.Value, residentEmail, "Resident", new SendMessageRequest
+                        {
+                            SenderEmail = residentEmail,
+                            SenderRole = "Resident",
+                            MessageType = "BookingUpdate",
+                            Content = $"📋 Booking Requested #{booking.Id}: {booking.JobTitle} ({booking.Urgency} Priority)"
+                        });
                     }
-                );
-            }
+                    catch { }
+                }
 
-            return CreatedAtAction(nameof(GetBookingById), new { id = booking.Id }, MapToDto(savedBooking));
+                // Reload with navigations
+                var savedBooking = await _context.Bookings
+                    .Include(b => b.Resident)
+                    .Include(b => b.Worker)
+                    .FirstAsync(b => b.Id == booking.Id);
+
+                // Send OneSignal push notification to worker
+                var workerTargetEmail = worker.ResidentEmail ?? worker.Email;
+                if (!string.IsNullOrWhiteSpace(workerTargetEmail))
+                {
+                    try
+                    {
+                        _ = _pushNotificationService.SendPushNotificationAsync(
+                            recipientEmail: workerTargetEmail,
+                            title: "New Booking Request! 📋",
+                            message: $"New request for '{booking.JobTitle}' from {resident.Name}.",
+                            data: new Dictionary<string, string>
+                            {
+                                { "bookingId", booking.Id.ToString() },
+                                { "type", "booking" }
+                            }
+                        );
+                    }
+                    catch { }
+                }
+
+                return StatusCode(201, MapToDto(savedBooking));
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"[Error in CreateBooking]: {ex}");
+                return StatusCode(500, new { message = "Failed to create booking: " + ex.Message });
+            }
         }
 
         // GET: /api/bookings/{id}
