@@ -28,6 +28,7 @@ namespace Superbass.Models
             "Moving & Transport",
             "Furniture Repair & Assembly",
             "Pest Control",
+            "CCTV Installation & Repair",
             "Others"
         };
 
@@ -53,6 +54,7 @@ namespace Superbass.Models
             new ServiceCategory { Id = "moving-transport", Name = "Moving & Transport", Icon = "fa-truck-ramp-box" },
             new ServiceCategory { Id = "furniture-repair-assembly", Name = "Furniture Repair & Assembly", Icon = "fa-couch" },
             new ServiceCategory { Id = "pest-control", Name = "Pest Control", Icon = "fa-shield-halved" },
+            new ServiceCategory { Id = "cctv-installation-repair", Name = "CCTV Installation & Repair", Icon = "fa-video" },
             new ServiceCategory { Id = "others", Name = "Others", Icon = "fa-circle-question" }
         };
 
