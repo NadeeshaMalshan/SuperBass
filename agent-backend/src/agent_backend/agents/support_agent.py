@@ -2,7 +2,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage
 from agent_backend.state.state import AgentState
 from agent_backend.prompts.support_prompts import SUPPORT_AGENT_PROMPT
-from agent_backend.tools.support_tools import SUPPORT_TOOLS
+from agent_backend.tools.support_review_tools import SUPPORT_TOOLS
 
 # Initialize the core LLM
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)

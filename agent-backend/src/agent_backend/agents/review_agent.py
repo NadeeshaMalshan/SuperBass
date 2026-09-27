@@ -3,7 +3,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage
 from agent_backend.state.state import AgentState
 from agent_backend.prompts.review_prompts import REVIEW_AGENT_PROMPT
-from agent_backend.tools.review_tools import REVIEW_TOOLS
+from agent_backend.tools.support_review_tools import REVIEW_TOOLS
 
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 

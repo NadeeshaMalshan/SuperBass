@@ -1,6 +1,6 @@
 from langchain_core.tools import tool
 from typing import Optional, Dict, Any
-from community_tools import sanitize_payload
+from agent_backend.tools.community_tools import sanitize_payload
 from agent_backend.tools.mcp_client import mcp_client
 
 @tool
@@ -100,3 +100,6 @@ async def file_dispute_ticket(
         return sanitize_payload(raw)
     except Exception as e:
         return {"status": "error", "message": f"Failed to file dispute ticket: {str(e)}"}
+
+REVIEW_TOOLS = [submit_worker_review, search_workers]
+SUPPORT_TOOLS = [file_dispute_ticket]
