@@ -12,15 +12,17 @@ from agent_backend.state.state import AgentState
 from agent_backend.agents.supervisor import supervisor_node
 from agent_backend.agents.community_agent import community_agent_node
 from agent_backend.agents.booking_agent import booking_agent_node
+from agent_backend.agents.worker_matching_agent import worker_matching_agent_node
 from agent_backend.agents.card_formatter import card_formatter_node
 from agent_backend.tools.community_tools import COMMUNITY_TOOLS
 from agent_backend.tools.booking_tools import BOOKING_TOOLS
+from agent_backend.tools.worker_tools import WORKER_TOOLS
 
 
-def route_supervisor(state: AgentState) -> Literal["community_agent", "booking_agent", "card_formatter"]:
-    """Routes from supervisor to the community agent, booking agent, or to the card formatter."""
+def route_supervisor(state: AgentState) -> Literal["community_agent", "booking_agent", "worker_matching_agent", "card_formatter"]:
+    """Routes from supervisor to the community agent, booking agent, worker matching agent, or to the card formatter."""
     next_node = state.get("next")
-    if next_node in ("community_agent", "booking_agent"):
+    if next_node in ("community_agent", "booking_agent", "worker_matching_agent"):
         return next_node
     return "card_formatter"
 
@@ -35,6 +37,8 @@ def build_graph() -> StateGraph:
     builder.add_node("community_tools", ToolNode(COMMUNITY_TOOLS))
     builder.add_node("booking_agent", booking_agent_node)
     builder.add_node("booking_tools", ToolNode(BOOKING_TOOLS))
+    builder.add_node("worker_matching_agent", worker_matching_agent_node)
+    builder.add_node("worker_tools", ToolNode(WORKER_TOOLS))
     builder.add_node("card_formatter", card_formatter_node)
 
     # 2. Add Edges
@@ -46,6 +50,7 @@ def build_graph() -> StateGraph:
         {
             "community_agent": "community_agent",
             "booking_agent": "booking_agent",
+            "worker_matching_agent": "worker_matching_agent",
             "card_formatter": "card_formatter"
         }
     )
@@ -71,6 +76,17 @@ def build_graph() -> StateGraph:
         }
     )
     builder.add_edge("booking_tools", "booking_agent")
+
+    # Worker Matching Agent tool loop
+    builder.add_conditional_edges(
+        "worker_matching_agent",
+        tools_condition,
+        {
+            "tools": "worker_tools",
+            END: "card_formatter"
+        }
+    )
+    builder.add_edge("worker_tools", "worker_matching_agent")
 
     # Structured UI Card formatting
     builder.add_edge("card_formatter", END)
