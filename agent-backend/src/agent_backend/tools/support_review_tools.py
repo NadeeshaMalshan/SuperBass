@@ -2,6 +2,29 @@ from langchain_core.tools import tool
 from typing import Optional, Dict, Any
 from agent_backend.tools.community_tools import sanitize_payload
 from agent_backend.tools.mcp_client import mcp_client
+import uuid 
+from langchain_core.runnables.config import RunnableConfig
+
+@tool
+async def get_user_job_history(limit: Optional[int] = 5) -> Dict[str, Any]:
+    """
+    Fetches the recent job history for the authenticated user.
+    
+    Use this tool when the user wants to review or dispute a worker but doesn't 
+    know the worker's exact name or ID. Present the recent jobs to the user 
+    to help them identify the correct worker.
+    
+    MCP Tool: get_user_job_history
+    Arguments:
+    - limit (integer, optional): The number of recent jobs to fetch. Defaults to 5.
+    """
+    args = {"limit": min(limit, 20)} if limit else {"limit": 5}
+    
+    try:
+        raw = await mcp_client.call_tool("get_user_job_history", args)
+        return sanitize_payload(raw)
+    except Exception as e:
+        return {"status": "error", "message": f"Failed to fetch job history: {str(e)}"}
 
 @tool
 async def submit_worker_review(
@@ -69,7 +92,8 @@ async def search_workers(query: str) -> Dict[str, Any]:
 async def file_dispute_ticket(
     worker_id: str, 
     reason: str, 
-    urgency_level: str
+    urgency_level: str,
+    config: RunnableConfig
 ) -> Dict[str, Any]:
     """
     Files a formal dispute ticket against a worker via the MCP Server.
@@ -83,7 +107,6 @@ async def file_dispute_ticket(
     - reason (string, required): A concise summary of the user's complaint.
     - urgency_level (string, required): Must be strictly 'low', 'medium', or 'high' based on severity.
     """
-    # 1. Validation & Sanitization
     safe_urgency = str(urgency_level).strip().lower()
     if safe_urgency not in ["low", "medium", "high"]:
         return {"status": "error", "message": "urgency_level must be 'low', 'medium', or 'high'."}
@@ -94,12 +117,43 @@ async def file_dispute_ticket(
         "urgency_level": safe_urgency
     }
     
-    # 2. Call the MCP Server
+    idempotency_key = str(uuid.uuid4())
+    run_id = str(config.get("run_id", "unknown_run_id"))
+    metadata = {
+        "x-idempotency-key": idempotency_key,
+        "x-ai-trace-id": run_id
+    }
+    
     try:
+        # Standard signature for MCP Tool execution with metadata
+        args["_metadata"] = metadata
         raw = await mcp_client.call_tool("file_dispute_ticket", args)
         return sanitize_payload(raw)
     except Exception as e:
         return {"status": "error", "message": f"Failed to file dispute ticket: {str(e)}"}
 
+@tool
+async def escalate_to_human(
+    reason: str,
+    urgency: str
+) -> Dict[str, Any]:
+    """
+    Escalates the current conversation to a human support agent.
+    
+    Call this tool immediately if the user is irate, threatens self-harm, 
+    explicitly requests a human, or if you cannot resolve their issue. 
+    
+    Arguments:
+    - reason (string, required): A brief summary of why the user needs a human.
+    - urgency (string, required): 'low', 'medium', or 'high'. Use 'high' for safety threats.
+    """
+    args = {"reason": reason, "urgency": urgency}
+    
+    try:
+        raw = await mcp_client.call_tool("escalate_to_human", args)
+        return sanitize_payload(raw)
+    except Exception as e:
+        return {"status": "error", "message": f"Failed to escalate: {str(e)}"}
+
 REVIEW_TOOLS = [submit_worker_review, search_workers]
-SUPPORT_TOOLS = [file_dispute_ticket]
+SUPPORT_TOOLS = [file_dispute_ticket, escalate_to_human, get_user_job_history]

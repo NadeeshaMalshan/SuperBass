@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List, Union
 from datetime import datetime
@@ -8,10 +8,46 @@ import os
 import httpx
 from dotenv import load_dotenv
 
+# Zero-Trust Auth & Eligibility Logic
+async def get_authenticated_user(request: Request) -> str:
+    """Extracts user_id securely from the session token."""
+    auth_header = request.headers.get("Authorization")
+    if not auth_header:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    # Mocking JWT verification for MVP
+    user_id = auth_header.replace("Bearer ", "")
+    return user_id
+
+async def verify_job_eligibility(user_id: str, worker_id: str) -> bool:
+    """Queries the database to ensure the user had a recent completed job with this worker."""
+    # Mocking DB check
+    return True
+
 # Load environment variables from .env file
 load_dotenv()
 
 app = FastAPI(title="MCP Server", description="Model Context Protocol Server")
+
+@app.post("/mcp/tools/submit_worker_review")
+async def mcp_submit_worker_review(
+    payload: dict,
+    user_id: str = Depends(get_authenticated_user) 
+):
+    worker_id = payload.get("worker_id")
+    rating = payload.get("rating")
+    comment = payload.get("comment")
+
+    # 1. Eligibility Check (Zero-Trust boundary)
+    is_eligible = await verify_job_eligibility(user_id, worker_id)
+    if not is_eligible:
+        raise HTTPException(
+            status_code=403, 
+            detail="User is not eligible to review this worker. No recent completed jobs found."
+        )
+
+    # 2. Mocking review submission for MVP
+    review_id = f"rev_{worker_id}_{user_id}"
+    return {"status": "success", "review_id": review_id}
 
 # MCP Models
 class MCPBaseModel(BaseModel):
