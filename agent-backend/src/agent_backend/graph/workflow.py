@@ -34,6 +34,8 @@ def build_graph() -> StateGraph:
     # 1. Add Nodes
     builder.add_node("supervisor", supervisor_node)
     builder.add_node("community_agent", community_agent_node)
+    builder.add_node("support_agent", support_agent_node)
+    builder.add_node("review_agent", review_agent_node)
     builder.add_node("tools", ToolNode(COMMUNITY_TOOLS))
     builder.add_node("card_formatter", card_formatter_node)
 
@@ -45,6 +47,8 @@ def build_graph() -> StateGraph:
         route_supervisor,
         {
             "community_agent": "community_agent",
+            "support_agent": "support_agent",
+            "review_agent": "review_agent",
             "card_formatter": "card_formatter"
         }
     )
