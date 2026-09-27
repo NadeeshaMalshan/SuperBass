@@ -21,6 +21,9 @@ from agent_backend.schemas.card_models import (
     PostDeletedCard,
     UserProfileCard,
     ServiceCategoriesCard,
+    WorkerCardItem,
+    WorkerListCard,
+    WorkerDetailCard,
     TextMessageCard,
     ErrorCard,
     CommunityPostSummary
@@ -48,10 +51,14 @@ Available response_type values and their corresponding card_data schemas:
    card_data fields: email, role, isWorker, displayName, phoneNo, address, workerRating, completedJobs, skills, pricingModel.
 7. "service_categories": Use when get_service_categories tool was called and returned a list of service categories.
    card_data fields: categories (list of category objects with id, name, icon), totalCount.
-8. "text_message": Use for conversational replies, greetings, explanations, or questions.
-   card_data fields: text, suggestions (list of quick prompt suggestions).
-9. "error": Use if a tool or operation failed with an error.
-   card_data fields: errorCode, message, actionRequired.
+8. "worker_list": Use when workers were searched, evaluated, or recommended (from search_workers).
+   card_data fields: skill, location, totalCount, workers (list of {id, name, service, skills, rating, price, pricingModel, location, distance, isAvailable, experienceYears, profileImage, completedJobs}).
+9. "worker_detail": Use when a single worker's full profile or performance was fetched (from get_worker_details or get_worker_performance).
+   card_data fields: worker, description, email, phoneNo, acceptanceRate, completionRate, cancellationRate, qualityRating, punctualityRating, communicationRating.
+10. "text_message": Use for conversational replies, greetings, explanations, or questions.
+    card_data fields: text, suggestions (list of quick prompt suggestions).
+11. "error": Use if a tool or operation failed with an error.
+    card_data fields: errorCode, message, actionRequired.
 
 Choose the exact response_type that best represents the latest action.
 """
@@ -239,6 +246,89 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
                 card_data=card.model_dump(),
                 metadata={"agent": "community_agent", "user_email": email}
             )
+
+        # 8. search_workers
+        if tool_name == "search_workers":
+            raw_workers = data if isinstance(data, list) else data.get("workers", data.get("items", []))
+            if not isinstance(raw_workers, list):
+                raw_workers = [data] if isinstance(data, dict) and data.get("name") else []
+
+            worker_items: List[WorkerCardItem] = []
+            for w in raw_workers:
+                if isinstance(w, dict):
+                    skills_list = []
+                    primary_service = None
+                    years_exp = None
+                    for sk in w.get("skills", []):
+                        if isinstance(sk, dict):
+                            if not primary_service and sk.get("serviceName"):
+                                primary_service = sk.get("serviceName")
+                            if sk.get("experienceYears") and not years_exp:
+                                years_exp = sk.get("experienceYears")
+                            if sk.get("skillName"):
+                                skills_list.append(sk.get("skillName"))
+                            if isinstance(sk.get("skills"), list):
+                                skills_list.extend(sk.get("skills"))
+                        elif isinstance(sk, str):
+                            skills_list.append(sk)
+
+                    worker_items.append(
+                        WorkerCardItem(
+                            id=w.get("id", ""),
+                            name=w.get("name", "Worker"),
+                            service=primary_service or w.get("primaryServiceArea") or "General",
+                            skills=skills_list[:5],
+                            rating=w.get("overallRating"),
+                            price=float(w.get("hourlyRate") or w.get("dailyRate") or 0.0) if (w.get("hourlyRate") or w.get("dailyRate")) else None,
+                            pricingModel=w.get("pricingModel", "Hourly"),
+                            location=w.get("primaryServiceArea"),
+                            distance=w.get("distance"),
+                            isAvailable=w.get("isAvailable", True),
+                            experienceYears=years_exp,
+                            profileImage=w.get("profileImage"),
+                            completedJobs=w.get("completedJobs", 0)
+                        )
+                    )
+
+            card = WorkerListCard(
+                totalCount=len(worker_items),
+                workers=worker_items
+            )
+            return AgentCardResponse(
+                response_type="worker_list",
+                message=last_ai_content or f"Found {len(worker_items)} matching service professionals.",
+                card_data=card.model_dump(),
+                metadata={"agent": "worker_matching_agent", "user_email": email}
+            )
+
+        # 9. get_worker_details / get_worker_performance
+        if tool_name in ["get_worker_details", "get_worker_performance"]:
+            core_worker = WorkerCardItem(
+                id=data.get("id", data.get("workerId", "")),
+                name=data.get("name", data.get("workerName", "Worker")),
+                rating=data.get("overallRating"),
+                completedJobs=data.get("completedJobs", 0),
+                isAvailable=data.get("isAvailable", True)
+            )
+            card = WorkerDetailCard(
+                worker=core_worker,
+                description=data.get("description"),
+                email=data.get("email"),
+                phoneNo=data.get("phoneNo"),
+                acceptanceRate=data.get("acceptanceRate"),
+                completionRate=data.get("completionRate"),
+                cancellationRate=data.get("cancellationRate"),
+                qualityRating=data.get("qualityRating"),
+                punctualityRating=data.get("punctualityRating"),
+                communicationRating=data.get("communicationRating")
+            )
+            return AgentCardResponse(
+                response_type="worker_detail",
+                message=last_ai_content or f"Profile and performance metrics for {core_worker.name}.",
+                card_data=card.model_dump(),
+                metadata={"agent": "worker_matching_agent", "user_email": email}
+            )
+
 
     # Check if the assistant has prepared a post draft awaiting confirmation
     lower_content = last_ai_content.lower()
