@@ -142,6 +142,20 @@ class ErrorCard(BaseModel):
     )
 
 
+class ServiceCategoryItem(BaseModel):
+    """A single service category item."""
+    id: Optional[Union[int, str]] = Field(default=None, description="Category ID")
+    name: str = Field(description="Category name (e.g., Plumbing, Electrical)")
+    icon: Optional[str] = Field(default=None, description="Icon name or emoji")
+    description: Optional[str] = Field(default=None, description="Short category description")
+
+
+class ServiceCategoriesCard(BaseModel):
+    """UI Card rendered when listing all available service categories."""
+    categories: List[Any] = Field(default_factory=list, description="List of service category objects")
+    totalCount: int = Field(default=0, description="Total number of categories")
+
+
 ResponseTypeLiteral = Literal[
     "post_confirmation",
     "post_created",
@@ -150,6 +164,7 @@ ResponseTypeLiteral = Literal[
     "post_updated",
     "post_deleted",
     "user_profile",
+    "service_categories",
     "text_message",
     "error"
 ]
