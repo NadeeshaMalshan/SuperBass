@@ -490,7 +490,7 @@ export default function Community() {
       <section className="community-hero-banner">
         <div className="community-hero-container">
           <div className="community-hero-left">
-            <span className="community-hero-overline">SuperBass Community Network</span>
+            <span className="community-hero-overline">Workio Community Network</span>
             <h1 className="community-hero-title">
               Community Classifieds, Repair Advice & Services
             </h1>
@@ -512,7 +512,7 @@ export default function Community() {
                 onClick={() => navigate('/ai/chat')}
               >
                 <i className="fa-solid fa-wand-magic-sparkles"></i>
-                <span>Ask SuperBass AI</span>
+                <span>Ask Workio AI</span>
               </button>
             </div>
           </div>
@@ -521,7 +521,7 @@ export default function Community() {
             <div className="community-hero-artwork-card">
               <img
                 src={hero2Img}
-                alt="SuperBass Neighborhood Community & Craftsmen"
+                alt="Workio Neighborhood Community & Craftsmen"
                 className="community-hero-artwork-img"
               />
             </div>

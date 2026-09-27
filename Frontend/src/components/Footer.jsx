@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import './Footer.css';
+import workioLogoWhite from '../assets/Workio_Logo/Workio_Logo_White_With_Text.png';
 
 export default function Footer() {
   const [selectedLanguage, setSelectedLanguage] = useState('English');
@@ -17,9 +18,8 @@ export default function Footer() {
 
         {/* Top Brand & Help Header */}
         <div className="uber-footer-top">
-          <div className="uber-footer-brand" onClick={() => navigate('/')}>
-            <span className="uber-footer-logo-text">superබාස්</span>
-            <span className="uber-footer-badge">SuperBass</span>
+          <div className="uber-footer-brand" onClick={() => navigate('/')} title="Workio - Home">
+            <img src={workioLogoWhite} alt="Workio" className="uber-footer-logo-img" />
           </div>
           <a
             href="/community"
@@ -44,8 +44,8 @@ export default function Footer() {
               <li><a href="/community" onClick={(e) => { e.preventDefault(); navigate('/community'); }}>Community Hub</a></li>
               <li><a href="#trust" onClick={(e) => { e.preventDefault(); navigate('/community'); }}>Trust & Safety</a></li>
               <li><a href="#blog" onClick={(e) => { e.preventDefault(); navigate('/community'); }}>Newsroom & Blog</a></li>
-              <li><a href="/join" onClick={(e) => { e.preventDefault(); navigate('/join'); }}>Careers at SuperBass</a></li>
-              <li><a href="/find" onClick={(e) => { e.preventDefault(); navigate('/find'); }}>SuperBass Baas Pro</a></li>
+              <li><a href="/join" onClick={(e) => { e.preventDefault(); navigate('/join'); }}>Careers at Workio</a></li>
+              <li><a href="/find" onClick={(e) => { e.preventDefault(); navigate('/find'); }}>Workio Pro</a></li>
             </ul>
           </div>
 
@@ -56,7 +56,7 @@ export default function Footer() {
               <li><a href="/find" onClick={(e) => { e.preventDefault(); navigate('/find'); }}>Hire a Baas</a></li>
               <li><a href="/join" onClick={(e) => { e.preventDefault(); navigate('/join'); }}>Become a Baas / Pro</a></li>
               <li><a href="/find" onClick={(e) => { e.preventDefault(); navigate('/find'); }}>Trade Categories</a></li>
-              <li><a href="/ai/chat" onClick={(e) => { e.preventDefault(); navigate('/ai/chat'); }}>SuperBass AI Diagnostic</a></li>
+              <li><a href="/ai/chat" onClick={(e) => { e.preventDefault(); navigate('/ai/chat'); }}>Workio AI Diagnostic</a></li>
               <li><a href="/community" onClick={(e) => { e.preventDefault(); navigate('/community'); }}>Community Classifieds</a></li>
               <li><a href="/find?q=Emergency" onClick={(e) => { e.preventDefault(); navigate('/find?q=Emergency'); }}>Emergency Repairs</a></li>
               <li><a href="/find" onClick={(e) => { e.preventDefault(); navigate('/find'); }}>Price Guide</a></li>
@@ -132,7 +132,7 @@ export default function Footer() {
                 href="#download"
                 className="uber-app-badge-btn"
                 onClick={(e) => e.preventDefault()}
-                title="Download SuperBass on Google Play"
+                title="Download Workio on Google Play"
               >
                 <svg className="uber-badge-icon" viewBox="0 0 24 24" width="22" height="22">
                   <path fill="#4285F4" d="M3.6 2.4l10.8 10.8L3.6 24c-.4-.5-.6-1.2-.6-2V4.4c0-.8.2-1.5.6-2z" />
@@ -151,7 +151,7 @@ export default function Footer() {
                 href="#download"
                 className="uber-app-badge-btn"
                 onClick={(e) => e.preventDefault()}
-                title="Download SuperBass on App Store"
+                title="Download Workio on App Store"
               >
                 <svg className="uber-badge-icon" viewBox="0 0 24 24" width="22" height="22" fill="#ffffff">
                   <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.61-.75 1.04-1.8 1.01-2.87-.96.04-2.09.64-2.74 1.4-.57.65-1.06 1.71-.93 2.74 1.07.08 2.05-.52 2.66-1.27z" />
@@ -212,7 +212,7 @@ export default function Footer() {
         {/* Bottom Legal & Copyright Row */}
         <div className="uber-footer-bottom">
           <div className="uber-footer-copyright">
-            © 2026 SuperBass Technologies Inc.
+            © 2026 Workio Technologies Inc.
           </div>
 
           <div className="uber-footer-legal-links">

@@ -35,6 +35,18 @@
   gap: 12px;
   cursor: pointer;
   user-select: none;
+  transition: opacity 0.2s ease;
+}
+
+.uber-footer-brand:hover {
+  opacity: 0.85;
+}
+
+.uber-footer-logo-img {
+  height: 42px;
+  width: auto;
+  object-fit: contain;
+  display: block;
 }
 
 .uber-footer-logo-text {
