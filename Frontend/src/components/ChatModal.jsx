@@ -35,7 +35,7 @@ export default function ChatModal({
 }) {
   const recipient = propRecipient || {
     name: 'Jayashan Manodya',
-    email: 'jayashan@superbass.lk',
+    email: 'jayashan@workio.lk',
     avatar: null,
     workerId: null,
     userId: null
@@ -66,7 +66,7 @@ export default function ChatModal({
 
     chatSignalR.connect(currentUserEmail);
 
-    const targetEmail = recipient.email || `${recipient.name?.toLowerCase().replace(/\s+/g, '') || 'worker'}@superbass.lk`;
+    const targetEmail = recipient.email || `${recipient.name?.toLowerCase().replace(/\s+/g, '') || 'worker'}@workio.lk`;
 
     const checkPresence = async () => {
       try {
@@ -189,7 +189,7 @@ export default function ChatModal({
       try {
         const res = await axios.post(API_BASE_URL, {
           workerId: recipient.workerId || 0,
-          workerEmail: recipient.email || `${recipient.name?.toLowerCase().replace(/\s+/g, '') || 'worker'}@superbass.lk`,
+          workerEmail: recipient.email || `${recipient.name?.toLowerCase().replace(/\s+/g, '') || 'worker'}@workio.lk`,
           workerName: recipient.name || 'Jayashan Manodya',
           workerAvatar: recipient.avatar || null,
           residentEmail: currentUserEmail,
@@ -297,7 +297,7 @@ export default function ChatModal({
           API_BASE_URL,
           {
             workerId: recipient.workerId || 0,
-            workerEmail: recipient.email || `${recipient.name?.toLowerCase().replace(/\s+/g, '') || 'worker'}@superbass.lk`,
+            workerEmail: recipient.email || `${recipient.name?.toLowerCase().replace(/\s+/g, '') || 'worker'}@workio.lk`,
             workerName: recipient.name || 'Jayashan Manodya',
             workerAvatar: recipient.avatar || null,
             residentEmail: currentUserEmail,
@@ -319,7 +319,7 @@ export default function ChatModal({
           {
             senderEmail: currentUserEmail,
             senderRole: 'Resident',
-            receiverEmail: recipient.email || `${recipient.name?.toLowerCase().replace(/\s+/g, '') || 'worker'}@superbass.lk`,
+            receiverEmail: recipient.email || `${recipient.name?.toLowerCase().replace(/\s+/g, '') || 'worker'}@workio.lk`,
             receiverRole: 'Worker',
             messageType: msgType,
             content: msgContent,

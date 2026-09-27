@@ -22,7 +22,7 @@ export default function UserProfileCard({ data, onAction }) {
           <div className="agent-profile-avatar">{initial}</div>
           <div>
             <h4 style={{ margin: 0, fontSize: '1.05rem', color: '#000000', fontWeight: 800 }}>
-              {displayName || 'SuperBass User'}
+              {displayName || 'Workio User'}
             </h4>
             <span style={{ fontSize: '0.825rem', color: '#757575' }}>{email}</span>
           </div>

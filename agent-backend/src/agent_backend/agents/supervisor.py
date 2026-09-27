@@ -82,7 +82,7 @@ async def supervisor_node(state: AgentState) -> Dict[str, Any]:
     # General greeting or small talk
     if any(g in last_msg for g in ["hi", "hello", "hey", "good morning", "good evening", "help"]):
         greeting_text = (
-            "Hello! I am your SuperBass Assistant. I can help you book service workers, "
+            "Hello! I am your Workio Assistant. I can help you book service workers, "
             "browse community posts, or publish requests on the community board. What would you like to do today?"
         )
         return {

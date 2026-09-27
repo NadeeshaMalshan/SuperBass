@@ -1,5 +1,5 @@
 """
-Agent State Definition for SuperBass LangGraph Workflow.
+Agent State Definition for Workio LangGraph Workflow.
 Stores conversation messages, user context, agent routing, and structured output.
 """
 

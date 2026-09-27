@@ -264,7 +264,7 @@ tools = [
     },
     {
         "name": "get_service_categories",
-        "description": "Get the official list of 21 standardized service categories available across SuperBass for workers and community posts",
+        "description": "Get the official list of 21 standardized service categories available across Workio for workers and community posts",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -356,9 +356,9 @@ async def call_check_worker_availability(args: Dict[str, Any]):
 
 async def call_create_booking(args: Dict[str, Any]):
     worker_id = int(args.get("workerId", 0))
-    resident_email = args.get("residentId") or "resident@superbass.lk"
+    resident_email = args.get("residentId") or "resident@workio.lk"
     if "@" not in resident_email:
-        resident_email = f"{resident_email}@superbass.lk"
+        resident_email = f"{resident_email}@workio.lk"
     payload = {
         "workerId": worker_id,
         "residentEmail": resident_email,

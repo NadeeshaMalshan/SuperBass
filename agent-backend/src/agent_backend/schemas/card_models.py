@@ -1,6 +1,6 @@
 """
 Pydantic Card Models for Structured Frontend Responses.
-Each response corresponds to a dedicated UI Card in the SuperBass frontend.
+Each response corresponds to a dedicated UI Card in the Workio frontend.
 """
 
 from typing import List, Optional, Union, Literal, Dict, Any
@@ -156,6 +156,34 @@ class ServiceCategoriesCard(BaseModel):
     totalCount: int = Field(default=0, description="Total number of categories")
 
 
+class WorkerSummary(BaseModel):
+    """Summary of a verified service worker for card display."""
+    id: Union[int, str] = Field(description="Unique worker identifier")
+    name: str = Field(description="Worker display name")
+    profileImage: Optional[str] = Field(default=None, description="Avatar image URL")
+    primaryRole: Optional[str] = Field(
+        default="Verified Community Service Professional",
+        description="Role title or short tagline"
+    )
+    skills: List[str] = Field(default_factory=list, description="Worker specialized skills")
+    primaryServiceArea: Optional[str] = Field(default="Colombo", description="Service area or city")
+    hourlyRate: Optional[float] = Field(default=None, description="Hourly rate in LKR")
+    dailyRate: Optional[float] = Field(default=None, description="Daily rate in LKR")
+    pricingModel: Optional[str] = Field(default="Hourly", description="Pricing model ('Hourly', 'Daily', 'Negotiable')")
+    overallRating: Optional[float] = Field(default=5.0, description="Worker rating (1-5)")
+    reviewCount: Optional[int] = Field(default=0, description="Number of reviews")
+    completedJobs: Optional[int] = Field(default=0, description="Completed jobs count")
+    isAvailable: bool = Field(default=True, description="Worker availability status")
+
+
+class WorkerListCard(BaseModel):
+    """UI Card rendered when workers are searched, recommended, or listed."""
+    category: Optional[str] = Field(default=None, description="Active trade or skill category")
+    query: Optional[str] = Field(default=None, description="Search keyword")
+    totalCount: int = Field(default=0, description="Total matching workers found")
+    workers: List[WorkerSummary] = Field(default_factory=list, description="List of matching workers")
+
+
 ResponseTypeLiteral = Literal[
     "post_confirmation",
     "post_created",
@@ -165,6 +193,7 @@ ResponseTypeLiteral = Literal[
     "post_deleted",
     "user_profile",
     "service_categories",
+    "worker_list",
     "text_message",
     "error"
 ]

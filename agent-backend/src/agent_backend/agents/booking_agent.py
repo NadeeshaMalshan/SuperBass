@@ -8,7 +8,7 @@ from agent_backend.prompts.booking_prompts import BOOKING_AGENT_SYSTEM_PROMPT
 
 async def booking_agent_node(state: AgentState) -> Dict[str, Any]:
     messages = list(state.get("messages", []))
-    email = state.get("email", "resident@superbass.lk")
+    email = state.get("email", "resident@workio.lk")
     prompt = [SystemMessage(content=BOOKING_AGENT_SYSTEM_PROMPT.format(email=email))] + messages
 
     if settings.openai_api_key and settings.openai_api_key !="your_openai_api_key_here":

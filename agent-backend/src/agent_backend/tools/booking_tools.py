@@ -39,4 +39,18 @@ async def create_booking(
         }
     )
     return sanitize_payload(result)
-BOOKING_TOOLS= [check_worker_availability, create_booking]
+@tool
+async def search_workers(
+    skill: Optional[str] = None,
+    query: Optional[str] = None
+) -> Dict[str, Any]:
+    """Search for home service workers and technicians by skill (e.g. Plumbing, Electrical, AC Repair, Carpentry, Masonry) or name."""
+    params: Dict[str, Any] = {}
+    if skill:
+        params["skill"] = skill
+    if query:
+        params["query"] = query
+    result = await mcp_client.call_tool("search_workers", params)
+    return sanitize_payload(result)
+
+BOOKING_TOOLS = [search_workers, check_worker_availability, create_booking]

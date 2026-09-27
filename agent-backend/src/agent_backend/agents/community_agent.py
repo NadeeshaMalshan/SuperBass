@@ -1,5 +1,5 @@
 """
-Community Specialist Agent Node for SuperBass Multi-Agent System.
+Community Specialist Agent Node for Workio Multi-Agent System.
 Equipped with MCP community tools and user profile tools.
 """
 
@@ -17,7 +17,7 @@ async def community_agent_node(state: AgentState) -> Dict[str, Any]:
     Community Agent processes user queries using MCP community and user tools.
     """
     messages = list(state.get("messages", []))
-    email = state.get("email", "resident@superbass.lk")
+    email = state.get("email", "resident@workio.lk")
     user_type = state.get("user_type", "Resident")
 
     system_instruction = COMMUNITY_AGENT_SYSTEM_PROMPT.format(

@@ -1,5 +1,5 @@
 /**
- * SuperBass Agent Backend API Service
+ * Workio Agent Backend API Service
  * Communicates with LangGraph Agent Backend on port 8001.
  */
 
@@ -46,7 +46,7 @@ export async function sendAgentMessage({ message, email, user_type = 'Resident',
       conversation_id: conversation_id || 'error-thread',
       response: {
         response_type: 'error',
-        message: 'Could not connect to the SuperBass Agent server.',
+        message: 'Could not connect to the Workio Agent server.',
         card_data: {
           errorCode: 'CONNECTION_ERROR',
           message: error.message || 'Network request failed',
@@ -71,7 +71,7 @@ export async function checkAgentHealth() {
 }
 
 /**
- * Health check for SuperBass MCP Server
+ * Health check for Workio MCP Server
  */
 export async function checkMcpHealth() {
   try {
@@ -87,7 +87,8 @@ export async function checkMcpHealth() {
  */
 export async function listConversations(email) {
   try {
-    const userEmail = email || localStorage.getItem('email') || 'resident@superbass.lk';
+    const userEmail = email || localStorage.getItem('email') || '';
+    if (!userEmail) return [];
     const res = await agentClient.get('/api/conversations', { params: { email: userEmail } });
     return res.data?.conversations || [];
   } catch (e) {
@@ -101,7 +102,7 @@ export async function listConversations(email) {
  */
 export async function createConversation(email, title = 'New Conversation') {
   try {
-    const userEmail = email || localStorage.getItem('email') || 'resident@superbass.lk';
+    const userEmail = email || localStorage.getItem('email') || '';
     const res = await agentClient.post('/api/conversations', { email: userEmail, title });
     return res.data;
   } catch (e) {
@@ -128,8 +129,9 @@ export async function getConversationMessages(convId) {
  */
 export async function deleteConversation(convId, email) {
   try {
-    const userEmail = email || localStorage.getItem('email') || 'resident@superbass.lk';
-    const res = await agentClient.delete(`/api/conversations/${convId}`, { params: { email: userEmail } });
+    const userEmail = email || localStorage.getItem('email') || '';
+    const params = userEmail ? { email: userEmail } : {};
+    const res = await agentClient.delete(`/api/conversations/${convId}`, { params });
     return res.data?.success || false;
   } catch (e) {
     console.error(`Failed to delete conversation ${convId}:`, e);

@@ -60,17 +60,17 @@ class Settings(BaseSettings):
     openai_model: str = Field(default="gpt-4o-mini", description="OpenAI chat model name")
     openai_temperature: float = Field(default=0.2, description="Sampling temperature")
 
-    # SuperBass Backend API configuration
+    # Workio Backend API configuration
     backend_base_url: str = Field(
         default="http://localhost:5237",
-        description="URL of the SuperBass ASP.NET Core Backend API"
+        description="URL of the Workio ASP.NET Core Backend API"
     )
     request_timeout: float = Field(default=15.0, description="HTTP client timeout in seconds")
 
     # MCP Server configuration
     mcp_server_url: str = Field(
         default="http://localhost:8000/mcp",
-        description="URL of the SuperBass MCP Server endpoint"
+        description="URL of the Workio MCP Server endpoint"
     )
     mcp_timeout: float = Field(default=30.0, description="MCP client timeout in seconds")
 

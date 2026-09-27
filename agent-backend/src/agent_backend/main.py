@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="SuperBass Agent Backend",
+    title="Workio Agent Backend",
     description="Multi-Agent AI Workflow powered by LangGraph, OpenAI gpt-4o-mini, and MCP Tools with Neon DB Persistence",
     version="0.2.0",
     lifespan=lifespan
@@ -76,7 +76,7 @@ async def health():
 
 @app.get("/api/mcp/health")
 async def mcp_health():
-    """Check connectivity to the SuperBass MCP Server."""
+    """Check connectivity to the Workio MCP Server."""
     result = await mcp_client.health_check()
     return result
 

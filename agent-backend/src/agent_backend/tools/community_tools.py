@@ -1,5 +1,5 @@
 """
-Community and User Management Tools backed by SuperBass MCP Server.
+Community and User Management Tools backed by Workio MCP Server.
 Each LangChain tool routes its execution through JSON-RPC 2.0 to the MCP Server.
 """
 
@@ -192,7 +192,7 @@ async def get_service_categories(
     includeDetails: bool = True
 ) -> Dict[str, Any]:
     """
-    Retrieve the official list of 21 standardized service categories available across SuperBass.
+    Retrieve the official list of 21 standardized service categories available across Workio.
 
     MCP Tool: get_service_categories
     Arguments:

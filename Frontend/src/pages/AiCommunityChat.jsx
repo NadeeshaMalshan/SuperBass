@@ -8,6 +8,9 @@ import {
   sendAgentMessage,
   checkAgentHealth,
   checkMcpHealth,
+  listConversations,
+  getConversationMessages,
+  deleteConversation,
 } from '../services/agentApi.js';
 
 export default function AiCommunityChat() {
@@ -20,10 +23,18 @@ export default function AiCommunityChat() {
   const currentUserName = localStorage.getItem('userName') || (currentUserEmail ? currentUserEmail.split('@')[0] : 'Resident');
   const activeRole = localStorage.getItem('activeRole') || 'Resident';
 
+  const getStorageKey = () => {
+    const email = (currentUserEmail || '').trim().toLowerCase();
+    return email ? `workio_ai_active_conv_${email}` : 'workio_ai_active_conv_guest';
+  };
+
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [conversationId, setConversationId] = useState(() => {
-    return 'workio-' + Math.random().toString(36).substring(2, 9);
+    const email = (localStorage.getItem('email') || '').trim().toLowerCase();
+    const key = email ? `workio_ai_active_conv_${email}` : 'workio_ai_active_conv_guest';
+    return localStorage.getItem(key) || ('workio-' + Math.random().toString(36).substring(2, 9));
   });
+  const [isHistoryLoading, setIsHistoryLoading] = useState(true);
 
   const getWelcomeMessage = () => ({
     id: 'welcome-' + Date.now(),
@@ -62,6 +73,90 @@ export default function AiCommunityChat() {
     verifyConnections();
   }, []);
 
+  // Synchronize conversation from Neon PostgreSQL on mount
+  useEffect(() => {
+    let isMounted = true;
+
+    async function syncConversationFromDb() {
+      setIsHistoryLoading(true);
+      try {
+        const storageKey = getStorageKey();
+        let targetConvId = localStorage.getItem(storageKey);
+
+        // If no conv ID in localStorage, check if user has existing conversations in DB
+        if (!targetConvId && currentUserEmail) {
+          const existingConvs = await listConversations(currentUserEmail);
+          if (existingConvs && existingConvs.length > 0) {
+            targetConvId = existingConvs[0].id;
+          }
+        }
+
+        if (targetConvId) {
+          const dbMsgs = await getConversationMessages(targetConvId);
+          if (isMounted) {
+            setConversationId(targetConvId);
+            localStorage.setItem(storageKey, targetConvId);
+
+            if (dbMsgs && dbMsgs.length > 0) {
+              const formatted = dbMsgs.map((m) => {
+                const isUser = m.sender === 'user';
+                const timeStr = m.created_at
+                  ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                  : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                if (isUser) {
+                  return {
+                    id: m.id || 'user-' + Math.random().toString(36).substring(2, 7),
+                    sender: 'user',
+                    text: m.message,
+                    time: timeStr,
+                  };
+                } else {
+                  return {
+                    id: m.id || 'asst-' + Math.random().toString(36).substring(2, 7),
+                    sender: 'assistant',
+                    time: timeStr,
+                    cardResponse: {
+                      response_type: m.response_type || 'text_message',
+                      message: m.message,
+                      card_data: m.card_data || {},
+                    },
+                  };
+                }
+              });
+              setMessages(formatted);
+            } else {
+              setMessages([getWelcomeMessage()]);
+            }
+          }
+        } else {
+          // Fresh conversation session
+          const freshId = 'workio-' + Math.random().toString(36).substring(2, 9);
+          if (isMounted) {
+            setConversationId(freshId);
+            localStorage.setItem(storageKey, freshId);
+            setMessages([getWelcomeMessage()]);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to sync conversation from DB:', err);
+        if (isMounted) {
+          setMessages([getWelcomeMessage()]);
+        }
+      } finally {
+        if (isMounted) {
+          setIsHistoryLoading(false);
+        }
+      }
+    }
+
+    syncConversationFromDb();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUserEmail]);
+
   // Auto-scroll to bottom of messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -90,9 +185,11 @@ export default function AiCommunityChat() {
         conversation_id: conversationId,
       });
 
-      if (res.conversation_id && res.conversation_id !== conversationId) {
-        setConversationId(res.conversation_id);
+      const effectiveConvId = res.conversation_id || conversationId;
+      if (effectiveConvId !== conversationId) {
+        setConversationId(effectiveConvId);
       }
+      localStorage.setItem(getStorageKey(), effectiveConvId);
 
       const assistantMessage = {
         id: 'asst-' + Date.now(),
@@ -143,6 +240,9 @@ export default function AiCommunityChat() {
       if (lastUserMsg) {
         handleSendMessage(lastUserMsg.text);
       }
+    } else if (typeof actionType === 'string') {
+      // Direct prompt string fallback
+      handleSendMessage(actionType);
     }
   };
 
@@ -153,10 +253,23 @@ export default function AiCommunityChat() {
     }
   };
 
-  const clearChat = () => {
-    const newConvId = 'superbass-' + Math.random().toString(36).substring(2, 9);
+  const clearChat = async () => {
+    const oldConvId = conversationId;
+    const newConvId = 'workio-' + Math.random().toString(36).substring(2, 9);
+    const storageKey = getStorageKey();
+
     setConversationId(newConvId);
+    localStorage.setItem(storageKey, newConvId);
     setMessages([getWelcomeMessage()]);
+
+    // Reset in DB: delete the previous conversation thread so DB is also reset
+    if (oldConvId) {
+      try {
+        await deleteConversation(oldConvId, currentUserEmail);
+      } catch (err) {
+        console.warn('Could not delete old conversation from DB on reset:', err);
+      }
+    }
   };
 
   return (
@@ -291,8 +404,14 @@ export default function AiCommunityChat() {
             <div className="ai-chat-messages-stream">
               <div className="ai-stream-date-pill">Today &bull; Workio AI Assistant</div>
 
-              {messages.map((msg) => {
-                const isUser = msg.sender === 'user';
+              {isHistoryLoading ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '180px', gap: '12px', color: '#757575', padding: '2rem' }}>
+                  <i className="fa-solid fa-circle-notch fa-spin" style={{ fontSize: '24px', color: '#000000' }}></i>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>Syncing chat with database...</span>
+                </div>
+              ) : (
+                messages.map((msg) => {
+                  const isUser = msg.sender === 'user';
                 return (
                   <div key={msg.id} className={`ai-bubble-row ${isUser ? 'resident' : 'assistant'}`}>
                     {!isUser && (
@@ -321,7 +440,7 @@ export default function AiCommunityChat() {
                     </div>
                   </div>
                 );
-              })}
+              }))}
 
               {loading && (
                 <div className="ai-bubble-row assistant">

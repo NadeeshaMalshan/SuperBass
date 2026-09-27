@@ -537,7 +537,7 @@ export default function Chats() {
 
 
   const resolvePartyDetails = (conv) => {
-    if (!conv) return { displayName: 'SuperBass Member', avatarUrl: null, otherEmail: '', isUserWorker: false };
+    if (!conv) return { displayName: 'Workio Member', avatarUrl: null, otherEmail: '', isUserWorker: false };
 
     const isUserWorker = conv.workerEmail?.toLowerCase() === currentUserEmail.toLowerCase();
     const rawEmail = isUserWorker ? conv.residentEmail : conv.workerEmail;
@@ -556,7 +556,7 @@ export default function Chats() {
       displayName.toLowerCase() === 'resident' ||
       displayName.toLowerCase() === 'worker' ||
       displayName.toLowerCase() === 'resident client' ||
-      displayName.toLowerCase() === 'superbass member';
+      displayName.toLowerCase() === 'workio member';
 
     if (isGenericOrEmail && matchedWorker?.name) {
       displayName = matchedWorker.name;
@@ -1440,7 +1440,7 @@ export default function Chats() {
               <div className="chats-empty-illustration">
                 <i className="fa-regular fa-comments"></i>
               </div>
-              <h3>SuperBass Messages</h3>
+              <h3>Workio Messages</h3>
               <p>Send and receive messages directly with verified home service professionals and community residents.</p>
               <button className="chats-empty-btn" onClick={() => navigate('/find')}>
                 Find Workers & Start Chat

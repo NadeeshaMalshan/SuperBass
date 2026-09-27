@@ -1,5 +1,5 @@
 """
-Verification test suite for SuperBass Agent Backend.
+Verification test suite for Workio Agent Backend.
 Tests graph compilation, MCP tools, card schema validation, and routing.
 """
 
@@ -33,7 +33,7 @@ def test_card_schemas():
         content="Kitchen sink leaking",
         communityId="Plumbing",
         location="Colombo",
-        authorId="resident@superbass.lk"
+        authorId="resident@workio.lk"
     )
     assert c1.title == "Need Plumbing Repair"
     assert c1.status == "Active"
@@ -98,7 +98,7 @@ async def test_supervisor_greeting():
     """Verify supervisor routes greetings to FINISH with a helpful message."""
     state = {
         "messages": [HumanMessage(content="Hello!")],
-        "email": "resident@superbass.lk",
+        "email": "resident@workio.lk",
         "user_type": "Resident",
         "user_profile": None,
         "next": None,
@@ -115,7 +115,7 @@ async def test_supervisor_community_routing():
     """Verify supervisor routes post creation or feed requests to community_agent."""
     state = {
         "messages": [HumanMessage(content="I want to create a new community post about plumbing")],
-        "email": "resident@superbass.lk",
+        "email": "resident@workio.lk",
         "user_type": "Resident",
         "user_profile": None,
         "next": None,
@@ -124,6 +124,22 @@ async def test_supervisor_community_routing():
     }
     result = await supervisor_node(state)
     assert result.get("next") == "community_agent"
+
+
+@pytest.mark.asyncio
+async def test_supervisor_booking_routing():
+    """Verify supervisor routes booking and appointment intents to booking_agent."""
+    state = {
+        "messages": [HumanMessage(content="I want to book an electrician for tomorrow")],
+        "email": "resident@workio.lk",
+        "user_type": "Resident",
+        "user_profile": None,
+        "next": None,
+        "structured_response": None,
+        "metadata": {}
+    }
+    result = await supervisor_node(state)
+    assert result.get("next") == "booking_agent"
 
 
 def test_deterministic_card_builder_for_created_post():
@@ -198,4 +214,5 @@ if __name__ == "__main__":
     test_deterministic_card_builder_for_service_categories()
     asyncio.run(test_supervisor_greeting())
     asyncio.run(test_supervisor_community_routing())
-    print("All SuperBass Agent Backend tests passed successfully!")
+    asyncio.run(test_supervisor_booking_routing())
+    print("All Workio Agent Backend tests passed successfully!")

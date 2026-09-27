@@ -44,7 +44,7 @@ async def test_database_chat_persistence():
     """Verify database connection, table initialization, and turn persistence."""
     try:
         await init_db()
-        test_email = "test_resident@superbass.lk"
+        test_email = "test_resident@workio.lk"
         test_conv_id = "test-conv-" + str(asyncio.get_event_loop().time()).replace(".", "")
 
         # 1. Create conversation

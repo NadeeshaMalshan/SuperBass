@@ -23,12 +23,14 @@ from agent_backend.schemas.card_models import (
     ServiceCategoriesCard,
     TextMessageCard,
     ErrorCard,
-    CommunityPostSummary
+    CommunityPostSummary,
+    WorkerListCard,
+    WorkerSummary
 )
 
 logger = logging.getLogger("agent_backend.card_formatter")
 
-CARD_FORMATTER_PROMPT = """You are the Frontend UI Card Formatter for SuperBass.
+CARD_FORMATTER_PROMPT = """You are the Frontend UI Card Formatter for Workio.
 Your role is to format the conversation output and any tool results into a structured AgentCardResponse JSON object so the Frontend can render the appropriate interactive UI card component.
 
 Available response_type values and their corresponding card_data schemas:
@@ -48,9 +50,11 @@ Available response_type values and their corresponding card_data schemas:
    card_data fields: email, role, isWorker, displayName, phoneNo, address, workerRating, completedJobs, skills, pricingModel.
 7. "service_categories": Use when get_service_categories tool was called and returned a list of service categories.
    card_data fields: categories (list of category objects with id, name, icon), totalCount.
-8. "text_message": Use for conversational replies, greetings, explanations, or questions.
+8. "worker_list": Use whenever search_workers tool was called or when recommending/finding service workers or technicians.
+   card_data fields: category, query, totalCount, workers (list of {id, name, profileImage, primaryRole, skills, primaryServiceArea, hourlyRate, dailyRate, pricingModel, overallRating, reviewCount, completedJobs, isAvailable}).
+9. "text_message": Use for conversational replies, greetings, booking updates, explanations, or questions.
    card_data fields: text, suggestions (list of quick prompt suggestions).
-9. "error": Use if a tool or operation failed with an error.
+10. "error": Use if a tool or operation failed with an error.
    card_data fields: errorCode, message, actionRequired.
 
 Choose the exact response_type that best represents the latest action.
@@ -60,7 +64,7 @@ Choose the exact response_type that best represents the latest action.
 def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
     """Deterministic fallback builder based on tool execution logs."""
     messages = list(state.get("messages", []))
-    email = state.get("email", "resident@superbass.lk")
+    email = state.get("email", "resident@workio.lk")
     user_type = state.get("user_type", "Resident")
 
     last_ai_content = ""
@@ -235,13 +239,122 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
             )
             return AgentCardResponse(
                 response_type="service_categories",
-                message=last_ai_content or f"Here are {len(categories_raw)} official service categories available on SuperBass.",
+                message=last_ai_content or f"Here are {len(categories_raw)} official service categories available on Workio.",
                 card_data=card.model_dump(),
                 metadata={"agent": "community_agent", "user_email": email}
             )
 
-    # Check if the assistant has prepared a post draft awaiting confirmation
+        # 7. create_booking
+        if tool_name == "create_booking":
+            booking_id = data.get("id") or data.get("bookingId") or "confirmed"
+            card = TextMessageCard(
+                text=last_ai_content or f"Your service booking has been created successfully! Booking reference #{booking_id}.",
+                suggestions=["View my bookings", "Book another service", "Explore community posts"]
+            )
+            return AgentCardResponse(
+                response_type="text_message",
+                message=card.text,
+                card_data=card.model_dump(),
+                metadata={"agent": "booking_agent", "user_email": email}
+            )
+
+        # 8. check_worker_availability
+        if tool_name == "check_worker_availability":
+            is_avail = data.get("isSlotAvailable", data.get("isAvailable", False))
+            w_name = data.get("workerName") or f"Worker #{data.get('workerId', '')}"
+            card = TextMessageCard(
+                text=last_ai_content or (f"{w_name} is available for the requested time slot!" if is_avail else f"{w_name} is not available at that time: {data.get('reason', 'Schedule conflict')}."),
+                suggestions=["Confirm booking", "Choose another time", "Search other workers"] if is_avail else ["Check another time slot", "Find other workers"]
+            )
+            return AgentCardResponse(
+                response_type="text_message",
+                message=card.text,
+                card_data=card.model_dump(),
+                metadata={"agent": "booking_agent", "user_email": email}
+            )
+
+        # 9. search_workers
+        if tool_name == "search_workers":
+            raw_workers = data if isinstance(data, list) else (
+                data.get("workers") or data.get("items") or data.get("value") or []
+                if isinstance(data, dict) else []
+            )
+            if not isinstance(raw_workers, list):
+                raw_workers = []
+
+            worker_summaries: List[WorkerSummary] = []
+            for w in raw_workers:
+                if not isinstance(w, dict):
+                    continue
+                raw_skills = w.get("skills") or []
+                skill_names = []
+                if isinstance(raw_skills, list):
+                    for s in raw_skills:
+                        if isinstance(s, dict):
+                            skill_names.append(s.get("skillName") or s.get("name") or "")
+                        elif isinstance(s, str):
+                            skill_names.append(s)
+                skill_names = [s for s in skill_names if s]
+
+                worker_summaries.append(
+                    WorkerSummary(
+                        id=w.get("id", 0),
+                        name=w.get("name") or "Verified Worker",
+                        profileImage=w.get("profileImage") or w.get("profilePicture"),
+                        primaryRole=w.get("description") or "Verified Community Service Professional",
+                        skills=skill_names if skill_names else ["General Handyman"],
+                        primaryServiceArea=w.get("primaryServiceArea") or "Colombo",
+                        hourlyRate=w.get("hourlyRate"),
+                        dailyRate=w.get("dailyRate"),
+                        pricingModel=w.get("pricingModel") or "Hourly",
+                        overallRating=w.get("overallRating") or 5.0,
+                        reviewCount=w.get("completedJobs", 0),
+                        completedJobs=w.get("completedJobs", 0),
+                        isAvailable=w.get("isAvailable", True)
+                    )
+                )
+
+            if worker_summaries:
+                card = WorkerListCard(
+                    category=None,
+                    query=None,
+                    totalCount=len(worker_summaries),
+                    workers=worker_summaries
+                )
+                return AgentCardResponse(
+                    response_type="worker_list",
+                    message=last_ai_content or f"I found {len(worker_summaries)} verified professionals for you:",
+                    card_data=card.model_dump(),
+                    metadata={"agent": "booking_agent", "user_email": email}
+                )
+
+            card = TextMessageCard(
+                text=last_ai_content or "No verified service workers found matching that criteria.",
+                suggestions=["Search other categories", "Post a community request", "Check availability"]
+            )
+            return AgentCardResponse(
+                response_type="text_message",
+                message=card.text,
+                card_data=card.model_dump(),
+                metadata={"agent": "booking_agent", "user_email": email}
+            )
+
+    # Check if this is a booking confirmation summary
     lower_content = last_ai_content.lower()
+    is_booking_summary = any(kw in lower_content for kw in ["booking summary", "place this booking", "would you like me to place", "confirm this booking"])
+    if is_booking_summary:
+        card = TextMessageCard(
+            text=last_ai_content,
+            suggestions=["Yes, please place the booking", "Change date or time", "Cancel booking"]
+        )
+        return AgentCardResponse(
+            response_type="text_message",
+            message=card.text,
+            card_data=card.model_dump(),
+            metadata={"agent": "booking_agent", "user_email": email}
+        )
+
+    # Check if the assistant has prepared a community post draft awaiting confirmation
     if any(keyword in lower_content for keyword in ["draft", "confirm", "review", "would you like me to publish"]):
         # Extract title or default
         draft_title = "Community Service Request"
@@ -276,13 +389,13 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
 
     # General text message fallback
     suggestions = [
+        "Book a service technician",
         "View recent community posts",
         "Create a post for AC repair",
-        "Show my posts",
         "Check my profile"
     ]
     card = TextMessageCard(
-        text=last_ai_content or "How can I assist you with SuperBass community posts?",
+        text=last_ai_content or "How can I assist you with Workio home services and community posts?",
         suggestions=suggestions
     )
     return AgentCardResponse(
@@ -299,7 +412,7 @@ async def card_formatter_node(state: AgentState) -> Dict[str, Any]:
     or uses the robust deterministic builder.
     """
     messages = list(state.get("messages", []))
-    email = state.get("email", "resident@superbass.lk")
+    email = state.get("email", "resident@workio.lk")
     user_type = state.get("user_type", "Resident")
 
     if settings.openai_api_key and settings.openai_api_key != "your_openai_api_key_here":
