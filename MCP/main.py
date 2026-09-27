@@ -408,10 +408,12 @@ async def call_create_community_post(args: Dict[str, Any]):
         "location": args.get("location", "Colombo")
     }
     response = await backend_client.post("/api/community-posts", json=payload)
-    return response.json()
+    if response.status_code >= 400:
+        raise ValueError(f"Backend error ({response.status_code}): {response.text}")
+    return response.json() if response.text else {"success": True}
 
 async def call_get_community_posts(args: Dict[str, Any]):
-    community_id = str(args.get("communityId", ""))
+    community_id = str(args.get("communityId", "")).strip()
     params = {}
     if args.get("limit") is not None:
         params["limit"] = args["limit"]
@@ -420,10 +422,12 @@ async def call_get_community_posts(args: Dict[str, Any]):
     if community_id.isdigit():
         response = await backend_client.get(f"/api/community-posts/{community_id}", params=params)
     else:
-        if community_id:
+        if community_id and community_id.lower() != "all":
             params["category"] = community_id
         response = await backend_client.get("/api/community-posts", params=params)
-    return response.json()
+    if response.status_code >= 400:
+        raise ValueError(f"Backend error ({response.status_code}): {response.text}")
+    return response.json() if response.text else []
 
 async def call_update_community_post(args: Dict[str, Any]):
     post_id = args["postId"]
@@ -436,7 +440,9 @@ async def call_update_community_post(args: Dict[str, Any]):
         "userEmail": args.get("authorId") if "@" in str(args.get("authorId", "")) else None
     }
     response = await backend_client.put(f"/api/community-posts/{post_id}", json=payload)
-    return response.json()
+    if response.status_code >= 400:
+        raise ValueError(f"Backend error ({response.status_code}): {response.text}")
+    return response.json() if response.text else {"success": True}
 
 async def call_delete_community_post(args: Dict[str, Any]):
     post_id = args["postId"]
@@ -447,7 +453,9 @@ async def call_delete_community_post(args: Dict[str, Any]):
             params["requesterEmail"] = author_id
         params["requesterName"] = str(author_id).split("@")[0]
     response = await backend_client.delete(f"/api/community-posts/{post_id}", params=params)
-    return response.json()
+    if response.status_code >= 400:
+        raise ValueError(f"Backend error ({response.status_code}): {response.text}")
+    return response.json() if response.text else {"success": True, "deletedPostId": post_id}
 
 async def call_create_worker_review(args: Dict[str, Any]):
     booking_id = args.get("bookingId")
@@ -461,14 +469,18 @@ async def call_create_worker_review(args: Dict[str, Any]):
         "comment": args.get("comment", "")
     }
     response = await backend_client.post(f"/api/Bookings/{booking_id}/review", json=payload)
-    return response.json()
+    if response.status_code >= 400:
+        raise ValueError(f"Backend error ({response.status_code}): {response.text}")
+    return response.json() if response.text else {"success": True}
 
 async def call_get_user_community_posts(args: Dict[str, Any]):
     email = str(args.get("email", "")).strip()
     if not email:
         raise ValueError("email required")
     response = await backend_client.get(f"/api/community-posts/user/{email}")
-    return response.json()
+    if response.status_code >= 400:
+        raise ValueError(f"Backend error ({response.status_code}): {response.text}")
+    return response.json() if response.text else []
 
 async def call_get_user_details(args: Dict[str, Any]):
     email = str(args.get("email", "")).strip()

@@ -33,24 +33,30 @@ The MCP Server translates standardized AI tool calls into HTTP REST requests to 
 - **Supported Transport**: Standard HTTP POST (JSON-RPC 2.0)
 - **Total Registered Tools**: **16 Tools**
 - **Default Port**: `8000`
-- **Backend API Port**: `5237` (or `5000`)
+- **Backend API Port**: `5237`
+- **Agent Backend Port**: `8001`
 
 ---
 
 ## Architecture
 
 ```text
-[ AI Client / Claude Desktop / Postman ]
+[ Vite React Frontend (Port 5173) ]
                    │
-            (MCP JSON-RPC 2.0)
+       POST /api/chat  (User messages)
                    ▼
-     [ FastAPI MCP Server (Port 8000) ]
+[ SuperBass Agent Backend (FastAPI :8001) ]
+    LangGraph · OpenAI gpt-4o-mini
                    │
-            (HTTP REST via httpx)
+      MCP JSON-RPC 2.0 tools/call
                    ▼
-   [ SuperBass Backend API (Port 5237 / 5000) ]
+  [ SuperBass MCP Server (FastAPI :8000) ]
                    │
-          [ SuperBass Database ]
+       HTTP REST via httpx
+                   ▼
+[ SuperBass Core Backend (.NET 8 :5237) ]
+                   │
+         [ SuperBass Database ]
 ```
 
 ---
@@ -59,7 +65,9 @@ The MCP Server translates standardized AI tool calls into HTTP REST requests to 
 
 ### Prerequisites
 - **Python 3.10+**
-- **SuperBass Backend**: Make sure the backend (`dotnet run` in `backend/`) is running so the tools can query real data.
+- **SuperBass .NET Backend** (`dotnet run` in `backend/`) — required for all API calls
+- **SuperBass Agent Backend** (`uv run python main.py` in `agent-backend/`) — required if using with the AI chat UI
+- **`uv`** (recommended) or `pip` for Python package management
 
 ### Configuration (`.env`)
 The server automatically loads environment variables from `.env` in the `MCP/` directory:
@@ -71,6 +79,19 @@ BACKEND_BASE_URL=http://localhost:5237
 # MCP Server Port
 PORT=8000
 ```
+
+---
+
+## How to Run the Full Stack
+
+Run all services in order:
+
+| # | Service | Directory | Command | Port |
+|---|---------|-----------|---------|------|
+| 1 | .NET Backend | `backend/` | `dotnet run` | `5237` |
+| 2 | MCP Server | `mcp/` | `python main.py` | `8000` |
+| 3 | Agent Backend | `agent-backend/` | `uv run python main.py` | `8001` |
+| 4 | Frontend | `Frontend/` | `npm run dev` | `5173` |
 
 ---
 
@@ -100,7 +121,7 @@ Open in your browser:
 
 ## How to Run & Test All Tools
 
-You can verify and interact with all 14 tools using any of the four options below:
+You can verify and interact with all 16 tools using any of the four options below:
 
 ### Option A: Automated Test Suite (Fastest)
 
@@ -129,7 +150,7 @@ This tests:
 2. Click **Import** (top left).
 3. Select or drag & drop:
    `d:\Projects_New\SuperBass\MCP\SuperBass_MCP.postman_collection.json`
-4. All 14 tools and discovery endpoints are organized into folders with pre-configured variables:
+4. All 16 tools and discovery endpoints are organized into folders with pre-configured variables:
    - `{{base_url}}`: `http://localhost:8000`
    - `{{worker_id}}`: `13`
    - `{{resident_id}}`: `kpjmp28@gmail.com`
@@ -181,7 +202,7 @@ To use these tools inside Claude Desktop, add the server to your `claude_desktop
 
 ---
 
-## Available Tools Reference (All 14 Tools)
+## Available Tools Reference (All 16 Tools)
 
 ### 1. Worker Management Tools
 
