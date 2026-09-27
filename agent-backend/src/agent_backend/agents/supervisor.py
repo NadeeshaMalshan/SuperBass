@@ -15,7 +15,7 @@ from agent_backend.prompts.supervisor_prompts import SUPERVISOR_SYSTEM_PROMPT
 
 class SupervisorDecision(BaseModel):
     """Routing decision made by the Supervisor Agent."""
-    next_agent: Literal["community_agent", "booking_agent", "FINISH"] = Field(
+    next_agent: Literal["community_agent", "booking_agent", "worker_matching_agent", "FINISH"] = Field(
         description="The next sub-agent to delegate the task to, or 'FINISH' if handled"
     )
     direct_response: str = Field(
@@ -71,19 +71,27 @@ async def supervisor_node(state: AgentState) -> Dict[str, Any]:
         return {"next": "booking_agent"}
 
     community_keywords = [
-        "post", "community", "feed", "notice", "announcement", "electric", "plumb",
-        "carpenter", "clean", "ac", "repair", "service", "help", "publish", "share",
-        "category", "details", "profile", "account", "who am i", "my posts"
+        "post", "community", "feed", "notice", "announcement",
+        "publish", "share", "category", "details", "profile", "account",
+        "who am i", "my posts"
     ]
-
     if any(kw in last_msg for kw in community_keywords):
         return {"next": "community_agent"}
+
+    worker_keywords = [
+        "worker", "technician", "plumber", "plumbing", "electrician", "electrical",
+        "carpenter", "carpentry", "painter", "painting", "cleaner", "cleaning",
+        "ac repair", "ac technician", "mechanic", "gardener", "appliance",
+        "find me", "find a", "look for", "search for", "need a", "recommend"
+    ]
+    if any(kw in last_msg for kw in worker_keywords):
+        return {"next": "worker_matching_agent"}
 
     # General greeting or small talk
     if any(g in last_msg for g in ["hi", "hello", "hey", "good morning", "good evening", "help"]):
         greeting_text = (
-            "Hello! I am your SuperBass Assistant. I can help you book service workers, "
-            "browse community posts, or publish requests on the community board. What would you like to do today?"
+            "Hello! I am your SuperBass Assistant. I can help you find service professionals, "
+            "book service workers, or browse and publish on the community board. What would you like to do today?"
         )
         return {
             "next": "FINISH",
