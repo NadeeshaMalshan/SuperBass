@@ -22,7 +22,7 @@ export default function AiCommunityChat() {
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [conversationId, setConversationId] = useState(() => {
-    return 'superbass-' + Math.random().toString(36).substring(2, 9);
+    return 'workio-' + Math.random().toString(36).substring(2, 9);
   });
 
   const getWelcomeMessage = () => ({
@@ -31,7 +31,7 @@ export default function AiCommunityChat() {
     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     cardResponse: {
       response_type: 'text_message',
-      message: `Hello ${currentUserName}! I am your SuperBass AI Assistant. I can help you create community posts for home services, search active requests, check your posted notices, or inspect your profile details. How can I help you today?`,
+      message: `Hello ${currentUserName}! I am your Workio AI Assistant. I can help you create community posts for home services, search active requests, check your posted notices, or inspect your profile details. How can I help you today?`,
       card_data: {
         suggestions: [
           'Show recent community posts',
@@ -182,7 +182,7 @@ export default function AiCommunityChat() {
             </div>
             {!isSidebarCollapsed && (
               <div>
-                <div className="ai-sidebar-brand-name">SuperBass AI</div>
+                <div className="ai-sidebar-brand-name">Workio AI</div>
                 <div className="ai-sidebar-brand-sub">Community Assistant</div>
               </div>
             )}
@@ -271,10 +271,10 @@ export default function AiCommunityChat() {
                   <md-icon style={{ fontSize: '22px', color: '#ffffff' }}>auto_awesome</md-icon>
                 </div>
                 <div className="ai-chat-title-text">
-                  <h2>SuperBass AI Assistant</h2>
+                  <h2>Workio AI Assistant</h2>
                   <p>
                     <span className="ai-status-dot online"></span>
-                    SuperBass AI &bull; Community Assistant
+                    Workio AI &bull; Community Assistant
                   </p>
                 </div>
               </div>
@@ -289,7 +289,7 @@ export default function AiCommunityChat() {
 
             {/* Messages Stream */}
             <div className="ai-chat-messages-stream">
-              <div className="ai-stream-date-pill">Today &bull; SuperBass AI Assistant</div>
+              <div className="ai-stream-date-pill">Today &bull; Workio AI Assistant</div>
 
               {messages.map((msg) => {
                 const isUser = msg.sender === 'user';

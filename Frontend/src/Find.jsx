@@ -16,6 +16,7 @@ import UserMenu from './components/UserMenu.jsx';
 import './components/M3Navbar.css';
 import { API_BASE_URL } from './config.js';
 import categoriesData from './data/categories.json';
+import workioLogoWhite from './assets/Workio_Logo/Workio_Logo_White_With_Text.png';
 
 export default function Find() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -778,12 +779,9 @@ export default function Find() {
             href="/"
             onClick={(e) => { e.preventDefault(); navigate('/'); }}
             className="m3-brand-link"
-            title="superබාස් - Home"
+            title="Workio - Home"
           >
-            <img src="/icon.png" alt="superබාස්" className="m3-brand-logo-img" />
-            <span className="m3-brand-title">
-              super<span className="m3-brand-accent">බාස්</span>
-            </span>
+            <img src={workioLogoWhite} alt="Workio" className="m3-brand-logo-img" />
           </a>
         </div>
 
@@ -909,7 +907,7 @@ export default function Find() {
               type="button"
               className="m3-signin-btn"
               onClick={() => navigate('/join')}
-              title="Sign in to superබාස්"
+              title="Sign in to Workio"
             >
               Sign in
             </button>
