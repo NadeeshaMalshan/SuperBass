@@ -60,7 +60,7 @@ class SuperBassApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'superබාස්',
+      title: 'Workio',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       initialRoute: initialRoute ?? '/',
@@ -82,6 +82,8 @@ class MainNavigationShell extends StatefulWidget {
 class _MainNavigationShellState extends State<MainNavigationShell> {
   int _currentIndex = 0;
 
+  StreamSubscription? _chatMsgSub;
+
   @override
   void initState() {
     super.initState();
@@ -96,9 +98,28 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
         isWorker: user.isWorker,
       );
       ChatSignalRService().connect(user.email);
+      _checkUnreadChats(user.email);
     }
 
+    _chatMsgSub = ChatSignalRService().onMessageReceived.listen((_) {
+      final u = AuthService().currentUser;
+      if (u != null) _checkUnreadChats(u.email);
+    });
+
     AuthService().currentUserNotifier.addListener(_onAuthChanged);
+  }
+
+  Future<void> _checkUnreadChats(String email) async {
+    try {
+      final convs = await ApiService().fetchConversations(email);
+      int total = 0;
+      for (final c in convs) {
+        if (c['unreadCount'] is int) {
+          total += c['unreadCount'] as int;
+        }
+      }
+      ChatSignalRService().setUnreadChatCount(total);
+    } catch (_) {}
   }
 
   void _onAuthChanged() {
@@ -109,14 +130,17 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
         isWorker: user.isWorker,
       );
       ChatSignalRService().connect(user.email);
+      _checkUnreadChats(user.email);
     } else {
       NotificationService().stopListening();
       ChatSignalRService().disconnect();
+      ChatSignalRService().setUnreadChatCount(0);
     }
   }
 
   @override
   void dispose() {
+    _chatMsgSub?.cancel();
     AuthService().currentUserNotifier.removeListener(_onAuthChanged);
     super.dispose();
   }
@@ -142,55 +166,61 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
           const ProfileScreen(),
         ];
 
-        final List<M3BottomNavItem> navItems = [
-          const M3BottomNavItem(
-            icon: Icons.search_outlined,
-            selectedIcon: Icons.search_rounded,
-            label: 'Find',
-          ),
-          const M3BottomNavItem(
-            icon: Icons.groups_outlined,
-            selectedIcon: Icons.groups_rounded,
-            label: 'Community',
-          ),
-          if (isLoggedIn) ...[
-            const M3BottomNavItem(
-              icon: Icons.calendar_today_outlined,
-              selectedIcon: Icons.calendar_month_rounded,
-              label: 'Bookings',
-            ),
-            const M3BottomNavItem(
-              icon: Icons.chat_bubble_outline_rounded,
-              selectedIcon: Icons.chat_bubble_rounded,
-              label: 'Chats',
-            ),
-          ],
-          const M3BottomNavItem(
-            icon: Icons.person_outline_rounded,
-            selectedIcon: Icons.person_rounded,
-            label: 'Account',
-          ),
-        ];
+        return ValueListenableBuilder<int>(
+          valueListenable: ChatSignalRService().unreadChatCountNotifier,
+          builder: (context, unreadChatCount, _) {
+            final List<M3BottomNavItem> navItems = [
+              const M3BottomNavItem(
+                icon: Icons.search_outlined,
+                selectedIcon: Icons.search_rounded,
+                label: 'Find',
+              ),
+              const M3BottomNavItem(
+                icon: Icons.groups_outlined,
+                selectedIcon: Icons.groups_rounded,
+                label: 'Community',
+              ),
+              if (isLoggedIn) ...[
+                const M3BottomNavItem(
+                  icon: Icons.calendar_today_outlined,
+                  selectedIcon: Icons.calendar_month_rounded,
+                  label: 'Bookings',
+                ),
+                M3BottomNavItem(
+                  icon: Icons.chat_bubble_outline_rounded,
+                  selectedIcon: Icons.chat_bubble_rounded,
+                  label: 'Chats',
+                  hasBadge: unreadChatCount > 0,
+                ),
+              ],
+              const M3BottomNavItem(
+                icon: Icons.person_outline_rounded,
+                selectedIcon: Icons.person_rounded,
+                label: 'Account',
+              ),
+            ];
 
-        // Ensure current index is within bounds if tabs change dynamically
-        final effectiveIndex = _currentIndex >= navItems.length
-            ? navItems.length - 1
-            : _currentIndex;
+            // Ensure current index is within bounds if tabs change dynamically
+            final effectiveIndex = _currentIndex >= navItems.length
+                ? navItems.length - 1
+                : _currentIndex;
 
-        return Scaffold(
-          body: IndexedStack(
-            index: effectiveIndex,
-            children: pages,
-          ),
-          bottomNavigationBar: M3BottomNavigationBar(
-            selectedIndex: effectiveIndex,
-            items: navItems,
-            onItemSelected: (index) {
-              setState(() {
-                _currentIndex = index;
-              });
-            },
-          ),
+            return Scaffold(
+              body: IndexedStack(
+                index: effectiveIndex,
+                children: pages,
+              ),
+              bottomNavigationBar: M3BottomNavigationBar(
+                selectedIndex: effectiveIndex,
+                items: navItems,
+                onItemSelected: (index) {
+                  setState(() {
+                    _currentIndex = index;
+                  });
+                },
+              ),
+            );
+          },
         );
       },
     );
@@ -274,6 +304,182 @@ class _FindTabScreenState extends State<FindTabScreen> {
       }
     });
     _fetchWorkers();
+  }
+
+  void _showAiMatchSheet() {
+    final TextEditingController problemController = TextEditingController();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          return Padding(
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 20,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.outlineVariant,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Image.asset(
+                      'assets/icons/AI.png',
+                      width: 40,
+                      height: 40,
+                      errorBuilder: (_, __, ___) => const Icon(Icons.auto_awesome, size: 30),
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'AI Service Matcher',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.onSurface,
+                          ),
+                        ),
+                        Text(
+                          'Describe what you need for instant pro match',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 12.5,
+                            color: AppColors.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                TextField(
+                  controller: problemController,
+                  maxLines: 3,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    hintText: 'e.g. My kitchen sink pipe is leaking water under the cabinet...',
+                    hintStyle: GoogleFonts.dmSans(
+                      fontSize: 13.5,
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                    filled: true,
+                    fillColor: AppColors.surfaceVariant,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(color: AppColors.outlineVariant),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(color: AppColors.outlineVariant),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: const BorderSide(color: AppColors.brandBlack, width: 1.5),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    '🚿 Leaking Tap',
+                    '⚡ Breaker Tripped',
+                    '❄️ AC Not Cooling',
+                    '🚪 Broken Door Lock',
+                    '🎨 Wall Repainting',
+                  ].map((tag) => InkWell(
+                    onTap: () {
+                      setModalState(() {
+                        problemController.text = tag.substring(2).trim();
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceVariant,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppColors.outlineVariant),
+                      ),
+                      child: Text(
+                        tag,
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.onSurface,
+                        ),
+                      ),
+                    ),
+                  )).toList(),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      final query = problemController.text.trim().toLowerCase();
+                      Navigator.pop(ctx);
+                      if (query.isNotEmpty) {
+                        int foundIndex = -1;
+                        if (query.contains('pipe') || query.contains('plumb') || query.contains('tap') || query.contains('sink') || query.contains('leak') || query.contains('water')) {
+                          foundIndex = _categories.indexWhere((c) => c['name'] == 'Plumber');
+                        } else if (query.contains('electric') || query.contains('wire') || query.contains('breaker') || query.contains('power') || query.contains('switch')) {
+                          foundIndex = _categories.indexWhere((c) => c['name'] == 'Electrician');
+                        } else if (query.contains('ac') || query.contains('cool') || query.contains('air')) {
+                          foundIndex = _categories.indexWhere((c) => c['name'] == 'AC Repair');
+                        } else if (query.contains('wood') || query.contains('carpent') || query.contains('door') || query.contains('table') || query.contains('furniture')) {
+                          foundIndex = _categories.indexWhere((c) => c['name'] == 'Carpenter');
+                        } else if (query.contains('paint') || query.contains('wall')) {
+                          foundIndex = _categories.indexWhere((c) => c['name'] == 'Painter');
+                        }
+                        if (foundIndex != -1) {
+                          _onCategorySelected(foundIndex);
+                        }
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.brandBlack,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: const StadiumBorder(),
+                    ),
+                    child: Text(
+                      'Find Matches with AI',
+                      style: GoogleFonts.dmSans(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 
   void _showBookingSheet(WorkerModel worker) {
@@ -831,6 +1037,52 @@ class _FindTabScreenState extends State<FindTabScreen> {
                   ],
                 ),
               ),
+
+              // Uber-style Feature & Promo Banners (Community & AI)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: UberPromoCarousel(
+                  banners: [
+                    UberPromoBanner(
+                      title: 'Join Neighborhood\nCommunity Hub',
+                      subtitle: 'Connect, discuss & get trusted local help',
+                      buttonText: 'Explore now',
+                      imageAsset: 'assets/icons/community.png',
+                      blobColor: const Color(0xFFFFECE5),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => Scaffold(
+                              appBar: AppBar(
+                                title: Text(
+                                  'Community',
+                                  style: GoogleFonts.dmSans(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 20,
+                                  ),
+                                ),
+                              ),
+                              body: const SafeArea(child: CommunityScreen()),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    UberPromoBanner(
+                      title: 'AI Smart Assistant\nFind best pros fast!',
+                      subtitle: 'Instant diagnosis & smart matching',
+                      buttonText: 'Try AI Match',
+                      imageAsset: 'assets/icons/AI.png',
+                      blobColor: const Color(0xFFE8F1FF),
+                      onTap: () {
+                        _showAiMatchSheet();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 18),
 
               // Category Trades Grid/List
               Padding(
@@ -1871,6 +2123,14 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
 
     setState(() => _isLoading = true);
     final convs = await ApiService().fetchConversations(email);
+    int totalUnread = 0;
+    for (final c in convs) {
+      if (c['unreadCount'] is int) {
+        totalUnread += c['unreadCount'] as int;
+      }
+    }
+    ChatSignalRService().setUnreadChatCount(totalUnread);
+
     if (mounted) {
       setState(() {
         _conversations = convs;

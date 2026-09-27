@@ -139,9 +139,19 @@ class _WorkerPortalScreenState extends State<WorkerPortalScreen> {
         titleSpacing: 16,
         title: Row(
           children: [
-            // SuperBass brand + Worker Portal pill
+            // Workio brand + Worker Portal pill
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: Image.asset(
+                'assets/images/icon.png',
+                width: 22,
+                height: 22,
+                errorBuilder: (_, __, ___) => const Icon(Icons.bolt_rounded, size: 20, color: WorkerColors.onSurface),
+              ),
+            ),
+            const SizedBox(width: 8),
             Text(
-              'superබාස්',
+              'Workio',
               style: GoogleFonts.dmSans(
                 fontWeight: FontWeight.w900,
                 fontSize: 20,

@@ -310,18 +310,26 @@ class _JoinScreenState extends State<JoinScreen> {
                           return Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(
-                                Icons.handyman_rounded,
-                                size: 36,
-                                color: AppColors.brandYellow,
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.asset(
+                                  'assets/images/icon.png',
+                                  width: 38,
+                                  height: 38,
+                                  errorBuilder: (_, __, ___) => const Icon(
+                                    Icons.bolt_rounded,
+                                    size: 36,
+                                    color: AppColors.brandBlack,
+                                  ),
+                                ),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 10),
                               Text(
-                                'superබාස්',
+                                'Workio',
                                 style: GoogleFonts.dmSans(
                                   fontSize: 34,
                                   fontWeight: FontWeight.w900,
-                                  color: const Color(0xFF18181B),
+                                  color: AppColors.onSurface,
                                   letterSpacing: -0.5,
                                 ),
                               ),

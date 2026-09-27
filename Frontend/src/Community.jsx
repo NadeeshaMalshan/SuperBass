@@ -614,13 +614,13 @@ export default function Community() {
                 onClick={() => setSelectedCategory('all')}
                 title="All Categories"
               >
-                <i className="fa-solid fa-border-all"></i>
+                <md-icon>grid_view</md-icon>
                 <span>All Categories</span>
               </div>
 
               {categoriesData.map((cat) => {
                 const isSelected = selectedCategory === cat.id;
-                const iconName = cat.icon || 'fa-tag';
+                const materialIcon = cat.materialIcon || 'category';
                 return (
                   <div
                     key={cat.id}
@@ -628,7 +628,7 @@ export default function Community() {
                     onClick={() => setSelectedCategory(cat.id)}
                     title={`Filter by ${cat.name}`}
                   >
-                    <i className={`fa-solid ${iconName}`}></i>
+                    <md-icon>{materialIcon}</md-icon>
                     <span>{cat.name}</span>
                   </div>
                 );

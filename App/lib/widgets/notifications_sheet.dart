@@ -28,7 +28,7 @@ class NotificationBellButton extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                     decoration: BoxDecoration(
-                      color: AppColors.brandYellow,
+                      color: AppColors.accentBlue,
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: AppColors.surface, width: 1.5),
                     ),
@@ -36,7 +36,7 @@ class NotificationBellButton extends StatelessWidget {
                     child: Text(
                       unreadCount > 9 ? '9+' : '$unreadCount',
                       style: const TextStyle(
-                        color: Color(0xFF111827),
+                        color: Colors.white,
                         fontSize: 9,
                         fontWeight: FontWeight.w800,
                       ),

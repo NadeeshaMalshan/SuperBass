@@ -13,6 +13,7 @@ import '@material/web/iconbutton/icon-button.js';
 import '@material/web/progress/circular-progress.js';
 import Loader from './components/Loader.jsx';
 import UserMenu from './components/UserMenu.jsx';
+import M3TopNavbar from './components/M3TopNavbar.jsx';
 import './components/M3Navbar.css';
 import { API_BASE_URL } from './config.js';
 import categoriesData from './data/categories.json';
@@ -396,7 +397,7 @@ export default function Find() {
     // Add Real User Location Marker
     const userMarkerIcon = L.divIcon({
       className: 'custom-user-marker',
-      html: `<div style="background:#2563eb; color:white; width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow: 0 4px 14px rgba(37,99,235,0.45); border:3px solid white; position:relative;"><i class="fa-solid fa-location-dot" style="font-size:1.1rem;"></i></div>`,
+      html: `<div style="background:#000000; color:white; width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow: 0 4px 14px rgba(0,0,0,0.45); border:3px solid white; position:relative;"><span class="material-symbols-outlined" style="font-size:20px; color:white; font-family:'Material Symbols Outlined', 'Material Icons', sans-serif;">my_location</span></div>`,
       iconSize: [38, 38],
       iconAnchor: [19, 19]
     });
@@ -761,159 +762,27 @@ export default function Find() {
 
   return (
     <div className="find-page-container">
-      {/* Google Workspace / Gmail Style Material 3 Top Navbar */}
-      <header className="m3-top-navbar">
-        {/* Left: App Logo & Name with Hamburger Drawer Toggle */}
-        <div className="m3-navbar-brand-group">
-          <button
-            type="button"
-            className="m3-hamburger-btn"
-            onClick={() => setIsSidebarCollapsed(prev => !prev)}
-            title={isSidebarCollapsed ? "Expand panel" : "Collapse panel"}
-            aria-label="Toggle navigation drawer"
-          >
-            <md-icon>menu</md-icon>
-          </button>
-
-          <a
-            href="/"
-            onClick={(e) => { e.preventDefault(); navigate('/'); }}
-            className="m3-brand-link"
-            title="Workio - Home"
-          >
-            <img src={workioLogoWhite} alt="Workio" className="m3-brand-logo-img" />
-          </a>
-        </div>
-
-        {/* Center: Search Pill ("Ask SuperBass" like "Ask Gmail") */}
-        <div className="m3-navbar-center">
-          <div className="m3-search-pill">
-            <div className="m3-search-leading-icon" title="AI-Powered Discovery">
-              <md-icon>search</md-icon>
-            </div>
-
-            <input
-              type="text"
-              className="m3-search-input"
-              placeholder="Search workers, skills, location..."
-              value={searchQuery}
-              onFocus={() => setIsWorkerDropdownOpen(true)}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setIsWorkerDropdownOpen(true);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') {
-                  setSearchQuery('');
-                  setAppliedSearchQuery('');
-                  setIsWorkerDropdownOpen(false);
-                }
-                if (e.key === 'Enter') {
-                  setAppliedSearchQuery(searchQuery);
-                  setIsWorkerDropdownOpen(false);
-                  navigate(`/find?q=${encodeURIComponent(searchQuery)}`);
-                }
-              }}
-            />
-
-            {searchQuery && (
-              <button
-                type="button"
-                className="m3-search-clear-btn"
-                onClick={() => {
-                  setSearchQuery('');
-                  setAppliedSearchQuery('');
-                  setIsWorkerDropdownOpen(false);
-                }}
-                title="Clear search"
-                aria-label="Clear search"
-              >
-                <md-icon>close</md-icon>
-              </button>
-            )}
-            
-            {renderWorkerSearchDropdown()}
-          </div>
-        </div>
-
-        {/* Right: Navigation Buttons (Community, AI, Messages, Bookings) & User Avatar */}
-        <div className="m3-navbar-right">
-          {/* 1. Community Button */}
-          <button
-            type="button"
-            className="m3-nav-btn"
-            onClick={() => navigate('/community')}
-            title="Community Discussions"
-          >
-            <md-icon>groups</md-icon>
-            <span>Community</span>
-          </button>
-
-          {/* 2. AI Assistant Button */}
-          <button
-            type="button"
-            className="m3-nav-btn m3-nav-btn-ai"
-            onClick={() => navigate('/ai-chat')}
-            title="AI Home Assistant"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <defs>
-                <linearGradient id="navGeminiGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#4285F4" />
-                  <stop offset="35%" stopColor="#9B72CB" />
-                  <stop offset="70%" stopColor="#D96570" />
-                  <stop offset="100%" stopColor="#F4B400" />
-                </linearGradient>
-              </defs>
-              <path
-                d="M12 0C12 6.627 6.627 12 0 12C6.627 12 12 17.373 12 24C12 17.373 17.373 12 24 12C17.373 12 12 6.627 12 0Z"
-                fill="url(#navGeminiGrad)"
-              />
-            </svg>
-            <span>AI</span>
-          </button>
-
-          {/* 3. Messages Button (Only when logged in) */}
-          {isLoggedIn && (
-            <button
-              type="button"
-              className="m3-nav-btn"
-              onClick={() => navigate('/chats')}
-              title="Direct Messages"
-            >
-              <md-icon>chat</md-icon>
-              <span>Messages</span>
-            </button>
-          )}
-
-          {/* 4. Bookings Button (Only when logged in) */}
-          {isLoggedIn && (
-            <button
-              type="button"
-              className="m3-nav-btn"
-              onClick={() => navigate('/bookings')}
-              title="My Bookings"
-            >
-              <md-icon>calendar_today</md-icon>
-              <span>Bookings</span>
-            </button>
-          )}
-
-          {/* 5. User Profile Avatar or Sign In */}
-          {isLoggedIn ? (
-            <UserMenu variant="m3-google" />
-          ) : (
-            <button
-              type="button"
-              className="m3-signin-btn"
-              onClick={() => navigate('/join')}
-              title="Sign in to Workio"
-            >
-              Sign in
-            </button>
-          )}
-        </div>
-      </header>
+      {/* Google Workspace / Material 3 Top Navbar */}
+      <M3TopNavbar
+        activePage="find"
+        searchValue={searchQuery}
+        onSearchChange={(val) => {
+          setSearchQuery(val);
+          setIsWorkerDropdownOpen(true);
+        }}
+        onSearchFocus={() => setIsWorkerDropdownOpen(true)}
+        onSearchSubmit={(val) => {
+          setAppliedSearchQuery(val);
+          setIsWorkerDropdownOpen(false);
+          navigate(`/find?q=${encodeURIComponent(val)}`);
+        }}
+        searchPlaceholder="Search workers, skills, location..."
+        showSearch={true}
+        showSidebarToggle={true}
+        isSidebarCollapsed={isSidebarCollapsed}
+        onToggleSidebar={() => setIsSidebarCollapsed(prev => !prev)}
+        searchDropdown={renderWorkerSearchDropdown()}
+      />
 
       {/* Main Layout Container */}
       <div className="find-layout">
@@ -1195,7 +1064,7 @@ export default function Find() {
                 }}
               >
                 <span>{showMap ? 'Hide map' : 'Show map'}</span>
-                <i className={`fa-solid ${showMap ? 'fa-map' : 'fa-map-location-dot'}`}></i>
+                <md-icon style={{ fontSize: '18px' }}>{showMap ? 'map' : 'explore'}</md-icon>
               </button>
             </div>
           </div>
@@ -1282,7 +1151,7 @@ export default function Find() {
               border: '1px dashed #cbd5e1',
               marginTop: '10px'
             }}>
-              <i className="fa-solid fa-user-slash" style={{ fontSize: '3rem', color: '#cbd5e1', marginBottom: '16px' }}></i>
+              <md-icon style={{ fontSize: '48px', '--md-icon-size': '48px', color: '#cbd5e1', marginBottom: '16px' }}>person_off</md-icon>
               <h3 style={{ fontSize: '1.3rem', fontWeight: 800, margin: '0 0 8px 0', color: '#0f172a' }}>No Matching Workers Found</h3>
               <p style={{ color: '#64748b', margin: '0 0 20px 0', fontSize: '0.95rem' }}>
                 Try adjusting your rate range, price filters, or category selections.
@@ -1317,7 +1186,7 @@ export default function Find() {
               <aside className="find-map-pane">
                 {/* Map Search Input */}
                 <div className="map-search-overlay">
-                  <i className="fa-solid fa-magnifying-glass" style={{ color: '#94a3b8' }}></i>
+                  <md-icon style={{ fontSize: '18px', color: '#94a3b8' }}>search</md-icon>
                   <input
                     type="text"
                     placeholder="Search address or workers..."
@@ -1326,7 +1195,7 @@ export default function Find() {
                     style={{ border: 'none', background: 'transparent', width: '100%', outline: 'none', fontSize: '0.875rem', color: '#0f172a' }}
                   />
                   {isLocating && (
-                    <i className="fa-solid fa-spinner fa-spin" style={{ color: '#2563eb', fontSize: '0.9rem' }}></i>
+                    <md-circular-progress indeterminate style={{ '--md-circular-progress-size': '18px', width: '18px', height: '18px' }}></md-circular-progress>
                   )}
                 </div>
 
@@ -1337,7 +1206,7 @@ export default function Find() {
                       className="map-floating-close-btn"
                       onClick={() => setSelectedMapWorker(null)}
                     >
-                      <i className="fa-solid fa-xmark"></i>
+                      <md-icon style={{ fontSize: '16px' }}>close</md-icon>
                     </button>
 
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
@@ -1346,9 +1215,9 @@ export default function Find() {
                       </div>
                       <button
                         onClick={(e) => toggleFavorite(e, selectedMapWorker.id)}
-                        style={{ background: 'none', border: 'none', color: favorites[selectedMapWorker.id] ? '#ef4444' : '#94a3b8', cursor: 'pointer' }}
+                        style={{ background: 'none', border: 'none', color: favorites[selectedMapWorker.id] ? '#ef4444' : '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                       >
-                        <i className={`fa-${favorites[selectedMapWorker.id] ? 'solid' : 'regular'} fa-heart`}></i>
+                        <md-icon style={{ fontSize: '18px', color: favorites[selectedMapWorker.id] ? '#ef4444' : '#94a3b8' }}>{favorites[selectedMapWorker.id] ? 'favorite' : 'favorite_border'}</md-icon>
                       </button>
                     </div>
 
@@ -1405,7 +1274,7 @@ export default function Find() {
                   <button className="map-control-btn" onClick={handleZoomIn} title="Zoom In">+</button>
                   <button className="map-control-btn" onClick={handleZoomOut} title="Zoom Out">–</button>
                   <button className="map-control-btn" onClick={handleRecenter} title="Find My Real Location">
-                    <i className="fa-solid fa-location-crosshairs" style={{ fontSize: '0.85rem', color: isLocating ? '#2563eb' : '#0f172a' }}></i>
+                    <md-icon style={{ fontSize: '18px', color: isLocating ? '#2563eb' : '#0f172a' }}>my_location</md-icon>
                   </button>
                 </div>
               </aside>

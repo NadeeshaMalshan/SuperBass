@@ -384,7 +384,7 @@ class HelpSupportScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Help & Support')),
-      body: const Center(child: Text('Please contact support@superbass.com')),
+      body: const Center(child: Text('Please contact support@workio.com')),
     );
   }
 }

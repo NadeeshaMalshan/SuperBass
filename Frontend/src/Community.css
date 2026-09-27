@@ -427,17 +427,24 @@
   font-weight: 700;
 }
 
-.uber-cat-item i {
-  width: 18px;
-  text-align: center;
-  font-size: 0.88rem;
+.uber-cat-item i,
+.uber-cat-item md-icon {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  --md-icon-size: 19px;
   color: #666666;
   flex-shrink: 0;
   transition: color 0.15s ease;
 }
 
 .uber-cat-item:hover i,
-.uber-cat-item.active i {
+.uber-cat-item:hover md-icon,
+.uber-cat-item.active i,
+.uber-cat-item.active md-icon {
   color: #000000;
 }
 
