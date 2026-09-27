@@ -433,7 +433,7 @@ export default function App() {
             <div className="landing-top-hero-card">
               <img
                 src={hero1Img}
-                alt="SuperBass Craftsman at Sunset"
+                alt="Workio Craftsman at Sunset"
                 className="landing-top-hero-img"
               />
             </div>
@@ -501,7 +501,7 @@ export default function App() {
             <div className="landing-community-image-card">
               <img
                 src={hero2Img}
-                alt="SuperBass Neighborhood Community & Craftsmen"
+                alt="Workio Neighborhood Community & Craftsmen"
                 className="landing-community-artwork"
               />
             </div>
@@ -519,7 +519,7 @@ export default function App() {
             <div className="landing-ai-image-card">
               <img
                 src={aiUploadedImage || hero3Img}
-                alt="SuperBass AI Intelligent Home Repair Assistant"
+                alt="Workio AI Intelligent Home Repair Assistant"
                 className="landing-ai-artwork"
               />
             </div>
@@ -530,7 +530,7 @@ export default function App() {
 
 
             <h2 className="landing-ai-title">
-              Now, you can manage your work with SuperBass AI
+              Now, you can manage your work with Workio AI
             </h2>
 
 
@@ -562,7 +562,7 @@ export default function App() {
                 className="uber-primary-black-btn landing-ai-btn"
                 onClick={() => navigate('/ai/chat')}
               >
-                <span>Try SuperBass AI</span>
+                <span>Try Workio AI</span>
 
               </button>
 
