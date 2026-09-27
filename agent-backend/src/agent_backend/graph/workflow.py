@@ -15,11 +15,15 @@ from agent_backend.agents.card_formatter import card_formatter_node
 from agent_backend.tools.community_tools import COMMUNITY_TOOLS
 
 
-def route_supervisor(state: AgentState) -> Literal["community_agent", "card_formatter"]:
+def route_supervisor(state: AgentState) -> Literal["community_agent", "card_formatter", "support_agent", "review_agent"]:
     """Routes from supervisor to the community agent or to the card formatter."""
     next_node = state.get("next")
     if next_node == "community_agent":
         return "community_agent"
+    if next_node == "support_agent":
+        return "support_agent"
+    if next_node == "review_agent":
+        return "review_agent"
     return "card_formatter"
 
 
