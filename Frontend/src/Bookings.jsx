@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
 import './App.css'; // Leveraging existing App.css for styles
+import './Bookings.css';
 import M3TopNavbar from './components/M3TopNavbar.jsx';
 import UserMenu from './components/UserMenu.jsx';
 import Loader from './components/Loader.jsx';
@@ -26,6 +27,23 @@ L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png'
+});
+
+// Custom colored SVG pin marker for service location
+const userLocationIcon = L.divIcon({
+  className: 'user-location-pin',
+  html: `
+    <div style="position: relative; width: 34px; height: 42px; transform: translate(-17px, -42px);">
+      <svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 4px 10px rgba(0,0,0,0.38));">
+        <path d="M17 0C7.61116 0 0 7.61116 0 17C0 27.5 17 42 17 42C17 42 34 27.5 34 17C34 7.61116 26.3888 0 17 0Z" fill="#E11D48"/>
+        <circle cx="17" cy="17" r="7.5" fill="#FFFFFF"/>
+        <circle cx="17" cy="17" r="4" fill="#E11D48"/>
+      </svg>
+    </div>
+  `,
+  iconSize: [0, 0],
+  iconAnchor: [0, 0],
+  popupAnchor: [0, -42]
 });
 
 function RecenterMap({ lat, lng }) {
@@ -56,27 +74,43 @@ const cleanAddress = (addr) => {
 
 const extractCoordinates = (booking) => {
   if (!booking) return null;
-  if (booking.locationLat && booking.locationLng) {
-    const lat = parseFloat(booking.locationLat);
-    const lng = parseFloat(booking.locationLng);
-    if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
-      return { lat, lng };
+  const lat = booking.locationLat ?? booking.latitude ?? booking.lat;
+  const lng = booking.locationLng ?? booking.longitude ?? booking.lng;
+  if (lat !== undefined && lat !== null && lng !== undefined && lng !== null) {
+    const pLat = parseFloat(lat);
+    const pLng = parseFloat(lng);
+    if (!isNaN(pLat) && !isNaN(pLng) && pLat !== 0 && pLng !== 0) {
+      return { lat: pLat, lng: pLng };
     }
   }
   if (booking.locationAddress) {
     const match = booking.locationAddress.match(/\[GPS:\s*([-\d.]+),\s*([-\d.]+)\]/i);
     if (match) {
-      const lat = parseFloat(match[1]);
-      const lng = parseFloat(match[2]);
-      if (!isNaN(lat) && !isNaN(lng)) return { lat, lng };
+      const pLat = parseFloat(match[1]);
+      const pLng = parseFloat(match[2]);
+      if (!isNaN(pLat) && !isNaN(pLng)) return { lat: pLat, lng: pLng };
+    }
+    const directCoordMatch = booking.locationAddress.match(/([-\d.]+)\s*,\s*([-\d.]+)/);
+    if (directCoordMatch) {
+      const pLat = parseFloat(directCoordMatch[1]);
+      const pLng = parseFloat(directCoordMatch[2]);
+      if (!isNaN(pLat) && !isNaN(pLng) && Math.abs(pLat) <= 90 && Math.abs(pLng) <= 180 && pLat !== 0 && pLng !== 0) {
+        return { lat: pLat, lng: pLng };
+      }
     }
   }
   if (booking.description) {
     const match = booking.description.match(/maps\.google\.com\/\?q=([-\d.]+),([-\d.]+)/i);
     if (match) {
-      const lat = parseFloat(match[1]);
-      const lng = parseFloat(match[2]);
-      if (!isNaN(lat) && !isNaN(lng)) return { lat, lng };
+      const pLat = parseFloat(match[1]);
+      const pLng = parseFloat(match[2]);
+      if (!isNaN(pLat) && !isNaN(pLng)) return { lat: pLat, lng: pLng };
+    }
+    const gpsMatch = booking.description.match(/\[GPS:\s*([-\d.]+),\s*([-\d.]+)\]/i);
+    if (gpsMatch) {
+      const pLat = parseFloat(gpsMatch[1]);
+      const pLng = parseFloat(gpsMatch[2]);
+      if (!isNaN(pLat) && !isNaN(pLng)) return { lat: pLat, lng: pLng };
     }
   }
   return null;
@@ -268,10 +302,10 @@ export default function Bookings() {
 
   const renderStarRating = (category, value, onChange) => {
     return (
-      <div style={{ backgroundColor: '#f8fafc', borderRadius: '16px', padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+      <div style={{ backgroundColor: '#f7f7f8', borderRadius: '16px', padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', border: '1px solid #e4e4e7' }}>
         <div>
-          <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1e293b' }}>{category}</div>
-          <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Select rating (1 to 5 stars)</div>
+          <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#000000' }}>{category}</div>
+          <div style={{ fontSize: '0.75rem', color: '#71717a' }}>Select rating (1 to 5 stars)</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           {[1, 2, 3, 4, 5].map((star) => {
@@ -298,16 +332,16 @@ export default function Bookings() {
               >
                 <md-icon style={{
                   fontSize: '28px',
-                  color: isFilled ? '#FDC101' : '#cbd5e1',
+                  color: isFilled ? '#000000' : '#d4d4d8',
                   fontVariationSettings: isFilled ? "'FILL' 1" : "'FILL' 0",
                   transition: 'color 0.2s'
                 }}>
-                  {isFilled ? 'star' : 'star'}
+                  star
                 </md-icon>
               </button>
             );
           })}
-          <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0f172a', marginLeft: '6px', minWidth: '32px', textAlign: 'right' }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#000000', marginLeft: '6px', minWidth: '32px', textAlign: 'right' }}>
             {value} / 5
           </span>
         </div>
@@ -316,22 +350,58 @@ export default function Bookings() {
   };
 
   const renderStatusBadge = (status) => {
-    const statusStyles = {
-      Requested: isWorker ? { bg: '#dbeafe', text: '#1e40af' } : { bg: '#fef3c7', text: '#d97706' },
-      Confirmed: { bg: '#dbeafe', text: '#1e40af' },
-      InProgress: { bg: '#e0e7ff', text: '#4338ca' },
-      Completed: { bg: '#d1fae5', text: '#065f46' },
-      Reviewed: { bg: '#ecfdf5', text: '#047857' },
-      Rejected: { bg: '#fee2e2', text: '#991b1b' },
-      Cancelled: { bg: '#f3f4f6', text: '#374151' },
-    };
-    const style = statusStyles[status] || { bg: '#f3f4f6', text: '#374151' };
-
-    return (
-      <span style={{ backgroundColor: style.bg, color: style.text, padding: '4px 12px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 700 }}>
-        {status}
-      </span>
-    );
+    switch (status) {
+      case 'Requested':
+        return (
+          <span className="booking-badge booking-badge-requested">
+            <md-icon style={{ fontSize: '14px' }}>schedule</md-icon>
+            Requested
+          </span>
+        );
+      case 'Confirmed':
+        return (
+          <span className="booking-badge booking-badge-confirmed">
+            <md-icon style={{ fontSize: '14px' }}>thumb_up</md-icon>
+            Confirmed
+          </span>
+        );
+      case 'InProgress':
+        return (
+          <span className="booking-badge booking-badge-inprogress">
+            <md-icon style={{ fontSize: '14px' }}>sync</md-icon>
+            In Progress
+          </span>
+        );
+      case 'Completed':
+        return (
+          <span className="booking-badge booking-badge-completed">
+            <md-icon style={{ fontSize: '14px' }}>check_circle</md-icon>
+            Completed
+          </span>
+        );
+      case 'Reviewed':
+        return (
+          <span className="booking-badge booking-badge-reviewed">
+            <md-icon style={{ fontSize: '14px' }}>star</md-icon>
+            Reviewed
+          </span>
+        );
+      case 'Rejected':
+        return (
+          <span className="booking-badge booking-badge-rejected">
+            <md-icon style={{ fontSize: '14px' }}>cancel</md-icon>
+            Rejected
+          </span>
+        );
+      case 'Cancelled':
+      default:
+        return (
+          <span className="booking-badge booking-badge-cancelled">
+            <md-icon style={{ fontSize: '14px' }}>block</md-icon>
+            {status || 'Cancelled'}
+          </span>
+        );
+    }
   };
 
   const filteredBookings = bookings.filter(b => {
@@ -357,7 +427,7 @@ export default function Bookings() {
   });
 
   return (
-    <div className="find-page-container">
+    <div className="bookings-page-container">
       {/* Google Workspace / Material 3 Top Navbar */}
       <M3TopNavbar
         activePage="bookings"
@@ -369,9 +439,9 @@ export default function Bookings() {
         onToggleSidebar={() => setIsSidebarCollapsed(prev => !prev)}
       />
 
-      <div className="find-layout">
+      <div className="bookings-layout">
         {/* Left Sidebar Navigation */}
-        <aside className={`find-sidebar m3-drawer ${isSidebarCollapsed ? 'minimized' : ''}`}>
+        <aside className={`bookings-sidebar m3-drawer ${isSidebarCollapsed ? 'minimized' : ''}`}>
           <nav className="m3-drawer-nav">
             <div
               className={`m3-drawer-item ${statusFilter === 'All' ? 'active' : ''}`}
@@ -430,11 +500,11 @@ export default function Bookings() {
           </nav>
         </aside>
 
-        <main className="find-main" style={{ flex: 1, minWidth: 0 }}>
-          <div className="find-main-header">
+        <main className="bookings-main">
+          <div className="bookings-main-header">
             <div>
-              <h1 className="find-results-title">My Bookings ({activeRole})</h1>
-              <p style={{ color: '#64748b', margin: '0.25rem 0 0 0', fontSize: '0.95rem' }}>
+              <h1 className="bookings-title">My Bookings ({activeRole})</h1>
+              <p className="bookings-subtitle">
                 Manage your home service requests and appointments
               </p>
             </div>
@@ -442,74 +512,43 @@ export default function Bookings() {
 
           {/* Worker Busy / In Progress Status Banner */}
           {hasInProgressJob && (
-            <div style={{
-              backgroundColor: '#ffffff',
-              borderRadius: '16px',
-              padding: '20px 24px',
-              marginBottom: '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '20px',
-              flexWrap: 'wrap'
-            }}>
+            <div className="worker-busy-banner">
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: '1 1 340px' }}>
-                <div style={{
-                  width: '46px',
-                  height: '46px',
-                  borderRadius: '14px',
-                  backgroundColor: '#eff6ff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#2563EB',
-                  flexShrink: 0
-                }}>
-                  <md-icon style={{ fontSize: '26px' }}>engineering</md-icon>
+                <div className="worker-busy-icon">
+                  <md-icon style={{ fontSize: '24px' }}>engineering</md-icon>
                 </div>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.05rem', fontFamily: "var(--font-heading, 'DM Sans', sans-serif)" }}>
+                    <span style={{ fontWeight: 800, color: '#000000', fontSize: '1.05rem', fontFamily: "var(--font-heading, 'DM Sans', sans-serif)" }}>
                       Status: Busy (Active Job In Progress)
                     </span>
-                    <span style={{
-                      backgroundColor: '#dbeafe',
-                      color: '#1e40af',
-                      padding: '3px 10px',
-                      borderRadius: '12px',
-                      fontSize: '0.72rem',
-                      fontWeight: 800,
-                      letterSpacing: '0.05em'
-                    }}>
+                    <span className="worker-busy-tag">
                       LOCKED
                     </span>
                   </div>
-                  <div style={{ color: '#64748b', fontSize: '0.88rem', marginTop: '4px', lineHeight: 1.5 }}>
-                    You are currently working on <strong style={{ color: '#0f172a' }}>"{activeJob?.jobTitle}"</strong>. New requests and other job starts are paused until this active job is completed.
+                  <div style={{ color: '#71717a', fontSize: '0.88rem', marginTop: '4px', lineHeight: 1.5 }}>
+                    You are currently working on <strong style={{ color: '#000000' }}>"{activeJob?.jobTitle}"</strong>. New requests and other job starts are paused until this active job is completed.
                   </div>
                 </div>
               </div>
-
-
             </div>
           )}
 
           {loading ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 20px', gap: '16px' }}>
               <Loader size={56} />
-              <span style={{ fontSize: '0.95rem', fontWeight: 600, color: '#64748b' }}>Loading your bookings...</span>
+              <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#71717a' }}>Loading your bookings...</span>
             </div>
           ) : error ? (
-            <div style={{ backgroundColor: '#fee2e2', color: '#991b1b', padding: '16px', borderRadius: '12px' }}>{error}</div>
+            <div style={{ backgroundColor: '#f4f4f5', color: '#000000', padding: '16px 20px', borderRadius: '14px', border: '1.5px solid #000000', fontWeight: 600 }}>{error}</div>
           ) : filteredBookings.length === 0 ? (
-            <div style={{ backgroundColor: '#ffffff', padding: '48px 24px', borderRadius: '16px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+            <div style={{ backgroundColor: '#ffffff', padding: '48px 24px', borderRadius: '18px', textAlign: 'center', border: '1px solid #e4e4e7', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
               <div style={{
                 width: '56px',
                 height: '56px',
                 borderRadius: '50%',
-                backgroundColor: '#f1f5f9',
-                color: '#64748b',
+                backgroundColor: '#f4f4f5',
+                color: '#000000',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -517,48 +556,42 @@ export default function Bookings() {
               }}>
                 <md-icon style={{ fontSize: '28px' }}>inbox</md-icon>
               </div>
-              <h2 style={{ margin: '0 0 8px 0', fontSize: '1.25rem', color: '#111827' }}>{bookingSearch ? 'No matching bookings found' : 'No bookings found'}</h2>
-              <p style={{ color: '#6b7280', margin: 0 }}>{bookingSearch ? 'Try a different search term.' : "You don't have any bookings yet."}</p>
+              <h2 style={{ margin: '0 0 8px 0', fontSize: '1.25rem', fontWeight: 800, color: '#000000' }}>{bookingSearch ? 'No matching bookings found' : 'No bookings found'}</h2>
+              <p style={{ color: '#71717a', margin: 0, fontSize: '0.92rem' }}>{bookingSearch ? 'Try a different search term.' : "You don't have any bookings yet."}</p>
               {activeRole === 'Resident' && (
-                <md-filled-button
+                <button
+                  type="button"
+                  className="booking-btn-black"
                   onClick={() => navigate('/find')}
-                  style={{
-                    marginTop: '20px',
-                    '--md-sys-color-primary': '#FDC101',
-                    '--md-sys-color-on-primary': '#000000',
-                    fontWeight: 700
-                  }}
+                  style={{ marginTop: '20px' }}
                 >
                   Find a Worker
-                </md-filled-button>
+                </button>
               )}
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {filteredBookings.map((booking) => (
-                <div key={booking.id} style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div key={booking.id} className="booking-card">
+                  <div className="booking-card-header">
                     <div>
-                      <h3 style={{ margin: '0 0 8px 0', fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <h3 className="booking-card-title">
                         {booking.jobTitle}
                         {booking.urgency && (
-                          <span style={{
-                            backgroundColor: booking.urgency.toLowerCase() === 'high' || booking.urgency.toLowerCase() === 'urgent' ? '#fee2e2' : '#f1f5f9',
-                            color: booking.urgency.toLowerCase() === 'high' || booking.urgency.toLowerCase() === 'urgent' ? '#dc2626' : '#475569',
-                            padding: '4px 10px', borderRadius: '12px', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em',
-                            display: 'inline-flex', alignItems: 'center', gap: '4px'
-                          }}>
-                            <md-icon style={{ fontSize: '14px' }}>flag</md-icon>
+                          <span className="booking-priority-badge">
+                            <md-icon style={{ fontSize: '13px' }}>flag</md-icon>
                             {booking.urgency} Priority
                           </span>
                         )}
                       </h3>
-                      <div style={{ color: '#6b7280', fontSize: '0.9rem', display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><md-icon style={{ fontSize: '16px' }}>calendar_today</md-icon>{new Date(booking.scheduledDate).toLocaleString()}</span>
+                      <div className="booking-meta-row">
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                          <md-icon style={{ fontSize: '16px', color: '#000000' }}>calendar_today</md-icon>
+                          {new Date(booking.scheduledDate).toLocaleString()}
+                        </span>
                       </div>
                       {cleanDescription(booking.description) && (
-                        <p style={{ margin: '12px 0 0 0', color: '#4b5563', fontSize: '0.95rem', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
+                        <p className="booking-description">
                           {cleanDescription(booking.description)}
                         </p>
                       )}
@@ -568,130 +601,115 @@ export default function Bookings() {
                     </div>
                   </div>
 
-                  <div style={{ padding: '16px', backgroundColor: '#f8fafc', borderRadius: '12px', display: 'flex', justifyContent: 'space-between' }}>
+                  <div className="booking-details-box">
                     <div>
-                      <div style={{ fontSize: '0.8rem', color: '#6b7280', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>
+                      <div className="booking-details-label">
                         {activeRole === 'Resident' ? 'Worker Details' : 'Client Details'}
                       </div>
-                      <div style={{ fontWeight: 600 }}>
+                      <div className="booking-details-name">
                         {activeRole === 'Resident' ? booking.workerName : booking.residentName}
                       </div>
-                      <div style={{ color: '#4b5563', fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                        <md-icon style={{ fontSize: '15px' }}>call</md-icon>
+                      <div className="booking-details-phone">
+                        <md-icon style={{ fontSize: '14px', color: '#000000' }}>call</md-icon>
                         {activeRole === 'Resident' ? booking.workerPhone || 'N/A' : booking.residentPhone || booking.contactPhone}
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '0.8rem', color: '#6b7280', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>Estimated Price</div>
-                      <div style={{ fontWeight: 800, color: isWorker ? '#2563eb' : '#d97706', fontSize: '1.1rem' }}>
+                      <div className="booking-details-label">Estimated Price</div>
+                      <div className="booking-price-amount">
                         {booking.estimatedPrice ? `Rs. ${booking.estimatedPrice.toLocaleString()}` : 'Negotiable'}
                       </div>
                     </div>
                   </div>
 
                   {/* Actions Row */}
-                  <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '8px', flexWrap: 'wrap' }}>
-                    <md-outlined-button
+                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '4px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      className="booking-btn-outlined"
                       onClick={() => openViewModal(booking)}
-                      style={{
-                        '--md-sys-color-primary': '#111827',
-                        '--md-outlined-button-label-text-color': '#111827',
-                        '--md-outlined-button-outline-color': '#cbd5e1',
-                        color: '#111827',
-                        fontWeight: 700,
-                        padding: '0 24px',
-                        minWidth: '100px'
-                      }}
                     >
-                      View
-                    </md-outlined-button>
+                      View Details
+                    </button>
 
-                    <md-outlined-button
+                    <button
+                      type="button"
+                      className="booking-btn-outlined"
                       onClick={() => navigate('/chats')}
-                      style={{
-                        '--md-sys-color-primary': '#111827',
-                        '--md-outlined-button-label-text-color': '#111827',
-                        '--md-outlined-button-outline-color': '#cbd5e1',
-                        color: '#111827',
-                        fontWeight: 700,
-                        padding: '0 24px',
-                        minWidth: '100px'
-                      }}
                     >
                       Message
-                    </md-outlined-button>
+                    </button>
 
                     {activeRole === 'Resident' && ['Requested', 'Pending'].includes(booking.status) && (
-                      <md-filled-button
+                      <button
+                        type="button"
+                        className="booking-btn-secondary"
                         onClick={() => promptCancelBooking(booking)}
-                        style={{
-                          '--md-sys-color-primary': '#dc2626',
-                          '--md-sys-color-on-primary': '#ffffff',
-                          fontWeight: 700,
-                          padding: '0 24px',
-                          minWidth: '100px'
-                        }}
                       >
                         Cancel Booking
-                      </md-filled-button>
+                      </button>
                     )}
 
                     {activeRole === 'Worker' && booking.status === 'Requested' && (
                       <>
-                        <md-filled-button onClick={() => handleAction(booking.id, 'reject')} style={{ '--md-sys-color-primary': '#dc2626', '--md-sys-color-on-primary': '#ffffff', fontWeight: 700, padding: '0 24px', minWidth: '100px' }}>Reject</md-filled-button>
-                        <md-filled-button
+                        <button
+                          type="button"
+                          className="booking-btn-secondary"
+                          onClick={() => handleAction(booking.id, 'reject')}
+                        >
+                          Reject
+                        </button>
+                        <button
+                          type="button"
+                          className="booking-btn-black"
                           onClick={() => handleAction(booking.id, 'accept')}
                           disabled={hasInProgressJob}
                           title={hasInProgressJob ? "You cannot accept new requests while an active job is in progress." : ""}
                           style={{
-                            '--md-sys-color-primary': '#2563eb',
-                            '--md-sys-color-on-primary': '#ffffff',
-                            fontWeight: 700,
-                            padding: '0 24px',
-                            minWidth: '100px',
-                            opacity: hasInProgressJob ? 0.5 : 1,
+                            opacity: hasInProgressJob ? 0.4 : 1,
                             cursor: hasInProgressJob ? 'not-allowed' : 'pointer'
                           }}
                         >
                           Accept Request
-                        </md-filled-button>
+                        </button>
                       </>
                     )}
 
                     {activeRole === 'Worker' && booking.status === 'Confirmed' && (
-                      <md-filled-button
+                      <button
+                        type="button"
+                        className="booking-btn-black"
                         onClick={() => handleAction(booking.id, 'start')}
                         disabled={hasInProgressJob}
                         title={hasInProgressJob ? "Finish your current in-progress job before starting another." : ""}
                         style={{
-                          '--md-sys-color-primary': '#4338ca',
-                          padding: '0 24px',
-                          minWidth: '100px',
-                          opacity: hasInProgressJob ? 0.5 : 1,
+                          opacity: hasInProgressJob ? 0.4 : 1,
                           cursor: hasInProgressJob ? 'not-allowed' : 'pointer'
                         }}
                       >
                         Start Job
-                      </md-filled-button>
+                      </button>
                     )}
 
                     {activeRole === 'Worker' && booking.status === 'InProgress' && (
-                      <md-filled-button
+                      <button
+                        type="button"
+                        className="booking-btn-black"
                         onClick={() => handleAction(booking.id, 'complete')}
-                        style={{
-                          '--md-sys-color-primary': '#059669',
-                          padding: '0 24px',
-                          minWidth: '100px',
-                          boxShadow: '0 0 0 3px rgba(5, 150, 105, 0.25)'
-                        }}
                       >
-                        <md-icon slot="icon">check_circle</md-icon>
+                        <md-icon style={{ fontSize: '18px' }}>check_circle</md-icon>
                         Mark Completed
-                      </md-filled-button>
+                      </button>
                     )}
 
                     {activeRole === 'Resident' && booking.status === 'Completed' && (
-                      <md-filled-button onClick={() => openReviewModal(booking)} style={{ '--md-sys-color-primary': '#FDC101', '--md-sys-color-on-primary': '#000000', padding: '0 24px', minWidth: '100px' }}>⭐ Leave a Review</md-filled-button>
+                      <button
+                        type="button"
+                        className="booking-btn-black"
+                        onClick={() => openReviewModal(booking)}
+                      >
+                        ★ Leave a Review
+                      </button>
                     )}
                   </div>
                 </div>
@@ -725,26 +743,26 @@ export default function Bookings() {
             gap: '14px',
             padding: '24px 28px 16px 28px',
             boxSizing: 'border-box',
-            borderBottom: '1px solid #f1f5f9',
+            borderBottom: '1px solid #e4e4e7',
             fontFamily: "var(--font-body, 'DM Sans', sans-serif)"
           }}>
             <div style={{
               width: '42px',
               height: '42px',
               borderRadius: '12px',
-              backgroundColor: '#fef3c7',
-              color: '#000000',
+              backgroundColor: '#000000',
+              color: '#ffffff',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
             }}>
-              <md-icon style={{ fontSize: '24px', color: '#000000' }}>rate_review</md-icon>
+              <md-icon style={{ fontSize: '24px', color: '#ffffff' }}>rate_review</md-icon>
             </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 800, color: '#111827', lineHeight: 1.2, fontFamily: "var(--font-heading, 'DM Sans', sans-serif)" }}>
+              <h3 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 800, color: '#000000', lineHeight: 1.2, fontFamily: "var(--font-heading, 'DM Sans', sans-serif)" }}>
                 Review {selectedBooking?.workerName || 'Worker'}
               </h3>
-              <span style={{ fontSize: '0.85rem', color: '#64748b' }}>Rate your experience for {selectedBooking?.jobTitle}</span>
+              <span style={{ fontSize: '0.85rem', color: '#71717a' }}>Rate your experience for {selectedBooking?.jobTitle}</span>
             </div>
           </div>
 
@@ -771,7 +789,7 @@ export default function Bookings() {
                 )}
 
                 <div style={{ marginTop: '4px' }}>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
                     Comment / Feedback
                   </label>
                   <textarea
@@ -783,11 +801,11 @@ export default function Bookings() {
                       width: '100%',
                       padding: '14px',
                       borderRadius: '14px',
-                      border: 'none',
-                      backgroundColor: '#f8fafc',
+                      border: '1px solid #e4e4e7',
+                      backgroundColor: '#f7f7f8',
                       fontFamily: "var(--font-body, 'DM Sans', sans-serif)",
                       fontSize: '0.95rem',
-                      color: '#1e293b',
+                      color: '#000000',
                       outline: 'none',
                       resize: 'vertical',
                       boxSizing: 'border-box'
@@ -799,35 +817,22 @@ export default function Bookings() {
           </div>
 
           {/* Modal Actions */}
-          <div slot="actions" style={{ padding: '16px 28px 24px 28px', display: 'flex', gap: '12px', justifyContent: 'flex-end', borderTop: '1px solid #f1f5f9' }}>
-            <md-outlined-button
+          <div slot="actions" style={{ padding: '16px 28px 24px 28px', display: 'flex', gap: '12px', justifyContent: 'flex-end', borderTop: '1px solid #e4e4e7' }}>
+            <button
               type="button"
+              className="booking-btn-outlined"
               onClick={() => setReviewModalOpen(false)}
-              style={{
-                '--md-outlined-button-label-text-color': '#111827',
-                '--md-outlined-button-outline-color': '#cbd5e1',
-                color: '#111827',
-                fontWeight: 700,
-                padding: '0 24px',
-                minWidth: '100px'
-              }}
             >
               Cancel
-            </md-outlined-button>
+            </button>
 
-            <md-filled-button
+            <button
               type="button"
+              className="booking-btn-black"
               onClick={submitReview}
-              style={{
-                '--md-sys-color-primary': '#FDC101',
-                '--md-sys-color-on-primary': '#000000',
-                fontWeight: 800,
-                padding: '0 24px',
-                minWidth: '130px'
-              }}
             >
               Submit Review
-            </md-filled-button>
+            </button>
           </div>
         </md-dialog>,
         document.body
@@ -858,7 +863,7 @@ export default function Bookings() {
             justifyContent: 'space-between',
             padding: '24px 28px 16px 28px',
             boxSizing: 'border-box',
-            borderBottom: '1px solid #f1f5f9',
+            borderBottom: '1px solid #e4e4e7',
             fontFamily: "var(--font-body, 'DM Sans', sans-serif)"
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -866,17 +871,17 @@ export default function Bookings() {
                 width: '40px',
                 height: '40px',
                 borderRadius: '12px',
-                backgroundColor: isWorker ? '#dbeafe' : '#fef3c7',
-                color: isWorker ? '#1e40af' : '#000000',
+                backgroundColor: '#000000',
+                color: '#ffffff',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center'
               }}>
-                <md-icon style={{ fontSize: '22px' }}>assignment</md-icon>
+                <md-icon style={{ fontSize: '22px', color: '#ffffff' }}>assignment</md-icon>
               </div>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: '#111827', lineHeight: 1.2, fontFamily: "var(--font-heading, 'DM Sans', sans-serif)" }}>Booking Details</h3>
-                <span style={{ fontSize: '0.85rem', color: '#64748b' }}>Reference ID: #{selectedViewBooking?.id}</span>
+                <h3 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: '#000000', lineHeight: 1.2, fontFamily: "var(--font-heading, 'DM Sans', sans-serif)" }}>Booking Details</h3>
+                <span style={{ fontSize: '0.85rem', color: '#71717a' }}>Reference ID: #{selectedViewBooking?.id}</span>
               </div>
             </div>
 
@@ -893,62 +898,57 @@ export default function Bookings() {
                 {/* Left Column: Booking Info */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
                   <div>
-                    <label style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Job Title</label>
-                    <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#111827', marginTop: '2px' }}>{selectedViewBooking.jobTitle}</div>
+                    <label style={{ fontSize: '0.75rem', color: '#71717a', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Job Title</label>
+                    <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#000000', marginTop: '2px' }}>{selectedViewBooking.jobTitle}</div>
                   </div>
 
                   <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
                     <div>
-                      <label style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '4px' }}>Status</label>
+                      <label style={{ fontSize: '0.75rem', color: '#71717a', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '4px' }}>Status</label>
                       {renderStatusBadge(selectedViewBooking.status)}
                     </div>
 
                     {selectedViewBooking.urgency && (
                       <div>
-                        <label style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '4px' }}>Priority</label>
-                        <span style={{
-                          backgroundColor: selectedViewBooking.urgency.toLowerCase() === 'high' || selectedViewBooking.urgency.toLowerCase() === 'urgent' ? '#fee2e2' : '#f1f5f9',
-                          color: selectedViewBooking.urgency.toLowerCase() === 'high' || selectedViewBooking.urgency.toLowerCase() === 'urgent' ? '#dc2626' : '#475569',
-                          padding: '5px 12px', borderRadius: '12px', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em',
-                          display: 'inline-flex', alignItems: 'center', gap: '6px'
-                        }}>
-                          <md-icon style={{ fontSize: '15px' }}>flag</md-icon>
+                        <label style={{ fontSize: '0.75rem', color: '#71717a', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: '4px' }}>Priority</label>
+                        <span className="booking-priority-badge">
+                          <md-icon style={{ fontSize: '13px' }}>flag</md-icon>
                           {selectedViewBooking.urgency}
                         </span>
                       </div>
                     )}
                   </div>
 
-                  <div style={{ backgroundColor: '#f8fafc', borderRadius: '16px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ backgroundColor: '#f7f7f8', borderRadius: '16px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', border: '1px solid #e4e4e7' }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                      <md-icon style={{ color: isWorker ? '#2563EB' : '#FDC101', fontSize: '20px', marginTop: '2px' }}>calendar_today</md-icon>
+                      <md-icon style={{ color: '#000000', fontSize: '20px', marginTop: '2px' }}>calendar_today</md-icon>
                       <div>
-                        <label style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 800, textTransform: 'uppercase' }}>Date & Time</label>
-                        <div style={{ fontSize: '0.95rem', fontWeight: 600, color: '#1e293b' }}>{new Date(selectedViewBooking.scheduledDate).toLocaleString()}</div>
+                        <label style={{ fontSize: '0.75rem', color: '#71717a', fontWeight: 800, textTransform: 'uppercase' }}>Date & Time</label>
+                        <div style={{ fontSize: '0.95rem', fontWeight: 600, color: '#000000' }}>{new Date(selectedViewBooking.scheduledDate).toLocaleString()}</div>
                       </div>
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                      <md-icon style={{ color: isWorker ? '#2563EB' : '#FDC101', fontSize: '20px', marginTop: '2px' }}>location_on</md-icon>
+                      <md-icon style={{ color: '#000000', fontSize: '20px', marginTop: '2px' }}>location_on</md-icon>
                       <div>
-                        <label style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 800, textTransform: 'uppercase' }}>Location</label>
-                        <div style={{ fontSize: '0.95rem', fontWeight: 600, color: '#1e293b' }}>{cleanAddress(selectedViewBooking.locationAddress)}</div>
+                        <label style={{ fontSize: '0.75rem', color: '#71717a', fontWeight: 800, textTransform: 'uppercase' }}>Location</label>
+                        <div style={{ fontSize: '0.95rem', fontWeight: 600, color: '#000000' }}>{cleanAddress(selectedViewBooking.locationAddress)}</div>
                       </div>
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', padding: '16px', backgroundColor: '#f8fafc', borderRadius: '16px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', padding: '16px', backgroundColor: '#f7f7f8', borderRadius: '16px', border: '1px solid #e4e4e7' }}>
                     <div>
-                      <label style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 800, textTransform: 'uppercase' }}>{activeRole === 'Resident' ? 'Worker' : 'Client'}</label>
-                      <div style={{ fontWeight: 700, color: '#111827', fontSize: '1rem', marginTop: '2px' }}>{activeRole === 'Resident' ? selectedViewBooking.workerName : selectedViewBooking.residentName}</div>
-                      <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '4px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                        <md-icon style={{ fontSize: '14px' }}>call</md-icon>
+                      <label style={{ fontSize: '0.75rem', color: '#71717a', fontWeight: 800, textTransform: 'uppercase' }}>{activeRole === 'Resident' ? 'Worker' : 'Client'}</label>
+                      <div style={{ fontWeight: 700, color: '#000000', fontSize: '1rem', marginTop: '2px' }}>{activeRole === 'Resident' ? selectedViewBooking.workerName : selectedViewBooking.residentName}</div>
+                      <div style={{ fontSize: '0.85rem', color: '#71717a', marginTop: '4px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <md-icon style={{ fontSize: '14px', color: '#000000' }}>call</md-icon>
                         {activeRole === 'Resident' ? selectedViewBooking.workerPhone || 'N/A' : selectedViewBooking.residentPhone || selectedViewBooking.contactPhone}
                       </div>
                     </div>
                     <div>
-                      <label style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 800, textTransform: 'uppercase' }}>Estimated Price</label>
-                      <div style={{ fontWeight: 900, color: isWorker ? '#2563eb' : '#d97706', fontSize: '1.25rem', marginTop: '2px' }}>
+                      <label style={{ fontSize: '0.75rem', color: '#71717a', fontWeight: 800, textTransform: 'uppercase' }}>Estimated Price</label>
+                      <div style={{ fontWeight: 900, color: '#000000', fontSize: '1.25rem', marginTop: '2px' }}>
                         {selectedViewBooking.estimatedPrice ? `Rs. ${selectedViewBooking.estimatedPrice.toLocaleString()}` : 'Negotiable'}
                       </div>
                     </div>
@@ -956,8 +956,8 @@ export default function Bookings() {
 
                   {cleanDescription(selectedViewBooking.description) && (
                     <div>
-                      <label style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Notes / Description</label>
-                      <div style={{ fontSize: '0.95rem', color: '#334155', padding: '14px 16px', backgroundColor: '#f8fafc', borderRadius: '14px', whiteSpace: 'pre-wrap', marginTop: '6px', lineHeight: 1.5 }}>
+                      <label style={{ fontSize: '0.75rem', color: '#71717a', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Notes / Description</label>
+                      <div style={{ fontSize: '0.95rem', color: '#000000', padding: '14px 16px', backgroundColor: '#f7f7f8', borderRadius: '14px', whiteSpace: 'pre-wrap', marginTop: '6px', lineHeight: 1.5, border: '1px solid #e4e4e7' }}>
                         {cleanDescription(selectedViewBooking.description)}
                       </div>
                     </div>
@@ -966,214 +966,301 @@ export default function Bookings() {
 
                 {/* Right Column: Interactive Booking Lifecycle Stepper */}
                 <div>
-                  <div style={{ backgroundColor: '#f8fafc', borderRadius: '20px', padding: '22px' }}>
-                    <h5 style={{ margin: '0 0 18px 0', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748b', fontWeight: 800 }}>
+                  <div style={{ backgroundColor: '#f7f7f8', borderRadius: '20px', padding: '24px 20px', border: '1px solid #e4e4e7' }}>
+                    <h5 style={{ margin: '0 0 20px 0', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#71717a', fontWeight: 800 }}>
                       Service Lifecycle Status
                     </h5>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
                       {/* Step 1: Requested */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
                         <div style={{
-                          width: '32px', height: '32px',
+                          width: '32px', height: '32px', flexShrink: 0,
                           clipPath: 'polygon(50% 0%, 82% 12%, 99% 41%, 93% 75%, 67% 97%, 33% 97%, 7% 75%, 1% 41%, 18% 12%)',
-                          backgroundColor: isWorker ? '#2563EB' : '#000000',
-                          color: isWorker ? '#ffffff' : '#FDC101',
+                          backgroundColor: '#000000',
+                          color: '#ffffff',
                           display: 'flex', alignItems: 'center', justifyContent: 'center'
                         }}>
-                          <md-icon style={{ fontSize: '16px', color: isWorker ? '#ffffff' : '#FDC101' }}>check</md-icon>
+                          <md-icon style={{ fontSize: '16px', color: '#ffffff' }}>check</md-icon>
                         </div>
-                        <div style={{ flex: 1 }}>
-                          <strong style={{ color: '#111827', fontSize: '0.95rem' }}>1. Booking Requested</strong>
-                          <span style={{
-                            marginLeft: '8px',
-                            fontSize: '0.75rem',
-                            backgroundColor: isWorker ? '#dbeafe' : '#fef3c7',
-                            color: isWorker ? '#1e40af' : '#000000',
-                            padding: '2px 8px',
-                            borderRadius: '10px',
-                            fontWeight: 700
-                          }}>Completed</span>
+                        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                            <strong style={{ color: '#000000', fontSize: '0.92rem' }}>1. Booking Requested</strong>
+                            <span style={{
+                              fontSize: '0.72rem',
+                              backgroundColor: '#000000',
+                              color: '#ffffff',
+                              padding: '2px 9px',
+                              borderRadius: '9999px',
+                              fontWeight: 800,
+                              whiteSpace: 'nowrap'
+                            }}>Completed</span>
+                          </div>
+                          <div style={{ fontSize: '0.78rem', color: '#71717a' }}>Request submitted by resident</div>
                         </div>
                       </div>
 
                       {/* Step 2: Worker Accepts / Rejects */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', opacity: ['Requested', 'Rejected', 'Cancelled'].includes(selectedViewBooking.status) ? 1 : 0.9 }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '14px',
+                        opacity: ['Requested', 'Rejected', 'Cancelled'].includes(selectedViewBooking.status) ? 1 : 0.95
+                      }}>
                         <div style={{
-                          width: '32px', height: '32px',
+                          width: '32px', height: '32px', flexShrink: 0,
                           clipPath: 'polygon(50% 0%, 82% 12%, 99% 41%, 93% 75%, 67% 97%, 33% 97%, 7% 75%, 1% 41%, 18% 12%)',
-                          backgroundColor: selectedViewBooking.status === 'Requested'
-                            ? (isWorker ? '#2563EB' : '#FDC101')
-                            : (['Confirmed', 'InProgress', 'Completed', 'Reviewed'].includes(selectedViewBooking.status)
-                              ? (isWorker ? '#2563EB' : '#000000')
-                              : '#fee2e2'),
-                          color: selectedViewBooking.status === 'Requested'
-                            ? (isWorker ? '#ffffff' : '#000000')
-                            : (['Confirmed', 'InProgress', 'Completed', 'Reviewed'].includes(selectedViewBooking.status)
-                              ? (isWorker ? '#ffffff' : '#FDC101')
-                              : '#dc2626'),
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 800,
-                          boxShadow: selectedViewBooking.status === 'Requested'
-                            ? (isWorker ? '0 0 0 4px rgba(37,99,235,0.25)' : '0 0 0 4px rgba(253,193,1,0.2)')
-                            : 'none'
+                          backgroundColor: ['Confirmed', 'InProgress', 'Completed', 'Reviewed', 'Requested'].includes(selectedViewBooking.status) ? '#000000' : '#e4e4e7',
+                          color: ['Confirmed', 'InProgress', 'Completed', 'Reviewed', 'Requested'].includes(selectedViewBooking.status) ? '#ffffff' : '#71717a',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 800
                         }}>
                           {['Confirmed', 'InProgress', 'Completed', 'Reviewed'].includes(selectedViewBooking.status) ? (
-                            <md-icon style={{ fontSize: '16px', color: isWorker ? '#ffffff' : '#FDC101' }}>check</md-icon>
+                            <md-icon style={{ fontSize: '16px', color: '#ffffff' }}>check</md-icon>
                           ) : (['Rejected', 'Cancelled'].includes(selectedViewBooking.status) ? (
-                            <md-icon style={{ fontSize: '16px', color: '#dc2626' }}>close</md-icon>
+                            <md-icon style={{ fontSize: '16px', color: '#000000' }}>close</md-icon>
                           ) : '2')}
                         </div>
-                        <div style={{ flex: 1 }}>
-                          <strong style={{ color: selectedViewBooking.status === 'Requested' ? '#000000' : '#111827', fontSize: '0.95rem' }}>2. Worker Accepts / Rejects</strong>
+                        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                            <strong style={{ color: '#000000', fontSize: '0.92rem' }}>2. Worker Accepts / Rejects</strong>
+                            {selectedViewBooking.status === 'Requested' && (
+                              <span style={{
+                                fontSize: '0.72rem',
+                                backgroundColor: '#f4f4f5',
+                                color: '#000000',
+                                border: '1.5px solid #000000',
+                                padding: '2px 9px',
+                                borderRadius: '9999px',
+                                fontWeight: 800,
+                                whiteSpace: 'nowrap'
+                              }}>
+                                In Progress
+                              </span>
+                            )}
+                            {['Confirmed', 'InProgress', 'Completed', 'Reviewed'].includes(selectedViewBooking.status) && (
+                              <span style={{
+                                fontSize: '0.72rem',
+                                backgroundColor: '#000000',
+                                color: '#ffffff',
+                                padding: '2px 9px',
+                                borderRadius: '9999px',
+                                fontWeight: 800,
+                                whiteSpace: 'nowrap'
+                              }}>
+                                Accepted
+                              </span>
+                            )}
+                            {['Rejected', 'Cancelled'].includes(selectedViewBooking.status) && (
+                              <span style={{
+                                fontSize: '0.72rem',
+                                backgroundColor: '#e4e4e7',
+                                color: '#71717a',
+                                padding: '2px 9px',
+                                borderRadius: '9999px',
+                                fontWeight: 800,
+                                whiteSpace: 'nowrap'
+                              }}>
+                                {selectedViewBooking.status}
+                              </span>
+                            )}
+                          </div>
                           {selectedViewBooking.status === 'Requested' && (
-                            <span style={{
-                              marginLeft: '8px',
-                              fontSize: '0.75rem',
-                              backgroundColor: isWorker ? '#eff6ff' : '#fffbeb',
-                              color: isWorker ? '#1e40af' : '#b45309',
-                              padding: '2px 8px',
-                              borderRadius: '10px',
-                              fontWeight: 700
-                            }}>
-                              In Progress (Worker notified)
-                            </span>
+                            <div style={{ fontSize: '0.78rem', color: '#71717a' }}>Worker notified & awaiting confirmation</div>
                           )}
                           {['Confirmed', 'InProgress', 'Completed', 'Reviewed'].includes(selectedViewBooking.status) && (
-                            <span style={{
-                              marginLeft: '8px',
-                              fontSize: '0.75rem',
-                              backgroundColor: isWorker ? '#dbeafe' : '#fef3c7',
-                              color: isWorker ? '#1e40af' : '#000000',
-                              padding: '2px 8px',
-                              borderRadius: '10px',
-                              fontWeight: 700
-                            }}>
-                              Accepted
-                            </span>
-                          )}
-                          {['Rejected', 'Cancelled'].includes(selectedViewBooking.status) && (
-                            <span style={{
-                              marginLeft: '8px',
-                              fontSize: '0.75rem',
-                              backgroundColor: '#fee2e2',
-                              color: '#dc2626',
-                              padding: '2px 8px',
-                              borderRadius: '10px',
-                              fontWeight: 700
-                            }}>
-                              {selectedViewBooking.status}
-                            </span>
+                            <div style={{ fontSize: '0.78rem', color: '#71717a' }}>Worker accepted the booking</div>
                           )}
                         </div>
                       </div>
 
                       {/* Step 3: Confirmed */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', opacity: ['Confirmed', 'InProgress', 'Completed', 'Reviewed'].includes(selectedViewBooking.status) ? 1 : 0.5 }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '14px',
+                        opacity: ['Confirmed', 'InProgress', 'Completed', 'Reviewed'].includes(selectedViewBooking.status) ? 1 : 0.4
+                      }}>
                         <div style={{
-                          width: '32px', height: '32px',
+                          width: '32px', height: '32px', flexShrink: 0,
                           clipPath: 'polygon(50% 0%, 82% 12%, 99% 41%, 93% 75%, 67% 97%, 33% 97%, 7% 75%, 1% 41%, 18% 12%)',
-                          backgroundColor: selectedViewBooking.status === 'Confirmed'
-                            ? (isWorker ? '#2563EB' : '#FDC101')
-                            : (['InProgress', 'Completed', 'Reviewed'].includes(selectedViewBooking.status)
-                              ? (isWorker ? '#2563EB' : '#000000')
-                              : '#cbd5e1'),
-                          color: selectedViewBooking.status === 'Confirmed'
-                            ? (isWorker ? '#ffffff' : '#000000')
-                            : (['InProgress', 'Completed', 'Reviewed'].includes(selectedViewBooking.status)
-                              ? (isWorker ? '#ffffff' : '#FDC101')
-                              : '#475569'),
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 800,
-                          boxShadow: selectedViewBooking.status === 'Confirmed'
-                            ? (isWorker ? '0 0 0 4px rgba(37,99,235,0.25)' : '0 0 0 4px rgba(253,193,1,0.2)')
-                            : 'none'
+                          backgroundColor: ['Confirmed', 'InProgress', 'Completed', 'Reviewed'].includes(selectedViewBooking.status) ? '#000000' : '#e4e4e7',
+                          color: ['Confirmed', 'InProgress', 'Completed', 'Reviewed'].includes(selectedViewBooking.status) ? '#ffffff' : '#71717a',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 800
                         }}>
                           {['InProgress', 'Completed', 'Reviewed'].includes(selectedViewBooking.status) ? (
-                            <md-icon style={{ fontSize: '16px', color: isWorker ? '#ffffff' : '#FDC101' }}>check</md-icon>
+                            <md-icon style={{ fontSize: '16px', color: '#ffffff' }}>check</md-icon>
                           ) : '3'}
                         </div>
-                        <div>
-                          <strong style={{ color: ['Confirmed', 'InProgress', 'Completed', 'Reviewed'].includes(selectedViewBooking.status) ? '#111827' : '#475569', fontSize: '0.95rem' }}>3. Confirmed</strong>
+                        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                            <strong style={{ color: '#000000', fontSize: '0.92rem' }}>3. Confirmed</strong>
+                            {selectedViewBooking.status === 'Confirmed' && (
+                              <span style={{
+                                fontSize: '0.72rem',
+                                backgroundColor: '#000000',
+                                color: '#ffffff',
+                                padding: '2px 9px',
+                                borderRadius: '9999px',
+                                fontWeight: 800,
+                                whiteSpace: 'nowrap'
+                              }}>
+                                Ready to Start
+                              </span>
+                            )}
+                            {['InProgress', 'Completed', 'Reviewed'].includes(selectedViewBooking.status) && (
+                              <span style={{
+                                fontSize: '0.72rem',
+                                backgroundColor: '#000000',
+                                color: '#ffffff',
+                                padding: '2px 9px',
+                                borderRadius: '9999px',
+                                fontWeight: 800,
+                                whiteSpace: 'nowrap'
+                              }}>
+                                Done
+                              </span>
+                            )}
+                          </div>
+                          {['Confirmed', 'InProgress', 'Completed', 'Reviewed'].includes(selectedViewBooking.status) && (
+                            <div style={{ fontSize: '0.78rem', color: '#71717a' }}>Schedule locked in</div>
+                          )}
                         </div>
                       </div>
 
                       {/* Step 4: In Progress */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', opacity: ['InProgress', 'Completed', 'Reviewed'].includes(selectedViewBooking.status) ? 1 : 0.5 }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '14px',
+                        opacity: ['InProgress', 'Completed', 'Reviewed'].includes(selectedViewBooking.status) ? 1 : 0.4
+                      }}>
                         <div style={{
-                          width: '32px', height: '32px',
+                          width: '32px', height: '32px', flexShrink: 0,
                           clipPath: 'polygon(50% 0%, 82% 12%, 99% 41%, 93% 75%, 67% 97%, 33% 97%, 7% 75%, 1% 41%, 18% 12%)',
-                          backgroundColor: selectedViewBooking.status === 'InProgress'
-                            ? (isWorker ? '#2563EB' : '#FDC101')
-                            : (['Completed', 'Reviewed'].includes(selectedViewBooking.status)
-                              ? (isWorker ? '#2563EB' : '#000000')
-                              : '#cbd5e1'),
-                          color: selectedViewBooking.status === 'InProgress'
-                            ? (isWorker ? '#ffffff' : '#000000')
-                            : (['Completed', 'Reviewed'].includes(selectedViewBooking.status)
-                              ? (isWorker ? '#ffffff' : '#FDC101')
-                              : '#475569'),
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 800,
-                          boxShadow: selectedViewBooking.status === 'InProgress'
-                            ? (isWorker ? '0 0 0 4px rgba(37,99,235,0.25)' : '0 0 0 4px rgba(253,193,1,0.2)')
-                            : 'none'
+                          backgroundColor: ['InProgress', 'Completed', 'Reviewed'].includes(selectedViewBooking.status) ? '#000000' : '#e4e4e7',
+                          color: ['InProgress', 'Completed', 'Reviewed'].includes(selectedViewBooking.status) ? '#ffffff' : '#71717a',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 800
                         }}>
                           {['Completed', 'Reviewed'].includes(selectedViewBooking.status) ? (
-                            <md-icon style={{ fontSize: '16px', color: isWorker ? '#ffffff' : '#FDC101' }}>check</md-icon>
+                            <md-icon style={{ fontSize: '16px', color: '#ffffff' }}>check</md-icon>
                           ) : '4'}
                         </div>
-                        <div>
-                          <strong style={{ color: ['InProgress', 'Completed', 'Reviewed'].includes(selectedViewBooking.status) ? '#111827' : '#475569', fontSize: '0.95rem' }}>4. In Progress</strong>
+                        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                            <strong style={{ color: '#000000', fontSize: '0.92rem' }}>4. In Progress</strong>
+                            {selectedViewBooking.status === 'InProgress' && (
+                              <span style={{
+                                fontSize: '0.72rem',
+                                backgroundColor: '#000000',
+                                color: '#ffffff',
+                                padding: '2px 9px',
+                                borderRadius: '9999px',
+                                fontWeight: 800,
+                                whiteSpace: 'nowrap'
+                              }}>
+                                Active Now
+                              </span>
+                            )}
+                            {['Completed', 'Reviewed'].includes(selectedViewBooking.status) && (
+                              <span style={{
+                                fontSize: '0.72rem',
+                                backgroundColor: '#000000',
+                                color: '#ffffff',
+                                padding: '2px 9px',
+                                borderRadius: '9999px',
+                                fontWeight: 800,
+                                whiteSpace: 'nowrap'
+                              }}>
+                                Done
+                              </span>
+                            )}
+                          </div>
+                          {selectedViewBooking.status === 'InProgress' && (
+                            <div style={{ fontSize: '0.78rem', color: '#71717a' }}>Work actively being carried out</div>
+                          )}
                         </div>
                       </div>
 
                       {/* Step 5: Completed */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', opacity: ['Completed', 'Reviewed'].includes(selectedViewBooking.status) ? 1 : 0.5 }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '14px',
+                        opacity: ['Completed', 'Reviewed'].includes(selectedViewBooking.status) ? 1 : 0.4
+                      }}>
                         <div style={{
-                          width: '32px', height: '32px',
+                          width: '32px', height: '32px', flexShrink: 0,
                           clipPath: 'polygon(50% 0%, 82% 12%, 99% 41%, 93% 75%, 67% 97%, 33% 97%, 7% 75%, 1% 41%, 18% 12%)',
-                          backgroundColor: selectedViewBooking.status === 'Completed'
-                            ? (isWorker ? '#2563EB' : '#FDC101')
-                            : (selectedViewBooking.status === 'Reviewed'
-                              ? (isWorker ? '#2563EB' : '#000000')
-                              : '#cbd5e1'),
-                          color: selectedViewBooking.status === 'Completed'
-                            ? (isWorker ? '#ffffff' : '#000000')
-                            : (selectedViewBooking.status === 'Reviewed'
-                              ? (isWorker ? '#ffffff' : '#FDC101')
-                              : '#475569'),
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 800,
-                          boxShadow: selectedViewBooking.status === 'Completed'
-                            ? (isWorker ? '0 0 0 4px rgba(37,99,235,0.25)' : '0 0 0 4px rgba(253,193,1,0.2)')
-                            : 'none'
+                          backgroundColor: ['Completed', 'Reviewed'].includes(selectedViewBooking.status) ? '#000000' : '#e4e4e7',
+                          color: ['Completed', 'Reviewed'].includes(selectedViewBooking.status) ? '#ffffff' : '#71717a',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 800
                         }}>
                           {selectedViewBooking.status === 'Reviewed' ? (
-                            <md-icon style={{ fontSize: '16px', color: isWorker ? '#ffffff' : '#FDC101' }}>check</md-icon>
+                            <md-icon style={{ fontSize: '16px', color: '#ffffff' }}>check</md-icon>
                           ) : '5'}
                         </div>
-                        <div>
-                          <strong style={{ color: ['Completed', 'Reviewed'].includes(selectedViewBooking.status) ? '#111827' : '#475569', fontSize: '0.95rem' }}>5. Completed</strong>
+                        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                            <strong style={{ color: '#000000', fontSize: '0.92rem' }}>5. Completed</strong>
+                            {['Completed', 'Reviewed'].includes(selectedViewBooking.status) && (
+                              <span style={{
+                                fontSize: '0.72rem',
+                                backgroundColor: '#000000',
+                                color: '#ffffff',
+                                padding: '2px 9px',
+                                borderRadius: '9999px',
+                                fontWeight: 800,
+                                whiteSpace: 'nowrap'
+                              }}>
+                                Finished
+                              </span>
+                            )}
+                          </div>
+                          {['Completed', 'Reviewed'].includes(selectedViewBooking.status) && (
+                            <div style={{ fontSize: '0.78rem', color: '#71717a' }}>Service finished successfully</div>
+                          )}
                         </div>
                       </div>
 
                       {/* Step 6: Reviewed */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', opacity: selectedViewBooking.status === 'Reviewed' ? 1 : 0.5 }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '14px',
+                        opacity: selectedViewBooking.status === 'Reviewed' ? 1 : 0.4
+                      }}>
                         <div style={{
-                          width: '32px', height: '32px',
+                          width: '32px', height: '32px', flexShrink: 0,
                           clipPath: 'polygon(50% 0%, 82% 12%, 99% 41%, 93% 75%, 67% 97%, 33% 97%, 7% 75%, 1% 41%, 18% 12%)',
-                          backgroundColor: selectedViewBooking.status === 'Reviewed'
-                            ? (isWorker ? '#2563EB' : '#000000')
-                            : '#cbd5e1',
-                          color: selectedViewBooking.status === 'Reviewed'
-                            ? (isWorker ? '#ffffff' : '#FDC101')
-                            : '#475569',
+                          backgroundColor: selectedViewBooking.status === 'Reviewed' ? '#000000' : '#e4e4e7',
+                          color: selectedViewBooking.status === 'Reviewed' ? '#ffffff' : '#71717a',
                           display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 800
                         }}>
                           {selectedViewBooking.status === 'Reviewed' ? (
-                            <md-icon style={{ fontSize: '16px', color: isWorker ? '#ffffff' : '#FDC101' }}>check</md-icon>
+                            <md-icon style={{ fontSize: '16px', color: '#ffffff' }}>check</md-icon>
                           ) : '6'}
                         </div>
-                        <div>
-                          <strong style={{ color: selectedViewBooking.status === 'Reviewed' ? '#111827' : '#475569', fontSize: '0.95rem' }}>6. Reviewed</strong>
+                        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                            <strong style={{ color: '#000000', fontSize: '0.92rem' }}>6. Reviewed</strong>
+                            {selectedViewBooking.status === 'Reviewed' && (
+                              <span style={{
+                                fontSize: '0.72rem',
+                                backgroundColor: '#000000',
+                                color: '#ffffff',
+                                padding: '2px 9px',
+                                borderRadius: '9999px',
+                                fontWeight: 800,
+                                whiteSpace: 'nowrap'
+                              }}>
+                                Reviewed
+                              </span>
+                            )}
+                          </div>
+                          {selectedViewBooking.status === 'Reviewed' && (
+                            <div style={{ fontSize: '0.78rem', color: '#71717a' }}>Feedback & rating submitted</div>
+                          )}
                         </div>
                       </div>
 
@@ -1184,10 +1271,10 @@ export default function Bookings() {
                 {/* Full-width Map Preview & Google Maps Action */}
                 <div style={{
                   gridColumn: '1 / -1',
-                  backgroundColor: '#f8fafc',
+                  backgroundColor: '#f7f7f8',
                   borderRadius: '20px',
                   padding: '20px',
-                  border: '1px solid #e2e8f0',
+                  border: '1px solid #e4e4e7',
                   marginTop: '4px'
                 }}>
                   <div style={{
@@ -1203,19 +1290,19 @@ export default function Bookings() {
                         width: '38px',
                         height: '38px',
                         borderRadius: '12px',
-                        backgroundColor: isWorker ? '#dbeafe' : '#fef3c7',
-                        color: isWorker ? '#1e40af' : '#000000',
+                        backgroundColor: '#000000',
+                        color: '#ffffff',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center'
                       }}>
-                        <md-icon style={{ fontSize: '20px' }}>map</md-icon>
+                        <md-icon style={{ fontSize: '20px', color: '#ffffff' }}>map</md-icon>
                       </div>
                       <div>
-                        <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', fontFamily: "var(--font-heading, 'DM Sans', sans-serif)" }}>
+                        <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#000000', fontFamily: "var(--font-heading, 'DM Sans', sans-serif)" }}>
                           Service Location & Map Preview
                         </h4>
-                        <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                        <span style={{ fontSize: '0.85rem', color: '#71717a' }}>
                           {cleanAddress(selectedViewBooking.locationAddress)}
                         </span>
                       </div>
@@ -1229,34 +1316,7 @@ export default function Bookings() {
                     >
                       <button
                         type="button"
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          backgroundColor: '#2563eb',
-                          color: '#ffffff',
-                          padding: '10px 22px',
-                          borderRadius: '9999px',
-                          fontWeight: 700,
-                          fontSize: '0.88rem',
-                          fontFamily: "var(--font-body, 'DM Sans', sans-serif)",
-                          border: 'none',
-                          cursor: 'pointer',
-                          boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
-                          transition: 'all 0.2s ease',
-                          whiteSpace: 'nowrap',
-                          lineHeight: 1.2
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#1d4ed8';
-                          e.currentTarget.style.transform = 'translateY(-1px)';
-                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.35)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = '#2563eb';
-                          e.currentTarget.style.transform = 'translateY(0)';
-                          e.currentTarget.style.boxShadow = '0 2px 8px rgba(37, 99, 235, 0.25)';
-                        }}
+                        className="booking-btn-black"
                       >
                         <md-icon style={{ fontSize: '18px', display: 'flex', alignItems: 'center' }}>open_in_new</md-icon>
                         <span>View on Google Maps</span>
@@ -1268,22 +1328,22 @@ export default function Bookings() {
                   {(() => {
                     const coords = extractCoordinates(selectedViewBooking);
                     const defaultCenter = [6.74016, 80.38114];
-                    const center = coords ? [coords.lat, coords.lng] : defaultCenter;
+                    const pinPos = coords ? [coords.lat, coords.lng] : defaultCenter;
 
                     return (
                       <div style={{
-                        height: '250px',
+                        height: '270px',
                         width: '100%',
                         borderRadius: '16px',
                         overflow: 'hidden',
-                        border: '1px solid #cbd5e1',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                        border: '1px solid #e4e4e7',
+                        boxShadow: '0 2px 10px rgba(0,0,0,0.06)',
                         position: 'relative',
                         zIndex: 1
                       }}>
                         <MapContainer
-                          center={center}
-                          zoom={coords ? 15 : 12}
+                          center={pinPos}
+                          zoom={coords ? 15 : 13}
                           scrollWheelZoom={false}
                           style={{ height: '100%', width: '100%' }}
                         >
@@ -1291,17 +1351,22 @@ export default function Bookings() {
                             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                           />
-                          {coords && (
-                            <Marker position={[coords.lat, coords.lng]}>
-                              <Popup>
-                                <div style={{ fontFamily: "var(--font-body, 'DM Sans', sans-serif)", padding: '4px' }}>
-                                  <strong style={{ fontSize: '0.95rem', color: '#0f172a' }}>{selectedViewBooking.jobTitle}</strong>
-                                  <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '2px' }}>{cleanAddress(selectedViewBooking.locationAddress)}</div>
+                          <Marker position={pinPos} icon={userLocationIcon}>
+                            <Popup autoPan={true}>
+                              <div style={{ fontFamily: "var(--font-body, 'DM Sans', sans-serif)", padding: '4px 2px' }}>
+                                <div style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', color: '#e11d48', letterSpacing: '0.05em' }}>
+                                  Service Location
                                 </div>
-                              </Popup>
-                            </Marker>
-                          )}
-                          <RecenterMap lat={center[0]} lng={center[1]} />
+                                <strong style={{ fontSize: '0.95rem', color: '#000000', display: 'block', marginTop: '2px' }}>
+                                  {selectedViewBooking.jobTitle}
+                                </strong>
+                                <div style={{ fontSize: '0.85rem', color: '#52525b', marginTop: '3px' }}>
+                                  {cleanAddress(selectedViewBooking.locationAddress)}
+                                </div>
+                              </div>
+                            </Popup>
+                          </Marker>
+                          <RecenterMap lat={pinPos[0]} lng={pinPos[1]} />
                         </MapContainer>
                       </div>
                     );
@@ -1317,22 +1382,17 @@ export default function Bookings() {
             display: 'flex',
             justifyContent: 'flex-end',
             padding: '16px 28px 24px 28px',
-            borderTop: '1px solid #f1f5f9',
+            borderTop: '1px solid #e4e4e7',
             boxSizing: 'border-box',
             fontFamily: "var(--font-body, 'DM Sans', sans-serif)"
           }}>
-            <md-filled-button
+            <button
+              type="button"
+              className="booking-btn-black"
               onClick={() => setViewModalOpen(false)}
-              style={{
-                '--md-sys-color-primary': isWorker ? '#2563EB' : '#000000',
-                '--md-sys-color-on-primary': isWorker ? '#ffffff' : '#FDC101',
-                padding: '0 28px',
-                fontWeight: 700,
-                borderRadius: '24px'
-              }}
             >
               Close Window
-            </md-filled-button>
+            </button>
           </div>
         </md-dialog>,
         document.body
@@ -1366,10 +1426,10 @@ export default function Bookings() {
             textAlign: 'center',
             fontFamily: "var(--font-heading, 'DM Sans', sans-serif)"
           }}>
-            <md-icon style={{ fontSize: '40px', color: '#dc2626' }}>
+            <md-icon style={{ fontSize: '40px', color: '#000000' }}>
               cancel
             </md-icon>
-            <span style={{ fontSize: '1.35rem', fontWeight: 800, color: '#111827', lineHeight: 1.25 }}>
+            <span style={{ fontSize: '1.35rem', fontWeight: 800, color: '#000000', lineHeight: 1.25 }}>
               Cancel Booking Request?
             </span>
           </div>
@@ -1378,12 +1438,12 @@ export default function Bookings() {
           <div slot="content" style={{
             textAlign: 'center',
             fontSize: '0.95rem',
-            color: '#475569',
+            color: '#52525b',
             lineHeight: 1.6,
             padding: '8px 24px 20px 24px',
             fontFamily: "var(--font-body, 'DM Sans', sans-serif)"
           }}>
-            Are you sure you want to cancel the request for <strong style={{ color: '#111827' }}>"{bookingToCancel?.jobTitle}"</strong>? This will notify the worker that the job has been cancelled.
+            Are you sure you want to cancel the request for <strong style={{ color: '#000000' }}>"{bookingToCancel?.jobTitle}"</strong>? This will notify the worker that the job has been cancelled.
           </div>
 
           {/* Actions */}
@@ -1395,31 +1455,23 @@ export default function Bookings() {
             boxSizing: 'border-box',
             fontFamily: "var(--font-body, 'DM Sans', sans-serif)"
           }}>
-            <md-text-button
+            <button
+              type="button"
+              className="booking-btn-outlined"
               onClick={() => { setCancelDialogOpen(false); setBookingToCancel(null); }}
               disabled={cancelLoading}
-              style={{
-                '--md-sys-color-primary': '#475569',
-                fontWeight: 700,
-                padding: '0 16px'
-              }}
             >
               Keep Booking
-            </md-text-button>
+            </button>
 
-            <md-filled-button
+            <button
+              type="button"
+              className="booking-btn-black"
               onClick={confirmCancelBooking}
               disabled={cancelLoading}
-              style={{
-                '--md-sys-color-primary': '#dc2626',
-                '--md-sys-color-on-primary': '#ffffff',
-                fontWeight: 700,
-                padding: '0 24px',
-                borderRadius: '20px'
-              }}
             >
               {cancelLoading ? 'Cancelling...' : 'Yes, Cancel'}
-            </md-filled-button>
+            </button>
           </div>
         </md-dialog>,
         document.body
@@ -1427,3 +1479,4 @@ export default function Bookings() {
     </div>
   );
 }
+

@@ -56,6 +56,7 @@ namespace Superbass.Models
         public string? LastSenderEmail { get; set; }
         public string? LastSenderRole { get; set; }
         public int UnreadCount { get; set; }
+        public bool LastMessageIsRead { get; set; }
         public bool IsOnline { get; set; }
         public DateTime? LastSeenAt { get; set; }
         public DateTime CreatedAt { get; set; }

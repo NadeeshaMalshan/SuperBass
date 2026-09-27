@@ -206,18 +206,32 @@ class FindTabScreen extends StatefulWidget {
 }
 
 class _FindTabScreenState extends State<FindTabScreen> {
-  int _selectedCategoryIndex = 0;
+  int? _selectedCategoryIndex;
   List<WorkerModel> _workers = [];
   bool _isLoading = true;
 
   final List<Map<String, dynamic>> _categories = [
-    {'name': 'All Pros', 'skill': null, 'icon': Icons.apps_rounded},
-    {'name': 'Plumber', 'skill': 'Plumbing', 'icon': Icons.plumbing_rounded},
-    {'name': 'Electrician', 'skill': 'Electrical', 'icon': Icons.electrical_services_rounded},
-    {'name': 'Carpenter', 'skill': 'Carpentry', 'icon': Icons.carpenter_rounded},
-    {'name': 'Mason', 'skill': 'Masonry', 'icon': Icons.foundation_rounded},
-    {'name': 'Painter', 'skill': 'Painting', 'icon': Icons.format_paint_rounded},
-    {'name': 'AC Repair', 'skill': 'AC Repair', 'icon': Icons.ac_unit_rounded},
+    {'name': 'Plumber', 'skill': 'Plumbing', 'image': 'assets/icons/plumbing.png'},
+    {'name': 'Electrician', 'skill': 'Electrical', 'image': 'assets/icons/electrical.png'},
+    {'name': 'Carpenter', 'skill': 'Carpentry', 'image': 'assets/icons/carpentry.png'},
+    {'name': 'Painter', 'skill': 'Painting', 'image': 'assets/icons/painting.png'},
+    {'name': 'Mason', 'skill': 'Masonry & Construction', 'image': 'assets/icons/masonry.png'},
+    {'name': 'AC Repair', 'skill': 'AC & Air Conditioning', 'image': 'assets/icons/ac_repair.png'},
+    {'name': 'Welding', 'skill': 'Welding', 'image': 'assets/icons/welding.png'},
+    {'name': 'Cleaning', 'skill': 'Cleaning', 'image': 'assets/icons/cleaning.png'},
+    {'name': 'Gardening', 'skill': 'Gardening & Landscaping', 'image': 'assets/icons/gardening.png'},
+    {'name': 'Handyman', 'skill': 'Handyman Services', 'image': 'assets/icons/handyman.png'},
+    {'name': 'Mechanic', 'skill': 'Vehicle Repair & Mechanic', 'image': 'assets/icons/mechanic.png'},
+    {'name': 'Roofing', 'skill': 'Roofing', 'image': 'assets/icons/roofing.png'},
+    {'name': 'Glass & Windows', 'skill': 'Glass & Window Services', 'image': 'assets/icons/glass_window.png'},
+    {'name': 'Locksmith', 'skill': 'Locksmith', 'image': 'assets/icons/locksmith.png'},
+    {'name': 'Appliance', 'skill': 'Appliance Repair', 'image': 'assets/icons/appliance_repair.png'},
+    {'name': 'Computer/IT', 'skill': 'Computer & IT Services', 'image': 'assets/icons/computer_it.png'},
+    {'name': 'Phone Repair', 'skill': 'Phone Repair', 'image': 'assets/icons/phone_repair.png'},
+    {'name': 'Moving', 'skill': 'Moving & Transport', 'image': 'assets/icons/moving.png'},
+    {'name': 'Furniture', 'skill': 'Furniture Repair & Assembly', 'image': 'assets/icons/furniture_repair.png'},
+    {'name': 'Pest Control', 'skill': 'Pest Control', 'image': 'assets/icons/pest_control.png'},
+    {'name': 'CCTV', 'skill': 'CCTV Installation & Repair', 'image': 'assets/icons/cctv.png'},
   ];
 
   @override
@@ -232,7 +246,9 @@ class _FindTabScreenState extends State<FindTabScreen> {
     });
 
     try {
-      final selectedSkill = _categories[_selectedCategoryIndex]['skill'] as String?;
+      final selectedSkill = _selectedCategoryIndex != null
+          ? _categories[_selectedCategoryIndex!]['skill'] as String?
+          : null;
       final list = await ApiService().fetchWorkers(skill: selectedSkill);
       if (mounted) {
         setState(() {
@@ -250,9 +266,12 @@ class _FindTabScreenState extends State<FindTabScreen> {
   }
 
   void _onCategorySelected(int index) {
-    if (_selectedCategoryIndex == index) return;
     setState(() {
-      _selectedCategoryIndex = index;
+      if (_selectedCategoryIndex == index) {
+        _selectedCategoryIndex = null;
+      } else {
+        _selectedCategoryIndex = index;
+      }
     });
     _fetchWorkers();
   }
@@ -510,6 +529,200 @@ class _FindTabScreenState extends State<FindTabScreen> {
     );
   }
 
+  void _showWorkerDetailSheet(WorkerModel worker) {
+    final isLoggedIn = AuthService().currentUser != null;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.outlineVariant,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.surfaceVariant,
+                    ),
+                    child: ClipOval(
+                      child: (worker.profileImage != null && worker.profileImage!.isNotEmpty && worker.profileImage != 'null')
+                          ? Image.network(
+                              worker.profileImage!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Center(
+                                child: Text(
+                                  worker.name.isNotEmpty ? worker.name[0].toUpperCase() : 'W',
+                                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w800, fontSize: 24),
+                                ),
+                              ),
+                            )
+                          : Center(
+                              child: Text(
+                                worker.name.isNotEmpty ? worker.name[0].toUpperCase() : 'W',
+                                style: GoogleFonts.dmSans(fontWeight: FontWeight.w800, fontSize: 24),
+                              ),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                worker.name,
+                                style: GoogleFonts.dmSans(fontWeight: FontWeight.w800, fontSize: 20, color: AppColors.onSurface),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            const Icon(Icons.verified, size: 18, color: AppColors.brandYellowHover),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          worker.skills.isNotEmpty ? worker.skills.join(', ') : 'General Pro',
+                          style: GoogleFonts.dmSans(fontWeight: FontWeight.w500, fontSize: 14, color: AppColors.onSurfaceVariant),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            const Icon(Icons.star_rounded, size: 18, color: AppColors.starRating),
+                            const SizedBox(width: 4),
+                            Text(
+                              (worker.overallRating != null && worker.overallRating! > 0)
+                                  ? worker.overallRating!.toStringAsFixed(1)
+                                  : '0',
+                              style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 14),
+                            ),
+                            if (worker.completedJobs > 0) ...[
+                              const SizedBox(width: 4),
+                              Text(
+                                '(${worker.completedJobs} jobs)',
+                                style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.onSurfaceVariant),
+                              ),
+                            ],
+                            const SizedBox(width: 12),
+                            const Icon(Icons.location_on_outlined, size: 15, color: AppColors.onSurfaceVariant),
+                            const SizedBox(width: 2),
+                            Flexible(
+                              child: Text(
+                                worker.primaryServiceArea ?? 'Colombo',
+                                style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.onSurfaceVariant),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              const Divider(color: AppColors.outlineVariant, height: 1),
+              const SizedBox(height: 16),
+              if (worker.description != null && worker.description!.isNotEmpty) ...[
+                Text(
+                  'About',
+                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.onSurface),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  worker.description!,
+                  style: GoogleFonts.dmSans(fontSize: 14, color: const Color(0xFF4B5563), height: 1.45),
+                ),
+                const SizedBox(height: 16),
+              ],
+              Text(
+                'Skills & Services',
+                style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.onSurface),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: worker.skills.map((skill) => Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceVariant,
+                    borderRadius: BorderRadius.circular(9999),
+                    border: Border.all(color: AppColors.outlineVariant),
+                  ),
+                  child: Text(
+                    skill,
+                    style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.onSurface),
+                  ),
+                )).toList(),
+              ),
+              const SizedBox(height: 24),
+              if (isLoggedIn)
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(sheetContext);
+                      _showBookingSheet(worker);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.brandYellow,
+                      foregroundColor: AppColors.onPrimary,
+                      elevation: 0,
+                      shape: const StadiumBorder(),
+                    ),
+                    child: Text(
+                      'Book Now',
+                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.onPrimary),
+                    ),
+                  ),
+                )
+              else
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceVariant,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    'Please sign in to book this pro or request a service.',
+                    style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.onSurfaceVariant),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -622,27 +835,9 @@ class _FindTabScreenState extends State<FindTabScreen> {
               // Category Trades Grid/List
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Browse Categories',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 18),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        setState(() => _selectedCategoryIndex = 0);
-                        _fetchWorkers();
-                      },
-                      child: Text(
-                        'View All',
-                        style: GoogleFonts.dmSans(
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.onSurface,
-                        ),
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  'Browse Categories',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 18),
                 ),
               ),
 
@@ -661,7 +856,8 @@ class _FindTabScreenState extends State<FindTabScreen> {
                       width: 76,
                       child: CategoryCard(
                         title: cat['name'] as String,
-                        icon: cat['icon'] as IconData,
+                        icon: cat['icon'] as IconData?,
+                        imageAsset: cat['image'] as String?,
                         count: _workers.length,
                         isSelected: _selectedCategoryIndex == index,
                         onTap: () => _onCategorySelected(index),
@@ -737,23 +933,31 @@ class _FindTabScreenState extends State<FindTabScreen> {
                               ],
                             ),
                           )
-                        : Column(
-                            children: _workers.map((worker) {
-                              final trade = worker.skills.isNotEmpty ? worker.skills.first : 'General Pro';
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 12.0),
-                                child: WorkerCard(
-                                  name: worker.name,
-                                  trade: trade,
-                                  rating: worker.overallRating,
-                                  reviewCount: worker.completedJobs,
-                                  location: worker.primaryServiceArea ?? 'Colombo',
-                                  distance: worker.distance != null ? '${worker.distance!.toStringAsFixed(1)} km' : 'Unknown',
-                                  profileImage: worker.profileImage,
-                                  onBookTap: () => _showBookingSheet(worker),
-                                ),
+                        : ValueListenableBuilder<AuthUser?>(
+                            valueListenable: AuthService().currentUserNotifier,
+                            builder: (context, currentUser, _) {
+                              final isLoggedIn = currentUser != null;
+                              return Column(
+                                children: _workers.map((worker) {
+                                  final trade = worker.skills.isNotEmpty ? worker.skills.first : 'General Pro';
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 12.0),
+                                    child: WorkerCard(
+                                      name: worker.name,
+                                      trade: trade,
+                                      rating: worker.overallRating,
+                                      reviewCount: worker.completedJobs,
+                                      location: worker.primaryServiceArea ?? 'Colombo',
+                                      distance: worker.distance != null ? '${worker.distance!.toStringAsFixed(1)} km' : 'Unknown',
+                                      profileImage: worker.profileImage,
+                                      showBookNow: isLoggedIn,
+                                      onBookTap: isLoggedIn ? () => _showBookingSheet(worker) : null,
+                                      onProfileTap: () => _showWorkerDetailSheet(worker),
+                                    ),
+                                  );
+                                }).toList(),
                               );
-                            }).toList(),
+                            },
                           ),
               ),
               const SizedBox(height: 24),

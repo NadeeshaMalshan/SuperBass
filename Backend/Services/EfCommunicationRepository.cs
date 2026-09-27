@@ -478,7 +478,7 @@ namespace Superbass.Services
                 {
                     var lastMsg = await _context.ChatMessages
                         .Where(m => m.ConversationId == cid && !m.IsDeleted)
-                        .OrderByDescending(m => m.CreatedAt)
+                        .OrderByDescending(m => m.Id)
                         .FirstOrDefaultAsync();
 
                     if (lastMsg != null)
@@ -547,6 +547,12 @@ namespace Superbass.Services
 
             var residentProfileImage = residentWorker?.ProfileImage;
 
+            var lastMsg = await _context.ChatMessages
+                .Where(m => m.ConversationId == conv.Id && !m.IsDeleted)
+                .OrderByDescending(m => m.Id)
+                .Select(m => new { m.SenderEmail, m.SenderRole, m.IsRead, m.Content, m.CreatedAt })
+                .FirstOrDefaultAsync();
+
             return new ConversationSummaryDto
             {
                 Id = conv.Id,
@@ -556,14 +562,15 @@ namespace Superbass.Services
                 ResidentProfileImage = residentProfileImage,
                 WorkerId = conv.WorkerId,
                 WorkerName = conv.Worker?.Name ?? "Worker",
-                WorkerEmail = conv.Worker?.Email ?? string.Empty,
+                WorkerEmail = !string.IsNullOrWhiteSpace(conv.Worker?.Email) ? conv.Worker.Email : (conv.Worker?.ResidentEmail ?? string.Empty),
                 WorkerPhone = conv.Worker?.PhoneNo,
                 WorkerProfileImage = conv.Worker?.ProfileImage,
                 BookingId = conv.BookingId,
-                LastMessage = conv.LastMessage,
-                LastMessageAt = conv.LastMessageAt,
-                LastSenderEmail = conv.LastSenderEmail,
-                LastSenderRole = conv.LastSenderRole,
+                LastMessage = lastMsg != null ? lastMsg.Content : conv.LastMessage,
+                LastMessageAt = lastMsg != null ? lastMsg.CreatedAt : conv.LastMessageAt,
+                LastSenderEmail = lastMsg != null ? lastMsg.SenderEmail : conv.LastSenderEmail,
+                LastSenderRole = lastMsg != null ? lastMsg.SenderRole : conv.LastSenderRole,
+                LastMessageIsRead = lastMsg != null ? lastMsg.IsRead : false,
                 UnreadCount = unreadCount,
                 IsOnline = ChatHub.IsUserOnline(otherEmail),
                 LastSeenAt = ChatHub.GetLastSeen(otherEmail),
