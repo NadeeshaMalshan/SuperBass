@@ -119,7 +119,7 @@ export default function Chats() {
   const typingDebounceRef = useRef(null);
   const workerDropdownRef = useRef(null);
 
-  const currentUserEmail = localStorage.getItem('email') || '';
+  const currentUserEmail = localStorage.getItem('email') || localStorage.getItem('workerEmail') || '';
   const token = localStorage.getItem('token');
   const activeRole = localStorage.getItem('activeRole') || 'Resident';
   const isWorker = activeRole.toLowerCase() === 'worker' || localStorage.getItem('workerAuth') === 'true';
@@ -176,11 +176,14 @@ export default function Chats() {
         }
         const updated = [...prev];
         const isCurrentActive = currentChat && currentChat.id === convId;
+        const isFromMe = msg.senderEmail?.toLowerCase() === currentUserEmail.toLowerCase();
         updated[idx] = {
           ...updated[idx],
           lastMessage: msg.content || (msg.messageType === 'Image' ? 'Shared an image' : 'New message'),
           lastMessageAt: msg.createdAt || new Date().toISOString(),
-          unreadCount: isCurrentActive ? 0 : (updated[idx].unreadCount || 0) + (msg.senderEmail?.toLowerCase() !== currentUserEmail.toLowerCase() ? 1 : 0)
+          lastSenderEmail: msg.senderEmail,
+          lastMessageIsRead: isCurrentActive || Boolean(msg.isRead),
+          unreadCount: isCurrentActive ? 0 : (updated[idx].unreadCount || 0) + (isFromMe ? 0 : 1)
         };
         return updated;
       });
@@ -229,6 +232,8 @@ export default function Chats() {
           return m;
         }));
       }
+
+      setConversations(prev => prev.map(c => c.id === convId ? { ...c, lastMessageIsRead: true } : c));
     });
 
     // 3. Live Presence (Active Now)
@@ -1005,21 +1010,22 @@ export default function Chats() {
                   <Loader size={40} />
                 </div>
               ) : filteredConversations.length === 0 ? (
-                <div style={{ padding: '2rem 1.5rem', textAlign: 'center', color: '#64748b' }}>
-                  <i className="fa-regular fa-comment-dots" style={{ fontSize: '2rem', marginBottom: '10px', color: '#cbd5e1' }}></i>
-                  <p style={{ margin: 0, fontSize: '0.9rem' }}>No conversations found</p>
+                <div style={{ padding: '3.5rem 1.5rem', textAlign: 'center' }}>
+                  <i className="fa-regular fa-comments" style={{ fontSize: '2.5rem', marginBottom: '14px', color: '#8c8c8c', display: 'block' }}></i>
+                  <p style={{ margin: '0 0 16px 0', fontSize: '0.95rem', fontWeight: '600', color: '#000000' }}>No conversations found</p>
                   <button
                     onClick={() => navigate('/community')}
                     style={{
-                      marginTop: '12px',
-                      background: '#0284c7',
+                      background: '#000000',
                       color: '#ffffff',
                       border: 'none',
-                      padding: '6px 14px',
-                      borderRadius: '16px',
-                      fontSize: '0.8rem',
-                      fontWeight: '600',
-                      cursor: 'pointer'
+                      padding: '9px 22px',
+                      borderRadius: '9999px',
+                      fontSize: '0.85rem',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.18)',
+                      transition: 'all 0.15s ease'
                     }}
                   >
                     Browse Community
@@ -1030,13 +1036,23 @@ export default function Chats() {
                   {filteredConversations.map(conv => {
                     const party = resolvePartyDetails(conv);
                     const isSelected = selectedChat?.id === conv.id;
-                    const isLastMsgOutgoing = conv.lastSenderEmail?.toLowerCase() === currentUserEmail.toLowerCase();
-                    const isThisUserOnline = isSelected ? isOtherUserOnline : Boolean(conv.isOnline);
+                    const lastSender = (conv.lastSenderEmail || conv.LastSenderEmail || '').trim().toLowerCase();
+                    const myEmail = (currentUserEmail || '').trim().toLowerCase();
+                    const otherEmail = (party.otherEmail || '').trim().toLowerCase();
+                    const isLastMsgOutgoing = Boolean(
+                      lastSender && (
+                        (myEmail && lastSender === myEmail) ||
+                        (otherEmail && lastSender !== otherEmail)
+                      ) && (!otherEmail || lastSender !== otherEmail)
+                    );
+                    const isThisUserOnline = isSelected ? isOtherUserOnline : Boolean(conv.isOnline || conv.IsOnline);
+                    const unreadCount = conv.unreadCount ?? conv.UnreadCount ?? 0;
+                    const isLastMsgRead = Boolean(conv.lastMessageIsRead ?? conv.LastMessageIsRead);
 
                     return (
                       <div
                         key={conv.id}
-                        className={`chat-item-card ${isSelected ? 'active' : ''}`}
+                        className={`chat-item-card ${isSelected ? 'active' : ''} ${!isLastMsgOutgoing && unreadCount > 0 ? 'unread' : ''}`}
                         onClick={() => handleSelectConversation(conv)}
                         role="button"
                         tabIndex={0}
@@ -1063,23 +1079,25 @@ export default function Chats() {
                           <div className="chat-item-top">
                             <span className="chat-item-name">{party.displayName}</span>
                             <span className="chat-item-time">
-                              {formatConversationTime(conv.lastMessageAt || conv.updatedAt)}
+                              {formatConversationTime(conv.lastMessageAt || conv.LastMessageAt || conv.updatedAt || conv.UpdatedAt)}
                             </span>
                           </div>
 
                           <div className="chat-item-bottom">
                             <div className="chat-item-preview-group">
+                              {/* ONLY display check status for messages YOU sent */}
                               {isLastMsgOutgoing && (
-                                <span className={`chat-item-status-icon ${conv.unreadCount === 0 ? 'read' : ''}`}>
-                                  <i className="fa-solid fa-check-double"></i>
+                                <span className={`chat-item-status-icon ${isLastMsgRead ? 'read' : ''}`}>
+                                  <i className="fa-solid fa-check-double" title={isLastMsgRead ? "Seen / Read" : "Delivered"}></i>
                                 </span>
                               )}
                               <span className="chat-item-preview">
-                                {conv.lastMessage || 'No messages yet'}
+                                {conv.lastMessage || conv.LastMessage || 'No messages yet'}
                               </span>
                             </div>
-                            {conv.unreadCount > 0 && (
-                              <span className="chat-item-badge">{conv.unreadCount}</span>
+                            {/* ONLY display unread badge for received messages that you haven't opened yet */}
+                            {!isLastMsgOutgoing && unreadCount > 0 && (
+                              <span className="chat-item-badge">{unreadCount}</span>
                             )}
                           </div>
                         </div>
@@ -1386,7 +1404,7 @@ export default function Chats() {
                       onInput={handleInputChange}
                       onKeyDown={handleKeyDown}
                       disabled={isSending}
-                      style={{ width: '100%', '--md-sys-color-primary': themePrimary, '--md-outlined-text-field-container-shape': '24px' }}
+                      style={{ width: '100%', '--md-sys-color-primary': '#000000', '--md-outlined-text-field-container-shape': '24px' }}
                     >
                       <md-icon-button slot="leading-icon" onClick={() => fileInputRef.current?.click()}>
                         <i className="fa-solid fa-circle-plus" style={{ color: '#64748b' }}></i>
@@ -1464,7 +1482,7 @@ export default function Chats() {
                 setDialogConfig(prev => ({ ...prev, isOpen: false }));
                 if (dialogConfig.onConfirm) dialogConfig.onConfirm();
               }}
-              style={{ '--md-sys-color-primary': '#eab308', '--md-sys-color-on-primary': '#000000', padding: '0 24px', minWidth: '100px' }}
+              style={{ '--md-sys-color-primary': '#000000', '--md-sys-color-on-primary': '#ffffff', padding: '0 24px', minWidth: '100px' }}
             >
               {dialogConfig.type === 'confirm' ? 'Delete' : 'OK'}
             </md-filled-button>
