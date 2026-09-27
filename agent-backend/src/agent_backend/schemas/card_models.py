@@ -156,6 +156,45 @@ class ServiceCategoriesCard(BaseModel):
     totalCount: int = Field(default=0, description="Total number of categories")
 
 
+class WorkerCardItem(BaseModel):
+    """Structured representation of a single worker candidate."""
+    id: Union[int, str] = Field(description="Worker ID")
+    name: str = Field(description="Worker full name")
+    service: Optional[str] = Field(default=None, description="Primary trade or service category")
+    skills: List[str] = Field(default_factory=list, description="Specific trade skills")
+    rating: Optional[float] = Field(default=None, description="Overall average rating out of 5")
+    price: Optional[float] = Field(default=None, description="Hourly or base rate")
+    pricingModel: Optional[str] = Field(default="Hourly", description="Pricing model: Hourly, Daily, or Fixed")
+    location: Optional[str] = Field(default=None, description="Primary service area or city")
+    distance: Optional[float] = Field(default=None, description="Distance from user in kilometers if calculated")
+    isAvailable: bool = Field(default=True, description="Current availability status")
+    experienceYears: Optional[int] = Field(default=None, description="Years of professional experience")
+    profileImage: Optional[str] = Field(default=None, description="Avatar image URL")
+    completedJobs: int = Field(default=0, description="Total completed jobs")
+
+
+class WorkerListCard(BaseModel):
+    """UI Card rendered when recommending matching service workers."""
+    skill: Optional[str] = Field(default=None, description="Filtered trade or skill")
+    location: Optional[str] = Field(default=None, description="Filtered service location")
+    totalCount: int = Field(default=0, description="Total number of workers found")
+    workers: List[WorkerCardItem] = Field(default_factory=list, description="List of matched worker cards")
+
+
+class WorkerDetailCard(BaseModel):
+    """UI Card rendered for single worker profile and detailed reliability metrics."""
+    worker: WorkerCardItem = Field(description="Core worker summary")
+    description: Optional[str] = Field(default=None, description="Worker biography or description")
+    email: Optional[str] = Field(default=None, description="Contact email")
+    phoneNo: Optional[str] = Field(default=None, description="Contact phone")
+    acceptanceRate: Optional[str] = Field(default=None, description="Job acceptance percentage")
+    completionRate: Optional[str] = Field(default=None, description="Job completion percentage")
+    cancellationRate: Optional[str] = Field(default=None, description="Job cancellation percentage")
+    qualityRating: Optional[int] = Field(default=None, description="Quality score out of 5")
+    punctualityRating: Optional[int] = Field(default=None, description="Punctuality score out of 5")
+    communicationRating: Optional[int] = Field(default=None, description="Communication score out of 5")
+
+
 ResponseTypeLiteral = Literal[
     "post_confirmation",
     "post_created",
@@ -165,6 +204,8 @@ ResponseTypeLiteral = Literal[
     "post_deleted",
     "user_profile",
     "service_categories",
+    "worker_list",
+    "worker_detail",
     "text_message",
     "error"
 ]
