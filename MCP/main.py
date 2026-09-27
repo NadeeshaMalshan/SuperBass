@@ -63,7 +63,10 @@ tools = [
             "type": "object",
             "properties": {
                 "query": {"type": "string", "description": "Search query"},
-                "skill": {"type": "string", "description": "Filter by skill"},
+                "skill": {"type": "string", "description": "Filter by skill or trade (e.g., Plumbing, Electrical)"},
+                "location": {"type": "string", "description": "Filter by location or service area (e.g., Malabe, Colombo)"},
+                "residentLat": {"type": "number", "description": "Resident latitude for distance calculation"},
+                "residentLng": {"type": "number", "description": "Resident longitude for distance calculation"},
                 "availability": {"type": "string", "description": "Filter by availability"},
                 "page": {"type": "integer", "description": "Page number"},
                 "pageSize": {"type": "integer", "description": "Page size"}
@@ -277,7 +280,10 @@ tools = [
 
 # Tool implementation functions
 async def call_search_workers(args: Dict[str, Any]):
-    params = {k: v for k, v in args.items() if v is not None}
+    search_args = dict(args)
+    if "query" in search_args and "skill" not in search_args:
+        search_args["skill"] = search_args.pop("query")
+    params = {k: v for k, v in search_args.items() if v is not None}
     response = await backend_client.get("/api/Workers/search", params=params)
     return response.json()
 
