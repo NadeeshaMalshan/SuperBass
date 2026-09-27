@@ -1,5 +1,6 @@
 /* ==========================================================================
-   User Account & Navigation Menu Popup Styles
+   SuperBass User Account & Navigation Menu Popup Styles
+   Design Standard: Modern High-Contrast Monochrome (Pitch Black, Pure White, Grays)
    ========================================================================== */
 
 .user-menu-wrapper {
@@ -9,10 +10,10 @@
 
 /* User Button in Navbar */
 .user-menu-trigger-btn {
-  background-color: #0f172a;
+  background-color: #000000;
   color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 9999px;
   padding: 6px 14px;
   font-size: 0.88rem;
   font-weight: 600;
@@ -20,13 +21,13 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   user-select: none;
 }
 
 .user-menu-trigger-btn:hover {
-  background-color: #1e293b;
+  background-color: #262626;
   border-color: rgba(255, 255, 255, 0.25);
   transform: translateY(-1px);
 }
@@ -36,7 +37,7 @@
   height: 26px;
   border-radius: 50%;
   object-fit: cover;
-  background-color: #f06292;
+  background-color: #121212;
   color: #ffffff;
   display: flex;
   align-items: center;
@@ -54,7 +55,7 @@
 
 .user-menu-arrow {
   font-size: 0.7rem;
-  color: #94a3b8;
+  color: #a3a3a3;
   transition: transform 0.2s;
 }
 
@@ -69,13 +70,14 @@
   right: 0;
   width: 250px;
   background: #ffffff;
+  border: 1px solid #e5e5e5;
   border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04);
   padding: 8px;
   z-index: 10000;
   animation: menuPopupFade 0.18s cubic-bezier(0.1, 0.9, 0.2, 1);
   transform-origin: top right;
-  font-family: var(--font-body);
+  font-family: var(--font-body, 'DM Sans', sans-serif);
 }
 
 @keyframes menuPopupFade {
@@ -94,14 +96,14 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid #eeeeee;
   margin-bottom: 4px;
   border-radius: 12px 12px 0 0;
   transition: background-color 0.15s ease;
 }
 
 .user-menu-header:hover {
-  background-color: #f8fafc;
+  background-color: #f7f7f7;
 }
 
 .user-menu-header-avatar {
@@ -109,8 +111,9 @@
   height: 38px;
   border-radius: 50%;
   object-fit: cover;
-  background-color: #0284c7;
+  background-color: #000000;
   color: #ffffff;
+  border: 1.5px solid #e5e5e5;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -125,7 +128,7 @@
 .user-menu-header-name {
   font-size: 0.92rem;
   font-weight: 700;
-  color: #0f172a;
+  color: #000000;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -133,7 +136,7 @@
 
 .user-menu-header-email {
   font-size: 0.75rem;
-  color: #64748b;
+  color: #666666;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -158,41 +161,41 @@
   gap: 12px;
   font-size: 0.88rem;
   font-weight: 600;
-  color: #334155;
+  color: #000000;
   cursor: pointer;
   transition: all 0.15s ease;
   text-align: left;
 }
 
 .user-menu-item:hover {
-  background-color: #f1f5f9;
-  color: #0f172a;
+  background-color: #f3f3f3;
+  color: #000000;
 }
 
 .user-menu-item-icon {
   width: 20px;
   font-size: 0.95rem;
-  color: #64748b;
+  color: #666666;
   text-align: center;
 }
 
 .user-menu-item:hover .user-menu-item-icon {
-  color: #0284c7;
+  color: #000000;
 }
 
 .user-menu-badge {
   margin-left: auto;
-  background-color: #0284c7;
+  background-color: #000000;
   color: #ffffff;
   font-size: 0.72rem;
   font-weight: 700;
   padding: 2px 7px;
-  border-radius: 10px;
+  border-radius: 9999px;
 }
 
 .user-menu-divider {
   height: 1px;
-  background-color: #f1f5f9;
+  background-color: #eeeeee;
   margin: 4px 0;
 }
 
@@ -210,7 +213,7 @@
 }
 
 /* ==========================================================================
-   M3 Google-style Avatar Trigger (Gmail Header Match)
+   M3 Google-style Avatar Trigger
    ========================================================================== */
 .m3-google-avatar-trigger {
   background: transparent;
@@ -231,7 +234,7 @@
 }
 
 .m3-google-avatar-trigger:focus-visible {
-  outline: 2px solid #1a73e8;
+  outline: 2px solid #000000;
   outline-offset: 2px;
 }
 
@@ -243,35 +246,20 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: box-shadow 0.2s cubic-bezier(0.2, 0, 0, 1), transform 0.2s ease;
+  background: #000000;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 
-/* Worker: Blue Ring */
-.m3-google-avatar-ring.worker-ring {
-  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 50%, #60a5fa 100%);
-  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.25), 0 2px 6px rgba(37, 99, 235, 0.35);
+.m3-google-avatar-trigger:hover .m3-google-avatar-ring {
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
 }
-
-.m3-google-avatar-trigger:hover .m3-google-avatar-ring.worker-ring {
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.4), 0 3px 12px rgba(37, 99, 235, 0.6);
-}
-
-/* Resident: Yellow Ring */
-.m3-google-avatar-ring.resident-ring {
-  background: linear-gradient(135deg, #d97706 0%, #FDC101 50%, #fef08a 100%);
-  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.25), 0 2px 6px rgba(245, 158, 11, 0.4);
-}
-
-.m3-google-avatar-trigger:hover .m3-google-avatar-ring.resident-ring {
-  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.4), 0 3px 12px rgba(245, 158, 11, 0.65);
-}
-
 
 .m3-google-avatar-letter {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background-color: #1f1f1f;
+  background-color: #000000;
   color: #ffffff;
   font-family: var(--font-heading, 'DM Sans', sans-serif);
   font-weight: 700;

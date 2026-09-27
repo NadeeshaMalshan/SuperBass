@@ -3,6 +3,7 @@ import axios from 'axios';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './App.css';
+import './Find.css';
 
 // Google Material 3 Web Components
 import '@material/web/button/filled-button.js';
