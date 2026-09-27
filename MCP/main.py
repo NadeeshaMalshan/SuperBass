@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request, HTTPException
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List, Union
+from datetime import datetime
 import json
 import asyncio
 import os
@@ -260,6 +261,17 @@ tools = [
             },
             "required": ["email"]
         }
+    },
+    {
+        "name": "get_service_categories",
+        "description": "Get the official list of 21 standardized service categories available across SuperBass for workers and community posts",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "includeDetails": {"type": "boolean", "description": "Include icons and IDs (default true)"}
+            },
+            "required": []
+        }
     }
 ]
 
@@ -281,11 +293,66 @@ async def call_get_worker_performance(args: Dict[str, Any]):
 
 async def call_check_worker_availability(args: Dict[str, Any]):
     worker_id = args["workerId"]
-    start_time = args["startTime"]
-    end_time = args["endTime"]
-    params = {"startTime": start_time, "endTime": end_time}
-    response = await backend_client.get(f"/api/Workers/{worker_id}/availability", params=params)
-    return response.json()
+    start_time = args.get("startTime", "")
+    end_time = args.get("endTime", "")
+
+    # Fetch worker profile
+    response = await backend_client.get(f"/api/Workers/{worker_id}")
+    if response.status_code != 200:
+        return {"workerId": worker_id, "isAvailable": False, "error": f"Worker not found ({response.status_code})"}
+
+    worker = response.json()
+    is_general_available = worker.get("isAvailable", True)
+    schedule_json_raw = worker.get("availabilityScheduleJson") or "{}"
+
+    schedule_obj = {}
+    if isinstance(schedule_json_raw, str):
+        try:
+            schedule_obj = json.loads(schedule_json_raw)
+        except Exception:
+            schedule_obj = {}
+    elif isinstance(schedule_json_raw, dict):
+        schedule_obj = schedule_json_raw
+
+    is_slot_available = is_general_available
+    reason = "Worker is available" if is_general_available else "Worker is currently unavailable"
+
+    if is_general_available and start_time:
+        try:
+            clean_date = start_time.replace("Z", "+00:00")
+            dt = datetime.fromisoformat(clean_date)
+            weekday_abbr = dt.strftime("%a")
+
+            work_days = schedule_obj.get("workDays")
+            if isinstance(work_days, dict):
+                if not work_days.get(weekday_abbr, True):
+                    is_slot_available = False
+                    reason = f"Worker does not work on {dt.strftime('%A')}s"
+            elif isinstance(work_days, list):
+                if weekday_abbr not in work_days:
+                    is_slot_available = False
+                    reason = f"Worker does not work on {dt.strftime('%A')}s"
+
+            start_hour = schedule_obj.get("startTime")
+            end_hour = schedule_obj.get("endTime")
+            if start_hour and end_hour and is_slot_available:
+                req_time = dt.strftime("%H:%M")
+                if req_time < start_hour or req_time > end_hour:
+                    is_slot_available = False
+                    reason = f"Requested time {req_time} is outside worker hours ({start_hour} - {end_hour})"
+        except Exception:
+            pass
+
+    return {
+        "workerId": worker.get("id", worker_id),
+        "workerName": worker.get("name"),
+        "isAvailable": is_general_available,
+        "isSlotAvailable": is_slot_available,
+        "status": "Available" if is_slot_available else "Unavailable",
+        "reason": reason,
+        "schedule": schedule_obj,
+        "requestedSlot": {"startTime": start_time, "endTime": end_time}
+    }
 
 async def call_create_booking(args: Dict[str, Any]):
     worker_id = int(args.get("workerId", 0))
@@ -341,10 +408,12 @@ async def call_create_community_post(args: Dict[str, Any]):
         "location": args.get("location", "Colombo")
     }
     response = await backend_client.post("/api/community-posts", json=payload)
-    return response.json()
+    if response.status_code >= 400:
+        raise ValueError(f"Backend error ({response.status_code}): {response.text}")
+    return response.json() if response.text else {"success": True}
 
 async def call_get_community_posts(args: Dict[str, Any]):
-    community_id = str(args.get("communityId", ""))
+    community_id = str(args.get("communityId", "")).strip()
     params = {}
     if args.get("limit") is not None:
         params["limit"] = args["limit"]
@@ -353,10 +422,12 @@ async def call_get_community_posts(args: Dict[str, Any]):
     if community_id.isdigit():
         response = await backend_client.get(f"/api/community-posts/{community_id}", params=params)
     else:
-        if community_id:
+        if community_id and community_id.lower() != "all":
             params["category"] = community_id
         response = await backend_client.get("/api/community-posts", params=params)
-    return response.json()
+    if response.status_code >= 400:
+        raise ValueError(f"Backend error ({response.status_code}): {response.text}")
+    return response.json() if response.text else []
 
 async def call_update_community_post(args: Dict[str, Any]):
     post_id = args["postId"]
@@ -369,7 +440,9 @@ async def call_update_community_post(args: Dict[str, Any]):
         "userEmail": args.get("authorId") if "@" in str(args.get("authorId", "")) else None
     }
     response = await backend_client.put(f"/api/community-posts/{post_id}", json=payload)
-    return response.json()
+    if response.status_code >= 400:
+        raise ValueError(f"Backend error ({response.status_code}): {response.text}")
+    return response.json() if response.text else {"success": True}
 
 async def call_delete_community_post(args: Dict[str, Any]):
     post_id = args["postId"]
@@ -380,7 +453,9 @@ async def call_delete_community_post(args: Dict[str, Any]):
             params["requesterEmail"] = author_id
         params["requesterName"] = str(author_id).split("@")[0]
     response = await backend_client.delete(f"/api/community-posts/{post_id}", params=params)
-    return response.json()
+    if response.status_code >= 400:
+        raise ValueError(f"Backend error ({response.status_code}): {response.text}")
+    return response.json() if response.text else {"success": True, "deletedPostId": post_id}
 
 async def call_create_worker_review(args: Dict[str, Any]):
     booking_id = args.get("bookingId")
@@ -394,14 +469,18 @@ async def call_create_worker_review(args: Dict[str, Any]):
         "comment": args.get("comment", "")
     }
     response = await backend_client.post(f"/api/Bookings/{booking_id}/review", json=payload)
-    return response.json()
+    if response.status_code >= 400:
+        raise ValueError(f"Backend error ({response.status_code}): {response.text}")
+    return response.json() if response.text else {"success": True}
 
 async def call_get_user_community_posts(args: Dict[str, Any]):
     email = str(args.get("email", "")).strip()
     if not email:
         raise ValueError("email required")
     response = await backend_client.get(f"/api/community-posts/user/{email}")
-    return response.json()
+    if response.status_code >= 400:
+        raise ValueError(f"Backend error ({response.status_code}): {response.text}")
+    return response.json() if response.text else []
 
 async def call_get_user_details(args: Dict[str, Any]):
     email = str(args.get("email", "")).strip()
@@ -459,6 +538,16 @@ async def call_get_user_details(args: Dict[str, Any]):
         "worker": worker_profile
     }
 
+async def call_get_service_categories(args: Dict[str, Any]):
+    try:
+        response = await backend_client.get("/api/categories")
+        if response.status_code == 200:
+            return response.json()
+    except Exception:
+        pass
+    fallback_res = await backend_client.get("/api/community-posts/categories")
+    return fallback_res.json()
+
 # Map tool names to functions
 TOOL_FUNCTIONS = {
     "search_workers": call_search_workers,
@@ -477,6 +566,7 @@ TOOL_FUNCTIONS = {
     "create_worker_review": call_create_worker_review,
     "get_user_community_posts": call_get_user_community_posts,
     "get_user_details": call_get_user_details,
+    "get_service_categories": call_get_service_categories,
 }
 
 @app.get("/")

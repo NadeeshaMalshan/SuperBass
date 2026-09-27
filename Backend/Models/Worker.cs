@@ -63,7 +63,7 @@ namespace Superbass.Models
             ? (double)CancelledJobs / (CompletedJobs + CancelledJobs) * 100 
             : 0.0;
 
-        // Navigation property for skills
+        // Navigation property for skills & trade specialization
         public List<WorkerSkill> Skills { get; set; } = new();
     }
 
@@ -72,8 +72,17 @@ namespace Superbass.Models
         [Key]
         public int Id { get; set; }
         public int WorkerId { get; set; }
+
+        // Specific Service / Trade category (e.g. Plumbing, Electrical, Carpentry, Painting, etc.)
         [Required]
-        public string SkillName { get; set; } = null!; // Plumbing, Electrical, Painting, etc.
+        public string ServiceName { get; set; } = "General";
+
+        // Array of specific skills relevant to this service (e.g. ["Pipe Fitting", "Leak Repair", "Drain Cleaning"])
+        public List<string> Skills { get; set; } = new();
+
         public int ExperienceYears { get; set; } = 1;
+
+        // Legacy / fallback field for backward compatibility with older queries and data
+        public string? SkillName { get; set; }
     }
 }

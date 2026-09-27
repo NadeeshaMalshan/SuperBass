@@ -6,12 +6,9 @@ import categoriesData from './data/categories.json';
 import ChatModal from './components/ChatModal.jsx';
 import UserMenu from './components/UserMenu.jsx';
 import AiAssistantWidget from './components/AiAssistantWidget.jsx';
-
-// Material 3 Web Components
-import '@material/web/button/filled-button.js';
-import '@material/web/button/outlined-button.js';
-import '@material/web/progress/circular-progress.js';
-import Loader from './components/Loader.jsx';
+import M3TopNavbar from './components/M3TopNavbar.jsx';
+import hero2Img from './assets/community.png';
+import sriLankaDistricts from './data/sriLankaDistricts.json';
 import { BACKEND_URL } from './config.js';
 
 const API_BASE_URL = `${BACKEND_URL}/api/community-posts`;
@@ -26,13 +23,28 @@ export default function Community() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [selectedLocation, setSelectedLocation] = useState('all');
+  const [selectedProvince, setSelectedProvince] = useState('all');
+  const [selectedDistrict, setSelectedDistrict] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
+  const [currentPage, setCurrentPage] = useState(1);
+  const CARDS_PER_PAGE = 9;
 
-  // Active Tab: 'feed' or 'moderation'
-  const [activeTab, setActiveTab] = useState('feed');
-  const [moderationPosts, setModerationPosts] = useState([]);
+  // Community Card Grid View Mode: 'large' | 'small' | 'list'
+  const [viewMode, setViewMode] = useState(() => {
+    return localStorage.getItem('community_view_mode') || 'large';
+  });
+
+  const handleViewModeChange = (mode) => {
+    setViewMode(mode);
+    localStorage.setItem('community_view_mode', mode);
+  };
+
+  // Reset page to 1 whenever filters, search, or sort change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedCategory, selectedProvince, selectedDistrict, sortBy]);
 
   // Detail Modal State
   const [selectedPostForDetail, setSelectedPostForDetail] = useState(null);
@@ -40,74 +52,54 @@ export default function Community() {
 
   // Edit Modal State
   const [editingPost, setEditingPost] = useState(null);
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
   const [editCategory, setEditCategory] = useState('plumbing');
-  const [editLocation, setEditLocation] = useState('Colombo 05');
+  const [editProvince, setEditProvince] = useState('Western Province');
+  const [editDistrict, setEditDistrict] = useState('Colombo');
   const [editImages, setEditImages] = useState([]);
   const editFileInputRef = useRef(null);
 
-  // Create Post Modal State
+  // Create Post Modal State (Uber Modal)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isSubmittingPost, setIsSubmittingPost] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newContent, setNewContent] = useState('');
   const [newCategory, setNewCategory] = useState('plumbing');
-  const [newCondition, setNewCondition] = useState('Brand New');
-  const [newPrice, setNewPrice] = useState('');
-  const [newLocation, setNewLocation] = useState('Colombo 05');
+  const [newProvince, setNewProvince] = useState('Western Province');
+  const [newDistrict, setNewDistrict] = useState('Colombo');
   const [newImages, setNewImages] = useState([]);
   const fileInputRef = useRef(null);
 
+  const token = localStorage.getItem('token');
+  const isLoggedIn = !!token;
   const currentUserEmail = localStorage.getItem('email');
   const currentUserName = localStorage.getItem('userName');
   const activeRole = localStorage.getItem('activeRole') || 'Resident';
 
-  const isPostOwner = (post) => {
-    if (!post) return false;
-    if (!currentUserEmail && !currentUserName) return false;
-
-    const postUserId = post.userId ? post.userId.trim().toLowerCase() : '';
-    const postUserName = post.userName ? post.userName.trim().toLowerCase() : '';
-    const emailLower = currentUserEmail ? currentUserEmail.trim().toLowerCase() : '';
-    const emailPrefix = emailLower.includes('@') ? emailLower.split('@')[0] : emailLower;
-    const nameLower = currentUserName ? currentUserName.trim().toLowerCase() : '';
-
-    return (
-      (emailLower && postUserId === emailLower) ||
-      (emailPrefix && postUserId === emailPrefix) ||
-      (nameLower && postUserName === nameLower) ||
-      (emailPrefix && postUserName === emailPrefix)
-    );
-  };
-
-  // Comments State (postId -> array of comments)
+  // Comments map per post
   const [commentsMap, setCommentsMap] = useState({});
   const [newCommentText, setNewCommentText] = useState('');
 
-  // Report Modal State
+  // Report Modal state
   const [reportingPostId, setReportingPostId] = useState(null);
   const [reportReason, setReportReason] = useState('');
 
-  // Chat Modal State
+  // Realtime Chat state
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [chatRecipient, setChatRecipient] = useState({
-    name: 'Jayashan Manodya',
-    email: 'jayashan@superbass.lk',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Jayashan'
-  });
+  const [chatRecipient, setChatRecipient] = useState(null);
   const [chatPostContext, setChatPostContext] = useState(null);
 
   const handleOpenChat = (post) => {
-    if (!post) return;
     setChatRecipient({
-      name: post.userName || 'SuperBass Member',
-      email: post.userId || post.userEmail || `${post.userName?.toLowerCase().replace(/\s+/g, '') || 'member'}@superbass.lk`,
-      avatar: post.userAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.postId || post.userName}`,
-      workerId: null,
-      userId: post.userId
+      id: post.userEmail || post.userId || 'seller',
+      name: post.userName || 'Community Seller',
+      avatar: post.userAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.postId}`,
+      role: 'Worker'
     });
     setChatPostContext({
-      id: post.postId,
+      postId: post.postId,
       title: post.title
     });
     setIsChatOpen(true);
@@ -120,14 +112,37 @@ export default function Community() {
       const params = {};
       if (searchTerm) params.search = searchTerm;
       if (selectedCategory !== 'all') params.category = selectedCategory;
-      if (selectedLocation !== 'all') params.location = selectedLocation;
+      if (selectedDistrict !== 'all') {
+        params.location = selectedDistrict;
+      } else if (selectedProvince !== 'all') {
+        params.location = selectedProvince.replace(' Province', '');
+      }
       if (sortBy) params.sort = sortBy;
 
       const res = await axios.get(API_BASE_URL, { params });
       if (res.data && Array.isArray(res.data)) {
-        const enriched = res.data.map((p, idx) => ({
+        let results = res.data;
+        if (selectedProvince !== 'all' && selectedDistrict === 'all') {
+          const provinceDistricts = sriLankaDistricts[selectedProvince] || [];
+          const provKey = selectedProvince.toLowerCase().replace(' province', '');
+          results = results.filter(p => {
+            const loc = (p.location || '').toLowerCase();
+            return loc.includes(provKey) || provinceDistricts.some(d => loc.includes(d.toLowerCase()));
+          });
+        }
+        // Apply sorting
+        if (sortBy === 'popular') {
+          results.sort((a, b) => (b.likesCount || 0) - (a.likesCount || 0) || new Date(b.createdAt) - new Date(a.createdAt));
+        } else if (sortBy === 'oldest') {
+          results.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        } else {
+          // default newest first
+          results.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        }
+
+        const enriched = results.map((p, idx) => ({
           ...p,
-          condition: p.condition || 'Brand New',
+          condition: p.condition || null,
           price: p.price || (p.priceVal ? `Rs ${p.priceVal.toLocaleString()}` : 'Inquire / Quote'),
           badgeType: p.badgeType || (idx % 2 === 0 ? 'verified_member' : 'grey_member'),
           hasBump: p.hasBump || false
@@ -144,117 +159,110 @@ export default function Community() {
     }
   };
 
-  // Fetch Moderation Queue from DB
-  const fetchModerationQueue = async () => {
-    try {
-      const res = await axios.get(`${API_BASE_URL}/moderation`);
-      setModerationPosts(res.data || []);
-    } catch (err) {
-      console.error("Error fetching moderation queue:", err);
-      setModerationPosts([]);
-    }
-  };
-
   useEffect(() => {
     fetchPosts();
-  }, [searchTerm, selectedCategory, selectedLocation, sortBy]);
-
-  useEffect(() => {
-    if (activeTab === 'moderation') {
-      fetchModerationQueue();
-    }
-  }, [activeTab]);
+  }, [searchTerm, selectedCategory, selectedProvince, selectedDistrict, sortBy]);
 
   // Handle Like
   const handleLike = async (postId, e) => {
     if (e) e.stopPropagation();
     try {
       const res = await axios.post(`${API_BASE_URL}/${postId}/like`);
-      if (res.data) {
-        setPosts(prev => prev.map(p => {
-          if (p.postId === postId) {
-            return {
-              ...p,
-              isLiked: res.data.isLiked,
-              likesCount: res.data.likesCount
-            };
-          }
-          return p;
-        }));
+      const newLikes = res.data.likes;
+      const isLiked = res.data.isLiked;
 
-        if (selectedPostForDetail && selectedPostForDetail.postId === postId) {
-          setSelectedPostForDetail(prev => ({
-            ...prev,
-            isLiked: res.data.isLiked,
-            likesCount: res.data.likesCount
-          }));
+      setPosts(prev => prev.map(p => {
+        if (p.postId === postId) {
+          return { ...p, likesCount: newLikes, isLiked: isLiked };
         }
+        return p;
+      }));
+
+      if (selectedPostForDetail && selectedPostForDetail.postId === postId) {
+        setSelectedPostForDetail(prev => ({
+          ...prev,
+          likesCount: newLikes,
+          isLiked: isLiked
+        }));
       }
     } catch (err) {
       console.error("Error liking post:", err);
     }
   };
 
-  // Open Detail Modal & Fetch Comments from DB
-  const handleCardClick = async (post) => {
-    setSelectedPostForDetail(post);
-    setSelectedGalleryImage(post.images && post.images.length > 0 ? post.images[0] : null);
-
+  // Fetch comments for a specific post
+  const fetchComments = async (postId) => {
     try {
-      const res = await axios.get(`${API_BASE_URL}/${post.postId}/comments`);
-      setCommentsMap(prev => ({ ...prev, [post.postId]: res.data || [] }));
+      const res = await axios.get(`${API_BASE_URL}/${postId}/comments`);
+      setCommentsMap(prev => ({ ...prev, [postId]: res.data || [] }));
     } catch (err) {
       console.error("Error fetching comments:", err);
-      setCommentsMap(prev => ({ ...prev, [post.postId]: [] }));
     }
   };
 
-  // Submit Comment in Detail Modal to DB
+  // Add Comment
   const handleAddComment = async (postId) => {
-    if (!newCommentText || !newCommentText.trim()) return;
-
-    try {
-      const res = await axios.post(`${API_BASE_URL}/${postId}/comments`, {
-        content: newCommentText,
-        userName: localStorage.getItem('userName') || "You (Resident)",
-        userAvatar: localStorage.getItem('userPicture') || "https://api.dicebear.com/7.x/avataaars/svg?seed=CurrentUser"
-      });
-
-      if (res.data) {
-        setCommentsMap(prev => ({
-          ...prev,
-          [postId]: [...(prev[postId] || []), res.data]
-        }));
-
-        setPosts(prev => prev.map(p => p.postId === postId ? { ...p, commentsCount: p.commentsCount + 1 } : p));
-        if (selectedPostForDetail && selectedPostForDetail.postId === postId) {
-          setSelectedPostForDetail(prev => ({ ...prev, commentsCount: prev.commentsCount + 1 }));
-        }
-      }
-    } catch (err) {
-      console.error("Error adding comment to DB:", err);
-    }
-
-    setNewCommentText('');
-  };
-
-  // Delete Post from DB
-  const handleDeletePost = async (postId, e) => {
-    if (e) e.stopPropagation();
-    if (!window.confirm("Are you sure you want to delete this community post?")) return;
-
+    if (!newCommentText.trim()) return;
     try {
       const userEmail = localStorage.getItem('email');
       const userName = localStorage.getItem('userName');
       const token = localStorage.getItem('token');
-      await axios.delete(`${API_BASE_URL}/${postId}?requesterEmail=${encodeURIComponent(userEmail || '')}&requesterName=${encodeURIComponent(userName || '')}`, {
+      const res = await axios.post(`${API_BASE_URL}/${postId}/comments`, {
+        content: newCommentText,
+        userName: userName || "Community Resident",
+        userAvatar: localStorage.getItem('userPicture') || "https://api.dicebear.com/7.x/avataaars/svg?seed=User",
+        userEmail: userEmail
+      }, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
+
+      setCommentsMap(prev => ({
+        ...prev,
+        [postId]: [...(prev[postId] || []), res.data]
+      }));
+      setNewCommentText('');
+    } catch (err) {
+      console.error("Error adding comment:", err);
+      alert("Failed to submit comment.");
+    }
+  };
+
+  // Click card to open detail view
+  const handleCardClick = (post) => {
+    setSelectedPostForDetail(post);
+    setSelectedGalleryImage(post.images && post.images.length > 0 ? post.images[0] : null);
+    fetchComments(post.postId);
+  };
+
+  // Check if current user is owner of a post
+  const isPostOwner = (post) => {
+    if (!isLoggedIn) return false;
+    if (currentUserEmail && post.userEmail && currentUserEmail.toLowerCase() === post.userEmail.toLowerCase()) {
+      return true;
+    }
+    if (currentUserName && post.userName && currentUserName.toLowerCase() === post.userName.toLowerCase()) {
+      return true;
+    }
+    return false;
+  };
+
+  // Delete Post strictly from DB
+  const handleDeletePost = async (postId, e) => {
+    if (e) e.stopPropagation();
+    if (!window.confirm("Are you sure you want to permanently delete this post?")) return;
+
+    try {
+      const userEmail = localStorage.getItem('email');
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API_BASE_URL}/${postId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        params: { userEmail }
+      });
       alert("Post deleted successfully.");
-      setPosts(prev => prev.filter(p => p.postId !== postId));
       if (selectedPostForDetail && selectedPostForDetail.postId === postId) {
         setSelectedPostForDetail(null);
       }
+      fetchPosts();
     } catch (err) {
       console.error("Error deleting post:", err);
       const msg = err.response?.data?.message || "Failed to delete post.";
@@ -269,7 +277,22 @@ export default function Community() {
     setEditTitle(post.title);
     setEditContent(post.content);
     setEditCategory(post.serviceCategoryId || 'plumbing');
-    setEditLocation(post.location || 'Colombo 05');
+
+    let prov = 'Western Province';
+    let dist = 'Colombo';
+    if (post.location) {
+      for (const [pName, dists] of Object.entries(sriLankaDistricts)) {
+        for (const d of dists) {
+          if (post.location.toLowerCase().includes(d.toLowerCase())) {
+            prov = pName;
+            dist = d;
+            break;
+          }
+        }
+      }
+    }
+    setEditProvince(prov);
+    setEditDistrict(dist);
     setEditImages(post.images || []);
   };
 
@@ -291,6 +314,7 @@ export default function Community() {
     if (!editingPost || !editTitle.trim() || !editContent.trim()) return;
 
     try {
+      setIsSubmittingEdit(true);
       const userEmail = localStorage.getItem('email');
       const userName = localStorage.getItem('userName');
       const token = localStorage.getItem('token');
@@ -298,7 +322,7 @@ export default function Community() {
         title: editTitle,
         content: editContent,
         serviceCategoryId: editCategory,
-        location: editLocation,
+        location: `${editDistrict}, ${editProvince}`,
         images: editImages,
         userEmail: userEmail,
         userName: userName
@@ -306,17 +330,29 @@ export default function Community() {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
 
-      alert("Post updated successfully!");
+      // Automatically close modal after saving to DB
       setEditingPost(null);
-      fetchPosts();
+
+      // Re-fetch community posts from DB
+      await fetchPosts();
+
+      // Redirect / scroll back to community feed
+      navigate('/community');
+      setTimeout(() => {
+        const feedElement = document.getElementById('community-feed') || document.querySelector('.community-cards-grid');
+        if (feedElement) {
+          feedElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
     } catch (err) {
       console.error("Error updating post:", err);
-      const msg = err.response?.data?.message || "Failed to update post.";
-      alert(msg);
+      alert("Failed to update post in database.");
+    } finally {
+      setIsSubmittingEdit(false);
     }
   };
 
-  // Image Upload for New Post
+  // Handle image upload for Create Post
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files || []);
     files.forEach(file => {
@@ -328,19 +364,36 @@ export default function Community() {
     });
   };
 
-  // Submit Create Post directly to Backend DB
-  const handleCreatePost = async (e) => {
-    e.preventDefault();
-    if (!newTitle.trim() || !newContent.trim()) return;
+  // Open Create Modal with sign-in verification
+  const handleOpenCreate = () => {
+    if (!isLoggedIn) {
+      alert("Please sign in with Google or your account to post in the community.");
+      navigate('/join');
+      return;
+    }
+    setIsCreateModalOpen(true);
+  };
+
+  // Create Post strictly to Backend Database
+  const handleCreatePost = async () => {
+    if (!isLoggedIn) {
+      alert("Please sign in to post.");
+      return;
+    }
+    if (!newTitle.trim() || !newContent.trim()) {
+      alert("Please provide both an Ad title and description.");
+      return;
+    }
 
     try {
+      setIsSubmittingPost(true);
       const userEmail = localStorage.getItem('email');
       const token = localStorage.getItem('token');
       await axios.post(API_BASE_URL, {
         title: newTitle,
         content: newContent,
         serviceCategoryId: newCategory,
-        location: newLocation,
+        location: `${newDistrict}, ${newProvince}`,
         images: newImages,
         userName: localStorage.getItem('userName') || "You (Resident)",
         userAvatar: localStorage.getItem('userPicture') || "https://api.dicebear.com/7.x/avataaars/svg?seed=CurrentUser",
@@ -349,455 +402,743 @@ export default function Community() {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
 
-      // Refresh listings strictly from DB
+      // Refetch posts immediately so user sees newly published post
       await fetchPosts();
+
+      // Close modal and reset fields
+      setIsCreateModalOpen(false);
+      setNewTitle('');
+      setNewContent('');
+      setNewProvince('Western Province');
+      setNewDistrict('Colombo');
+      setNewImages([]);
+
+      // Redirect / scroll to community feed
+      navigate('/community');
+      setTimeout(() => {
+        const feedElement = document.getElementById('community-feed') || document.querySelector('.community-cards-grid');
+        if (feedElement) {
+          feedElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
     } catch (err) {
       console.error("Error creating post in DB:", err);
       alert("Failed to save post to database. Please make sure backend database is connected.");
+    } finally {
+      setIsSubmittingPost(false);
     }
-
-    setIsCreateModalOpen(false);
-    setNewTitle('');
-    setNewContent('');
-    setNewPrice('');
-    setNewImages([]);
   };
 
   // Submit Report to DB
   const handleReportSubmit = async () => {
     if (!reportingPostId || !reportReason.trim()) return;
     try {
-      await axios.post(`${API_BASE_URL}/${reportingPostId}/report`, { reason: reportReason });
-      alert("Thank you. The post has been reported for moderation.");
+      const userEmail = localStorage.getItem('email');
+      const token = localStorage.getItem('token');
+      await axios.post(`${API_BASE_URL}/${reportingPostId}/report`, {
+        reason: reportReason,
+        reporterEmail: userEmail
+      }, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      alert("Thank you. This post has been flagged for community safety and moderation review.");
+      setReportingPostId(null);
+      setReportReason('');
+      fetchPosts();
     } catch (err) {
       console.error("Error reporting post:", err);
+      alert("Failed to submit report.");
     }
-    setReportingPostId(null);
-    setReportReason('');
   };
 
-  // Helper for formatting time
+  // Format timestamp helper
   const formatTimeAgo = (dateStr) => {
-    if (!dateStr) return 'just now';
+    if (!dateStr) return 'Recently';
     const date = new Date(dateStr);
-    const seconds = Math.floor((new Date() - date) / 1000);
-    if (seconds < 60) return 'just now';
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''}`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-    const days = Math.floor(hours / 24);
-    return `${days} day${days > 1 ? 's' : ''} ago`;
+    const now = new Date();
+    const diffHours = Math.floor((now - date) / (1000 * 60 * 60));
+    if (diffHours < 1) return 'Just now';
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  };
+
+  // Pagination calculations (9 cards per page)
+  const allCurrentPosts = posts;
+  const totalPosts = allCurrentPosts.length;
+  const totalPages = Math.ceil(totalPosts / CARDS_PER_PAGE) || 1;
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (safeCurrentPage - 1) * CARDS_PER_PAGE;
+  const paginatedPosts = allCurrentPosts.slice(startIndex, startIndex + CARDS_PER_PAGE);
+
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages) return;
+    setCurrentPage(newPage);
+    const feedElement = document.getElementById('community-feed') || document.querySelector('.community-cards-grid');
+    if (feedElement) {
+      feedElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   };
 
   return (
-    <div className="find-page-container">
-      {/* Top Navbar */}
-      <header className="navbar" style={{ padding: '1rem 2rem', borderBottom: '1px solid #e2e8f0', backgroundColor: '#ffffff' }}>
-        <a href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }} className="brand-logo" style={{ cursor: 'pointer' }}>
-          <img src="/iconWithText-cropped.png" alt="Super Bass Logo" className="brand-logo-img" style={{ height: '40px' }} />
-        </a>
+    <div className="community-page-wrapper">
+      {/* Sleek Dark Top Navbar */}
+      <M3TopNavbar theme="dark" activePage="community" />
 
-        {/* Search Input Bar */}
-        <div style={{ flex: 1, maxWidth: '580px', margin: '0 2rem' }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            backgroundColor: '#f8fafc',
-            borderRadius: '24px',
-            padding: '8px 20px',
-            border: '1px solid #e2e8f0',
-            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)'
-          }}>
-            <i className="fa-solid fa-magnifying-glass" style={{ color: '#94a3b8', marginRight: '12px' }}></i>
-            <input 
-              type="text"
-              placeholder="Search community posts, ads, and requests..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                width: '100%',
-                background: 'transparent',
-                border: 'none',
-                color: '#0f172a',
-                outline: 'none',
-                fontSize: '0.925rem'
-              }}
-            />
-            {searchTerm && (
-              <i 
-                className="fa-solid fa-xmark" 
-                onClick={() => setSearchTerm('')}
-                style={{ color: '#94a3b8', cursor: 'pointer' }}
-              ></i>
-            )}
+      {/* 1. Community Hero Showcase Banner (Uber Pitch Black Aesthetic) */}
+      <section className="community-hero-banner">
+        <div className="community-hero-container">
+          <div className="community-hero-left">
+            <span className="community-hero-overline">Workio Community Network</span>
+            <h1 className="community-hero-title">
+              Community Classifieds, Repair Advice & Services
+            </h1>
+            <p className="community-hero-desc">
+              Share repair requests, ask for home improvement advice, post free classified ads for tools and leftover materials, and discover trusted workers recommended by other community members.
+            </p>
+            <div className="community-hero-actions">
+              <button
+                type="button"
+                className="community-hero-primary-btn"
+                onClick={handleOpenCreate}
+              >
+                <i className="fa-solid fa-plus"></i>
+                <span>Post Free Ad / Request</span>
+              </button>
+              <button
+                type="button"
+                className="community-hero-secondary-btn"
+                onClick={() => navigate('/ai/chat')}
+              >
+                <i className="fa-solid fa-wand-magic-sparkles"></i>
+                <span>Ask Workio AI</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="community-hero-right">
+            <div className="community-hero-artwork-card">
+              <img
+                src={hero2Img}
+                alt="Workio Neighborhood Community & Craftsmen"
+                className="community-hero-artwork-img"
+              />
+            </div>
           </div>
         </div>
+      </section>
 
-        {/* Nav Actions */}
-        <div className="nav-actions" style={{ display: 'flex', alignItems: 'center' }}>
-          <md-filled-button
-            onClick={() => navigate('/ai-chat')}
-            style={{
-              '--md-sys-color-primary': '#fef3c7',
-              '--md-sys-color-on-primary': '#92400e',
-              border: '1.5px solid #FDC101',
-              padding: '0 16px',
-              minWidth: '130px',
-              margin: '0 8px',
-              fontWeight: 700
-            }}
-          >
-            <i className="fa-solid fa-wand-magic-sparkles" style={{ marginRight: '6px', color: '#b45309' }}></i>
-            AI Assistant
-          </md-filled-button>
+      {/* 2. Main Content Layout (Sidebar + Feed) */}
+      <div className="community-layout-container">
+        {/* Left Sidebar Navigation (Uber Style) */}
+        <aside className={`community-sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
 
-          <md-filled-button
-            onClick={() => navigate('/find')}
-            style={{
-              '--md-sys-color-primary': '#FDC101',
-              '--md-sys-color-on-primary': '#000000',
-              padding: '0 20px',
-              minWidth: '100px',
-              margin: '0 8px'
-            }}
-          >
-            Find Workers
-          </md-filled-button>
-          
-          <UserMenu />
-        </div>
-      </header>
+          {/* Location Filter Section: Two Separate Fields (Province and District) */}
+          <div className="uber-sidebar-section">
+            <div className="uber-sidebar-section-title">
+              <span>Location</span>
+              {(selectedProvince !== 'all' || selectedDistrict !== 'all') && (
+                <button
+                  type="button"
+                  className="uber-sidebar-clear-btn"
+                  onClick={() => {
+                    setSelectedProvince('all');
+                    setSelectedDistrict('all');
+                  }}
+                  title="Clear location filter"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
 
-      {/* Main Content Container */}
-      {/* Main Layout Container */}
-      <div className="find-layout">
-        {/* Left Sidebar Filters */}
-        <aside className="find-sidebar">
-          <div className="find-sidebar-header">
-            <h2 className="find-sidebar-title">Filter by</h2>
-            <button className="find-sidebar-reset" onClick={() => {
-              setSearchTerm('');
-              setSelectedCategory('all');
-              setSelectedLocation('all');
-              setSortBy('newest');
-            }}>
-              Reset all <i className="fa-solid fa-xmark"></i>
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {/* Province Select */}
+              <select
+                className="uber-sidebar-select"
+                value={selectedProvince}
+                onChange={(e) => {
+                  setSelectedProvince(e.target.value);
+                  setSelectedDistrict('all');
+                }}
+                aria-label="Filter by Province"
+              >
+                <option value="all">All Provinces</option>
+                {Object.keys(sriLankaDistricts).map(prov => (
+                  <option key={prov} value={prov}>{prov}</option>
+                ))}
+              </select>
+
+              {/* District Select */}
+              <select
+                className="uber-sidebar-select"
+                value={selectedDistrict}
+                onChange={(e) => setSelectedDistrict(e.target.value)}
+                aria-label="Filter by District"
+              >
+                <option value="all">
+                  {selectedProvince === 'all' ? 'All Districts' : `All in ${selectedProvince.replace(' Province', '')}`}
+                </option>
+                {(selectedProvince === 'all'
+                  ? Object.values(sriLankaDistricts).flat()
+                  : (sriLankaDistricts[selectedProvince] || [])
+                ).map(d => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          {/* Filter Group: Location */}
-          <div className="filter-group">
-            <div className="filter-group-title">Location</div>
-            <select
-              value={selectedLocation}
-              onChange={(e) => setSelectedLocation(e.target.value)}
-              style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', fontSize: '0.9rem', color: '#334155', outline: 'none' }}
-            >
-              <option value="all">All Locations</option>
-              <option value="Colombo">Colombo</option>
-              <option value="Colombo 03">Colombo 03</option>
-              <option value="Colombo 05">Colombo 05</option>
-              <option value="Kandy">Kandy</option>
-              <option value="Rajagiriya">Rajagiriya</option>
-              <option value="Nugegoda">Nugegoda</option>
-              <option value="Dehiwala">Dehiwala</option>
-            </select>
-          </div>
+          <hr className="uber-sidebar-divider" />
 
-          {/* Filter Group: Service Categories */}
-          <div className="filter-group">
-            <div className="filter-group-title">Category</div>
-            <div className="checkbox-list">
-              <label className="custom-checkbox-item">
-                <div className="custom-checkbox-left">
-                  <input 
-                    type="radio" 
-                    name="catRadio"
-                    className="custom-checkbox-input"
-                    checked={selectedCategory === 'all'}
-                    onChange={() => setSelectedCategory('all')}
-                  />
-                  <span>All Categories</span>
-                </div>
-              </label>
-              {categoriesData.map(cat => (
-                <label key={cat.id} className="custom-checkbox-item">
-                  <div className="custom-checkbox-left">
-                    <input 
-                      type="radio" 
-                      name="catRadio"
-                      className="custom-checkbox-input"
-                      checked={selectedCategory === cat.id}
-                      onChange={() => setSelectedCategory(cat.id)}
-                    />
+          {/* Categories Section */}
+          <div className="uber-sidebar-section">
+            <div className="uber-sidebar-section-title">
+              <span>Category</span>
+              {selectedCategory !== 'all' && (
+                <button
+                  type="button"
+                  className="uber-sidebar-clear-btn"
+                  onClick={() => setSelectedCategory('all')}
+                  title="Clear category filter"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            <div className="uber-cat-list">
+              <div
+                className={`uber-cat-item ${selectedCategory === 'all' ? 'active' : ''}`}
+                onClick={() => setSelectedCategory('all')}
+                title="All Categories"
+              >
+                <i className="fa-solid fa-border-all"></i>
+                <span>All Categories</span>
+              </div>
+
+              {categoriesData.map((cat) => {
+                const isSelected = selectedCategory === cat.id;
+                const iconName = cat.icon || 'fa-tag';
+                return (
+                  <div
+                    key={cat.id}
+                    className={`uber-cat-item ${isSelected ? 'active' : ''}`}
+                    onClick={() => setSelectedCategory(cat.id)}
+                    title={`Filter by ${cat.name}`}
+                  >
+                    <i className={`fa-solid ${iconName}`}></i>
                     <span>{cat.name}</span>
                   </div>
-                </label>
-              ))}
+                );
+              })}
             </div>
           </div>
         </aside>
 
         {/* Right Main Content Area */}
-        <main className="find-main" style={{ flex: 1, minWidth: 0 }}>
-          {/* Main Controls Header */}
-          <div className="find-main-header">
-            <div>
-              <h1 className="find-results-title">
-                {activeTab === 'feed' ? 'Community Listings' : 'Moderation Queue'}
-              </h1>
-              <p style={{ color: '#64748b', margin: '0.25rem 0 0 0', fontSize: '0.95rem' }}>
-                {activeTab === 'feed' 
-                  ? 'Browse classified ads, home service requests, and neighbor recommendations' 
-                  : 'Review flagged community listings'}
-              </p>
-            </div>
-
-            <div className="find-header-actions">
-              {/* Tab Toggles */}
-              <div style={{ display: 'flex', gap: '8px', marginRight: '16px' }}>
+        <main className="community-feed-column" id="community-feed">
+          {/* Uber Styled Search & Sort Bar with Grid View Mode Switcher */}
+          <div className="uber-search-card">
+            <div className="uber-search-input-wrap">
+              <i className="fa-solid fa-magnifying-glass uber-search-icon"></i>
+              <input
+                type="text"
+                className="uber-search-input"
+                placeholder="Search classifieds, tools, services, requests..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {searchTerm && (
                 <button
-                  onClick={() => setActiveTab('feed')}
-                  style={{
-                    padding: '6px 14px',
-                    borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
-                    backgroundColor: activeTab === 'feed' ? '#0f172a' : '#ffffff',
-                    color: activeTab === 'feed' ? '#ffffff' : '#475569',
-                    fontWeight: '600',
-                    fontSize: '0.85rem',
-                    cursor: 'pointer'
-                  }}
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#757575', padding: '4px' }}
                 >
-                  All Listings
+                  ✕
                 </button>
-                <button
-                  onClick={() => setActiveTab('moderation')}
-                  style={{
-                    padding: '6px 14px',
-                    borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
-                    backgroundColor: activeTab === 'moderation' ? '#ef4444' : '#ffffff',
-                    color: activeTab === 'moderation' ? '#ffffff' : '#475569',
-                    fontWeight: '600',
-                    fontSize: '0.85rem',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Moderation Queue
-                </button>
-              </div>
-
-              {activeTab === 'feed' && (
-                <>
-                  <select 
-                    className="find-sort-select"
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                  >
-                    <option value="newest">Sort by: Newest First</option>
-                    <option value="popular">Most Popular</option>
-                  </select>
-
-                  <md-filled-button
-                    onClick={() => setIsCreateModalOpen(true)}
-                    style={{
-                      '--md-sys-color-primary': '#FDC101',
-                      '--md-sys-color-on-primary': '#000000',
-                      padding: '0 24px',
-                      marginLeft: '8px'
-                    }}
-                  >
-                    <i slot="icon" className="fa-solid fa-plus"></i>
-                    Post Ad
-                  </md-filled-button>
-                </>
               )}
             </div>
-          </div>
 
-        {/* Listings Cards Container */}
-        {loading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '4rem', color: '#64748b' }}>
-            <Loader />
-            <p style={{ fontSize: '1.1rem', fontWeight: '500' }}>Loading database posts...</p>
-          </div>
-        ) : (activeTab === 'feed' ? posts : moderationPosts).length === 0 ? (
-          <div style={{
-            backgroundColor: '#ffffff',
-            borderRadius: '12px',
-            padding: '4rem 2rem',
-            textAlign: 'center',
-            border: '1px solid #e2e8f0'
-          }}>
-            <i className="fa-solid fa-box-open" style={{ fontSize: '3rem', color: '#cbd5e1', marginBottom: '1rem' }}></i>
-            <h3 style={{ fontSize: '1.25rem', color: '#334155', fontWeight: '700', margin: '0 0 0.5rem 0' }}>
-              {activeTab === 'feed' ? 'No posts found in database' : 'No posts currently in moderation queue'}
-            </h3>
-            <p style={{ color: '#64748b', fontSize: '0.95rem', marginBottom: '1.5rem' }}>
-              {activeTab === 'feed' ? 'Create a post to publish it to the database.' : 'All reported posts have been resolved.'}
-            </p>
-            {activeTab === 'feed' && (
-              <button
-                onClick={() => setIsCreateModalOpen(true)}
-                style={{
-                  backgroundColor: '#009688',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: '24px',
-                  padding: '10px 24px',
-                  fontWeight: '700',
-                  cursor: 'pointer'
-                }}
+            <div className="uber-toolbar-actions">
+              <select
+                className="uber-sort-select"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
               >
-                Post New Ad / Request
-              </button>
-            )}
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gap: '20px', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
-            {(activeTab === 'feed' ? posts : moderationPosts).map(post => {
-              const catObj = categoriesData.find(c => c.id === post.category);
-              return (
-                <div 
-                  key={post.postId}
-                  className="sleek-worker-card"
-                  onClick={() => handleCardClick(post)}
-                  style={{ cursor: 'pointer' }}
+                <option value="newest">Sort: Newest First</option>
+                <option value="popular">Sort: Most Popular</option>
+                <option value="oldest">Sort: Oldest First</option>
+              </select>
+
+              {/* Grid View Mode Switcher Button Group (Icon Only) */}
+              <div className="uber-view-mode-group" role="group" aria-label="Card grid view mode">
+                <button
+                  type="button"
+                  className={`uber-view-mode-btn ${viewMode === 'large' ? 'active' : ''}`}
+                  onClick={() => handleViewModeChange('large')}
+                  title="Large Cards View"
+                  aria-label="Large Cards View"
                 >
-                  {/* Top Meta */}
-                  <div className="card-top-meta" style={{ justifyContent: 'space-between', padding: '0 16px 12px 16px', borderBottom: '1px solid #f1f5f9' }}>
-                    <div className="card-distance-pill">
-                      <i className={`fa-solid ${catObj?.icon || 'fa-tag'}`} style={{ color: '#64748b' }}></i>
-                      <span>{post.category}</span>
-                    </div>
-                    <div className="card-rating-pill" style={{ background: 'transparent', padding: 0 }}>
-                      <span style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 500 }}>
-                        <i className="fa-solid fa-clock"></i> {formatTimeAgo(post.createdAt)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Photo Banner */}
-                  <div className="card-photo-container" style={{ margin: '16px', height: '180px', borderRadius: '12px' }}>
-                    {post.images && post.images.length > 0 ? (
-                      <img 
-                        src={post.images[0]} 
-                        alt={post.title} 
-                        className="card-photo-img"
-                        onError={(e) => {
-                          e.target.src = 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=500&auto=format&fit=crop';
-                        }}
-                      />
-                    ) : (
-                      <div className="card-photo-avatar-placeholder" style={{ borderRadius: '12px', background: '#f1f5f9' }}>
-                        <i className="fa-solid fa-image" style={{ color: '#cbd5e1', fontSize: '3rem' }}></i>
-                      </div>
-                    )}
-                    {post.images && post.images.length > 1 && (
-                      <div style={{ position: 'absolute', bottom: '8px', right: '8px', background: 'rgba(15, 23, 42, 0.75)', color: '#ffffff', fontSize: '0.75rem', padding: '4px 8px', borderRadius: '6px', fontWeight: 600 }}>
-                        <i className="fa-solid fa-camera"></i> {post.images.length}
-                      </div>
-                    )}
-                  </div>
-
-                  <div style={{ padding: '0 16px' }}>
-                    {/* Title and Edit/Delete Actions */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-                      <h3 className="card-worker-name" style={{ margin: 0, fontSize: '1.1rem', WebkitLineClamp: 2, display: '-webkit-box', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                        {post.title}
-                      </h3>
-                    </div>
-                    
-                    <p className="card-worker-role" style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '6px 0 0 0' }}>
-                      <i className="fa-solid fa-location-dot" style={{ color: '#94a3b8' }}></i> {post.location}
-                    </p>
-
-                    <div className="card-skills-row" style={{ marginTop: '12px' }}>
-                      {post.condition && <span className="card-skill-tag">{post.condition}</span>}
-                      {post.badgeType === 'verified_member' && (
-                        <span className="card-skill-tag" style={{ background: '#e0f2fe', color: '#0284c7', borderColor: '#bae6fd' }}>
-                          <i className="fa-solid fa-circle-check"></i> Verified
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="card-bottom-row" style={{ marginTop: '16px', padding: '16px', background: '#f8fafc', borderTop: '1px solid #f1f5f9', borderRadius: '0 0 20px 20px' }}>
-                    <div className="card-price-display">
-                      <span className="card-price-amount" style={{ color: '#0f172a', fontSize: '1.1rem' }}>{post.price || (post.priceVal ? `Rs ${post.priceVal.toLocaleString()}` : 'Inquire / Quote')}</span>
-                    </div>
-
-                    {isPostOwner(post) ? (
-                      <div style={{ display: 'flex', gap: '8px' }} onClick={(e) => e.stopPropagation()}>
-                        <button
-                          onClick={(e) => handleOpenEdit(post, e)}
-                          style={{ padding: '6px 12px', borderRadius: '6px', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem' }}
-                          title="Edit"
-                        >
-                          <i className="fa-solid fa-pen"></i> Edit
-                        </button>
-                        <button
-                          onClick={(e) => handleDeletePost(post.postId, e)}
-                          style={{ padding: '6px 12px', borderRadius: '6px', background: '#fef2f2', color: '#ef4444', border: '1px solid #fecaca', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem' }}
-                          title="Delete"
-                        >
-                          <i className="fa-solid fa-trash"></i> Delete
-                        </button>
-                      </div>
-                    ) : (
-                      <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        View Ad <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.75rem' }}></i>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                  <i className="fa-solid fa-table-cells-large"></i>
+                </button>
+                <button
+                  type="button"
+                  className={`uber-view-mode-btn ${viewMode === 'small' ? 'active' : ''}`}
+                  onClick={() => handleViewModeChange('small')}
+                  title="Small Cards View"
+                  aria-label="Small Cards View"
+                >
+                  <i className="fa-solid fa-grip"></i>
+                </button>
+                <button
+                  type="button"
+                  className={`uber-view-mode-btn ${viewMode === 'list' ? 'active' : ''}`}
+                  onClick={() => handleViewModeChange('list')}
+                  title="List View"
+                  aria-label="List View"
+                >
+                  <i className="fa-solid fa-list-ul"></i>
+                </button>
+              </div>
+            </div>
           </div>
-        )}
-      </main>
+
+          {/* Listings Cards Container */}
+          {loading ? (
+            <div className="uber-loading-box">
+              <div className="uber-spinner-ring"></div>
+              <p className="uber-loading-text">Loading community listings...</p>
+            </div>
+          ) : allCurrentPosts.length === 0 ? (
+            <div style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '16px',
+              padding: '4rem 2rem',
+              textAlign: 'center',
+              border: '1px solid #e5e5e5'
+            }}>
+              <i className="fa-solid fa-box-open" style={{ fontSize: '3rem', color: '#cccccc', marginBottom: '1rem' }}></i>
+              <h3 style={{ fontSize: '1.25rem', color: '#000000', fontWeight: '800', margin: '0 0 0.5rem 0' }}>
+                No community listings found
+              </h3>
+              <p style={{ color: '#666666', fontSize: '0.95rem', marginBottom: '1.5rem' }}>
+                Try adjusting your search or filters, or post a new ad in the community.
+              </p>
+              {isLoggedIn && (
+                <button
+                  type="button"
+                  className="uber-btn-primary"
+                  onClick={() => setIsCreateModalOpen(true)}
+                >
+                  <i className="fa-solid fa-plus"></i> Post New Ad / Request
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* Pagination Info Header */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '16px',
+                fontSize: '0.85rem',
+                color: '#757575',
+                fontWeight: '600'
+              }}>
+                <span>
+                  Showing {startIndex + 1}–{Math.min(startIndex + CARDS_PER_PAGE, totalPosts)} of {totalPosts} listings
+                </span>
+                <span>Page {safeCurrentPage} of {totalPages}</span>
+              </div>
+
+              <div className={`community-cards-grid view-${viewMode}`}>
+                {paginatedPosts.map(post => {
+                  const catObj = categoriesData.find(c => c.id === post.category);
+                  const isOwner = isPostOwner(post);
+
+                  if (viewMode === 'list') {
+                    return (
+                      <div
+                        key={post.postId}
+                        className="uber-post-card uber-card-list"
+                        onClick={() => handleCardClick(post)}
+                        role="button"
+                        tabIndex={0}
+                      >
+                        <div className="uber-list-card-inner">
+                          {/* Left: Thumbnail & Badges */}
+                          <div className="uber-list-card-media">
+                            {post.images && post.images.length > 0 ? (
+                              <img
+                                src={post.images[0]}
+                                alt={post.title}
+                                className="uber-list-img"
+                                loading="lazy"
+                                onError={(e) => {
+                                  e.target.src = 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=500&auto=format&fit=crop';
+                                }}
+                              />
+                            ) : (
+                              <div className="uber-card-img-placeholder">
+                                <i className="fa-solid fa-image"></i>
+                              </div>
+                            )}
+
+                            {post.images && post.images.length > 1 && (
+                              <div className="uber-card-photos-badge">
+                                <i className="fa-solid fa-camera"></i>
+                                <span>{post.images.length}</span>
+                              </div>
+                            )}
+
+                            <span className="uber-category-pill uber-list-cat-pill">
+                              <i className="fa-solid fa-tag" style={{ fontSize: '11px' }}></i>
+                              <span>{catObj?.name || post.category}</span>
+                            </span>
+                          </div>
+
+                          {/* Right: Content details */}
+                          <div className="uber-list-card-content">
+                            <div>
+                              <div className="uber-list-header-row">
+                                <div className="uber-card-author">
+                                  <img
+                                    src={post.userAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.postId}`}
+                                    alt={post.userName || 'Resident'}
+                                    className="uber-card-avatar"
+                                    onError={(e) => {
+                                      e.target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.postId}`;
+                                    }}
+                                  />
+                                  <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                                    <span className="uber-card-author-name">{post.userName || 'Community Resident'}</span>
+                                    <span className="uber-card-time">{formatTimeAgo(post.createdAt)}</span>
+                                  </div>
+                                </div>
+
+                                <div className="uber-card-location-row" style={{ marginTop: 0 }}>
+                                  <i className="fa-solid fa-location-dot" style={{ color: '#000000' }}></i>
+                                  <span>{post.location || 'Sri Lanka'}</span>
+                                </div>
+                              </div>
+
+                              <div className="uber-list-body">
+                                <h3 className="uber-card-title">{post.title}</h3>
+                                <p className="uber-card-desc">
+                                  {post.content || 'Click to view full details, questions, or contact the poster...'}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Footer: Stats & Actions */}
+                            <div className="uber-card-footer" style={{ marginTop: 'auto', paddingTop: '10px' }}>
+                              <div className="uber-card-stats-wrap">
+                                <span className="uber-card-time-text">
+                                  <i className="fa-regular fa-clock" style={{ marginRight: '4px' }}></i>
+                                  {formatTimeAgo(post.createdAt)}
+                                </span>
+
+                                <div className="uber-card-counters">
+                                  <button
+                                    type="button"
+                                    className={`uber-card-counter-btn ${post.isLiked ? 'active' : ''}`}
+                                    onClick={(e) => handleLike(post.postId, e)}
+                                    title={`${post.likesCount || 0} Likes (Click to like)`}
+                                  >
+                                    <i className={post.isLiked ? 'fa-solid fa-heart' : 'fa-regular fa-heart'}></i>
+                                    <span>{post.likesCount || 0}</span>
+                                  </button>
+
+                                  <span
+                                    className="uber-card-counter-item"
+                                    title={`${post.commentsCount || 0} Comments`}
+                                    onClick={(e) => { e.stopPropagation(); handleCardClick(post); }}
+                                    style={{ cursor: 'pointer' }}
+                                  >
+                                    <i className="fa-regular fa-comment"></i>
+                                    <span>{post.commentsCount || 0}</span>
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="uber-card-actions" onClick={(e) => e.stopPropagation()}>
+                                {isOwner ? (
+                                  <div style={{ display: 'flex', gap: '6px' }}>
+                                    <button
+                                      type="button"
+                                      className="uber-icon-btn-edit"
+                                      onClick={(e) => handleOpenEdit(post, e)}
+                                      title="Edit listing"
+                                    >
+                                      <i className="fa-solid fa-pen"></i>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="uber-icon-btn-delete"
+                                      onClick={(e) => handleDeletePost(post.postId, e)}
+                                      title="Delete listing"
+                                    >
+                                      <i className="fa-solid fa-trash"></i>
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="uber-card-details-btn"
+                                    onClick={() => handleCardClick(post)}
+                                  >
+                                    <span>View Listing</span>
+                                    <span style={{ fontSize: '13px' }}>›</span>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Default / Grid cards (Large or Small)
+                  return (
+                    <div
+                      key={post.postId}
+                      className={`uber-post-card ${viewMode === 'small' ? 'uber-card-small' : 'uber-card-large'}`}
+                      onClick={() => handleCardClick(post)}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      {/* Card Top: Author & Category Pill */}
+                      <div className="uber-card-header">
+                        <div className="uber-card-author">
+                          <img
+                            src={post.userAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.postId}`}
+                            alt={post.userName || 'Resident'}
+                            className="uber-card-avatar"
+                            onError={(e) => {
+                              e.target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.postId}`;
+                            }}
+                          />
+                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                            <span className="uber-card-author-name">{post.userName || 'Community Resident'}</span>
+                            <span className="uber-card-time">{formatTimeAgo(post.createdAt)}</span>
+                          </div>
+                        </div>
+
+                        <span className="uber-category-pill">
+                          <i className="fa-solid fa-tag" style={{ fontSize: '11px' }}></i>
+                          <span>{catObj?.name || post.category}</span>
+                        </span>
+                      </div>
+
+                      {/* Card Image Preview with 16:10 Aspect Ratio */}
+                      <div className="uber-card-img-wrap">
+                        {post.images && post.images.length > 0 ? (
+                          <img
+                            src={post.images[0]}
+                            alt={post.title}
+                            className="uber-card-img"
+                            loading="lazy"
+                            onError={(e) => {
+                              e.target.src = 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=500&auto=format&fit=crop';
+                            }}
+                          />
+                        ) : (
+                          <div className="uber-card-img-placeholder">
+                            <i className="fa-solid fa-image"></i>
+                          </div>
+                        )}
+
+                        {post.images && post.images.length > 1 && (
+                          <div className="uber-card-photos-badge">
+                            <i className="fa-solid fa-camera"></i>
+                            <span>{post.images.length}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Card Body */}
+                      <div className="uber-card-body">
+                        <h3 className="uber-card-title">{post.title}</h3>
+                        <p className="uber-card-desc">
+                          {post.content || 'Click to view full details, questions, or contact the poster...'}
+                        </p>
+
+                        <div className="uber-card-location-row">
+                          <i className="fa-solid fa-location-dot" style={{ color: '#000000' }}></i>
+                          <span>{post.location || 'Sri Lanka'}</span>
+                        </div>
+                      </div>
+
+                      {/* Card Footer: Timestamp & Actions */}
+                      <div className="uber-card-footer">
+                        <div className="uber-card-stats-wrap">
+                          <span className="uber-card-time-text">
+                            <i className="fa-regular fa-clock" style={{ marginRight: '4px' }}></i>
+                            {formatTimeAgo(post.createdAt)}
+                          </span>
+
+                          <div className="uber-card-counters">
+                            <button
+                              type="button"
+                              className={`uber-card-counter-btn ${post.isLiked ? 'active' : ''}`}
+                              onClick={(e) => handleLike(post.postId, e)}
+                              title={`${post.likesCount || 0} Likes (Click to like)`}
+                            >
+                              <i className={post.isLiked ? 'fa-solid fa-heart' : 'fa-regular fa-heart'}></i>
+                              <span>{post.likesCount || 0}</span>
+                            </button>
+
+                            <span
+                              className="uber-card-counter-item"
+                              title={`${post.commentsCount || 0} Comments`}
+                              onClick={(e) => { e.stopPropagation(); handleCardClick(post); }}
+                              style={{ cursor: 'pointer' }}
+                            >
+                              <i className="fa-regular fa-comment"></i>
+                              <span>{post.commentsCount || 0}</span>
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="uber-card-actions" onClick={(e) => e.stopPropagation()}>
+                          {isOwner ? (
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                              <button
+                                type="button"
+                                className="uber-icon-btn-edit"
+                                onClick={(e) => handleOpenEdit(post, e)}
+                                title="Edit listing"
+                              >
+                                <i className="fa-solid fa-pen"></i>
+                              </button>
+                              <button
+                                type="button"
+                                className="uber-icon-btn-delete"
+                                onClick={(e) => handleDeletePost(post.postId, e)}
+                                title="Delete listing"
+                              >
+                                <i className="fa-solid fa-trash"></i>
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              className="uber-card-details-btn"
+                              onClick={() => handleCardClick(post)}
+                            >
+                              <span>Details</span>
+                              <span style={{ fontSize: '13px' }}>›</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Uber-Themed Pagination (9 cards per page) */}
+              {totalPages > 1 && (
+                <div className="uber-pagination-container">
+                  <button
+                    type="button"
+                    className="uber-pagination-btn"
+                    onClick={() => handlePageChange(safeCurrentPage - 1)}
+                    disabled={safeCurrentPage === 1}
+                    aria-label="Previous Page"
+                  >
+                    <i className="fa-solid fa-chevron-left"></i>
+                    <span>Prev</span>
+                  </button>
+
+                  <div className="uber-pagination-pages">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNum => {
+                      if (
+                        pageNum === 1 ||
+                        pageNum === totalPages ||
+                        (pageNum >= safeCurrentPage - 1 && pageNum <= safeCurrentPage + 1)
+                      ) {
+                        return (
+                          <button
+                            key={pageNum}
+                            type="button"
+                            className={`uber-pagination-num ${safeCurrentPage === pageNum ? 'active' : ''}`}
+                            onClick={() => handlePageChange(pageNum)}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      } else if (
+                        pageNum === safeCurrentPage - 2 ||
+                        pageNum === safeCurrentPage + 2
+                      ) {
+                        return <span key={pageNum} className="uber-pagination-ellipsis">...</span>;
+                      }
+                      return null;
+                    })}
+                  </div>
+
+                  <button
+                    type="button"
+                    className="uber-pagination-btn"
+                    onClick={() => handlePageChange(safeCurrentPage + 1)}
+                    disabled={safeCurrentPage === totalPages}
+                    aria-label="Next Page"
+                  >
+                    <span>Next</span>
+                    <i className="fa-solid fa-chevron-right"></i>
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </main>
       </div>
 
-      {/* Listing Item Detail Modal View */}
+      {/* 3. DETAIL POST MODAL (Uber Clean Minimalist Window) */}
       {selectedPostForDetail && (
-        <div className="modal-overlay" onClick={() => setSelectedPostForDetail(null)}>
-          <div className="detail-modal-box" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
+        <div className="uber-modal-backdrop" onClick={() => setSelectedPostForDetail(null)}>
+          <div className="uber-modal-window uber-detail-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="uber-modal-header">
               <div>
-                <span className="badge-category-chip" style={{ marginBottom: '4px', display: 'inline-block' }}>
-                  {selectedPostForDetail.serviceCategoryName}
+                <span className="uber-category-pill" style={{ marginBottom: '6px' }}>
+                  {selectedPostForDetail.serviceCategoryName || selectedPostForDetail.category}
                 </span>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: '800', margin: 0, color: '#0f172a' }}>
+                <h2 className="uber-modal-title">
                   {selectedPostForDetail.title}
                 </h2>
               </div>
-              <button 
+              <button
+                type="button"
+                className="uber-modal-close-btn"
                 onClick={() => setSelectedPostForDetail(null)}
-                style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}
+                title="Close"
               >
                 ✕
               </button>
             </div>
 
-            <div className="modal-body">
+            <div className="uber-modal-body">
               {/* Main Image Gallery */}
               {selectedPostForDetail.images && selectedPostForDetail.images.length > 0 && (
                 <div>
-                  <img 
-                    src={selectedGalleryImage || selectedPostForDetail.images[0]} 
+                  <img
+                    src={selectedGalleryImage || selectedPostForDetail.images[0]}
                     alt={selectedPostForDetail.title}
-                    className="detail-gallery-main" 
+                    className="uber-detail-gallery-main"
                   />
                   {selectedPostForDetail.images.length > 1 && (
-                    <div className="detail-thumbnails" style={{ marginTop: '10px' }}>
+                    <div className="uber-detail-thumbnails" style={{ marginTop: '10px' }}>
                       {selectedPostForDetail.images.map((img, idx) => (
                         <img
                           key={idx}
                           src={img}
                           alt="Thumbnail"
-                          className={`detail-thumb-img ${selectedGalleryImage === img ? 'active' : ''}`}
+                          className={`uber-detail-thumb-img ${selectedGalleryImage === img ? 'active' : ''}`}
                           onClick={() => setSelectedGalleryImage(img)}
                         />
                       ))}
@@ -806,109 +1147,115 @@ export default function Community() {
                 </div>
               )}
 
-              {/* Price & Location Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fffbeb', padding: '14px 18px', borderRadius: '12px', border: '1px solid #fef08a' }}>
-                <div>
-                  <span style={{ fontSize: '0.85rem', color: '#b45309', fontWeight: '600' }}>Listing Price / Budget</span>
-                  <div style={{ fontSize: '1.4rem', fontWeight: '800', color: '#0f172a' }}>
-                    {selectedPostForDetail.price || 'Inquire / Quote'}
+              {/* Location & Posted Date Header (Uber Minimalist) */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f6f6f6', padding: '14px 20px', borderRadius: '14px', border: '1px solid #e5e5e5' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <i className="fa-solid fa-location-dot" style={{ color: '#000000', fontSize: '1.1rem' }}></i>
+                  <div>
+                    <span style={{ fontSize: '0.75rem', color: '#666666', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>Location</span>
+                    <span style={{ fontWeight: '700', color: '#000000', fontSize: '0.95rem' }}>
+                      {selectedPostForDetail.location || 'Sri Lanka'}
+                    </span>
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <span style={{ fontSize: '0.85rem', color: '#64748b' }}>Location</span>
-                  <div style={{ fontWeight: '700', color: '#334155' }}>
-                    {selectedPostForDetail.location}
-                  </div>
+                  <span style={{ fontSize: '0.75rem', color: '#666666', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>Posted</span>
+                  <span style={{ fontWeight: '600', color: '#555555', fontSize: '0.9rem' }}>
+                    {formatTimeAgo(selectedPostForDetail.createdAt)}
+                  </span>
                 </div>
               </div>
 
               {/* Poster Info Card */}
-              <div className="poster-info-card">
-                <div className="poster-left">
-                  <img 
-                    src={selectedPostForDetail.userAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedPostForDetail.postId}`} 
+              <div className="uber-poster-card">
+                <div className="uber-poster-left">
+                  <img
+                    src={selectedPostForDetail.userAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedPostForDetail.postId}`}
                     alt={selectedPostForDetail.userName}
-                    className="poster-avatar"
+                    className="uber-poster-avatar"
                   />
                   <div>
-                    <div style={{ fontWeight: '700', fontSize: '1rem', color: '#0f172a' }}>
+                    <div className="uber-poster-name">
                       {selectedPostForDetail.userName}
                     </div>
-                    <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                    <div className="uber-poster-email">
                       Posted {formatTimeAgo(selectedPostForDetail.createdAt)}
                     </div>
                   </div>
                 </div>
 
                 {activeRole === 'Worker' && (
-                  <md-filled-button
+                  <button
+                    type="button"
+                    className="uber-btn-primary"
                     onClick={() => handleOpenChat(selectedPostForDetail)}
-                    style={{
-                      '--md-sys-color-primary': '#0f172a',
-                      '--md-sys-color-on-primary': '#ffffff',
-                    }}
                   >
-                    <i slot="icon" className="fa-solid fa-comment-dots"></i> Chat / Contact
-                  </md-filled-button>
+                    <i className="fa-solid fa-comment-dots"></i>
+                    <span>Chat / Contact</span>
+                  </button>
                 )}
               </div>
 
-              {/* Full Description Content */}
+              {/* Description */}
               <div>
-                <h4 style={{ margin: '0 0 8px 0', fontSize: '1rem', fontWeight: '700', color: '#334155' }}>Description</h4>
-                <p style={{ fontSize: '0.95rem', color: '#334155', lineHeight: '1.6', margin: 0, whiteSpace: 'pre-line' }}>
+                <h4 style={{ margin: '0 0 8px 0', fontSize: '0.95rem', fontWeight: '800', color: '#000000', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Description</h4>
+                <p style={{ fontSize: '0.95rem', color: '#262626', lineHeight: '1.6', margin: 0, whiteSpace: 'pre-line' }}>
                   {selectedPostForDetail.content}
                 </p>
               </div>
 
-              {/* Like / Comment / Edit / Delete Actions Bar */}
-              <div style={{ display: 'flex', gap: '12px', alignItems: 'center', borderTop: '1px solid #e2e8f0', paddingTop: '1rem', flexWrap: 'wrap' }}>
-                <md-filled-button
-                  onClick={(e) => handleLike(selectedPostForDetail.postId, e)}
-                  style={{
-                    '--md-sys-color-primary': selectedPostForDetail.isLiked ? '#FDC101' : '#f1f5f9',
-                    '--md-sys-color-on-primary': selectedPostForDetail.isLiked ? '#000000' : '#475569',
-                  }}
-                >
-                  <i slot="icon" className="fa-solid fa-thumbs-up"></i>
-                  Interested ({selectedPostForDetail.likesCount || 0})
-                </md-filled-button>
+              {/* Actions & Report Bar */}
+              <div className="uber-detail-actions">
+                {isLoggedIn ? (
+                  <button
+                    type="button"
+                    className={selectedPostForDetail.isLiked ? "uber-btn-primary" : "uber-btn-secondary"}
+                    onClick={(e) => handleLike(selectedPostForDetail.postId, e)}
+                  >
+                    <i className="fa-solid fa-thumbs-up"></i>
+                    <span>Interested ({selectedPostForDetail.likesCount || 0})</span>
+                  </button>
+                ) : (
+                  <div className="uber-btn-secondary" style={{ cursor: 'default' }}>
+                    <i className="fa-solid fa-thumbs-up"></i>
+                    <span>{selectedPostForDetail.likesCount || 0} Interested</span>
+                  </div>
+                )}
 
-                {/* Author Controls in Detail Modal */}
                 {isPostOwner(selectedPostForDetail) && (
                   <>
-                    <md-outlined-button
+                    <button
+                      type="button"
+                      className="uber-btn-outline"
                       onClick={(e) => { setSelectedPostForDetail(null); handleOpenEdit(selectedPostForDetail, e); }}
-                      style={{
-                        '--md-sys-color-primary': '#3b82f6',
-                      }}
                     >
-                      Edit Post
-                    </md-outlined-button>
-
-                    <md-outlined-button
-                      onClick={(e) => { handleDeletePost(selectedPostForDetail.postId, e); }}
-                      style={{
-                        '--md-sys-color-primary': '#ef4444',
-                      }}
+                      <i className="fa-solid fa-pen"></i> Edit Post
+                    </button>
+                    <button
+                      type="button"
+                      className="uber-btn-secondary"
+                      onClick={(e) => handleDeletePost(selectedPostForDetail.postId, e)}
+                      style={{ color: '#ef4444' }}
                     >
-                      Delete Post
-                    </md-outlined-button>
+                      <i className="fa-solid fa-trash"></i> Delete Post
+                    </button>
                   </>
                 )}
 
                 <button
+                  type="button"
                   onClick={() => setReportingPostId(selectedPostForDetail.postId)}
                   style={{
                     background: 'none',
                     border: 'none',
-                    color: '#94a3b8',
+                    color: '#757575',
                     fontSize: '0.85rem',
+                    fontWeight: '600',
                     cursor: 'pointer',
                     marginLeft: 'auto',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '4px'
+                    gap: '6px'
                   }}
                 >
                   <i className="fa-solid fa-flag"></i> Report
@@ -916,26 +1263,26 @@ export default function Community() {
               </div>
 
               {/* Comments Thread Section */}
-              <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
-                <h4 style={{ margin: '0 0 12px 0', fontSize: '1rem', fontWeight: '700', color: '#334155' }}>
-                  Comments & Replies ({selectedPostForDetail.commentsCount || (commentsMap[selectedPostForDetail.postId] || []).length})
+              <div style={{ borderTop: '1px solid #eeeeee', paddingTop: '1.25rem' }}>
+                <h4 style={{ margin: '0 0 12px 0', fontSize: '0.95rem', fontWeight: '800', color: '#000000' }}>
+                  Comments & Inquiries ({selectedPostForDetail.commentsCount || (commentsMap[selectedPostForDetail.postId] || []).length})
                 </h4>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '1rem' }}>
                   {(commentsMap[selectedPostForDetail.postId] || []).length === 0 ? (
-                    <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>No comments yet. Ask a question or reply to this ad!</p>
+                    <p style={{ color: '#757575', fontSize: '0.875rem' }}>No comments yet. Ask a question or express interest!</p>
                   ) : (
                     (commentsMap[selectedPostForDetail.postId] || []).map(comment => (
-                      <div key={comment.commentId} style={{ backgroundColor: '#f8fafc', padding: '12px 14px', borderRadius: '10px', border: '1px solid #f1f5f9' }}>
+                      <div key={comment.commentId} style={{ backgroundColor: '#f6f6f6', padding: '12px 14px', borderRadius: '10px', border: '1px solid #eeeeee' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                          <span style={{ fontWeight: '700', fontSize: '0.875rem', color: '#0f172a' }}>
+                          <span style={{ fontWeight: '700', fontSize: '0.875rem', color: '#000000' }}>
                             {comment.userName}
                           </span>
-                          <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                          <span style={{ fontSize: '0.75rem', color: '#757575' }}>
                             {formatTimeAgo(comment.createdAt)}
                           </span>
                         </div>
-                        <p style={{ margin: 0, fontSize: '0.9rem', color: '#334155' }}>
+                        <p style={{ margin: 0, fontSize: '0.9rem', color: '#262626' }}>
                           {comment.content}
                         </p>
                       </div>
@@ -943,131 +1290,170 @@ export default function Community() {
                   )}
                 </div>
 
-                {/* Add Comment Input Box */}
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input
-                    type="text"
-                    placeholder="Write a message or question..."
-                    value={newCommentText}
-                    onChange={(e) => setNewCommentText(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleAddComment(selectedPostForDetail.postId)}
-                    style={{
-                      flex: 1,
-                      padding: '10px 14px',
-                      borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      fontSize: '0.9rem',
-                      outline: 'none'
-                    }}
-                  />
-                  <md-filled-button
-                    onClick={() => handleAddComment(selectedPostForDetail.postId)}
-                    style={{
-                      '--md-sys-color-primary': '#FDC101',
-                      '--md-sys-color-on-primary': '#000000',
-                      padding: '0 24px'
-                    }}
-                  >
-                    Send
-                  </md-filled-button>
-                </div>
+                {/* Add Comment Input */}
+                {isLoggedIn && (
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      type="text"
+                      className="uber-input"
+                      placeholder="Write a message or question..."
+                      value={newCommentText}
+                      onChange={(e) => setNewCommentText(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddComment(selectedPostForDetail.postId)}
+                    />
+                    <button
+                      type="button"
+                      className="uber-btn-primary"
+                      onClick={() => handleAddComment(selectedPostForDetail.postId)}
+                    >
+                      Send
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* EDIT POST MODAL */}
+      {/* 4. EDIT POST MODAL (Uber Theme) */}
       {editingPost && (
-        <div className="modal-overlay" onClick={() => setEditingPost(null)}>
-          <div className="detail-modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '560px' }}>
-            <div className="modal-header">
-              <h2 style={{ fontSize: '1.35rem', fontWeight: '800', margin: 0, color: '#0f172a' }}>Edit Community Post</h2>
-              <button onClick={() => setEditingPost(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>✕</button>
+        <div className="uber-modal-backdrop" onClick={() => setEditingPost(null)}>
+          <div className="uber-modal-window" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '640px' }}>
+            <div className="uber-modal-header">
+              <div>
+                <h2 className="uber-modal-title">Edit Community Post</h2>
+                <p className="uber-modal-subtitle">Update your listing details, location, and photos</p>
+              </div>
+              <button
+                type="button"
+                className="uber-modal-close-btn"
+                onClick={() => setEditingPost(null)}
+              >
+                ✕
+              </button>
             </div>
 
-            <form onSubmit={handleSaveEdit} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div>
-                <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Ad Title</label>
-                <input
-                  type="text"
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  required
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem' }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Category</label>
-                  <select
-                    value={editCategory}
-                    onChange={(e) => setEditCategory(e.target.value)}
-                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
-                  >
-                    {categoriesData.map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Location</label>
+            <form onSubmit={handleSaveEdit}>
+              <div className="uber-modal-body">
+                <div className="uber-field-group">
+                  <label className="uber-field-label">Ad Title *</label>
                   <input
                     type="text"
-                    value={editLocation}
-                    onChange={(e) => setEditLocation(e.target.value)}
-                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                    className="uber-input"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    required
                   />
+                </div>
+
+                <div className="uber-form-row">
+                  <div className="uber-field-group">
+                    <label className="uber-field-label">Category</label>
+                    <select
+                      className="uber-select"
+                      value={editCategory}
+                      onChange={(e) => setEditCategory(e.target.value)}
+                    >
+                      {categoriesData.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="uber-field-group">
+                    <label className="uber-field-label">Province *</label>
+                    <select
+                      className="uber-select"
+                      value={editProvince}
+                      onChange={(e) => {
+                        const prov = e.target.value;
+                        setEditProvince(prov);
+                        const firstDist = (sriLankaDistricts[prov] && sriLankaDistricts[prov][0]) || 'Colombo';
+                        setEditDistrict(firstDist);
+                      }}
+                    >
+                      {Object.keys(sriLankaDistricts).map(prov => (
+                        <option key={prov} value={prov}>{prov}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="uber-field-group">
+                    <label className="uber-field-label">District *</label>
+                    <select
+                      className="uber-select"
+                      value={editDistrict}
+                      onChange={(e) => setEditDistrict(e.target.value)}
+                    >
+                      {(sriLankaDistricts[editProvince] || []).map(d => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="uber-field-group">
+                  <label className="uber-field-label">Description *</label>
+                  <textarea
+                    className="uber-textarea"
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    required
+                    rows={4}
+                  />
+                </div>
+
+                {/* Photos */}
+                <div className="uber-upload-box">
+                  <div className="uber-upload-info">
+                    <i className="fa-solid fa-camera uber-upload-icon"></i>
+                    <div>
+                      <div className="uber-upload-title">Photos ({editImages.length} attached)</div>
+                      <div className="uber-upload-desc">Add or change photos for this post</div>
+                    </div>
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    ref={editFileInputRef}
+                    onChange={handleEditImageUpload}
+                    style={{ display: 'none' }}
+                  />
+                  <button
+                    type="button"
+                    className="uber-btn-outline"
+                    onClick={() => editFileInputRef.current?.click()}
+                  >
+                    Change Photos
+                  </button>
                 </div>
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Description</label>
-                <textarea
-                  value={editContent}
-                  onChange={(e) => setEditContent(e.target.value)}
-                  required
-                  rows={4}
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem', fontFamily: 'inherit' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Photos ({editImages.length} attached)</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  ref={editFileInputRef}
-                  onChange={handleEditImageUpload}
-                  style={{ display: 'none' }}
-                />
+              <div className="uber-modal-footer">
                 <button
                   type="button"
-                  onClick={() => editFileInputRef.current?.click()}
-                  style={{
-                    padding: '10px 16px', borderRadius: '8px', border: '1px dashed #94a3b8',
-                    backgroundColor: '#f8fafc', cursor: 'pointer', fontWeight: '600', fontSize: '0.875rem', width: '100%'
-                  }}
-                >
-                  <i className="fa-solid fa-camera"></i> Add / Change Photos
-                </button>
-              </div>
-
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-                <button
-                  type="button"
+                  className="uber-btn-secondary"
                   onClick={() => setEditingPost(null)}
-                  style={{ padding: '10px 20px', borderRadius: '20px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', fontWeight: '600', cursor: 'pointer' }}
+                  disabled={isSubmittingEdit}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  style={{ padding: '10px 24px', borderRadius: '20px', border: 'none', backgroundColor: '#3b82f6', color: '#ffffff', fontWeight: '700', cursor: 'pointer' }}
+                  className="uber-btn-primary"
+                  disabled={isSubmittingEdit}
+                  style={{ minWidth: '130px', justifyContent: 'center' }}
                 >
-                  Save Changes
+                  {isSubmittingEdit ? (
+                    <>
+                      <i className="fa-solid fa-spinner fa-spin" style={{ marginRight: '8px' }}></i>
+                      Saving...
+                    </>
+                  ) : (
+                    'Save Changes'
+                  )}
                 </button>
               </div>
             </form>
@@ -1075,137 +1461,110 @@ export default function Community() {
         </div>
       )}
 
-      {/* Create Ad / Post Modal */}
+      {/* 5. CREATE POST MODAL (Uber Theme - Black, White & Gray, Corner Radius Buttons) */}
       {isCreateModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsCreateModalOpen(false)}>
-          <div className="detail-modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '580px' }}>
-            <div className="modal-header">
-              <h2 style={{ fontSize: '1.35rem', fontWeight: '800', margin: 0, color: '#0f172a' }}>Post Classified Ad or Request</h2>
-              <button 
+        <div className="uber-modal-backdrop" onClick={() => setIsCreateModalOpen(false)}>
+          <div className="uber-modal-window" onClick={(e) => e.stopPropagation()}>
+            <div className="uber-modal-header">
+              <div>
+                <h2 className="uber-modal-title">Post Classified Ad or Request</h2>
+                <p className="uber-modal-subtitle">Share your requirement or item with the neighborhood community</p>
+              </div>
+              <button
+                type="button"
+                className="uber-modal-close-btn"
                 onClick={() => setIsCreateModalOpen(false)}
-                style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}
+                title="Close"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleCreatePost} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div>
-                <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Ad Title</label>
+            <div className="uber-modal-body">
+              {/* Ad Title */}
+              <div className="uber-field-group">
+                <label className="uber-field-label">Ad Title *</label>
                 <input
                   type="text"
-                  placeholder="e.g. Dell P2719H 27 inch Frameless IPS Monitor or Urgent AC Servicing"
+                  className="uber-input"
+                  placeholder="e.g. Dell P2719H 27-inch IPS Monitor or Urgent AC Servicing"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  required
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '0.95rem'
-                  }}
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Condition / Type</label>
-                  <select
-                    value={newCondition}
-                    onChange={(e) => setNewCondition(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      fontSize: '0.9rem'
-                    }}
-                  >
-                    <option value="Brand New">Brand New</option>
-                    <option value="Used">Used</option>
-                    <option value="Service Request">Service Request</option>
-                    <option value="Recommendation">Recommendation</option>
-                  </select>
-                </div>
-
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Price / Budget (Rs)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 30,000"
-                    value={newPrice}
-                    onChange={(e) => setNewPrice(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      fontSize: '0.9rem'
-                    }}
-                  />
-                </div>
+              {/* Service Category */}
+              <div className="uber-field-group">
+                <label className="uber-field-label">Service Category *</label>
+                <select
+                  className="uber-select"
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                >
+                  {categoriesData.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
               </div>
 
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Category</label>
+              {/* Province and District Row (Two Dedicated Fields) */}
+              <div className="uber-form-row">
+                <div className="uber-field-group">
+                  <label className="uber-field-label">Province *</label>
                   <select
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      fontSize: '0.9rem'
+                    className="uber-select"
+                    value={newProvince}
+                    onChange={(e) => {
+                      const prov = e.target.value;
+                      setNewProvince(prov);
+                      const firstDist = (sriLankaDistricts[prov] && sriLankaDistricts[prov][0]) || 'Colombo';
+                      setNewDistrict(firstDist);
                     }}
                   >
-                    {categoriesData.map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
+                    {Object.keys(sriLankaDistricts).map(prov => (
+                      <option key={prov} value={prov}>{prov}</option>
                     ))}
                   </select>
                 </div>
 
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Location</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Colombo 05"
-                    value={newLocation}
-                    onChange={(e) => setNewLocation(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      fontSize: '0.9rem'
-                    }}
-                  />
+                <div className="uber-field-group">
+                  <label className="uber-field-label">District *</label>
+                  <select
+                    className="uber-select"
+                    value={newDistrict}
+                    onChange={(e) => setNewDistrict(e.target.value)}
+                  >
+                    {(sriLankaDistricts[newProvince] || Object.values(sriLankaDistricts)[0] || []).map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Description</label>
+              {/* Description Textarea */}
+              <div className="uber-field-group">
+                <label className="uber-field-label">Description *</label>
                 <textarea
+                  className="uber-textarea"
+                  rows={4}
                   placeholder="Describe your item, specification, warranty, or service request details..."
                   value={newContent}
                   onChange={(e) => setNewContent(e.target.value)}
-                  required
-                  rows={4}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '0.95rem',
-                    fontFamily: 'inherit'
-                  }}
                 />
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.875rem', color: '#334155' }}>Attach Multiple Photos</label>
+              {/* Attach Photos Box */}
+              <div className="uber-upload-box">
+                <div className="uber-upload-info">
+                  <i className="fa-solid fa-camera uber-upload-icon"></i>
+                  <div>
+                    <div className="uber-upload-title">
+                      Attach Photos {newImages.length > 0 && <span className="uber-upload-count">({newImages.length} attached)</span>}
+                    </div>
+                    <div className="uber-upload-desc">Supports multiple photos (JPG, PNG, WEBP)</div>
+                  </div>
+                </div>
+
                 <input
                   type="file"
                   accept="image/*"
@@ -1216,89 +1575,106 @@ export default function Community() {
                 />
                 <button
                   type="button"
+                  className="uber-btn-outline"
                   onClick={() => fileInputRef.current?.click()}
-                  style={{
-                    padding: '10px 16px',
-                    borderRadius: '8px',
-                    border: '1px dashed #94a3b8',
-                    backgroundColor: '#f8fafc',
-                    cursor: 'pointer',
-                    fontWeight: '600',
-                    fontSize: '0.875rem',
-                    width: '100%'
-                  }}
                 >
-                  <i className="fa-solid fa-camera"></i> Choose Photos ({newImages.length} attached)
+                  <i className="fa-solid fa-cloud-arrow-up"></i>
+                  Choose Photos
                 </button>
               </div>
 
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  style={{
-                    padding: '10px 20px',
-                    borderRadius: '20px',
-                    border: '1px solid #cbd5e1',
-                    backgroundColor: '#ffffff',
-                    fontWeight: '600',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  style={{
-                    padding: '10px 24px',
-                    borderRadius: '20px',
-                    border: 'none',
-                    backgroundColor: '#009688',
-                    color: '#ffffff',
-                    fontWeight: '700',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Publish Ad
-                </button>
-              </div>
-            </form>
+              {/* Photo Previews */}
+              {newImages.length > 0 && (
+                <div className="uber-image-preview-row">
+                  {newImages.map((img, idx) => (
+                    <div key={idx} className="uber-image-preview-thumb">
+                      <img src={img} alt={`Upload ${idx}`} />
+                      <button
+                        type="button"
+                        className="uber-thumb-remove-btn"
+                        onClick={() => setNewImages(prev => prev.filter((_, i) => i !== idx))}
+                        title="Remove photo"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer (Corner Radius Buttons) */}
+            <div className="uber-modal-footer">
+              <button
+                type="button"
+                className="uber-btn-secondary"
+                onClick={() => setIsCreateModalOpen(false)}
+                disabled={isSubmittingPost}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="uber-btn-primary"
+                onClick={handleCreatePost}
+                disabled={isSubmittingPost}
+                style={{ minWidth: '130px', justifyContent: 'center' }}
+              >
+                {isSubmittingPost ? (
+                  <>
+                    <i className="fa-solid fa-spinner fa-spin" style={{ marginRight: '8px' }}></i>
+                    Publishing...
+                  </>
+                ) : (
+                  'Publish Ad'
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Report Post Modal */}
+      {/* 6. REPORT POST MODAL (Uber Theme) */}
       {reportingPostId && (
-        <div className="modal-overlay" onClick={() => setReportingPostId(null)}>
-          <div className="detail-modal-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '440px', padding: '1.5rem' }}>
-            <h3 style={{ marginTop: 0, color: '#0f172a' }}>Report Listing</h3>
-            <p style={{ color: '#64748b', fontSize: '0.875rem' }}>
-              Why are you reporting this ad or post for moderation?
-            </p>
-            <textarea
-              placeholder="e.g. Inappropriate content, spam, incorrect price, or misleading seller info"
-              value={reportReason}
-              onChange={(e) => setReportReason(e.target.value)}
-              rows={3}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                borderRadius: '8px',
-                border: '1px solid #cbd5e1',
-                marginBottom: '1rem',
-                fontSize: '0.9rem'
-              }}
-            />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              <button 
+        <div className="uber-modal-backdrop" onClick={() => setReportingPostId(null)}>
+          <div className="uber-modal-window" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '460px' }}>
+            <div className="uber-modal-header">
+              <div>
+                <h3 className="uber-modal-title">Report Listing</h3>
+                <p className="uber-modal-subtitle">Why are you reporting this ad or post for moderation?</p>
+              </div>
+              <button
+                type="button"
+                className="uber-modal-close-btn"
                 onClick={() => setReportingPostId(null)}
-                style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: 'none', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="uber-modal-body">
+              <textarea
+                className="uber-textarea"
+                placeholder="e.g. Inappropriate content, spam, incorrect price, or misleading seller info"
+                value={reportReason}
+                onChange={(e) => setReportReason(e.target.value)}
+                rows={3}
+              />
+            </div>
+
+            <div className="uber-modal-footer">
+              <button
+                type="button"
+                className="uber-btn-secondary"
+                onClick={() => setReportingPostId(null)}
               >
                 Cancel
               </button>
-              <button 
+              <button
+                type="button"
+                className="uber-btn-primary"
                 onClick={handleReportSubmit}
-                style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', backgroundColor: '#ef4444', color: '#fff', fontWeight: '700', cursor: 'pointer' }}
+                style={{ backgroundColor: '#ef4444', borderColor: '#ef4444' }}
               >
                 Submit Report
               </button>
@@ -1306,13 +1682,17 @@ export default function Community() {
           </div>
         </div>
       )}
-      {/* Interactive Realtime Chat Modal */}
-      <ChatModal
-        isOpen={isChatOpen}
-        onClose={() => setIsChatOpen(false)}
-        recipient={chatRecipient}
-        postContext={chatPostContext}
-      />
+
+      {/* Realtime Chat Modal */}
+      {isChatOpen && (
+        <ChatModal
+          isOpen={isChatOpen}
+          onClose={() => setIsChatOpen(false)}
+          recipient={chatRecipient}
+          postContext={chatPostContext}
+        />
+      )}
+
 
       {/* Floating AI Assistant Widget */}
       <AiAssistantWidget />

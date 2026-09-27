@@ -104,48 +104,7 @@ export default function WorkerDashboard() {
         </div>
       </div>
 
-      {/* Pending Job Alerts Section */}
-      <div className="worker-card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#111111' }}>
-            <i className="fa-solid fa-bell" style={{ color: '#2563EB', marginRight: '8px' }}></i>
-            Pending Booking Requests ({pendingRequests.length})
-          </h3>
-          {pendingRequests.length > 0 && <span className="badge badge-warning">Requires Response</span>}
-        </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {pendingRequests.length === 0 ? (
-            <p style={{ color: '#64748B', margin: 0 }}>No pending booking requests at the moment.</p>
-          ) : (
-            pendingRequests.slice(0, 3).map(req => (
-              <div key={req.id} style={{
-                padding: '16px',
-                borderRadius: '12px',
-                backgroundColor: '#F8FAFC',
-                border: '1px solid #E2E8F0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between'
-              }}>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '1rem', color: '#111111' }}>
-                    {req.jobTitle} — {req.locationAddress}
-                  </div>
-                  <div style={{ fontSize: '0.85rem', color: '#64748B', marginTop: '4px' }}>
-                    Resident: <strong style={{ color: '#1E293B' }}>{req.residentName || req.residentEmail}</strong> • Scheduled: {new Date(req.scheduledDate).toLocaleString()}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button className="worker-btn-primary" style={{ padding: '8px 16px', fontSize: '0.85rem' }} onClick={() => navigate('/worker/jobs')}>
-                    View & Accept
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
 
       {/* Quick Access Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>

@@ -187,11 +187,29 @@ async def get_user_details(
     return sanitize_payload(raw)
 
 
+@tool
+async def get_service_categories(
+    includeDetails: bool = True
+) -> Dict[str, Any]:
+    """
+    Retrieve the official list of 21 standardized service categories available across SuperBass.
+
+    MCP Tool: get_service_categories
+    Arguments:
+    - includeDetails (boolean, optional): Include category icons and identifiers. Defaults to True.
+    Returns: List of 21 official service categories.
+    """
+    args = {"includeDetails": includeDetails}
+    raw = await mcp_client.call_tool("get_service_categories", args)
+    return sanitize_payload(raw)
+
+
 COMMUNITY_TOOLS = [
     create_community_post,
     get_community_posts,
     update_community_post,
     delete_community_post,
     get_user_community_posts,
-    get_user_details
+    get_user_details,
+    get_service_categories
 ]

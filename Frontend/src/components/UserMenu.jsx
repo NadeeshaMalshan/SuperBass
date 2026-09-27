@@ -3,16 +3,18 @@ import axios from 'axios';
 import './UserMenu.css';
 import { API_BASE_URL } from '../config.js';
 
-export default function UserMenu() {
+export default function UserMenu({ variant = 'default' }) {
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const menuRef = useRef(null);
 
   const token = localStorage.getItem('token');
-  const userName = localStorage.getItem('userName') || 'Resident User';
-  const userEmail = localStorage.getItem('email') || 'resident@superbass.lk';
+  const userEmail = localStorage.getItem('email') || '';
+  const userName = localStorage.getItem('userName') || (userEmail ? userEmail.split('@')[0] : 'Account');
   const userPicture = localStorage.getItem('userPicture');
-  const activeRole = localStorage.getItem('activeRole');
+  const activeRole = localStorage.getItem('activeRole') || 'Resident';
+
+  if (!token) return null;
 
   const navigate = (newPath) => {
     setIsOpen(false);
@@ -21,12 +23,8 @@ export default function UserMenu() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userName');
-    localStorage.removeItem('email');
-    localStorage.removeItem('userPicture');
-    localStorage.removeItem('userPhone');
-    localStorage.removeItem('userAddress');
+    localStorage.clear();
+    sessionStorage.clear();
     setIsOpen(false);
     navigate('/');
   };
@@ -69,29 +67,54 @@ export default function UserMenu() {
     fetchUnread();
   }, [userEmail]);
 
+  const isWorker = (activeRole || localStorage.getItem('activeRole') || '').toLowerCase() === 'worker';
+
   return (
     <div className="user-menu-wrapper" ref={menuRef}>
       {/* Anchor Trigger Button */}
-      <button
-        type="button"
-        className="user-menu-trigger-btn"
-        onClick={() => setIsOpen(prev => !prev)}
-        title="User menu"
-      >
-        {userPicture ? (
-          <img src={userPicture} alt="User" className="user-menu-avatar" />
-        ) : (
-          <div className="user-menu-avatar">{getInitial(userName)}</div>
-        )}
-        <span className="user-menu-name">{getFirstName(userName)}</span>
-        <i className={`fa-solid fa-chevron-down user-menu-arrow ${isOpen ? 'open' : ''}`}></i>
-      </button>
+      {variant === 'm3-google' ? (
+        <button
+          type="button"
+          className="m3-google-avatar-trigger"
+          onClick={() => setIsOpen(prev => !prev)}
+          title={`${isWorker ? 'Worker' : 'Resident'} Account: ${userName} (${userEmail})`}
+          aria-label="User Account Menu"
+        >
+          <div className={`m3-google-avatar-ring ${isWorker ? 'worker-ring' : 'resident-ring'}`}>
+            {userPicture ? (
+              <img src={userPicture} alt={userName} className="m3-google-avatar-img" />
+            ) : (
+              <div className="m3-google-avatar-letter">{getInitial(userName)}</div>
+            )}
+          </div>
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="user-menu-trigger-btn"
+          onClick={() => setIsOpen(prev => !prev)}
+          title="User menu"
+        >
+          {userPicture ? (
+            <img src={userPicture} alt="User" className="user-menu-avatar" />
+          ) : (
+            <div className="user-menu-avatar">{getInitial(userName)}</div>
+          )}
+          <span className="user-menu-name">{getFirstName(userName)}</span>
+          <i className={`fa-solid fa-chevron-down user-menu-arrow ${isOpen ? 'open' : ''}`}></i>
+        </button>
+      )}
 
       {/* Dropdown Popup */}
       {isOpen && (
         <div className="user-menu-dropdown">
           {/* Header */}
-          <div className="user-menu-header">
+          <div
+            className="user-menu-header"
+            onClick={() => navigate(isWorker ? '/worker/profile' : '/account?tab=edit')}
+            style={{ cursor: 'pointer' }}
+            title="Open Account Settings"
+          >
             {userPicture ? (
               <img src={userPicture} alt="Avatar" className="user-menu-header-avatar" />
             ) : (
@@ -119,20 +142,10 @@ export default function UserMenu() {
             <button
               type="button"
               className="user-menu-item"
-              onClick={() => navigate('/account')}
+              onClick={() => navigate(isWorker ? '/worker/profile' : '/account?tab=edit')}
             >
-              <i className="fa-regular fa-user user-menu-item-icon"></i>
-              <span>Manage Account</span>
-            </button>
-
-            <button
-              type="button"
-              className="user-menu-item"
-              onClick={() => navigate('/chats')}
-            >
-              <i className="fa-regular fa-comments user-menu-item-icon"></i>
-              <span>Chats / Messages</span>
-              {unreadCount > 0 && <span className="user-menu-badge">{unreadCount}</span>}
+              <i className="fa-solid fa-gear user-menu-item-icon"></i>
+              <span>Account Settings</span>
             </button>
 
             <div className="user-menu-divider"></div>

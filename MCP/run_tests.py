@@ -125,9 +125,8 @@ def main():
     test_tool("get_user_details", {
         "email": "dampahalagevenuri@gmail.com"
     })
-    test_tool("get_user_details", {
-        "email": "kpjmp28@gmail.com"
-    })
+    print("\n=== 5. TESTING CATEGORIES TOOL ===")
+    test_tool("get_service_categories", {})
 
 if __name__ == "__main__":
     main()

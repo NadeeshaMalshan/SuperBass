@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import categoriesData from './data/categories.json';
+import sriLankaDistricts from './data/sriLankaDistricts.json';
+import M3TopNavbar from './components/M3TopNavbar.jsx';
 import UserMenu from './components/UserMenu.jsx';
 import '@material/web/button/filled-button.js';
 import '@material/web/button/outlined-button.js';
@@ -14,6 +16,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
   const urlParams = new URLSearchParams(window.location.search);
   const tabParam = urlParams.get('tab');
   const [activeTab, setActiveTab] = useState(tabParam || defaultTab || 'overview');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const [profile, setProfile] = useState({
     name: '',
@@ -38,7 +41,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     pricingModel: 'Hourly',
     hourlyRate: '',
     dailyRate: '',
-    skills: [{ skillName: '', experienceYears: 1 }]
+    skills: [{ skillName: categoriesData[0]?.name || 'Plumbing', experienceYears: 1 }]
   });
   const [submittingWorker, setSubmittingWorker] = useState(false);
   const [workerError, setWorkerError] = useState(null);
@@ -50,18 +53,22 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
   const [newCommentText, setNewCommentText] = useState('');
 
   const [editingPost, setEditingPost] = useState(null);
+  const [isSavingPost, setIsSavingPost] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
   const [editCategory, setEditCategory] = useState('plumbing');
-  const [editLocation, setEditLocation] = useState('Colombo 05');
+  const [editProvince, setEditProvince] = useState('Western Province');
+  const [editDistrict, setEditDistrict] = useState('Colombo');
   const [editImages, setEditImages] = useState([]);
   const editFileInputRef = useRef(null);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCreatingPost, setIsCreatingPost] = useState(false);
   const [createTitle, setCreateTitle] = useState('');
   const [createContent, setCreateContent] = useState('');
   const [createCategory, setCreateCategory] = useState('plumbing');
-  const [createLocation, setCreateLocation] = useState('Colombo 05');
+  const [createProvince, setCreateProvince] = useState('Western Province');
+  const [createDistrict, setCreateDistrict] = useState('Colombo');
   const [createImages, setCreateImages] = useState([]);
   const fileInputRef = useRef(null);
 
@@ -95,11 +102,8 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
   }
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('email');
-    localStorage.removeItem('userName');
-    localStorage.removeItem('userPicture');
-    localStorage.removeItem('activeRole');
+    localStorage.clear();
+    sessionStorage.clear();
     window.history.pushState({}, '', '/');
     window.dispatchEvent(new PopStateEvent('popstate'));
   };
@@ -264,7 +268,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
   const handleAddSkill = () => {
     setWorkerForm({
       ...workerForm,
-      skills: [...workerForm.skills, { skillName: '', experienceYears: 1 }]
+      skills: [...workerForm.skills, { skillName: categoriesData[0]?.name || 'Plumbing', experienceYears: 1 }]
     });
   };
 
@@ -409,7 +413,22 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     setEditTitle(post.title);
     setEditContent(post.content);
     setEditCategory(post.serviceCategoryId || 'plumbing');
-    setEditLocation(post.location || 'Colombo 05');
+
+    let prov = 'Western Province';
+    let dist = 'Colombo';
+    if (post.location) {
+      for (const [pName, dists] of Object.entries(sriLankaDistricts)) {
+        for (const d of dists) {
+          if (post.location.toLowerCase().includes(d.toLowerCase())) {
+            prov = pName;
+            dist = d;
+            break;
+          }
+        }
+      }
+    }
+    setEditProvince(prov);
+    setEditDistrict(dist);
     setEditImages(post.images || []);
   };
 
@@ -430,11 +449,12 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     if (!editingPost || !editTitle.trim() || !editContent.trim()) return;
 
     try {
+      setIsSavingPost(true);
       await axios.put(`${API_BASE_URL}/community-posts/${editingPost.postId}`, {
         title: editTitle,
         content: editContent,
         serviceCategoryId: editCategory,
-        location: editLocation,
+        location: `${editDistrict}, ${editProvince}`,
         images: editImages,
         userEmail: userEmail,
         userName: userName
@@ -442,13 +462,15 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
 
-      alert("Post updated successfully!");
+      // Automatically close modal after saving
       setEditingPost(null);
-      fetchUserPosts();
+      await fetchUserPosts();
     } catch (err) {
       console.error("Error updating post:", err);
       const msg = err.response?.data?.message || "Failed to update post.";
       alert(msg);
+    } finally {
+      setIsSavingPost(false);
     }
   };
 
@@ -490,11 +512,12 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     if (!createTitle.trim() || !createContent.trim()) return;
 
     try {
+      setIsCreatingPost(true);
       await axios.post(`${API_BASE_URL}/community-posts`, {
         title: createTitle,
         content: createContent,
         serviceCategoryId: createCategory,
-        location: createLocation,
+        location: `${createDistrict}, ${createProvince}`,
         images: createImages,
         userName: userName || "You (Resident)",
         userAvatar: userPicture || "https://api.dicebear.com/7.x/avataaars/svg?seed=CurrentUser",
@@ -503,15 +526,19 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
 
-      alert("Post published successfully!");
+      // Automatically close modal after saving
       setIsCreateModalOpen(false);
       setCreateTitle('');
       setCreateContent('');
+      setCreateProvince('Western Province');
+      setCreateDistrict('Colombo');
       setCreateImages([]);
-      fetchUserPosts();
+      await fetchUserPosts();
     } catch (err) {
       console.error("Error creating post:", err);
       alert("Failed to publish post.");
+    } finally {
+      setIsCreatingPost(false);
     }
   };
 
@@ -524,175 +551,117 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
   if (!userEmail) return <div style={{ padding: '4rem', textAlign: 'center', fontSize: '1.2rem', color: '#6b7280' }}>Please log in to view your dashboard.</div>;
 
   return (
-    <div style={{ backgroundColor: '#f9fafb', minHeight: '100vh', fontFamily: 'var(--font-body)', color: '#111827' }}>
+    <div className="find-page-container">
 
-      {/* Top Navbar */}
-      <header style={{ backgroundColor: '#ffffff', borderBottom: '1px solid #e5e7eb', padding: '1rem 2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <a href="/" onClick={(e) => { e.preventDefault(); navigateTo('/'); }} style={{ cursor: 'pointer' }}>
-          <img src="/iconWithText-cropped.png" alt="Super බාස් Logo" style={{ height: '40px' }} />
-        </a>
-        <div className="nav-actions" style={{ display: 'flex', alignItems: 'center' }}>
-          <md-outlined-button
-            onClick={() => navigateTo('/find')}
-            style={{
-              '--md-sys-color-primary': '#0f172a',
-              padding: '0 16px',
-              margin: '0 8px'
-            }}
-          >
-            Find Workers
-          </md-outlined-button>
-          <md-filled-button
-            onClick={() => navigateTo('/community')}
-            style={{
-              '--md-sys-color-primary': '#FDC101',
-              '--md-sys-color-on-primary': '#000000',
-              padding: '0 16px',
-              margin: '0 8px'
-            }}
-          >
-            Community Board
-          </md-filled-button>
-          <div style={{ marginLeft: '8px' }}>
-            <UserMenu />
-          </div>
-        </div>
-      </header>
+      {/* Google Workspace / Material 3 Top Navbar */}
+      <M3TopNavbar
+        activePage="account"
+        showSearch={false}
+        showSidebarToggle={true}
+        isSidebarCollapsed={isSidebarCollapsed}
+        onToggleSidebar={() => setIsSidebarCollapsed(prev => !prev)}
+      />
 
-      {/* Main Dashboard Layout */}
-      <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem', display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
-
-        {/* Sidebar Navigation */}
-        <aside style={{ flex: '1 1 250px', backgroundColor: '#ffffff', borderRadius: '16px', padding: '1.5rem', border: '1px solid #e5e7eb', height: 'fit-content' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem', paddingBottom: '1.5rem', borderBottom: '1px solid #e5e7eb' }}>
+      <div className="find-layout">
+        {/* Left Sidebar Navigation Drawer */}
+        <aside className={`find-sidebar m3-drawer ${isSidebarCollapsed ? 'minimized' : ''}`}>
+          {/* User Profile Info Mini Header */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            padding: isSidebarCollapsed ? '12px 0' : '16px 14px',
+            justifyContent: isSidebarCollapsed ? 'center' : 'flex-start',
+            borderBottom: '1px solid #f1f5f9',
+            marginBottom: '10px'
+          }}>
             {userPicture ? (
-              <img src={userPicture} alt="Avatar" style={{ width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover' }} />
+              <img src={userPicture} alt="Avatar" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
             ) : (
-              <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#009688', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '24px' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#009688', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '16px', flexShrink: 0 }}>
                 {profile.name ? profile.name.charAt(0).toUpperCase() : 'U'}
               </div>
             )}
-            <div style={{ overflow: 'hidden' }}>
-              <h3 style={{ margin: '0 0 0.25rem 0', fontWeight: '700', fontSize: '1.1rem', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                {profile.name || 'User'}
-              </h3>
-              <p style={{ margin: 0, fontSize: '0.85rem', color: '#6b7280', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                {userEmail}
-              </p>
-              {isWorker && (
-                <div style={{ marginTop: '0.25rem' }}>
-                  <span style={{ backgroundColor: '#DBEAFE', color: '#1E40AF', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+            {!isSidebarCollapsed && (
+              <div style={{ overflow: 'hidden', minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#111827', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                  {profile.name || 'User'}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                  {userEmail}
+                </div>
+                {isWorker && (
+                  <span style={{ backgroundColor: '#DBEAFE', color: '#1E40AF', padding: '1px 6px', borderRadius: '6px', fontSize: '0.65rem', fontWeight: 800, display: 'inline-block', marginTop: '2px' }}>
                     Active Worker
                   </span>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </div>
 
-          <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <button
+          <nav className="m3-drawer-nav">
+            <div
+              className={`m3-drawer-item ${activeTab === 'overview' ? 'active' : ''}`}
               onClick={() => setActiveTab('overview')}
-              style={{ padding: '12px 16px', textAlign: 'left', borderRadius: '8px', border: 'none', background: activeTab === 'overview' ? '#e0f2fe' : 'transparent', color: activeTab === 'overview' ? '#0284c7' : '#4b5563', fontWeight: activeTab === 'overview' ? '700' : '500', cursor: 'pointer', fontSize: '1rem' }}
             >
-              Overview
-            </button>
-            <button
-              onClick={() => setActiveTab('bookings')}
-              style={{
-                padding: '12px 16px',
-                textAlign: 'left',
-                borderRadius: '8px',
-                border: 'none',
-                background: activeTab === 'bookings' ? '#fef3c7' : 'transparent',
-                color: activeTab === 'bookings' ? '#b45309' : '#4b5563',
-                fontWeight: activeTab === 'bookings' ? '800' : '500',
-                cursor: 'pointer',
-                fontSize: '1rem',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between'
-              }}
-            >
-              <span> My Bookings & Hires</span>
-              {residentBookings.length > 0 && (
-                <span style={{
-                  backgroundColor: '#FDC101',
-                  color: '#000000',
-                  fontSize: '0.75rem',
-                  fontWeight: 800,
-                  padding: '2px 8px',
-                  borderRadius: '10px'
-                }}>
-                  {residentBookings.length}
-                </span>
-              )}
-            </button>
-            <button
+              <div className="m3-drawer-item-left">
+                <md-icon className="m3-drawer-icon">person</md-icon>
+                <span className="m3-drawer-label">Profile Overview</span>
+              </div>
+            </div>
+
+            <div
+              className={`m3-drawer-item ${activeTab === 'edit' ? 'active' : ''}`}
               onClick={() => setActiveTab('edit')}
-              style={{ padding: '12px 16px', textAlign: 'left', borderRadius: '8px', border: 'none', background: activeTab === 'edit' ? '#e0f2fe' : 'transparent', color: activeTab === 'edit' ? '#0284c7' : '#4b5563', fontWeight: activeTab === 'edit' ? '700' : '500', cursor: 'pointer', fontSize: '1rem' }}
             >
-              Edit Profile
-            </button>
-            <button
-              onClick={() => setActiveTab('posts')}
-              style={{ padding: '12px 16px', textAlign: 'left', borderRadius: '8px', border: 'none', background: activeTab === 'posts' ? '#e0f2fe' : 'transparent', color: activeTab === 'posts' ? '#0284c7' : '#4b5563', fontWeight: activeTab === 'posts' ? '700' : '500', cursor: 'pointer', fontSize: '1rem' }}
-            >
-              My Community Posts
-            </button>
-            <button
+              <div className="m3-drawer-item-left">
+                <md-icon className="m3-drawer-icon">edit</md-icon>
+                <span className="m3-drawer-label">Edit Profile</span>
+              </div>
+            </div>
+
+            <div
+              className={`m3-drawer-item ${activeTab === 'settings' ? 'active' : ''}`}
               onClick={() => setActiveTab('settings')}
-              style={{ padding: '12px 16px', textAlign: 'left', borderRadius: '8px', border: 'none', background: activeTab === 'settings' ? '#e0f2fe' : 'transparent', color: activeTab === 'settings' ? '#0284c7' : '#4b5563', fontWeight: activeTab === 'settings' ? '700' : '500', cursor: 'pointer', fontSize: '1rem' }}
             >
-              Settings
-            </button>
+              <div className="m3-drawer-item-left">
+                <md-icon className="m3-drawer-icon">settings</md-icon>
+                <span className="m3-drawer-label">Settings</span>
+              </div>
+            </div>
 
             {isWorker ? (
-              <button
+              <div
+                className="m3-drawer-item"
                 onClick={() => {
                   localStorage.setItem('activeRole', 'Worker');
                   navigateTo('/worker/dashboard');
                 }}
-                style={{
-                  padding: '12px 16px',
-                  textAlign: 'left',
-                  borderRadius: '8px',
-                  border: 'none',
-                  background: '#2563eb',
-                  color: '#ffffff',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  fontSize: '1rem',
-                  transition: 'all 0.2s ease',
-                  marginTop: '0.5rem'
-                }}
+                style={{ marginTop: '8px' }}
               >
-                Worker Dashboard →
-              </button>
+                <div className="m3-drawer-item-left">
+                  <md-icon className="m3-drawer-icon" style={{ color: '#2563eb' }}>engineering</md-icon>
+                  <span className="m3-drawer-label" style={{ color: '#2563eb', fontWeight: 700 }}>Worker Portal</span>
+                </div>
+              </div>
             ) : (
-              <button
+              <div
+                className={`m3-drawer-item ${activeTab === 'become-worker' ? 'active' : ''}`}
                 onClick={() => setActiveTab('become-worker')}
-                style={{
-                  padding: '12px 16px',
-                  textAlign: 'left',
-                  borderRadius: '8px',
-                  border: 'none',
-                  background: activeTab === 'become-worker' ? '#dbeafe' : '#eff6ff',
-                  color: '#2563eb',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  fontSize: '1rem',
-                  transition: 'all 0.2s ease',
-                  marginTop: '0.5rem'
-                }}
+                style={{ marginTop: '8px' }}
               >
-                Join as Worker
-              </button>
+                <div className="m3-drawer-item-left">
+                  <md-icon className="m3-drawer-icon" style={{ color: '#2563eb' }}>handyman</md-icon>
+                  <span className="m3-drawer-label" style={{ color: '#2563eb', fontWeight: 700 }}>Join as Worker</span>
+                </div>
+              </div>
             )}
           </nav>
         </aside>
 
-        {/* Main Section Area */}
-        <section style={{ flex: '3 1 600px', backgroundColor: '#ffffff', borderRadius: '16px', padding: '2rem', border: '1px solid #e5e7eb' }}>
+        {/* Main Content Area */}
+        <main className="find-main" style={{ flex: 1, minWidth: 0, padding: '24px 32px' }}>
+          <div style={{ maxWidth: '900px', backgroundColor: '#ffffff', borderRadius: '16px', padding: '2rem', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
 
           {/* TAB: Overview */}
           {activeTab === 'overview' && (
@@ -1407,13 +1376,19 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
 
                     {workerForm.skills.map((skill, index) => (
                       <div key={index} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '0.75rem' }}>
-                        <input
-                          type="text"
-                          placeholder="Skill Name (e.g. Electrical Wiring, Plumbing)"
+                        <select
                           value={skill.skillName}
                           onChange={(e) => handleSkillChange(index, 'skillName', e.target.value)}
-                          style={{ flex: 2, padding: '10px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '0.9rem' }}
-                        />
+                          style={{ flex: 2, padding: '10px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '0.9rem', backgroundColor: '#FFFFFF', color: '#111827' }}
+                          required
+                        >
+                          <option value="" disabled>Select Service Category</option>
+                          {categoriesData.map(cat => (
+                            <option key={cat.id} value={cat.name}>
+                              {cat.name}
+                            </option>
+                          ))}
+                        </select>
                         <input
                           type="number"
                           min="0"
@@ -1451,9 +1426,9 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
               )}
             </div>
           )}
-
-        </section>
-      </main>
+          </div>
+        </main>
+      </div>
 
       {/* VIEW POST DETAIL MODAL */}
       {selectedPostForDetail && (
@@ -1568,8 +1543,8 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <div style={{ flex: '1 1 140px' }}>
                   <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>Category</label>
                   <select
                     value={editCategory}
@@ -1581,14 +1556,34 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                     ))}
                   </select>
                 </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>Location</label>
-                  <input
-                    type="text"
-                    value={editLocation}
-                    onChange={(e) => setEditLocation(e.target.value)}
-                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-                  />
+                <div style={{ flex: '1 1 140px' }}>
+                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>Province</label>
+                  <select
+                    value={editProvince}
+                    onChange={(e) => {
+                      const prov = e.target.value;
+                      setEditProvince(prov);
+                      const firstDist = (sriLankaDistricts[prov] && sriLankaDistricts[prov][0]) || 'Colombo';
+                      setEditDistrict(firstDist);
+                    }}
+                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#0f172a' }}
+                  >
+                    {Object.keys(sriLankaDistricts).map(prov => (
+                      <option key={prov} value={prov}>{prov}</option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ flex: '1 1 140px' }}>
+                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>District</label>
+                  <select
+                    value={editDistrict}
+                    onChange={(e) => setEditDistrict(e.target.value)}
+                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#0f172a' }}
+                  >
+                    {(sriLankaDistricts[editProvince] || []).map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -1629,15 +1624,23 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                 <button
                   type="button"
                   onClick={() => setEditingPost(null)}
+                  disabled={isSavingPost}
                   style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  style={{ padding: '8px 20px', borderRadius: '6px', border: 'none', backgroundColor: '#3b82f6', color: '#fff', fontWeight: '700', cursor: 'pointer' }}
+                  disabled={isSavingPost}
+                  style={{ padding: '8px 20px', borderRadius: '6px', border: 'none', backgroundColor: '#3b82f6', color: '#fff', fontWeight: '700', cursor: isSavingPost ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
-                  Save Changes
+                  {isSavingPost ? (
+                    <>
+                      <i className="fa-solid fa-spinner fa-spin"></i> Saving...
+                    </>
+                  ) : (
+                    'Save Changes'
+                  )}
                 </button>
               </div>
             </form>
@@ -1675,8 +1678,8 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <div style={{ flex: '1 1 140px' }}>
                   <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>Category</label>
                   <select
                     value={createCategory}
@@ -1688,15 +1691,34 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                     ))}
                   </select>
                 </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>Location</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Colombo 05"
-                    value={createLocation}
-                    onChange={(e) => setCreateLocation(e.target.value)}
-                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-                  />
+                <div style={{ flex: '1 1 140px' }}>
+                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>Province</label>
+                  <select
+                    value={createProvince}
+                    onChange={(e) => {
+                      const prov = e.target.value;
+                      setCreateProvince(prov);
+                      const firstDist = (sriLankaDistricts[prov] && sriLankaDistricts[prov][0]) || 'Colombo';
+                      setCreateDistrict(firstDist);
+                    }}
+                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#0f172a' }}
+                  >
+                    {Object.keys(sriLankaDistricts).map(prov => (
+                      <option key={prov} value={prov}>{prov}</option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ flex: '1 1 140px' }}>
+                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>District</label>
+                  <select
+                    value={createDistrict}
+                    onChange={(e) => setCreateDistrict(e.target.value)}
+                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#0f172a' }}
+                  >
+                    {(sriLankaDistricts[createProvince] || []).map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -1738,15 +1760,23 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
+                  disabled={isCreatingPost}
                   style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  style={{ padding: '8px 20px', borderRadius: '6px', border: 'none', backgroundColor: '#009688', color: '#fff', fontWeight: '700', cursor: 'pointer' }}
+                  disabled={isCreatingPost}
+                  style={{ padding: '8px 20px', borderRadius: '6px', border: 'none', backgroundColor: '#009688', color: '#fff', fontWeight: '700', cursor: isCreatingPost ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
-                  Publish Post
+                  {isCreatingPost ? (
+                    <>
+                      <i className="fa-solid fa-spinner fa-spin"></i> Publishing...
+                    </>
+                  ) : (
+                    'Publish Post'
+                  )}
                 </button>
               </div>
             </form>

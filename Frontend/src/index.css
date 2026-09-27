@@ -1,29 +1,38 @@
-/* Material Design 3 & Design Tokens for SuperBass */
+/* Material Design 3 & Unified Design Tokens for SuperBass (Black, White & Grays) */
 :root {
-  --md-sys-color-primary: #FDC101;
-  --md-sys-color-on-primary: #18181b;
-  --md-sys-color-primary-container: #fef3c7;
-  --md-sys-color-on-primary-container: #78350f;
+  --md-sys-color-primary: #000000;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-primary-container: #eeeeee;
+  --md-sys-color-on-primary-container: #000000;
 
   --md-sys-color-surface: #ffffff;
-  --md-sys-color-on-surface: #0f172a;
-  --md-sys-color-surface-variant: #f1f5f9;
-  --md-sys-color-on-surface-variant: #475569;
+  --md-sys-color-on-surface: #000000;
+  --md-sys-color-surface-variant: #f7f7f7;
+  --md-sys-color-on-surface-variant: #545454;
 
-  --md-sys-color-outline: #cbd5e1;
-  --md-sys-color-outline-variant: #e2e8f0;
+  --md-sys-color-outline: #e5e5e5;
+  --md-sys-color-outline-variant: #eeeeee;
 
-  --brand-yellow: #FDC101;
-  --brand-yellow-hover: #d97706;
-  --brand-yellow-light: #fffbeb;
-  --brand-yellow-glow: rgba(245, 158, 11, 0.28);
+  --brand-black: #000000;
+  --brand-black-hover: #262626;
+  --brand-black-light: #f7f7f7;
+  --brand-black-glow: rgba(0, 0, 0, 0.18);
+
+  --brand-yellow: #000000;
+  --brand-yellow-hover: #262626;
+  --brand-yellow-light: #f7f7f7;
+  --brand-yellow-glow: rgba(0, 0, 0, 0.18);
+
+  --loader-bg: #eeeeee;
+  --loader-fill: #000000;
+  --md-circular-progress-active-indicator-color: #000000;
+  --md-linear-progress-active-indicator-color: #000000;
 
   --font-heading: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-  --bg-gradient: radial-gradient(circle at 50% 0%, rgba(245, 158, 11, 0.08) 0%, rgba(255, 255, 255, 0) 50%),
-    radial-gradient(circle at 80% 20%, rgba(245, 158, 11, 0.04) 0%, rgba(255, 255, 255, 0) 40%);
+  --bg-gradient: radial-gradient(circle at 50% 0%, rgba(0, 0, 0, 0.03) 0%, rgba(255, 255, 255, 0) 50%);
   color-scheme: light;
 }
 
@@ -75,10 +84,10 @@ button {
 
 /* Custom M3 button styles for the Hero CTA and Header */
 md-filled-button.hero-cta-button {
-  --md-filled-button-container-color: var(--brand-yellow);
-  --md-filled-button-label-text-color: #111827;
-  --md-filled-button-hover-container-color: var(--brand-yellow-hover);
-  --md-filled-button-focus-container-color: var(--brand-yellow-hover);
+  --md-filled-button-container-color: #000000;
+  --md-filled-button-label-text-color: #ffffff;
+  --md-filled-button-hover-container-color: #262626;
+  --md-filled-button-focus-container-color: #262626;
   --md-filled-button-container-shape: 9999px;
   --md-filled-button-container-height: 56px;
   --md-filled-button-label-text-font: var(--font-heading);
@@ -92,14 +101,14 @@ md-filled-button.hero-cta-button {
   margin: 16px auto 36px;
   display: inline-flex;
   justify-content: center;
-  box-shadow: 0 10px 25px -5px var(--brand-yellow-glow), 0 4px 10px -3px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 4px 10px -3px rgba(0, 0, 0, 0.05);
   transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
 }
 
 md-filled-button.hero-cta-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 16px 30px -5px var(--brand-yellow-glow), 0 8px 16px -4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 16px 30px -5px rgba(0, 0, 0, 0.3), 0 8px 16px -4px rgba(0, 0, 0, 0.1);
 }
 
 md-filled-button.hero-cta-button:active {
@@ -107,8 +116,9 @@ md-filled-button.hero-cta-button:active {
 }
 
 md-outlined-button.hero-secondary-button {
-  --md-outlined-button-outline-color: var(--md-sys-color-outline);
-  --md-outlined-button-label-text-color: var(--md-sys-color-on-surface);
+  --md-outlined-button-outline-color: #000000;
+  --md-outlined-button-label-text-color: #000000;
+  --md-outlined-button-hover-label-text-color: #000000;
   --md-outlined-button-container-shape: 9999px;
   --md-outlined-button-container-height: 56px;
   --md-outlined-button-label-text-font: var(--font-heading);
@@ -118,4 +128,44 @@ md-outlined-button.hero-secondary-button {
   --md-outlined-button-trailing-space: 32px;
   margin: 12px 8px;
   cursor: pointer;
+}
+
+/* ==========================================================================
+   Material Design 3 Select, Option, Menu & List Design Tokens
+   ========================================================================== */
+md-outlined-select, md-filled-select {
+  --md-sys-color-primary: #000000;
+  --md-sys-color-primary-container: #f6f6f6;
+  --md-sys-color-on-primary-container: #000000;
+  --md-sys-color-surface-container: #ffffff;
+  --md-sys-color-surface-container-high: #ffffff;
+  --md-sys-color-surface-container-highest: #ffffff;
+  --md-menu-container-color: #ffffff;
+  --md-menu-container-shape: 16px;
+  --md-menu-container-elevation: 3;
+  --md-outlined-select-focus-outline-color: #000000;
+  --md-outlined-select-focus-label-text-color: #000000;
+  --md-outlined-select-focus-icon-color: #000000;
+}
+
+md-select-option, md-menu-item {
+  --md-sys-color-primary-container: #f0f0f0;
+  --md-sys-color-on-primary-container: #000000;
+  --md-select-option-container-color: #ffffff;
+  --md-select-option-selected-container-color: #f0f0f0;
+  --md-select-option-selected-label-text-color: #000000;
+  --md-select-option-selected-leading-icon-color: #000000;
+  --md-select-option-selected-trailing-icon-color: #000000;
+  --md-select-option-focus-container-color: #f0f0f0;
+  --md-select-option-focus-label-text-color: #000000;
+  --md-select-option-hover-container-color: #f6f6f6;
+  --md-select-option-hover-label-text-color: #000000;
+  --md-select-option-label-text-color: #000000;
+  --md-select-option-label-text-font: var(--font-body, 'DM Sans', sans-serif);
+  --md-select-option-label-text-size: 0.95rem;
+  --md-menu-item-container-color: #ffffff;
+  --md-menu-item-selected-container-color: #f0f0f0;
+  --md-menu-item-selected-label-text-color: #000000;
+  --md-menu-item-focus-container-color: #f0f0f0;
+  --md-menu-item-hover-container-color: #f6f6f6;
 }

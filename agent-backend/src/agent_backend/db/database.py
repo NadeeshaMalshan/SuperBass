@@ -66,13 +66,14 @@ class ChatMessageModel(Base):
     conversation = relationship("ConversationModel", back_populates="messages")
 
 
-# Create Async Engine & Sessionmaker
+# Create Async Engine & Sessionmaker with connection timeout
 engine = create_async_engine(
     settings.database_url,
     echo=False,
     pool_pre_ping=True,
     pool_size=10,
-    max_overflow=20
+    max_overflow=20,
+    connect_args={"timeout": 3, "command_timeout": 3}
 )
 
 AsyncSessionLocal = async_sessionmaker(

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Superbass.Models;
@@ -13,6 +14,7 @@ namespace Superbass.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [EnableCors("AllowFrontend")]
     public class BookingsController : ControllerBase
     {
         private readonly SuperbassDbContext _context;
@@ -58,6 +60,8 @@ namespace Superbass.Controllers
                 Urgency = b.Urgency,
                 ScheduledDate = b.ScheduledDate,
                 LocationAddress = b.LocationAddress,
+                LocationLat = b.LocationLat,
+                LocationLng = b.LocationLng,
                 ContactPhone = b.ContactPhone,
                 PricingModel = b.PricingModel,
                 EstimatedPrice = b.EstimatedPrice,
@@ -81,124 +85,145 @@ namespace Superbass.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateBooking([FromBody] CreateBookingRequest request)
         {
-            if (request == null || request.WorkerId <= 0 || string.IsNullOrWhiteSpace(request.JobTitle))
-            {
-                return BadRequest(new { message = "Worker ID and Job Title are required." });
-            }
-
-            var residentEmail = request.ResidentEmail ?? GetCurrentUserEmail();
-            if (string.IsNullOrWhiteSpace(residentEmail))
-            {
-                residentEmail = "resident@superbass.lk";
-            }
-
-            // Ensure Resident exists
-            var resident = await _context.Residents.FindAsync(residentEmail);
-            if (resident == null)
-            {
-                resident = new Resident
-                {
-                    Email = residentEmail,
-                    Name = residentEmail.Split('@')[0],
-                    PhoneNo = request.ContactPhone ?? "0771234567"
-                };
-                _context.Residents.Add(resident);
-                await _context.SaveChangesAsync();
-            }
-
-            // Ensure Worker exists
-            var worker = await _context.Workers.FindAsync(request.WorkerId);
-            if (worker == null)
-            {
-                return NotFound(new { message = $"Worker with ID {request.WorkerId} not found." });
-            }
-
-            // Create or Link Conversation
-            int? conversationId = null;
             try
             {
-                var convSummary = await _communicationRepo.GetOrCreateConversationAsync(new CreateConversationRequest
+                if (request == null || request.WorkerId <= 0 || string.IsNullOrWhiteSpace(request.JobTitle))
                 {
-                    WorkerId = worker.Id,
-                    WorkerEmail = worker.Email,
-                    WorkerName = worker.Name,
-                    WorkerAvatar = worker.ProfileImage,
-                    ResidentEmail = residentEmail,
-                    InitialMessage = $"New Hire Request: {request.JobTitle} scheduled for {(request.ScheduledDate ?? DateTime.UtcNow.AddDays(1)):dd MMM yyyy, hh:mm tt}."
-                }, residentEmail);
-                conversationId = convSummary.Id;
-            }
-            catch (Exception)
-            {
-                // Fallback: Continue booking creation even if chat linking encounters a non-critical error
-            }
+                    return BadRequest(new { message = "Worker ID and Job Title are required." });
+                }
 
-            var scheduledUtc = request.ScheduledDate.HasValue 
-                ? (request.ScheduledDate.Value.Kind == DateTimeKind.Utc 
-                    ? request.ScheduledDate.Value 
-                    : DateTime.SpecifyKind(request.ScheduledDate.Value, DateTimeKind.Utc))
-                : DateTime.UtcNow.AddDays(1);
+                var residentEmail = request.ResidentEmail ?? GetCurrentUserEmail();
+                if (string.IsNullOrWhiteSpace(residentEmail))
+                {
+                    residentEmail = "resident@superbass.lk";
+                }
 
-            var booking = new Booking
-            {
-                ResidentEmail = residentEmail,
-                WorkerId = worker.Id,
-                JobTitle = request.JobTitle,
-                Description = request.Description ?? string.Empty,
-                Urgency = request.Urgency ?? "Medium",
-                ScheduledDate = scheduledUtc,
-                LocationAddress = request.LocationAddress ?? resident.Address ?? "Colombo",
-                ContactPhone = request.ContactPhone ?? resident.PhoneNo ?? string.Empty,
-                PricingModel = request.PricingModel ?? worker.PricingModel ?? "Hourly",
-                EstimatedPrice = request.EstimatedPrice ?? (worker.HourlyRate ?? worker.DailyRate),
-                Status = "Requested",
-                ConversationId = conversationId,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
+                // Reject if hiring account is a worker
+                var isWorkerAccount = await _context.Workers.AnyAsync(w => w.Email == residentEmail || w.ResidentEmail == residentEmail);
+                if (isWorkerAccount)
+                {
+                    return BadRequest(new { message = "Workers are not permitted to hire or create bookings. Please switch to a Resident account to book services." });
+                }
 
-            _context.Bookings.Add(booking);
-            await _context.SaveChangesAsync();
+                // Ensure Resident exists
+                var resident = await _context.Residents.FindAsync(residentEmail);
+                if (resident == null)
+                {
+                    resident = new Resident
+                    {
+                        Email = residentEmail,
+                        Name = residentEmail.Split('@')[0],
+                        PhoneNo = request.ContactPhone ?? "0771234567"
+                    };
+                    _context.Residents.Add(resident);
+                    await _context.SaveChangesAsync();
+                }
 
-            // Send notification message inside conversation
-            if (conversationId.HasValue)
-            {
+                // Ensure Worker exists
+                var worker = await _context.Workers.FindAsync(request.WorkerId);
+                if (worker == null)
+                {
+                    return NotFound(new { message = $"Worker with ID {request.WorkerId} not found." });
+                }
+
+                // Create or Link Conversation
+                int? conversationId = null;
                 try
                 {
-                    await _communicationRepo.SendMessageAsync(conversationId.Value, residentEmail, "Resident", new SendMessageRequest
+                    var convSummary = await _communicationRepo.GetOrCreateConversationAsync(new CreateConversationRequest
                     {
-                        SenderEmail = residentEmail,
-                        SenderRole = "Resident",
-                        MessageType = "BookingUpdate",
-                        Content = $"📋 Booking Requested #{booking.Id}: {booking.JobTitle} ({booking.Urgency} Priority)"
-                    });
+                        WorkerId = worker.Id,
+                        WorkerEmail = worker.Email,
+                        WorkerName = worker.Name,
+                        WorkerAvatar = worker.ProfileImage,
+                        ResidentEmail = residentEmail,
+                        InitialMessage = $"New Hire Request: {request.JobTitle} scheduled for {(request.ScheduledDate ?? DateTime.UtcNow.AddDays(1)):dd MMM yyyy, hh:mm tt}."
+                    }, residentEmail);
+                    conversationId = convSummary.Id;
                 }
-                catch { }
-            }
+                catch (Exception)
+                {
+                    // Fallback: Continue booking creation even if chat linking encounters a non-critical error
+                }
 
-            // Reload with navigations
-            var savedBooking = await _context.Bookings
-                .Include(b => b.Resident)
-                .Include(b => b.Worker)
-                .FirstAsync(b => b.Id == booking.Id);
+                var scheduledUtc = request.ScheduledDate.HasValue 
+                    ? (request.ScheduledDate.Value.Kind == DateTimeKind.Utc 
+                        ? request.ScheduledDate.Value 
+                        : DateTime.SpecifyKind(request.ScheduledDate.Value, DateTimeKind.Utc))
+                    : DateTime.UtcNow.AddDays(1);
 
-            // Send OneSignal push notification to worker
-            var workerTargetEmail = worker.ResidentEmail ?? worker.Email;
-            if (!string.IsNullOrWhiteSpace(workerTargetEmail))
-            {
-                _ = _pushNotificationService.SendPushNotificationAsync(
-                    recipientEmail: workerTargetEmail,
-                    title: "New Booking Request! 📋",
-                    message: $"New request for '{booking.JobTitle}' from {resident.Name}.",
-                    data: new Dictionary<string, string>
+                var booking = new Booking
+                {
+                    ResidentEmail = residentEmail,
+                    WorkerId = worker.Id,
+                    JobTitle = request.JobTitle,
+                    Description = request.Description ?? string.Empty,
+                    Urgency = request.Urgency ?? "Medium",
+                    ScheduledDate = scheduledUtc,
+                    LocationAddress = request.LocationAddress ?? resident.Address ?? "Colombo",
+                    LocationLat = request.LocationLat ?? resident.LocationLat,
+                    LocationLng = request.LocationLng ?? resident.LocationLng,
+                    ContactPhone = request.ContactPhone ?? resident.PhoneNo ?? string.Empty,
+                    PricingModel = request.PricingModel ?? worker.PricingModel ?? "Hourly",
+                    EstimatedPrice = request.EstimatedPrice ?? (worker.HourlyRate ?? worker.DailyRate),
+                    Status = "Requested",
+                    ConversationId = conversationId,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                _context.Bookings.Add(booking);
+                await _context.SaveChangesAsync();
+
+                // Send notification message inside conversation
+                if (conversationId.HasValue)
+                {
+                    try
                     {
-                        { "bookingId", booking.Id.ToString() },
-                        { "type", "booking" }
+                        await _communicationRepo.SendMessageAsync(conversationId.Value, residentEmail, "Resident", new SendMessageRequest
+                        {
+                            SenderEmail = residentEmail,
+                            SenderRole = "Resident",
+                            MessageType = "BookingUpdate",
+                            Content = $"📋 Booking Requested #{booking.Id}: {booking.JobTitle} ({booking.Urgency} Priority)"
+                        });
                     }
-                );
-            }
+                    catch { }
+                }
 
-            return CreatedAtAction(nameof(GetBookingById), new { id = booking.Id }, MapToDto(savedBooking));
+                // Reload with navigations
+                var savedBooking = await _context.Bookings
+                    .Include(b => b.Resident)
+                    .Include(b => b.Worker)
+                    .FirstAsync(b => b.Id == booking.Id);
+
+                // Send OneSignal push notification to worker
+                var workerTargetEmail = worker.ResidentEmail ?? worker.Email;
+                if (!string.IsNullOrWhiteSpace(workerTargetEmail))
+                {
+                    try
+                    {
+                        _ = _pushNotificationService.SendPushNotificationAsync(
+                            recipientEmail: workerTargetEmail,
+                            title: "New Booking Request! 📋",
+                            message: $"New request for '{booking.JobTitle}' from {resident.Name}.",
+                            data: new Dictionary<string, string>
+                            {
+                                { "bookingId", booking.Id.ToString() },
+                                { "type", "booking" }
+                            }
+                        );
+                    }
+                    catch { }
+                }
+
+                return StatusCode(201, MapToDto(savedBooking));
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"[Error in CreateBooking]: {ex}");
+                return StatusCode(500, new { message = "Failed to create booking: " + ex.Message });
+            }
         }
 
         // GET: /api/bookings/{id}
@@ -275,6 +300,13 @@ namespace Superbass.Controllers
                 .FirstOrDefaultAsync(b => b.Id == id);
 
             if (booking == null) return NotFound(new { message = "Booking not found." });
+
+            // Check if worker already has an active InProgress job
+            var isWorkerBusy = await _context.Bookings.AnyAsync(b => b.WorkerId == booking.WorkerId && b.Status == "InProgress");
+            if (isWorkerBusy)
+            {
+                return BadRequest(new { message = "You are currently busy with an ongoing job. Please complete your active job before accepting new booking requests." });
+            }
 
             booking.Status = "Confirmed";
             booking.UpdatedAt = DateTime.UtcNow;
@@ -372,8 +404,22 @@ namespace Superbass.Controllers
 
             if (booking == null) return NotFound(new { message = "Booking not found." });
 
+            // Check if worker already has another job in progress
+            var isAlreadyBusy = await _context.Bookings.AnyAsync(b => b.WorkerId == booking.WorkerId && b.Id != booking.Id && b.Status == "InProgress");
+            if (isAlreadyBusy)
+            {
+                return BadRequest(new { message = "You already have another job in progress. Please complete it before starting a new job." });
+            }
+
             booking.Status = "InProgress";
             booking.UpdatedAt = DateTime.UtcNow;
+
+            // Mark worker as Busy (IsAvailable = false)
+            if (booking.Worker != null)
+            {
+                booking.Worker.IsAvailable = false;
+            }
+
             await _context.SaveChangesAsync();
 
             if (booking.ConversationId.HasValue)
@@ -419,6 +465,13 @@ namespace Superbass.Controllers
             if (booking.Worker != null)
             {
                 booking.Worker.CompletedJobs += 1;
+
+                // Check if worker has any remaining in-progress jobs
+                var hasOtherActiveJobs = await _context.Bookings.AnyAsync(b => b.WorkerId == booking.WorkerId && b.Id != booking.Id && b.Status == "InProgress");
+                if (!hasOtherActiveJobs)
+                {
+                    booking.Worker.IsAvailable = true; // Worker is Available again!
+                }
             }
 
             await _context.SaveChangesAsync();
@@ -459,6 +512,12 @@ namespace Superbass.Controllers
                 .FirstOrDefaultAsync(b => b.Id == id);
 
             if (booking == null) return NotFound(new { message = "Booking not found." });
+
+            // Cannot cancel if job is already in progress
+            if (booking.Status == "InProgress")
+            {
+                return BadRequest(new { message = "Job is currently in progress and cannot be cancelled. Please complete the job or contact support." });
+            }
 
             booking.Status = "Cancelled";
             booking.CancellationReason = request?.Reason ?? "Cancelled by user";

@@ -9,7 +9,9 @@ namespace Superbass.Services
     public class ChatHub : Hub
     {
         private readonly ICommunicationRepository _communicationRepo;
-        public static readonly ConcurrentDictionary<string, DateTime> ActiveUsers = new(StringComparer.OrdinalIgnoreCase);
+        public static readonly ConcurrentDictionary<string, HashSet<string>> ConnectedUsers = new(StringComparer.OrdinalIgnoreCase);
+        public static readonly ConcurrentDictionary<string, DateTime> LastSeenTimes = new(StringComparer.OrdinalIgnoreCase);
+        private static readonly object PresenceLock = new();
 
         public ChatHub(ICommunicationRepository communicationRepo)
         {
@@ -19,17 +21,16 @@ namespace Superbass.Services
         public static bool IsUserOnline(string? email)
         {
             if (string.IsNullOrWhiteSpace(email)) return false;
-            if (ActiveUsers.TryGetValue(email, out var lastActive))
+            lock (PresenceLock)
             {
-                return (DateTime.UtcNow - lastActive).TotalMinutes < 3;
+                return ConnectedUsers.TryGetValue(email.Trim(), out var conns) && conns.Count > 0;
             }
-            return false;
         }
 
         public static DateTime? GetLastSeen(string? email)
         {
             if (string.IsNullOrWhiteSpace(email)) return null;
-            if (ActiveUsers.TryGetValue(email, out var lastActive))
+            if (LastSeenTimes.TryGetValue(email.Trim(), out var lastActive))
             {
                 return lastActive;
             }
@@ -40,16 +41,25 @@ namespace Superbass.Services
         {
             if (!string.IsNullOrWhiteSpace(email))
             {
-                ActiveUsers[email] = DateTime.UtcNow;
+                LastSeenTimes[email.Trim()] = DateTime.UtcNow;
             }
         }
 
         public override async Task OnConnectedAsync()
         {
-            var email = Context.GetHttpContext()?.Request.Query["userEmail"].ToString();
+            var email = Context.GetHttpContext()?.Request.Query["userEmail"].ToString()?.Trim();
             if (!string.IsNullOrWhiteSpace(email))
             {
-                RecordActivity(email);
+                lock (PresenceLock)
+                {
+                    if (!ConnectedUsers.TryGetValue(email, out var conns))
+                    {
+                        conns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                        ConnectedUsers[email] = conns;
+                    }
+                    conns.Add(Context.ConnectionId);
+                    RecordActivity(email);
+                }
                 await Clients.All.SendAsync("UserPresenceChanged", new { userEmail = email, isOnline = true });
             }
             await base.OnConnectedAsync();
@@ -57,11 +67,30 @@ namespace Superbass.Services
 
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
-            var email = Context.GetHttpContext()?.Request.Query["userEmail"].ToString();
+            var email = Context.GetHttpContext()?.Request.Query["userEmail"].ToString()?.Trim();
+            var wasLast = false;
+            var now = DateTime.UtcNow;
+
             if (!string.IsNullOrWhiteSpace(email))
             {
-                RecordActivity(email);
-                await Clients.All.SendAsync("UserPresenceChanged", new { userEmail = email, isOnline = false, lastSeen = DateTime.UtcNow });
+                lock (PresenceLock)
+                {
+                    if (ConnectedUsers.TryGetValue(email, out var conns))
+                    {
+                        conns.Remove(Context.ConnectionId);
+                        if (conns.Count == 0)
+                        {
+                            ConnectedUsers.TryRemove(email, out _);
+                            wasLast = true;
+                        }
+                    }
+                    LastSeenTimes[email] = now;
+                }
+
+                if (wasLast)
+                {
+                    await Clients.All.SendAsync("UserPresenceChanged", new { userEmail = email, isOnline = false, lastSeen = now });
+                }
             }
             await base.OnDisconnectedAsync(exception);
         }

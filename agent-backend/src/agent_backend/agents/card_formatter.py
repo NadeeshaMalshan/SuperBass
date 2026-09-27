@@ -20,6 +20,7 @@ from agent_backend.schemas.card_models import (
     PostUpdatedCard,
     PostDeletedCard,
     UserProfileCard,
+    ServiceCategoriesCard,
     TextMessageCard,
     ErrorCard,
     CommunityPostSummary
@@ -45,9 +46,11 @@ Available response_type values and their corresponding card_data schemas:
    card_data fields: id, status="Removed", message, deletedAt.
 6. "user_profile": Use when user or worker profile details were fetched.
    card_data fields: email, role, isWorker, displayName, phoneNo, address, workerRating, completedJobs, skills, pricingModel.
-7. "text_message": Use for conversational replies, greetings, explanations, or questions.
+7. "service_categories": Use when get_service_categories tool was called and returned a list of service categories.
+   card_data fields: categories (list of category objects with id, name, icon), totalCount.
+8. "text_message": Use for conversational replies, greetings, explanations, or questions.
    card_data fields: text, suggestions (list of quick prompt suggestions).
-8. "error": Use if a tool or operation failed with an error.
+9. "error": Use if a tool or operation failed with an error.
    card_data fields: errorCode, message, actionRequired.
 
 Choose the exact response_type that best represents the latest action.
@@ -214,6 +217,25 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
             return AgentCardResponse(
                 response_type="user_profile",
                 message=last_ai_content or f"Profile details for {card.email}",
+                card_data=card.model_dump(),
+                metadata={"agent": "community_agent", "user_email": email}
+            )
+
+        # 6. get_service_categories
+        if tool_name == "get_service_categories":
+            categories_raw = data if isinstance(data, list) else (
+                data.get("value") or data.get("categories") or []
+                if isinstance(data, dict) else []
+            )
+            if not isinstance(categories_raw, list):
+                categories_raw = []
+            card = ServiceCategoriesCard(
+                categories=categories_raw,
+                totalCount=len(categories_raw)
+            )
+            return AgentCardResponse(
+                response_type="service_categories",
+                message=last_ai_content or f"Here are {len(categories_raw)} official service categories available on SuperBass.",
                 card_data=card.model_dump(),
                 metadata={"agent": "community_agent", "user_email": email}
             )

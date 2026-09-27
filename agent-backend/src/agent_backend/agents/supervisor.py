@@ -15,7 +15,7 @@ from agent_backend.prompts.supervisor_prompts import SUPERVISOR_SYSTEM_PROMPT
 
 class SupervisorDecision(BaseModel):
     """Routing decision made by the Supervisor Agent."""
-    next_agent: Literal["community_agent", "FINISH"] = Field(
+    next_agent: Literal["community_agent", "booking_agent", "FINISH"] = Field(
         description="The next sub-agent to delegate the task to, or 'FINISH' if handled"
     )
     direct_response: str = Field(
@@ -62,6 +62,14 @@ async def supervisor_node(state: AgentState) -> Dict[str, Any]:
 
     # Heuristic fallback (fast & offline resilient)
     last_msg = messages[-1].content.lower() if messages[-1].content else ""
+
+    booking_keywords = [
+        "book", "booking", "hire", "schedule", "appointment", "reserve",
+        "slot", "availability"
+    ]
+    if any(kw in last_msg for kw in booking_keywords):
+        return {"next": "booking_agent"}
+
     community_keywords = [
         "post", "community", "feed", "notice", "announcement", "electric", "plumb",
         "carpenter", "clean", "ac", "repair", "service", "help", "publish", "share",
@@ -74,9 +82,8 @@ async def supervisor_node(state: AgentState) -> Dict[str, Any]:
     # General greeting or small talk
     if any(g in last_msg for g in ["hi", "hello", "hey", "good morning", "good evening", "help"]):
         greeting_text = (
-            "Hello! I am your SuperBass Assistant. I can help you browse community posts, "
-            "create new posts for home service requests (e.g., plumbing, electrical, AC repair), "
-            "check your active posts, or view your profile. What would you like to do today?"
+            "Hello! I am your SuperBass Assistant. I can help you book service workers, "
+            "browse community posts, or publish requests on the community board. What would you like to do today?"
         )
         return {
             "next": "FINISH",

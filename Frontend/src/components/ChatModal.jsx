@@ -30,15 +30,16 @@ const EMOJI_CATEGORIES = {
 export default function ChatModal({
   isOpen,
   onClose,
-  recipient = {
+  recipient: propRecipient = null,
+  postContext = null
+}) {
+  const recipient = propRecipient || {
     name: 'Jayashan Manodya',
     email: 'jayashan@superbass.lk',
     avatar: null,
     workerId: null,
     userId: null
-  },
-  postContext = null
-}) {
+  };
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [conversationId, setConversationId] = useState(null);
@@ -55,8 +56,8 @@ export default function ChatModal({
   const typingTimerRef = useRef(null);
   const typingDebounceRef = useRef(null);
 
-  const currentUserEmail = localStorage.getItem('email') || 'resident@superbass.lk';
-  const currentUserName = localStorage.getItem('userName') || 'You';
+  const currentUserEmail = localStorage.getItem('email') || '';
+  const currentUserName = localStorage.getItem('userName') || (currentUserEmail ? currentUserEmail.split('@')[0] : 'You');
   const token = localStorage.getItem('token');
 
   // Check recipient presence initially & via SignalR

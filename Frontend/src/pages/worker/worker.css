@@ -361,3 +361,95 @@
   background-color: var(--worker-danger-light);
   color: var(--worker-danger);
 }
+
+/* ==========================================================================
+   Mobile & Tablet Responsive Layout Rules for Worker Portal
+   ========================================================================== */
+@media (max-width: 900px) {
+  .worker-navbar {
+    padding: 0 16px;
+    height: 64px;
+  }
+
+  .worker-main-layout {
+    flex-direction: column;
+  }
+
+  .worker-sidebar {
+    width: 100%;
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 10px 14px;
+    gap: 6px;
+    border-right: none;
+    border-bottom: 1px solid var(--worker-border);
+  }
+
+  .worker-nav-item {
+    padding: 8px 14px;
+    font-size: 0.88rem;
+    white-space: nowrap;
+    border-radius: 9999px;
+  }
+
+  .worker-content {
+    padding: 20px 16px;
+  }
+
+  .page-title {
+    font-size: 1.4rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .metric-card {
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .metric-icon-box {
+    width: 42px;
+    height: 42px;
+    font-size: 1.1rem;
+    border-radius: 10px;
+  }
+
+  .metric-val {
+    font-size: 1.3rem;
+  }
+
+  .worker-card {
+    padding: 16px;
+    border-radius: 14px;
+  }
+
+  .status-toggle-container {
+    padding: 4px 10px;
+  }
+
+  .status-text {
+    display: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-tabs-nav {
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .profile-tab-btn {
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+}

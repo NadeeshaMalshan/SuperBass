@@ -9,22 +9,22 @@ export default function UserProfileCard({ data, onAction }) {
 
   return (
     <div className="agent-card-container">
-      <div className="agent-base-card" style={{ borderLeft: '4px solid #8b5cf6' }}>
+      <div className="agent-base-card" style={{ borderLeft: '4px solid #000000' }}>
         <div className="agent-card-header">
           <span className="agent-card-badge role">
             <i className={`fa-solid ${isWorker ? 'fa-screwdriver-wrench' : 'fa-house-user'}`}></i>
             {' '}{role || (isWorker ? 'Worker' : 'Resident')}
           </span>
-          <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Account Info</span>
+          <span style={{ fontSize: '0.8rem', color: '#757575' }}>Account Info</span>
         </div>
 
         <div className="agent-profile-avatar-row">
           <div className="agent-profile-avatar">{initial}</div>
           <div>
-            <h4 style={{ margin: 0, fontSize: '1.05rem', color: '#0f172a', fontWeight: 700 }}>
+            <h4 style={{ margin: 0, fontSize: '1.05rem', color: '#000000', fontWeight: 800 }}>
               {displayName || 'SuperBass User'}
             </h4>
-            <span style={{ fontSize: '0.825rem', color: '#64748b' }}>{email}</span>
+            <span style={{ fontSize: '0.825rem', color: '#757575' }}>{email}</span>
           </div>
         </div>
 
@@ -32,7 +32,7 @@ export default function UserProfileCard({ data, onAction }) {
           {phoneNo && <span><i className="fa-solid fa-phone"></i> {phoneNo}</span>}
           {address && <span><i className="fa-solid fa-location-dot"></i> {address}</span>}
           {workerRating && (
-            <span><i className="fa-solid fa-star" style={{ color: '#f59e0b' }}></i> {workerRating} / 5.0</span>
+            <span><i className="fa-solid fa-star" style={{ color: '#000000' }}></i> {workerRating} / 5.0</span>
           )}
           {completedJobs !== undefined && completedJobs !== null && (
             <span><i className="fa-solid fa-briefcase"></i> {completedJobs} Jobs</span>

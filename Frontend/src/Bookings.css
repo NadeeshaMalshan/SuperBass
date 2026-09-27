@@ -1,0 +1,385 @@
+/* ==========================================================================
+   SuperBass — Bookings Page (Monochrome Black & White Theme)
+   Pure High-Contrast Aesthetic: #000000, #ffffff, #18181b, #27272a, #f4f4f5
+   ========================================================================== */
+
+.bookings-page-container {
+  background-color: #f7f7f8;
+  min-height: 100vh;
+  color: #000000;
+  font-family: var(--font-body, 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif);
+}
+
+.bookings-layout {
+  display: flex;
+  gap: 24px;
+  max-width: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0 24px 24px 0;
+  box-sizing: border-box;
+}
+
+@media (max-width: 992px) {
+  .bookings-layout {
+    flex-direction: column;
+    padding: 16px;
+    gap: 16px;
+  }
+}
+
+/* Sidebar Navigation */
+.bookings-sidebar {
+  width: 290px;
+  flex-shrink: 0;
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 20px;
+  border: 1px solid #e4e4e7;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+  align-self: flex-start;
+  position: sticky;
+  top: 24px;
+}
+
+@media (max-width: 992px) {
+  .bookings-sidebar {
+    width: 100%;
+    position: static;
+  }
+}
+
+/* Main Area */
+.bookings-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.bookings-main-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e4e4e7;
+}
+
+.bookings-title {
+  font-size: 1.65rem;
+  font-weight: 800;
+  color: #000000;
+  margin: 0;
+  letter-spacing: -0.02em;
+  font-family: var(--font-heading, 'DM Sans', sans-serif);
+}
+
+.bookings-subtitle {
+  color: #71717a;
+  margin: 4px 0 0 0;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+/* Booking Card */
+.booking-card {
+  background-color: #ffffff;
+  border-radius: 18px;
+  padding: 24px;
+  border: 1px solid #e4e4e7;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.booking-card:hover {
+  border-color: #000000;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+  transform: translateY(-2px);
+}
+
+.booking-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.booking-card-title {
+  margin: 0 0 8px 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #000000;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.booking-meta-row {
+  color: #71717a;
+  font-size: 0.88rem;
+  font-weight: 500;
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.booking-description {
+  margin: 12px 0 0 0;
+  color: #3f3f46;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+/* Details Box Inside Card */
+.booking-details-box {
+  padding: 16px 20px;
+  background-color: #f7f7f8;
+  border-radius: 14px;
+  border: 1px solid #ededf0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.booking-details-label {
+  font-size: 0.72rem;
+  color: #71717a;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+}
+
+.booking-details-name {
+  font-weight: 700;
+  color: #000000;
+  font-size: 0.98rem;
+}
+
+.booking-details-phone {
+  color: #52525b;
+  font-size: 0.88rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+}
+
+.booking-price-amount {
+  font-weight: 900;
+  color: #000000;
+  font-size: 1.25rem;
+  letter-spacing: -0.01em;
+}
+
+/* Status Badges */
+.booking-badge {
+  padding: 5px 14px;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.booking-badge-requested {
+  background-color: #f4f4f5;
+  color: #000000;
+  border: 1.5px solid #000000;
+}
+
+.booking-badge-confirmed {
+  background-color: #27272a;
+  color: #ffffff;
+  border: 1.5px solid #27272a;
+}
+
+.booking-badge-inprogress {
+  background-color: #000000;
+  color: #ffffff;
+  border: 1.5px solid #000000;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.12);
+}
+
+.booking-badge-completed {
+  background-color: #000000;
+  color: #ffffff;
+  border: 1.5px solid #000000;
+}
+
+.booking-badge-reviewed {
+  background-color: #000000;
+  color: #ffffff;
+  border: 1.5px solid #000000;
+}
+
+.booking-badge-rejected {
+  background-color: #f4f4f5;
+  color: #71717a;
+  border: 1.5px solid #d4d4d8;
+}
+
+.booking-badge-cancelled {
+  background-color: #f4f4f5;
+  color: #a1a1aa;
+  border: 1.5px solid #e4e4e7;
+}
+
+/* Priority Badge */
+.booking-priority-badge {
+  background-color: #000000;
+  color: #ffffff;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-weight: 800;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Action Buttons */
+.booking-btn-black {
+  background: #000000 !important;
+  color: #ffffff !important;
+  border: 1.5px solid #000000 !important;
+  border-radius: 9999px !important;
+  padding: 8px 22px !important;
+  font-weight: 700 !important;
+  font-size: 0.88rem !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18) !important;
+}
+
+.booking-btn-black:hover {
+  background: #262626 !important;
+  border-color: #262626 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28) !important;
+}
+
+.booking-btn-outlined {
+  background: transparent !important;
+  color: #000000 !important;
+  border: 1.5px solid #000000 !important;
+  border-radius: 9999px !important;
+  padding: 8px 22px !important;
+  font-weight: 700 !important;
+  font-size: 0.88rem !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+}
+
+.booking-btn-outlined:hover {
+  background: #000000 !important;
+  color: #ffffff !important;
+  transform: translateY(-1px) !important;
+}
+
+.booking-btn-secondary {
+  background: #f4f4f5 !important;
+  color: #000000 !important;
+  border: 1.5px solid #e4e4e7 !important;
+  border-radius: 9999px !important;
+  padding: 8px 22px !important;
+  font-weight: 700 !important;
+  font-size: 0.88rem !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.booking-btn-secondary:hover {
+  background: #e4e4e7 !important;
+  border-color: #000000 !important;
+}
+
+/* Worker Busy Status Banner */
+.worker-busy-banner {
+  background-color: #ffffff;
+  border: 2px solid #000000;
+  border-radius: 18px;
+  padding: 20px 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.worker-busy-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background-color: #000000;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.worker-busy-tag {
+  background-color: #000000;
+  color: #ffffff;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+/* Full Color Map Styling */
+.leaflet-container {
+  border-radius: 16px;
+}
+
+/* Custom Modal Monochrome Overrides */
+md-dialog {
+  --md-dialog-container-color: #ffffff;
+  --md-dialog-container-shape: 24px;
+}
+
+md-filled-button {
+  --md-sys-color-primary: #000000;
+  --md-sys-color-on-primary: #ffffff;
+  font-weight: 700;
+}
+
+md-outlined-button {
+  --md-sys-color-primary: #000000;
+  --md-outlined-button-label-text-color: #000000;
+  --md-outlined-button-outline-color: #000000;
+  font-weight: 700;
+}
+
+md-text-button {
+  --md-sys-color-primary: #000000;
+  font-weight: 700;
+}

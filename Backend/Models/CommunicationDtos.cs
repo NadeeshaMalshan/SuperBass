@@ -44,6 +44,7 @@ namespace Superbass.Models
         public string ResidentEmail { get; set; } = null!;
         public string? ResidentName { get; set; }
         public string? ResidentPhone { get; set; }
+        public string? ResidentProfileImage { get; set; }
         public int WorkerId { get; set; }
         public string WorkerName { get; set; } = null!;
         public string WorkerEmail { get; set; } = null!;
@@ -55,6 +56,7 @@ namespace Superbass.Models
         public string? LastSenderEmail { get; set; }
         public string? LastSenderRole { get; set; }
         public int UnreadCount { get; set; }
+        public bool LastMessageIsRead { get; set; }
         public bool IsOnline { get; set; }
         public DateTime? LastSeenAt { get; set; }
         public DateTime CreatedAt { get; set; }
@@ -86,6 +88,7 @@ namespace Superbass.Models
         public string ResidentEmail { get; set; } = null!;
         public string? ResidentName { get; set; }
         public string? ResidentPhone { get; set; }
+        public string? ResidentProfileImage { get; set; }
         public int WorkerId { get; set; }
         public string WorkerName { get; set; } = null!;
         public string WorkerEmail { get; set; } = null!;

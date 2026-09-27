@@ -1,4 +1,4 @@
-import { StrictMode, useState, useEffect } from 'react'
+import { Component, StrictMode, useState, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
@@ -21,6 +21,61 @@ import WorkerPerformance from './pages/worker/WorkerPerformance.jsx'
 import WorkerProfile from './pages/worker/WorkerProfile.jsx'
 import ResidentProfile from './ResidentProfile.jsx'
 
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('SuperBass Application Error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100vh',
+          padding: '24px',
+          fontFamily: "'DM Sans', sans-serif",
+          textAlign: 'center',
+          background: '#f9fafb',
+          color: '#111827'
+        }}>
+          <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '8px' }}>Something went wrong</h2>
+          <p style={{ color: '#6b7280', maxWidth: '460px', marginBottom: '20px' }}>
+            An unexpected error occurred. Please reload the page or navigate back to the home screen.
+          </p>
+          <button
+            onClick={() => window.location.href = '/'}
+            style={{
+              background: '#000000',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '9999px',
+              padding: '12px 24px',
+              fontWeight: 700,
+              fontSize: '0.95rem',
+              cursor: 'pointer'
+            }}
+          >
+            Go to Home
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function Router() {
   const [path, setPath] = useState(window.location.pathname);
 
@@ -31,6 +86,27 @@ function Router() {
   }, []);
 
   const activeRole = localStorage.getItem('activeRole') || 'Resident';
+
+  // Role-based Theme: Switch yellow accents to Worker Blue except on landing and worker-detail
+  useEffect(() => {
+    const updateTheme = () => {
+      const currentRole = (localStorage.getItem('activeRole') || '').toLowerCase();
+      const currentPath = window.location.pathname;
+      const isWorker = currentRole === 'worker' || localStorage.getItem('workerAuth') === 'true';
+      const isLanding = currentPath === '/' || currentPath === '' || currentPath === '/index.html';
+      const isWorkerDetail = currentPath === '/worker-detail' || currentPath.startsWith('/worker-detail');
+
+      if (isWorker && !isLanding && !isWorkerDetail) {
+        document.body.classList.add('worker-theme');
+      } else {
+        document.body.classList.remove('worker-theme');
+      }
+    };
+
+    updateTheme();
+    window.addEventListener('storage', updateTheme);
+    return () => window.removeEventListener('storage', updateTheme);
+  }, [path]);
 
   // Role Guard: Active Worker trying to access Resident account profile
   if (path === '/account' || path === '/account.jsx') {
@@ -49,11 +125,11 @@ function Router() {
   if (path === '/join' || path === '/join.jsx') {
     return <Join />;
   }
+  if (path === '/ai/chat' || path === '/community/chat' || path === '/ai-chat' || path === '/agent') {
+    return <AiCommunityChat />;
+  }
   if (path === '/community' || path === '/community.jsx') {
     return <Community />;
-  }
-  if (path === '/ai-chat' || path === '/agent' || path === '/ai-chat.jsx') {
-    return <AiCommunityChat />;
   }
   if (path === '/chats' || path === '/chats.jsx') {
     return <Chats />;
@@ -97,6 +173,8 @@ function Router() {
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <Router />
+    <ErrorBoundary>
+      <Router />
+    </ErrorBoundary>
   </StrictMode>,
 )

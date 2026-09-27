@@ -20,7 +20,7 @@ export default function PostDetailCard({ data, onAction }) {
 
   return (
     <div className="agent-card-container">
-      <div className="agent-base-card" style={{ borderLeft: '4px solid #FDC101' }}>
+      <div className="agent-base-card" style={{ borderLeft: '4px solid #000000' }}>
         <div className="agent-card-header">
           <span className="agent-card-badge category">
             <i className="fa-solid fa-tag"></i> {communityId || 'General'}

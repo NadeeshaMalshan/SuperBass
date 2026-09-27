@@ -16,7 +16,8 @@ from agent_backend.schemas.card_models import (
     PostDeletedCard,
     UserProfileCard,
     TextMessageCard,
-    ErrorCard
+    ErrorCard,
+    ServiceCategoriesCard
 )
 from agent_backend.agents.card_formatter import _deterministic_card_builder
 from agent_backend.agents.supervisor import supervisor_node
@@ -75,6 +76,15 @@ def test_card_schemas():
     # 8. ErrorCard
     c8 = ErrorCard(errorCode="NOT_FOUND", message="Post not found")
     assert c8.errorCode == "NOT_FOUND"
+
+    # 9. ServiceCategoriesCard
+    c9 = ServiceCategoriesCard(
+        categories=["Plumbing", "Electrical", "Carpentry"],
+        totalCount=3,
+        suggestedNextAction="Pick a category"
+    )
+    assert len(c9.categories) == 3
+    assert c9.totalCount == 3
 
 
 def test_langgraph_compilation():
@@ -140,9 +150,32 @@ def test_deterministic_card_builder_for_created_post():
     assert card_resp.card_data.get("location") == "Kandy"
 
 
+def test_deterministic_card_builder_for_service_categories():
+    """Verify card formatter correctly constructs a ServiceCategoriesCard from tool output."""
+    tool_content = '{"categories": ["Plumbing", "Electrical", "Carpentry", "Masonry"]}'
+    state = {
+        "messages": [
+            HumanMessage(content="Show service categories"),
+            AIMessage(content="Fetching categories..."),
+            ToolMessage(content=tool_content, tool_call_id="call_cat_1", name="get_service_categories"),
+            AIMessage(content="Here are the available categories.")
+        ],
+        "email": "kpjmp28@gmail.com",
+        "user_type": "Resident",
+        "user_profile": None,
+        "next": None,
+        "structured_response": None,
+        "metadata": {}
+    }
+    card_resp = _deterministic_card_builder(state)
+    assert card_resp.response_type == "service_categories"
+    assert "categories" in card_resp.card_data
+    assert len(card_resp.card_data["categories"]) == 4
+
+
 def test_community_tools_count():
-    """Verify exactly 6 community MCP tools are registered."""
-    assert len(COMMUNITY_TOOLS) == 6
+    """Verify all 7 community MCP tools are registered."""
+    assert len(COMMUNITY_TOOLS) == 7
     names = [t.name for t in COMMUNITY_TOOLS]
     expected = [
         "create_community_post",
@@ -150,7 +183,8 @@ def test_community_tools_count():
         "update_community_post",
         "delete_community_post",
         "get_user_community_posts",
-        "get_user_details"
+        "get_user_details",
+        "get_service_categories"
     ]
     for exp in expected:
         assert exp in names
@@ -161,6 +195,7 @@ if __name__ == "__main__":
     test_langgraph_compilation()
     test_community_tools_count()
     test_deterministic_card_builder_for_created_post()
+    test_deterministic_card_builder_for_service_categories()
     asyncio.run(test_supervisor_greeting())
     asyncio.run(test_supervisor_community_routing())
     print("All SuperBass Agent Backend tests passed successfully!")

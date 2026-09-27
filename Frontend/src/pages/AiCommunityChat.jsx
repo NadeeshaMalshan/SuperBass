@@ -1,17 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './AiCommunityChat.css';
 import '../Community.css';
-import '../App.css';
 import UserMenu from '../components/UserMenu.jsx';
+import M3TopNavbar from '../components/M3TopNavbar.jsx';
 import AgentCardDispatcher from '../components/agent/AgentCardDispatcher.jsx';
 import {
   sendAgentMessage,
   checkAgentHealth,
   checkMcpHealth,
-  listConversations,
-  createConversation,
-  getConversationMessages,
-  deleteConversation,
 } from '../services/agentApi.js';
 
 export default function AiCommunityChat() {
@@ -20,13 +16,13 @@ export default function AiCommunityChat() {
     window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
-  const currentUserEmail = localStorage.getItem('email') || 'resident@superbass.lk';
-  const currentUserName = localStorage.getItem('userName') || currentUserEmail.split('@')[0];
+  const currentUserEmail = localStorage.getItem('email') || '';
+  const currentUserName = localStorage.getItem('userName') || (currentUserEmail ? currentUserEmail.split('@')[0] : 'Resident');
   const activeRole = localStorage.getItem('activeRole') || 'Resident';
 
-  const [conversations, setConversations] = useState([]);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [conversationId, setConversationId] = useState(() => {
-    return 'superbass-' + Math.random().toString(36).substring(2, 9);
+    return 'workio-' + Math.random().toString(36).substring(2, 9);
   });
 
   const getWelcomeMessage = () => ({
@@ -35,7 +31,7 @@ export default function AiCommunityChat() {
     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     cardResponse: {
       response_type: 'text_message',
-      message: `Hello ${currentUserName}! I am your SuperBass AI Assistant. I can help you create community posts for home services, search active requests, check your posted notices, or inspect your profile details. How can I help you today?`,
+      message: `Hello ${currentUserName}! I am your Workio AI Assistant. I can help you create community posts for home services, search active requests, check your posted notices, or inspect your profile details. How can I help you today?`,
       card_data: {
         suggestions: [
           'Show recent community posts',
@@ -56,7 +52,7 @@ export default function AiCommunityChat() {
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
-  // Check backend and MCP server health on mount & load conversations
+  // Check backend and MCP server health on mount
   useEffect(() => {
     async function verifyConnections() {
       const [aHealth, mHealth] = await Promise.all([checkAgentHealth(), checkMcpHealth()]);
@@ -64,98 +60,7 @@ export default function AiCommunityChat() {
       setMcpHealth(mHealth.status === 'healthy' ? 'online' : 'offline');
     }
     verifyConnections();
-    loadUserConversations();
   }, []);
-
-  const loadUserConversations = async () => {
-    try {
-      const convs = await listConversations(currentUserEmail);
-      setConversations(convs);
-      if (convs && convs.length > 0) {
-        // Automatically select the most recent conversation
-        handleSelectConversation(convs[0].id, convs);
-      }
-    } catch (err) {
-      console.error('Failed to load conversations:', err);
-    }
-  };
-
-  const handleSelectConversation = async (convId, existingList) => {
-    setConversationId(convId);
-    setLoading(true);
-    try {
-      const dbMsgs = await getConversationMessages(convId);
-      if (dbMsgs && dbMsgs.length > 0) {
-        const mapped = dbMsgs.map((m) => {
-          const isUser = m.role === 'user';
-          const time = m.created_at
-            ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-          if (isUser) {
-            return {
-              id: m.id,
-              sender: 'user',
-              text: m.content,
-              time,
-            };
-          } else {
-            return {
-              id: m.id,
-              sender: 'assistant',
-              time,
-              cardResponse: {
-                response_type: m.response_type || 'text_message',
-                message: m.content,
-                card_data: m.card_data || {},
-              },
-            };
-          }
-        });
-        setMessages(mapped);
-      } else {
-        setMessages([getWelcomeMessage()]);
-      }
-    } catch (err) {
-      console.error(`Failed to load messages for ${convId}:`, err);
-      setMessages([getWelcomeMessage()]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleNewChat = async () => {
-    const newConvId = 'superbass-' + Math.random().toString(36).substring(2, 9);
-    try {
-      const created = await createConversation(currentUserEmail, 'New Conversation');
-      const convIdToUse = created?.id || newConvId;
-      setConversationId(convIdToUse);
-      setMessages([getWelcomeMessage()]);
-      const convs = await listConversations(currentUserEmail);
-      setConversations(convs);
-    } catch (e) {
-      setConversationId(newConvId);
-      setMessages([getWelcomeMessage()]);
-    }
-  };
-
-  const handleDeleteConversation = async (convId, e) => {
-    e.stopPropagation();
-    try {
-      await deleteConversation(convId, currentUserEmail);
-      const remaining = conversations.filter((c) => c.id !== convId);
-      setConversations(remaining);
-      if (conversationId === convId) {
-        if (remaining.length > 0) {
-          handleSelectConversation(remaining[0].id, remaining);
-        } else {
-          handleNewChat();
-        }
-      }
-    } catch (err) {
-      console.error('Failed to delete conversation:', err);
-    }
-  };
 
   // Auto-scroll to bottom of messages
   useEffect(() => {
@@ -201,10 +106,6 @@ export default function AiCommunityChat() {
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
-
-      // Refresh sidebar conversations to update titles and order
-      const convs = await listConversations(currentUserEmail);
-      setConversations(convs);
     } catch (err) {
       console.error('Failed to get response:', err);
       setMessages((prev) => [
@@ -253,157 +154,188 @@ export default function AiCommunityChat() {
   };
 
   const clearChat = () => {
-    handleNewChat();
+    const newConvId = 'superbass-' + Math.random().toString(36).substring(2, 9);
+    setConversationId(newConvId);
+    setMessages([getWelcomeMessage()]);
   };
 
   return (
-    <div className="ai-chat-page-wrapper">
-      {/* SuperBass Consistent Navbar */}
-      <header className="ai-chat-navbar">
-        <a
-          href="#home"
-          className="brand-logo"
-          onClick={(e) => {
-            e.preventDefault();
-            navigate('/');
-          }}
-        >
-          <img src="/iconWithText-cropped.png" alt="Super බාස් Logo" className="brand-logo-img" />
-        </a>
+    <div className="find-page-container ai-chat-uber-page">
+      {/* SuperBass Material 3 Top Navbar (Dark Theme matching Landing Page) */}
+      <M3TopNavbar
+        theme="dark"
+        activePage="ai"
+        showSidebarToggle={true}
+        isSidebarCollapsed={isSidebarCollapsed}
+        onToggleSidebar={() => setIsSidebarCollapsed((prev) => !prev)}
+        alwaysShowLinks={true}
+      />
 
-        <ul className="nav-links">
-          <li className="nav-link" onClick={() => navigate('/find')}>Services</li>
-          <li className="nav-link" onClick={() => navigate('/community')}>Community</li>
-          <li className="nav-link active" style={{ color: '#FDC101', fontWeight: 700 }} onClick={() => navigate('/ai-chat')}>
-            <i className="fa-solid fa-wand-magic-sparkles" style={{ marginRight: '6px' }}></i>
-            AI Assistant
-          </li>
-          <li className="nav-link" onClick={() => navigate('/chats')}>Chats</li>
-          <li className="nav-link" onClick={() => navigate('/bookings')}>Bookings</li>
-        </ul>
+      <div className="find-layout ai-chat-uber-layout">
+        {/* Left Sidebar — Quick Actions Only */}
+        <aside className={`find-sidebar m3-drawer ai-chat-uber-sidebar ${isSidebarCollapsed ? 'minimized' : ''}`}>
 
-        <div className="nav-actions" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <UserMenu />
-        </div>
-      </header>
-
-      {/* Main Chat Interface */}
-      <main className="ai-chat-main">
-        {/* Header Banner Card */}
-        <div className="ai-chat-header-card">
-          <div className="ai-chat-title-group">
-            <div className="ai-chat-bot-icon">
-              <i className="fa-solid fa-robot"></i>
+          {/* Brand / Identity */}
+          <div className="ai-sidebar-brand">
+            <div className="ai-sidebar-brand-icon">
+              <md-icon style={{ fontSize: '20px', color: '#ffffff' }}>auto_awesome</md-icon>
             </div>
-            <div className="ai-chat-title-text">
-              <h2>SuperBass Community AI Agent</h2>
-              <p>Powered by LangGraph & OpenAI gpt-4o-mini &bull; Connected to MCP Tools</p>
-            </div>
+            {!isSidebarCollapsed && (
+              <div>
+                <div className="ai-sidebar-brand-name">Workio AI</div>
+                <div className="ai-sidebar-brand-sub">Community Assistant</div>
+              </div>
+            )}
           </div>
 
-          <div className="ai-chat-status-badges">
-            <span className={`ai-status-pill ${agentHealth === 'online' ? 'online' : ''}`}>
-              <span className="ai-status-dot" style={{ background: agentHealth === 'online' ? '#22c55e' : '#f59e0b' }}></span>
-              Agent :8001
-            </span>
-            <span className={`ai-status-pill ${mcpHealth === 'online' ? 'online' : ''}`}>
-              <span className="ai-status-dot" style={{ background: mcpHealth === 'online' ? '#22c55e' : '#f59e0b' }}></span>
-              MCP :8000
-            </span>
-            <button className="ai-clear-btn" title="Reset chat" onClick={clearChat}>
-              <i className="fa-solid fa-trash-can"></i>
-            </button>
-          </div>
-        </div>
+          {/* New Chat / Reset Button */}
+          <button
+            type="button"
+            className="m3-compose-fab ai-uber-compose-btn"
+            onClick={clearChat}
+            title="Start a fresh conversation"
+          >
+            <md-icon>add</md-icon>
+            <span>New Chat</span>
+          </button>
 
-        {/* Multi-Chat Two-Column Layout */}
-        <div className="ai-chat-layout">
-          {/* Sidebar for Multi-Chat Threads */}
-          <aside className="ai-conversations-sidebar">
-            <button className="ai-new-chat-btn" onClick={handleNewChat}>
-              <i className="fa-solid fa-plus"></i>
-              New Chat
-            </button>
+          {/* Divider */}
+          <div className="m3-drawer-divider"></div>
 
-            <div className="ai-sidebar-heading">Conversations</div>
+          {/* Quick Actions */}
+          {!isSidebarCollapsed && <div className="m3-drawer-section-title" style={{ padding: '0 6px 6px' }}>Quick Actions</div>}
+          <nav className="m3-drawer-nav">
+            <div className="m3-drawer-item" onClick={() => handleSendMessage('Show recent community posts in Colombo')} title="Recent Posts">
+              <div className="m3-drawer-item-left">
+                <md-icon className="m3-drawer-icon">campaign</md-icon>
+                <span className="m3-drawer-label">Recent Posts</span>
+              </div>
+            </div>
+            <div className="m3-drawer-item" onClick={() => handleSendMessage('Create a community post for home service')} title="Draft a Post">
+              <div className="m3-drawer-item-left">
+                <md-icon className="m3-drawer-icon">edit_note</md-icon>
+                <span className="m3-drawer-label">Draft a Post</span>
+              </div>
+            </div>
+            <div className="m3-drawer-item" onClick={() => handleSendMessage('Find available verified craftsmen near me')} title="Find Craftsmen">
+              <div className="m3-drawer-item-left">
+                <md-icon className="m3-drawer-icon">handyman</md-icon>
+                <span className="m3-drawer-label">Find Craftsmen</span>
+              </div>
+            </div>
+            <div className="m3-drawer-item" onClick={() => handleSendMessage('Show all my community posts')} title="My Posts">
+              <div className="m3-drawer-item-left">
+                <md-icon className="m3-drawer-icon">person_pin</md-icon>
+                <span className="m3-drawer-label">My Posts</span>
+              </div>
+            </div>
+            <div className="m3-drawer-item" onClick={() => handleSendMessage('What is my user role and profile details?')} title="My Profile">
+              <div className="m3-drawer-item-left">
+                <md-icon className="m3-drawer-icon">manage_accounts</md-icon>
+                <span className="m3-drawer-label">My Profile</span>
+              </div>
+            </div>
+          </nav>
 
-            <div className="ai-conv-list">
-              {conversations.length === 0 ? (
-                <div style={{ fontSize: '0.8rem', color: '#94a3b8', textAlign: 'center', padding: '1rem 0' }}>
-                  No previous chats yet
+          {/* Divider */}
+          <div className="m3-drawer-divider"></div>
+
+          {/* Service Shortcuts */}
+          {!isSidebarCollapsed && <div className="m3-drawer-section-title" style={{ padding: '0 6px 6px' }}>Emergency Services</div>}
+          <nav className="m3-drawer-nav">
+            {[
+              { label: 'Plumber', icon: 'plumbing', msg: 'Create a community post: Need emergency plumber for leaky pipe in Colombo' },
+              { label: 'Electrician', icon: 'electrical_services', msg: 'Create a community post: Need licensed electrician urgently' },
+              { label: 'AC Repair', icon: 'air', msg: 'Create a community post: Looking for AC repair technician in Colombo' },
+              { label: 'Carpenter', icon: 'carpenter', msg: 'Create a community post: Need experienced carpenter for furniture repair' },
+              { label: 'Cleaner', icon: 'cleaning_services', msg: 'Create a community post: Looking for professional home cleaning service' },
+            ].map(({ label, icon, msg }) => (
+              <div key={label} className="m3-drawer-item" onClick={() => handleSendMessage(msg)} title={label}>
+                <div className="m3-drawer-item-left">
+                  <md-icon className="m3-drawer-icon">{icon}</md-icon>
+                  <span className="m3-drawer-label">{label}</span>
                 </div>
-              ) : (
-                conversations.map((c) => {
-                  const isActive = c.id === conversationId;
-                  const dateStr = c.updated_at
-                    ? new Date(c.updated_at).toLocaleDateString([], { month: 'short', day: 'numeric' })
-                    : '';
+              </div>
+            ))}
+          </nav>
 
-                  return (
-                    <div
-                      key={c.id}
-                      className={`ai-conv-item ${isActive ? 'active' : ''}`}
-                      onClick={() => handleSelectConversation(c.id, conversations)}
-                    >
-                      <div className="ai-conv-item-content">
-                        <span className="ai-conv-item-title" title={c.title || 'Chat'}>
-                          <i className="fa-regular fa-message" style={{ marginRight: '6px', fontSize: '0.75rem' }}></i>
-                          {c.title || 'New Conversation'}
-                        </span>
-                        {dateStr && <span className="ai-conv-item-date">{dateStr}</span>}
+        </aside>
+
+        {/* Main Chat Interface */}
+        <main className="find-main ai-chat-main-pane">
+          <div className="ai-chat-card-container">
+            {/* Header Card */}
+            <div className="ai-chat-card-header">
+              <div className="ai-chat-title-group">
+                <div className="ai-chat-bot-avatar">
+                  <md-icon style={{ fontSize: '22px', color: '#ffffff' }}>auto_awesome</md-icon>
+                </div>
+                <div className="ai-chat-title-text">
+                  <h2>Workio AI Assistant</h2>
+                  <p>
+                    <span className="ai-status-dot online"></span>
+                    Workio AI &bull; Community Assistant
+                  </p>
+                </div>
+              </div>
+
+              <div className="ai-chat-status-badges">
+                <button className="ai-clear-btn" title="Reset chat" onClick={clearChat}>
+                  <md-icon style={{ fontSize: '16px' }}>refresh</md-icon>
+                  <span>Reset</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Messages Stream */}
+            <div className="ai-chat-messages-stream">
+              <div className="ai-stream-date-pill">Today &bull; Workio AI Assistant</div>
+
+              {messages.map((msg) => {
+                const isUser = msg.sender === 'user';
+                return (
+                  <div key={msg.id} className={`ai-bubble-row ${isUser ? 'resident' : 'assistant'}`}>
+                    {!isUser && (
+                      <div className="ai-msg-avatar bot-av">
+                        <md-icon style={{ fontSize: '18px', color: '#ffffff' }}>auto_awesome</md-icon>
                       </div>
-                      <button
-                        className="ai-conv-delete-btn"
-                        title="Delete chat"
-                        onClick={(e) => handleDeleteConversation(c.id, e)}
-                      >
-                        <i className="fa-solid fa-trash-can"></i>
-                      </button>
+                    )}
+
+                    <div className="ai-msg-wrapper">
+                      <div className={`ai-bubble ${isUser ? 'resident' : 'assistant'}`}>
+                        {isUser ? (
+                          <div>{msg.text}</div>
+                        ) : (
+                          <AgentCardDispatcher
+                            response={msg.cardResponse}
+                            onAction={handleCardAction}
+                          />
+                        )}
+                      </div>
+                      <span className="ai-msg-time">
+                        {msg.time}
+                        {isUser && (
+                          <i className="fa-solid fa-check-double ai-check-icon"></i>
+                        )}
+                      </span>
                     </div>
-                  );
-                })
-              )}
-            </div>
-          </aside>
-
-          {/* Chat Thread Container */}
-          <div className="ai-chat-thread-container">
-            <div className="ai-chat-messages-area">
-              {messages.map((msg) => (
-                <div key={msg.id} className={`ai-message-row ${msg.sender}`}>
-                  <div className={`ai-msg-avatar ${msg.sender === 'user' ? 'user-av' : 'bot-av'}`}>
-                    {msg.sender === 'user' ? (
-                      (currentUserName || 'U')[0].toUpperCase()
-                    ) : (
-                      <i className="fa-solid fa-sparkles"></i>
-                    )}
                   </div>
-
-                  <div className="ai-msg-bubble">
-                    {msg.sender === 'user' ? (
-                      <div>{msg.text}</div>
-                    ) : (
-                      <AgentCardDispatcher
-                        response={msg.cardResponse}
-                        onAction={handleCardAction}
-                      />
-                    )}
-                    <span className="ai-msg-time">{msg.time}</span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
 
               {loading && (
-                <div className="ai-message-row assistant">
+                <div className="ai-bubble-row assistant">
                   <div className="ai-msg-avatar bot-av">
-                    <i className="fa-solid fa-sparkles"></i>
+                    <md-icon style={{ fontSize: '18px', color: '#ffffff' }}>auto_awesome</md-icon>
                   </div>
-                  <div className="ai-typing-indicator">
-                    <span>Community agent is working</span>
-                    <div className="ai-dots">
-                      <span className="ai-dot"></span>
-                      <span className="ai-dot"></span>
-                      <span className="ai-dot"></span>
+                  <div className="ai-msg-wrapper">
+                    <div className="ai-typing-bubble">
+                      <span>Community agent is thinking</span>
+                      <div className="ai-dots">
+                        <span className="ai-dot"></span>
+                        <span className="ai-dot"></span>
+                        <span className="ai-dot"></span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -412,59 +344,27 @@ export default function AiCommunityChat() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Quick Suggestions Chips Bar */}
-            <div className="ai-suggestions-bar">
-              <button
-                className="agent-chip-btn"
-                onClick={() => handleSendMessage('Show recent community posts in Colombo')}
-              >
-                <i className="fa-solid fa-bullhorn" style={{ color: '#FDC101' }}></i>
-                Recent Posts
-              </button>
-              <button
-                className="agent-chip-btn"
-                onClick={() => handleSendMessage('Create a community post: Need emergency plumber for leaky pipe in Colombo')}
-              >
-                <i className="fa-solid fa-wrench" style={{ color: '#3b82f6' }}></i>
-                Post: Plumber Request
-              </button>
-              <button
-                className="agent-chip-btn"
-                onClick={() => handleSendMessage('Create a community post: Looking for AC repair technician')}
-              >
-                <i className="fa-solid fa-snowflake" style={{ color: '#06b6d4' }}></i>
-                Post: AC Repair
-              </button>
-              <button
-                className="agent-chip-btn"
-                onClick={() => handleSendMessage('Show all my community posts')}
-              >
-                <i className="fa-solid fa-user-pen" style={{ color: '#8b5cf6' }}></i>
-                My Posts
-              </button>
-              <button
-                className="agent-chip-btn"
-                onClick={() => handleSendMessage('What is my user role and profile details?')}
-              >
-                <i className="fa-regular fa-id-badge" style={{ color: '#10b981' }}></i>
-                My Profile
-              </button>
-            </div>
 
-            {/* Input Bar */}
-            <div className="ai-chat-input-bar">
-              <input
-                ref={inputRef}
-                type="text"
-                className="ai-chat-input"
-                placeholder="Ask anything or request to create, search, or update community posts..."
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                onKeyDown={handleKeyDown}
-                disabled={loading}
-              />
+
+            {/* Bottom Input Area */}
+            <div className="ai-input-bar-area">
+              <div className="ai-pill-input-box">
+                <md-icon className="ai-input-sparkle-icon">auto_awesome</md-icon>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  className="ai-pill-text-input"
+                  placeholder="Ask anything or request to create, search, or update community posts..."
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  disabled={loading}
+                />
+              </div>
+
               <button
-                className="ai-send-btn"
+                type="button"
+                className={`ai-send-fab-btn ${inputText.trim() ? 'active' : ''}`}
                 onClick={() => handleSendMessage()}
                 disabled={loading || !inputText.trim()}
                 title="Send Message"
@@ -472,13 +372,13 @@ export default function AiCommunityChat() {
                 {loading ? (
                   <i className="fa-solid fa-spinner fa-spin"></i>
                 ) : (
-                  <i className="fa-solid fa-arrow-up"></i>
+                  <i className="fa-solid fa-paper-plane"></i>
                 )}
               </button>
             </div>
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

@@ -502,3 +502,46 @@
   transform: scale(1.22);
 }
 
+/* ==========================================================================
+   Mobile Responsive Modal Rules
+   ========================================================================== */
+@media (max-width: 640px) {
+  .chat-modal-overlay {
+    padding: 0;
+  }
+
+  .chat-modal-container {
+    width: 100vw;
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .gm-chat-body {
+    padding: 1rem 12px;
+    gap: 12px;
+  }
+
+  .gm-bubble-wrapper {
+    max-width: 85%;
+  }
+
+  .gm-input-area {
+    padding: 10px 12px 14px 12px;
+    gap: 8px;
+  }
+
+  .gm-pill-container {
+    padding: 4px 10px;
+  }
+
+  .gm-send-circle {
+    width: 40px;
+    height: 40px;
+  }
+
+  .gm-emoji-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+

@@ -12,7 +12,7 @@ export default function AiAssistantWidget() {
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       cardResponse: {
         response_type: 'text_message',
-        message: 'Hi there! I am your SuperBass AI Assistant. Need help creating a community post or searching for services?',
+        message: 'Hi there! I am your Workio AI Assistant. Need help creating a community post or searching for services?',
         card_data: {
           suggestions: [
             'Create AC repair post',
@@ -107,15 +107,7 @@ export default function AiAssistantWidget() {
   return (
     <>
       {/* Floating Action Button */}
-      <button
-        className="ai-fab-button"
-        onClick={() => setIsOpen(!isOpen)}
-        title="Chat with SuperBass AI"
-      >
-        <span className="ai-fab-pulse"></span>
-        <i className="fa-solid fa-wand-magic-sparkles"></i>
-        <span>SuperBass AI</span>
-      </button>
+
 
       {/* Floating Chat Popover */}
       {isOpen && (
@@ -124,7 +116,7 @@ export default function AiAssistantWidget() {
             <div className="ai-popover-header-title">
               <i className="fa-solid fa-robot" style={{ color: '#b45309', fontSize: '1.1rem' }}></i>
               <div>
-                <h4>SuperBass AI</h4>
+                <h4>Workio AI</h4>
                 <span>LangGraph & Community Agent</span>
               </div>
             </div>
