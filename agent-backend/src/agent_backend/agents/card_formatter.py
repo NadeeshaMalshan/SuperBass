@@ -310,11 +310,14 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
                         overallRating=w.get("overallRating") or 5.0,
                         reviewCount=w.get("completedJobs", 0),
                         completedJobs=w.get("completedJobs", 0),
-                        isAvailable=w.get("isAvailable", True)
+                        isAvailable=w.get("isAvailable", True),
+                        distance=round(float(w["distance"]), 1) if w.get("distance") is not None else None
                     )
                 )
 
             if worker_summaries:
+                # Guarantee closest workers first
+                worker_summaries.sort(key=lambda x: (x.distance is None, float('inf') if x.distance is None else x.distance))
                 card = WorkerListCard(
                     category=None,
                     query=None,
@@ -346,6 +349,45 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
         card = TextMessageCard(
             text=last_ai_content,
             suggestions=["Yes, please place the booking", "Change date or time", "Cancel booking"]
+        )
+        return AgentCardResponse(
+            response_type="text_message",
+            message=card.text,
+            card_data=card.model_dump(),
+            metadata={"agent": "booking_agent", "user_email": email}
+        )
+
+    # Check if booking agent is asking for the service issue / problem (Step 2)
+    if any(kw in lower_content for kw in ["what issue", "issue or service", "need help with", "what problem", "what service"]):
+        card = TextMessageCard(
+            text=last_ai_content,
+            suggestions=["Leaking pipe repair", "Tap replacement", "Pipe installation", "Bathroom plumbing fix"]
+        )
+        return AgentCardResponse(
+            response_type="text_message",
+            message=card.text,
+            card_data=card.model_dump(),
+            metadata={"agent": "booking_agent", "user_email": email}
+        )
+
+    # Check if booking agent is asking for preferred date and time (Step 3)
+    if any(kw in lower_content for kw in ["when would you like", "date and time", "what date", "preferred date"]):
+        card = TextMessageCard(
+            text=last_ai_content,
+            suggestions=["Tomorrow at 10:00 AM", "Tomorrow at 2:00 PM", "This Saturday at 11:00 AM", "Next Monday at 9:00 AM"]
+        )
+        return AgentCardResponse(
+            response_type="text_message",
+            message=card.text,
+            card_data=card.model_dump(),
+            metadata={"agent": "booking_agent", "user_email": email}
+        )
+
+    # Check if booking agent is confirming registered address and phone (Step 4)
+    if any(kw in lower_content for kw in ["registered address", "registered phone", "service location", "registered details"]):
+        card = TextMessageCard(
+            text=last_ai_content,
+            suggestions=["Yes, use my registered details", "I'd like to provide a different address"]
         )
         return AgentCardResponse(
             response_type="text_message",

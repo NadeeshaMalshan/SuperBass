@@ -30,7 +30,7 @@ export default function WorkerListCard({ data = {}, onAction }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span className="agent-card-badge category">
-            <i className="fa-solid fa-user-check"></i> {category ? `${category} Pros` : 'Available Pros'}
+            <i className="fa-solid fa-location-dot"></i> {category ? `Closest ${category} Pros` : 'Closest Recommended Pros'}
           </span>
           <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 700 }}>
             {totalCount || workers.length} available
@@ -132,7 +132,13 @@ export default function WorkerListCard({ data = {}, onAction }) {
                   {/* Distance Pill */}
                   <div className="agent-worker-distance-pill">
                     <i className="fa-solid fa-person-walking"></i>
-                    <span>{worker.primaryServiceArea || 'Distance unknown'}</span>
+                    <span>
+                      {typeof worker.distance === 'number'
+                        ? `${worker.distance < 1 ? '< 1' : worker.distance.toFixed(1)} km away`
+                        : ''}
+                      {typeof worker.distance === 'number' && worker.primaryServiceArea ? ' • ' : ''}
+                      {worker.primaryServiceArea || (typeof worker.distance === 'number' ? '' : 'Distance unknown')}
+                    </span>
                   </div>
 
                   {/* Rating & Availability Chips */}

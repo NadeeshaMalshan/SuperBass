@@ -30,7 +30,7 @@ namespace Superbass.Services
 
         public async Task<IEnumerable<Worker>> SearchWorkersAsync(string? skill, string? location, double? maxDistanceKm, double? residentLat = null, double? residentLng = null)
         {
-            var query = _context.Workers.Include(w => w.Skills).AsQueryable();
+            var query = _context.Workers.Include(w => w.Skills).Include(w => w.Resident).AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(skill))
             {
@@ -53,9 +53,31 @@ namespace Superbass.Services
             {
                 foreach (var w in workers)
                 {
-                    if (w.LocationLat.HasValue && w.LocationLng.HasValue)
+                    double? lat = w.LocationLat;
+                    double? lng = w.LocationLng;
+
+                    if (!lat.HasValue || !lng.HasValue)
                     {
-                        w.Distance = CalculateHaversineDistance(residentLat.Value, residentLng.Value, w.LocationLat.Value, w.LocationLng.Value);
+                        if (w.Resident != null && w.Resident.LocationLat.HasValue && w.Resident.LocationLng.HasValue)
+                        {
+                            lat = w.Resident.LocationLat;
+                            lng = w.Resident.LocationLng;
+                        }
+                    }
+
+                    if (!lat.HasValue || !lng.HasValue)
+                    {
+                        var cityCoords = GetCityCoordinates(w.PrimaryServiceArea) ?? (w.Resident != null ? GetCityCoordinates(w.Resident.Address) : null);
+                        if (cityCoords.HasValue)
+                        {
+                            lat = cityCoords.Value.Lat;
+                            lng = cityCoords.Value.Lng;
+                        }
+                    }
+
+                    if (lat.HasValue && lng.HasValue)
+                    {
+                        w.Distance = CalculateHaversineDistance(residentLat.Value, residentLng.Value, lat.Value, lng.Value);
                     }
                 }
                 
@@ -68,6 +90,47 @@ namespace Superbass.Services
             }
 
             return workers;
+        }
+
+        private static readonly Dictionary<string, (double Lat, double Lng)> KnownCityCoordinates = new(StringComparer.OrdinalIgnoreCase)
+        {
+            { "Colombo", (6.9271, 79.8612) },
+            { "Dehiwala", (6.8511, 79.8659) },
+            { "Mount Lavinia", (6.8378, 79.8667) },
+            { "Moratuwa", (6.7730, 79.8816) },
+            { "Kotte", (6.8914, 79.9048) },
+            { "Kaduwela", (6.9333, 79.9833) },
+            { "Gampaha", (7.0840, 79.9925) },
+            { "Negombo", (7.2008, 79.8736) },
+            { "Kalutara", (6.5854, 79.9607) },
+            { "Kandy", (7.2906, 80.6337) },
+            { "Matale", (7.4675, 80.6234) },
+            { "Nuwara Eliya", (6.9497, 80.7891) },
+            { "Galle", (6.0535, 80.2210) },
+            { "Matara", (5.9549, 80.5550) },
+            { "Hambantota", (6.1429, 81.1212) },
+            { "Jaffna", (9.6615, 80.0255) },
+            { "Kurunegala", (7.4863, 80.3623) },
+            { "Puttalam", (8.0362, 79.8283) },
+            { "Anuradhapura", (8.3114, 80.4037) },
+            { "Polonnaruwa", (7.9403, 81.0188) },
+            { "Badulla", (6.9934, 81.0550) },
+            { "Ratnapura", (6.6828, 80.4034) },
+            { "Trincomalee", (8.5874, 81.2152) },
+            { "Batticaloa", (7.7310, 81.6747) }
+        };
+
+        private (double Lat, double Lng)? GetCityCoordinates(string? location)
+        {
+            if (string.IsNullOrWhiteSpace(location)) return null;
+            foreach (var kvp in KnownCityCoordinates)
+            {
+                if (location.Contains(kvp.Key, StringComparison.OrdinalIgnoreCase))
+                {
+                    return kvp.Value;
+                }
+            }
+            return null;
         }
 
         private double CalculateHaversineDistance(double lat1, double lon1, double lat2, double lon2)

@@ -174,6 +174,7 @@ class WorkerSummary(BaseModel):
     reviewCount: Optional[int] = Field(default=0, description="Number of reviews")
     completedJobs: Optional[int] = Field(default=0, description="Completed jobs count")
     isAvailable: bool = Field(default=True, description="Worker availability status")
+    distance: Optional[float] = Field(default=None, description="Distance from resident in kilometers")
 
 
 class WorkerListCard(BaseModel):

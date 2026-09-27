@@ -60,8 +60,37 @@ export default function AiCommunityChat() {
   const [loading, setLoading] = useState(false);
   const [agentHealth, setAgentHealth] = useState('checking');
   const [mcpHealth, setMcpHealth] = useState('checking');
+  const [userLocation, setUserLocation] = useState(() => {
+    try {
+      const saved = localStorage.getItem('workio_user_coords');
+      return saved ? JSON.parse(saved) : { lat: 6.9271, lng: 79.8612, city: 'Colombo' };
+    } catch {
+      return { lat: 6.9271, lng: 79.8612, city: 'Colombo' };
+    }
+  });
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+
+  // Acquire user's current GPS location on mount
+  useEffect(() => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          const coords = { lat, lng, city: 'Colombo' };
+          setUserLocation(coords);
+          try {
+            localStorage.setItem('workio_user_coords', JSON.stringify(coords));
+          } catch {}
+        },
+        (err) => {
+          console.warn('Geolocation not enabled or unavailable, defaulting to Colombo:', err);
+        },
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
+    }
+  }, []);
 
   // Check backend and MCP server health on mount
   useEffect(() => {
@@ -183,6 +212,12 @@ export default function AiCommunityChat() {
         email: currentUserEmail,
         user_type: activeRole,
         conversation_id: conversationId,
+        metadata: {
+          user_lat: userLocation.lat,
+          user_lng: userLocation.lng,
+          location: userLocation.city || 'Colombo',
+          user_location_name: userLocation.city || 'Colombo',
+        },
       });
 
       const effectiveConvId = res.conversation_id || conversationId;

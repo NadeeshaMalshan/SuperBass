@@ -165,12 +165,20 @@ async def chat_endpoint(request: ChatRequest):
         except Exception as e:
             logger.warning(f"Could not load DB history for {conv_id}: {e}")
 
-        # 2. Build initial state for this turn
+        # 2. Retrieve user profile if available
+        user_profile = None
+        if request.email:
+            try:
+                user_profile = await mcp_client.call_tool("get_user_details", {"email": request.email})
+            except Exception as pe:
+                logger.warning(f"Could not load user profile for {request.email}: {pe}")
+
+        # 3. Build initial state for this turn
         initial_state = {
             "messages": history_msgs + [HumanMessage(content=request.message)],
             "email": request.email,
             "user_type": request.user_type,
-            "user_profile": None,
+            "user_profile": user_profile,
             "next": None,
             "structured_response": None,
             "metadata": request.metadata or {}
