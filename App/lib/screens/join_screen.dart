@@ -346,9 +346,9 @@ class _JoinScreenState extends State<JoinScreen> {
                       onPressed: _isLoading ? null : _handleGoogleLogin,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.brandYellow,
-                        foregroundColor: Colors.black,
+                        foregroundColor: Colors.white,
                         disabledBackgroundColor: AppColors.brandYellow.withValues(alpha: 0.6),
-                        disabledForegroundColor: Colors.black54,
+                        disabledForegroundColor: Colors.white60,
                         elevation: 0,
                         shadowColor: Colors.transparent,
                         shape: RoundedRectangleBorder(
@@ -376,7 +376,7 @@ class _JoinScreenState extends State<JoinScreen> {
                                     style: GoogleFonts.dmSans(
                                       fontSize: 18,
                                       fontWeight: FontWeight.w700,
-                                      color: Colors.black,
+                                      color: Colors.white,
                                       letterSpacing: -0.2,
                                     ),
                                   ),

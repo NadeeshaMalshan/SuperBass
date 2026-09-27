@@ -91,13 +91,13 @@ class PrimaryCtaButton extends StatelessWidget {
               mainAxisSize: isFullWidth ? MainAxisSize.max : MainAxisSize.min,
               children: [
                 if (icon != null) ...[
-                  Icon(icon, color: const Color(0xFF111827), size: 20),
+                  Icon(icon, color: AppColors.onPrimary, size: 20),
                   const SizedBox(width: 8),
                 ],
                 Text(
                   label,
                   style: GoogleFonts.dmSans(
-                    color: const Color(0xFF111827),
+                    color: AppColors.onPrimary,
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
                   ),
@@ -250,11 +250,14 @@ class CategoryCard extends StatelessWidget {
             height: 66,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: isSelected ? const Color(0xFFFEF08A) : const Color(0xFFF3F4F6),
+              color: isSelected ? const Color(0xFF000000) : const Color(0xFFF4F4F5),
+              border: isSelected
+                  ? Border.all(color: const Color(0xFF000000), width: 2)
+                  : Border.all(color: const Color(0xFFE4E4E7), width: 1),
               boxShadow: isSelected
                   ? [
                       BoxShadow(
-                        color: AppColors.brandYellow.withValues(alpha: 0.28),
+                        color: Colors.black.withValues(alpha: 0.18),
                         blurRadius: 10,
                         offset: const Offset(0, 3),
                       ),
@@ -278,14 +281,14 @@ class CategoryCard extends StatelessWidget {
                         fit: BoxFit.contain,
                         errorBuilder: (_, __, ___) => Icon(
                           icon ?? Icons.category_rounded,
-                          color: isSelected ? const Color(0xFF18181B) : const Color(0xFF374151),
+                          color: isSelected ? Colors.white : const Color(0xFF18181B),
                           size: 28,
                         ),
                       ),
                     )
                   : Icon(
                       icon ?? Icons.category_rounded,
-                      color: isSelected ? const Color(0xFF18181B) : const Color(0xFF374151),
+                      color: isSelected ? Colors.white : const Color(0xFF18181B),
                       size: 28,
                     ),
             ),
@@ -294,9 +297,9 @@ class CategoryCard extends StatelessWidget {
           Text(
             title,
             style: GoogleFonts.dmSans(
-              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
               fontSize: 13,
-              color: isSelected ? AppColors.onSurface : const Color(0xFF374151),
+              color: isSelected ? const Color(0xFF000000) : const Color(0xFF52525B),
             ),
             textAlign: TextAlign.center,
             maxLines: 1,

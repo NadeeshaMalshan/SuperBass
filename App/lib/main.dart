@@ -510,14 +510,14 @@ class _FindTabScreenState extends State<FindTabScreen> {
                           },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.brandYellow,
-                      foregroundColor: Colors.black,
+                      foregroundColor: AppColors.onPrimary,
                       shape: const StadiumBorder(),
                     ),
                     child: isSubmitting
                         ? const SizedBox(width: 22, height: 22, child: LoadingIndicatorM3E())
                         : Text(
                             'Confirm & Send Request',
-                            style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 16),
+                            style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.onPrimary),
                           ),
                   ),
                 ),

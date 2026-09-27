@@ -26,12 +26,12 @@ class M3BottomNavigationBar extends StatelessWidget {
     required this.items,
   });
 
-  // Light UI Floating Pill Palette (Harmonized with SuperBass Light Theme)
+  // Light UI Floating Pill Palette (Monochrome Black & White)
   static const Color navSurfaceColor = AppColors.surface; // Clean pure white
-  static const Color selectedPillColor = Color(0xFFFEF08A); // Soft, premium light yellow
-  static const Color selectedContentColor = Color(0xFF18181B); // Dark charcoal/black for bold contrast
-  static const Color unselectedContentColor = Color(0xFF64748B); // Slate grey for inactive items
-  static const Color borderColor = AppColors.outlineVariant; // Crisp border (0xFFE2E8F0)
+  static const Color selectedPillColor = Color(0xFF000000); // Deep Black active pill
+  static const Color selectedContentColor = Color(0xFFFFFFFF); // White icon & text on black
+  static const Color unselectedContentColor = Color(0xFF71717A); // Slate grey for inactive items
+  static const Color borderColor = AppColors.outlineVariant; // Crisp border
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +53,7 @@ class M3BottomNavigationBar extends StatelessWidget {
           border: Border.all(color: borderColor, width: 0.5),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF0F172A).withValues(alpha: 0.08),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 22,
               offset: const Offset(0, 6),
             ),
@@ -87,7 +87,7 @@ class M3BottomNavigationBar extends StatelessWidget {
                       boxShadow: isSelected
                           ? [
                               BoxShadow(
-                                color: const Color(0xFFEAB308).withValues(alpha: 0.20),
+                                color: Colors.black.withValues(alpha: 0.18),
                                 blurRadius: 8,
                                 offset: const Offset(0, 2),
                               ),

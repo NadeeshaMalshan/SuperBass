@@ -604,7 +604,7 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
             actions: [
               TextButton(onPressed: () => Navigator.pop(dialogCtx), child: const Text('Cancel')),
               ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: AppColors.brandYellow, foregroundColor: Colors.black),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.brandYellow, foregroundColor: Colors.white),
                 onPressed: () async {
                   final finalReason = selectedReason == 'Other' ? reasonController.text.trim() : selectedReason;
                   Navigator.pop(dialogCtx);
@@ -704,8 +704,8 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
       floatingActionButton: Padding(
         padding: EdgeInsets.only(bottom: widget.isWorkerMode ? 74.0 : 0.0),
         child: FloatingActionButton.extended(
-          backgroundColor: widget.isWorkerMode ? const Color(0xFF2563EB) : AppColors.brandYellow,
-          foregroundColor: widget.isWorkerMode ? Colors.white : Colors.black,
+          backgroundColor: widget.isWorkerMode ? const Color(0xFF000000) : AppColors.brandYellow,
+          foregroundColor: Colors.white,
           elevation: 4,
         onPressed: () {
           if (AuthService().currentUser == null) {
@@ -1314,7 +1314,7 @@ class _PostCommentsSheetState extends State<PostCommentsSheet> {
                   ),
                   const SizedBox(width: 8),
                   IconButton.filled(
-                    style: IconButton.styleFrom(backgroundColor: AppColors.brandYellow, foregroundColor: Colors.black),
+                    style: IconButton.styleFrom(backgroundColor: AppColors.brandYellow, foregroundColor: Colors.white),
                     onPressed: _isSending ? null : _sendComment,
                     icon: _isSending
                         ? const SizedBox(width: 18, height: 18, child: LoadingIndicatorM3E())
