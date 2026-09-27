@@ -3,8 +3,8 @@ Agent State Definition for SuperBass LangGraph Workflow.
 Stores conversation messages, user context, agent routing, and structured output.
 """
 
-from typing import Annotated, Sequence, Optional, Dict, Any, Literal
-from typing_extensions import TypedDict
+from typing import Annotated, Sequence, Optional, Dict, Any, Literal, List
+from typing_extensions import TypedDict, NotRequired
 from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
 from agent_backend.schemas.card_models import AgentCardResponse
@@ -23,7 +23,7 @@ class AgentState(TypedDict):
     user_type: Literal["Resident", "Worker", "Unknown"]
     user_profile: Optional[Dict[str, Any]]
 
-    # Multi-agent routing indicator ("community_agent", "FINISH", or future agents)
+    # Multi-agent routing indicator ("community_agent", "booking_agent", "worker_matching_agent", "FINISH")
     next: Optional[str]
 
     # Structured UI Card response to be returned to frontend
@@ -31,3 +31,13 @@ class AgentState(TypedDict):
 
     # Additional execution metadata or temporary tool outputs
     metadata: Optional[Dict[str, Any]]
+
+    # Worker Matching context (optional fields for worker discovery and selection)
+    service: NotRequired[Optional[str]]
+    skill: NotRequired[Optional[str]]
+    location: NotRequired[Optional[str]]
+    max_price: NotRequired[Optional[float]]
+    min_rating: NotRequired[Optional[float]]
+    matched_workers: NotRequired[Optional[List[Dict[str, Any]]]]
+    selected_worker: NotRequired[Optional[Dict[str, Any]]]
+
