@@ -31,7 +31,7 @@ export default function InitialWelcomeCard({ data = {}, onAction }) {
       icon: 'group',
       color: '#f43f5e',
       actionType: 'send_prompt',
-      payload: 'Create a community post for home service',
+      payload: 'I want to create a community post',
     },
     {
       id: 'chat_workers',

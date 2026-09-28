@@ -299,7 +299,7 @@ export default function AiCommunityChat() {
     } else if (actionType === 'send_prompt' || actionType === 'confirm_post' || actionType === 'cancel_post') {
       handleSendMessage(payload);
     } else if (actionType === 'view_community') {
-      navigate(`/community${payload.id ? `?post=${payload.id}` : ''}`);
+      navigate(`/community${payload?.id ? `?post=${payload.id}` : ''}`);
     } else if (actionType === 'retry') {
       const lastUserMsg = [...messages].reverse().find((m) => m.sender === 'user');
       if (lastUserMsg) {

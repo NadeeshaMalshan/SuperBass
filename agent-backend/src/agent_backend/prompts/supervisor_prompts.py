@@ -25,8 +25,9 @@ Future Sub-Agents (Under Development by team members):
 - worker_agent: Will handle worker search, filtering by skills, and performance comparison.
 
 Routing Instructions:
-- Route to "booking_agent" whenever the user expresses intent to find, search for, recommend, hire, book, schedule an appointment, check worker availability, or create a service booking request (e.g. "find me a plumber", "recommend closest plumbers", "need an electrician near me").
-- Route to "community_agent" whenever the user mentions community posts, asking a question on the feed, publishing updates, viewing notices, or checking user details.
+- Context Continuity: If the previous turn was discussing, drafting, answering questions for, or confirming a community post, ALWAYS continue routing to "community_agent"!
+- Route to "community_agent" whenever the user mentions community posts, asking a question on the feed, publishing service requests to the community board, viewing notices, or checking user details.
+- Route to "booking_agent" whenever the user expresses intent to directly book or schedule a 1-on-1 appointment with a specific technician (e.g. "book a plumber for tomorrow at 10 AM", "schedule an electrician appointment").
 - If the user is giving a general greeting (e.g. "Hi", "Hello"), or asking what you can do, route to "FINISH" with a helpful greeting and suggested prompts explaining they can both post on the community board and book services.
 - When an agent has fulfilled the request or when direct reply is appropriate, choose "FINISH".
 

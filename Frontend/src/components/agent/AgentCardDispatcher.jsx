@@ -1,3 +1,4 @@
+import CreateCommunityPostCard from './CreateCommunityPostCard.jsx';
 import PostConfirmationCard from './PostConfirmationCard.jsx';
 import PostCreatedCard from './PostCreatedCard.jsx';
 import PostListCard from './PostListCard.jsx';
@@ -32,10 +33,12 @@ export default function AgentCardDispatcher({ response, onAction }) {
         switch (response_type) {
           case 'initial_welcome':
             return <InitialWelcomeCard data={card_data} onAction={onAction} />;
+          case 'create_community_post':
           case 'post_confirmation':
-            return <PostConfirmationCard data={card_data} onAction={onAction} />;
+            return <CreateCommunityPostCard data={card_data} onAction={onAction} />;
           case 'post_created':
             return <PostCreatedCard data={card_data} onAction={onAction} />;
+
           case 'post_list':
             return <PostListCard data={card_data} onAction={onAction} />;
           case 'post_detail':

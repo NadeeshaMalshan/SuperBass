@@ -399,33 +399,73 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
             metadata={"agent": "booking_agent", "user_email": email}
         )
 
+    # Check if the assistant is asking intake questions for creating a post (do NOT trigger draft card yet)
+    is_post_intake = any(kw in lower_content for kw in [
+        "what specific service", "what problem", "what issue", "tell me a few details",
+        "what is the problem", "tell me what problem", "what type of service",
+        "service or problem are you facing", "service or issue", "share a few details",
+        "what kind of service", "to get started"
+    ]) and not any(kw in lower_content for kw in ["• title:", "title:"])
+
+    if is_post_intake:
+        card = TextMessageCard(
+            text=last_ai_content,
+            suggestions=[
+                "AC repair needed in Colombo",
+                "Emergency plumber for water leak",
+                "Licensed electrician needed urgently",
+                "Carpentry work needed"
+            ]
+        )
+        return AgentCardResponse(
+            response_type="text_message",
+            message=card.text,
+            card_data=card.model_dump(),
+            metadata={"agent": "community_agent", "user_email": email}
+        )
+
     # Check if the assistant has prepared a community post draft awaiting confirmation
-    if any(keyword in lower_content for keyword in ["draft", "confirm", "review", "would you like me to publish"]):
-        # Extract title or default
+    is_draft = any(keyword in lower_content for keyword in ["draft", "confirm and publish", "would you like me to confirm", "would you like me to publish"]) or (
+        ("title:" in lower_content or "• title" in lower_content) and ("category:" in lower_content or "• category" in lower_content)
+    )
+
+    if is_draft:
+        # Extract title, category, location, urgency, content
         draft_title = "Community Service Request"
         draft_category = "General"
         draft_location = "Colombo"
+        draft_urgency = "As soon as possible"
+        draft_content = ""
 
         for line in last_ai_content.splitlines():
             line_str = line.strip()
-            if "title:" in line_str.lower():
-                draft_title = line_str.split(":", 1)[1].strip().strip("*").strip()
-            elif "category:" in line_str.lower():
-                draft_category = line_str.split(":", 1)[1].strip().strip("*").strip()
-            elif "location:" in line_str.lower():
-                draft_location = line_str.split(":", 1)[1].strip().strip("*").strip()
+            line_clean = line_str.replace("•", "").strip()
+            if line_clean.lower().startswith("title:"):
+                draft_title = line_clean.split(":", 1)[1].strip().strip("*").strip()
+            elif line_clean.lower().startswith("category:"):
+                draft_category = line_clean.split(":", 1)[1].strip().strip("*").strip()
+            elif line_clean.lower().startswith("location:"):
+                draft_location = line_clean.split(":", 1)[1].strip().strip("*").strip()
+            elif line_clean.lower().startswith("urgency:"):
+                draft_urgency = line_clean.split(":", 1)[1].strip().strip("*").strip()
+            elif line_clean.lower().startswith("content:") or line_clean.lower().startswith("description:"):
+                draft_content = line_clean.split(":", 1)[1].strip().strip("*").strip()
+
+        if not draft_content:
+            draft_content = last_ai_content
 
         card = PostConfirmationCard(
             action="create",
             title=draft_title,
-            content=last_ai_content,
+            content=draft_content,
             communityId=draft_category,
             location=draft_location,
+            urgency=draft_urgency,
             authorId=email,
             authorName=user_name,
             validationStatus="valid",
             validationNotes=f"Please review your draft details above and confirm to publish under your account ({user_name}).",
-            confirmPrompt=f"CONFIRM_PUBLISH: Yes, please publish the post '{draft_title}' in {draft_category} for {draft_location} under author account {email}."
+            confirmPrompt=f"CONFIRM_PUBLISH: Yes, please publish the post '{draft_title}' in {draft_category} for {draft_location} with urgency '{draft_urgency}'."
         )
         return AgentCardResponse(
             response_type="post_confirmation",
