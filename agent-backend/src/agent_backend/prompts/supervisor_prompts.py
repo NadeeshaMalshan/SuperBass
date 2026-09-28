@@ -50,13 +50,12 @@ Routing & Intent Understanding Instructions:
      -> Route to "FINISH".
      -> Map the problem to the most relevant Workio category (e.g. "Electrical & Wiring", "Plumbing & Pipe Repair").
      -> In `direct_response`:
-        1. Acknowledge and summarize the problem you understood.
-        2. Ask the user how they would like to proceed:
-           - Option 1: Find & book an existing verified professional in their area directly.
-           - Option 2: Create a community post so local workers can view the request and contact them.
-     -> In `suggested_actions`: Provide two tailored action chips, e.g.:
-        ["Find a verified electrician", "Create a community post"]
-        (Tailor the trade name to the relevant category, e.g., electrician, plumber, carpenter, AC technician, painter, locksmith, etc.)
+        1. Acknowledge and summarize the problem you understood in 1-2 friendly sentences.
+        2. Ask: "How would you like to proceed?"
+        (Do NOT write out Option 1 and Option 2 bullet lists in direct_response text; the UI automatically renders interactive action choice buttons for suggested_actions).
+     -> In `suggested_actions`: Provide two clean action choices, e.g.:
+        ["Find an electrician", "Create a community post"] or ["Find a plumber", "Create a community post"]
+        (Format as "Find a <trade>" and "Create a community post", e.g., plumber, electrician, carpenter, AC technician, painter, locksmith, handyman, etc.)
 
 2. EXPLICIT COMMUNITY REQUEST:
    - Route to "community_agent" whenever the user explicitly asks to create a post, publish to community, browse the feed, view their posts, or manage community notices.
