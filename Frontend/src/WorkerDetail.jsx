@@ -278,39 +278,41 @@ export default function WorkerDetail() {
       return;
     }
 
-    // Refresh autofill values from localStorage or API
+    // Refresh autofill values from user profile (localStorage or API)
     const localPhone = localStorage.getItem('phoneNo') || localStorage.getItem('userPhone') || '';
     const localAddr = localStorage.getItem('address') || localStorage.getItem('userAddress') || '';
     const localLat = localStorage.getItem('locationLat') ? parseFloat(localStorage.getItem('locationLat')) : null;
     const localLng = localStorage.getItem('locationLng') ? parseFloat(localStorage.getItem('locationLng')) : null;
 
-    setBookingForm(prev => ({
-      ...prev,
-      contactPhone: prev.contactPhone || localPhone,
-      locationAddress: prev.locationAddress || localAddr,
-      locationLat: prev.locationLat || localLat,
-      locationLng: prev.locationLng || localLng
-    }));
+    let userPhone = localPhone;
+    let userAddr = localAddr;
+    let userLat = localLat;
+    let userLng = localLng;
 
-    if (userEmail && (!bookingForm.contactPhone || !bookingForm.locationAddress || !bookingForm.locationLat)) {
+    if (userEmail) {
       try {
         const res = await axios.get(`${API_BASE_URL}/residents/${encodeURIComponent(userEmail)}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (res.data) {
-          setBookingForm(prev => ({
-            ...prev,
-            contactPhone: prev.contactPhone || res.data.phoneNo || localPhone,
-            locationAddress: prev.locationAddress || res.data.address || localAddr,
-            locationLat: prev.locationLat || res.data.locationLat || localLat,
-            locationLng: prev.locationLng || res.data.locationLng || localLng,
-            shareGps: (res.data.locationLat && res.data.locationLng) ? true : prev.shareGps
-          }));
+          userPhone = res.data.phoneNo || userPhone;
+          userAddr = res.data.address || userAddr;
+          userLat = res.data.locationLat ?? userLat;
+          userLng = res.data.locationLng ?? userLng;
         }
       } catch (e) {
         console.warn('Profile autofill fallback applied', e);
       }
     }
+
+    setBookingForm(prev => ({
+      ...prev,
+      contactPhone: userPhone,
+      locationAddress: userAddr,
+      locationLat: userLat,
+      locationLng: userLng,
+      shareGps: (userLat && userLng) ? true : false
+    }));
 
     setHireStep('form');
     setHireError(null);
@@ -354,7 +356,7 @@ export default function WorkerDetail() {
         return;
       }
 
-      let finalAddress = bookingForm.locationAddress || worker?.primaryServiceArea || '';
+      let finalAddress = bookingForm.locationAddress || '';
       let updatedDesc = bookingForm.description;
 
       const payload = {
@@ -1060,16 +1062,20 @@ export default function WorkerDetail() {
                         checked={bookingForm.shareGps ? true : undefined}
                         touch-target="wrapper"
                         onChange={(e) => setBookingForm(prev => ({ ...prev, shareGps: e.target.checked }))}
+                        style={{
+                          '--md-sys-color-primary': '#0f172a',
+                          '--md-sys-color-on-primary': '#ffffff'
+                        }}
                       ></md-checkbox>
                       <div>
                         <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <md-icon style={{ fontSize: '18px', color: '#FDC101' }}>my_location</md-icon>
+                          <md-icon style={{ fontSize: '18px', color: '#0f172a' }}>my_location</md-icon>
                           Share saved GPS location
                         </div>
                         <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
                           {bookingForm.locationLat && bookingForm.locationLng ? (
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                              <md-icon style={{ fontSize: '15px', color: '#b45309' }}>pin_drop</md-icon>
+                              <md-icon style={{ fontSize: '15px', color: '#0f172a' }}>pin_drop</md-icon>
                               Saved Pin: <strong>{bookingForm.locationLat.toFixed(5)}, {bookingForm.locationLng.toFixed(5)}</strong>
                             </span>
                           ) : (
@@ -1083,7 +1089,7 @@ export default function WorkerDetail() {
                       type="button"
                       onClick={() => setShowMapPicker(!showMapPicker)}
                       style={{
-                        '--md-sys-color-primary': '#b45309',
+                        '--md-sys-color-primary': '#0f172a',
                         '--md-text-button-label-text-weight': '700',
                         '--md-text-button-label-text-font': "var(--font-body, 'DM Sans', sans-serif)"
                       }}
@@ -1098,16 +1104,16 @@ export default function WorkerDetail() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingTop: '8px', borderTop: '1px solid #e2e8f0' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px', fontSize: '0.82rem', color: '#64748b' }}>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                          <md-icon style={{ fontSize: '15px', color: '#b45309' }}>touch_app</md-icon>
+                          <md-icon style={{ fontSize: '15px', color: '#0f172a' }}>touch_app</md-icon>
                           Tap / click anywhere on the map to change coordinates
                         </span>
                         <button
                           type="button"
                           onClick={handleGetCurrentLocation}
                           style={{
-                            background: '#fffbeb',
-                            border: '1px solid #fde68a',
-                            color: '#b45309',
+                            background: '#f1f5f9',
+                            border: '1px solid #cbd5e1',
+                            color: '#0f172a',
                             borderRadius: '8px',
                             padding: '4px 10px',
                             fontWeight: 700,
@@ -1152,7 +1158,7 @@ export default function WorkerDetail() {
                       {bookingForm.locationLat && (
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.82rem', backgroundColor: '#ffffff', padding: '8px 12px', borderRadius: '10px', border: '1px solid #e2e8f0', flexWrap: 'wrap', gap: '8px' }}>
                           <span style={{ color: '#0f172a', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                            <md-icon style={{ fontSize: '16px', color: '#FDC101' }}>location_on</md-icon>
+                            <md-icon style={{ fontSize: '16px', color: '#0f172a' }}>location_on</md-icon>
                             Selected: <strong>{bookingForm.locationLat.toFixed(6)}</strong>, <strong>{bookingForm.locationLng.toFixed(6)}</strong>
                           </span>
                           <a
