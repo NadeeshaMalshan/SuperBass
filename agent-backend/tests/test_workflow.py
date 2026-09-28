@@ -142,6 +142,33 @@ async def test_supervisor_booking_routing():
     assert result.get("next") == "booking_agent"
 
 
+@pytest.mark.asyncio
+async def test_supervisor_issue_description_clarification():
+    """Verify that when a user simply describes a problem, supervisor asks whether to find worker or post on community."""
+    state = {
+        "messages": [HumanMessage(content="my room electrict wiring is not good it is messy")],
+        "email": "resident@workio.lk",
+        "user_type": "Resident",
+        "user_profile": {"address": "Colombo"},
+        "next": None,
+        "structured_response": None,
+        "metadata": {}
+    }
+    result = await supervisor_node(state)
+    # When using heuristic fallback or structured router, intent is clarified
+    assert result.get("next") == "FINISH"
+    asst_msg = result.get("messages", [])[0].content.lower()
+    assert "find a verified" in asst_msg or "find an electrician" in asst_msg or "worker" in asst_msg
+    assert "community post" in asst_msg
+
+    # Verify card formatter builds a text_message card with suggestions, NOT a post_confirmation card
+    state["messages"].append(result["messages"][0])
+    card_resp = _deterministic_card_builder(state)
+    assert card_resp.response_type == "text_message"
+    assert any("electrician" in s.lower() for s in card_resp.card_data.get("suggestions", []))
+    assert any("community post" in s.lower() for s in card_resp.card_data.get("suggestions", []))
+
+
 def test_deterministic_card_builder_for_created_post():
     """Verify card formatter correctly constructs a PostCreatedCard from tool output."""
     tool_content = '{"id": 42, "title": "Electrical socket issue", "content": "Living room socket spark", "serviceCategoryId": "Electrical", "userId": "kpjmp28@gmail.com", "location": "Kandy"}'

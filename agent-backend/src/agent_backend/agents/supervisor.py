@@ -63,33 +63,69 @@ async def supervisor_node(state: AgentState) -> Dict[str, Any]:
             pass
 
     # Heuristic fallback (fast & offline resilient)
-    last_msg = messages[-1].content.lower() if messages[-1].content else ""
+    raw_last_text = messages[-1].content if messages[-1].content else ""
+    last_msg = raw_last_text.lower()
 
+    # 1. Explicit worker search or booking
     booking_keywords = [
         "book", "booking", "hire", "schedule", "appointment", "reserve",
-        "slot", "availability"
+        "slot", "availability", "find a worker", "find worker", "find electrician",
+        "find plumber", "find technician", "find carpenter", "find painter", "find cleaner",
+        "find craftsman"
     ]
     if any(kw in last_msg for kw in booking_keywords):
         return {"next": "booking_agent"}
 
+    # 2. Explicit community post or feed management
     community_keywords = [
-        "post", "community", "feed", "notice", "announcement", "electric", "plumb",
-        "carpenter", "clean", "ac", "repair", "service", "help", "publish", "share",
-        "category", "details", "profile", "account", "who am i", "my posts"
+        "post", "community", "feed", "notice", "announcement", "publish", "share",
+        "my posts", "create post", "make a post"
     ]
-
     if any(kw in last_msg for kw in community_keywords):
         return {"next": "community_agent"}
 
-    # General greeting or small talk
+    # 3. General greeting or small talk
     if any(g in last_msg for g in ["hi", "hello", "hey", "good morning", "good evening", "help"]):
         greeting_text = (
-            "Hello! I am your Workio Assistant. I can help you book service workers, "
+            "Hello! I am your Workio Assistant. I can help you find verified workers, "
             "browse community posts, or publish requests on the community board. What would you like to do today?"
         )
         return {
             "next": "FINISH",
             "messages": [AIMessage(content=greeting_text)]
+        }
+
+    # 4. Service problem or issue description without explicit action
+    issue_keywords = [
+        "electric", "wire", "wiring", "plumb", "leak", "tap", "pipe", "drain",
+        "ac", "air condition", "cool", "carpent", "wood", "door", "furniture",
+        "paint", "clean", "messy", "broken", "fix", "repair", "not working", "damaged"
+    ]
+    if any(kw in last_msg for kw in issue_keywords):
+        trade = "Service Worker"
+        if any(w in last_msg for w in ["electric", "wire", "wiring", "light", "switch", "power"]):
+            trade = "Electrician"
+        elif any(w in last_msg for w in ["plumb", "leak", "tap", "pipe", "drain", "water"]):
+            trade = "Plumber"
+        elif any(w in last_msg for w in ["ac", "air condition", "cool"]):
+            trade = "AC Technician"
+        elif any(w in last_msg for w in ["carpent", "wood", "door", "furniture"]):
+            trade = "Carpenter"
+        elif any(w in last_msg for w in ["paint", "color", "wall"]):
+            trade = "Painter"
+        elif any(w in last_msg for w in ["clean", "wash"]):
+            trade = "Cleaner"
+
+        loc = state.get("user_profile", {}).get("address") or state.get("metadata", {}).get("location") or "Colombo"
+        choice_text = (
+            f"I understand you have an issue with {trade.lower()} work: \"{raw_last_text.strip()}\".\n\n"
+            f"How would you like to proceed?\n"
+            f"1. **Find a Verified {trade}** — Search and book an experienced, rated professional in {loc} right now.\n"
+            f"2. **Create a Community Post** — Publish your service request on the community board so local technicians can view it and reach out."
+        )
+        return {
+            "next": "FINISH",
+            "messages": [AIMessage(content=choice_text)]
         }
 
     # Default delegation to community agent

@@ -34,7 +34,8 @@ CARD_FORMATTER_PROMPT = """You are the Frontend UI Card Formatter for Workio.
 Your role is to format the conversation output and any tool results into a structured AgentCardResponse JSON object so the Frontend can render the appropriate interactive UI card component.
 
 Available response_type values and their corresponding card_data schemas:
-0. "post_confirmation": Use whenever a community post draft is formulated and presented for user review/confirmation before publishing or updating.
+0. "post_confirmation": Use ONLY when the user has explicitly requested or confirmed creating/updating a community post and the assistant is presenting the complete draft with title, content, and category.
+   DO NOT use "post_confirmation" when the assistant is summarizing a user's problem or asking whether to find a worker vs create a post! In those cases, use "text_message" with suggestions.
    card_data fields: action ("create" or "update"), postId (if update), title, content, communityId, location, validationStatus ("valid"), validationNotes, confirmPrompt (e.g. "CONFIRM_PUBLISH: title=... content=...").
 1. "post_created": Use when a new community post has actually been published to the backend via tool execution.
    card_data fields: id, title, content, communityId, location, authorId, authorName, status, createdAt.
@@ -424,10 +425,50 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
             metadata={"agent": "community_agent", "user_email": email}
         )
 
+    # Check if the assistant is offering the choice between finding a worker and creating a community post
+    is_choice_turn = any(kw in lower_content for kw in [
+        "create a community post or find",
+        "find a verified",
+        "find an existing worker",
+        "how would you like to proceed",
+        "would you like to:",
+        "or create a community post",
+        "publish your service request to the community board"
+    ])
+
+    if is_choice_turn:
+        trade = "worker"
+        if any(w in lower_content for w in ["electric", "wire", "wiring"]):
+            trade = "electrician"
+        elif any(w in lower_content for w in ["plumb", "leak", "tap", "pipe"]):
+            trade = "plumber"
+        elif any(w in lower_content for w in ["ac", "air condition"]):
+            trade = "AC technician"
+        elif any(w in lower_content for w in ["carpent", "wood"]):
+            trade = "carpenter"
+        elif any(w in lower_content for w in ["paint"]):
+            trade = "painter"
+        elif any(w in lower_content for w in ["clean"]):
+            trade = "cleaner"
+
+        card = TextMessageCard(
+            text=last_ai_content,
+            suggestions=[
+                f"Find a verified {trade}",
+                "Create a community post"
+            ]
+        )
+        return AgentCardResponse(
+            response_type="text_message",
+            message=card.text,
+            card_data=card.model_dump(),
+            metadata={"agent": "supervisor", "user_email": email}
+        )
+
     # Check if the assistant has prepared a community post draft awaiting confirmation
-    is_draft = any(keyword in lower_content for keyword in ["draft", "confirm and publish", "would you like me to confirm", "would you like me to publish"]) or (
+    is_draft = not is_choice_turn and (any(keyword in lower_content for keyword in ["draft", "confirm and publish", "would you like me to confirm", "would you like me to publish"]) or (
         ("title:" in lower_content or "• title" in lower_content) and ("category:" in lower_content or "• category" in lower_content)
-    )
+    ))
 
     if is_draft:
         # Extract title, category, location, urgency, content
