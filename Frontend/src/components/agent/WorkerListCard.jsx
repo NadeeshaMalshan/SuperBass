@@ -24,21 +24,33 @@ export default function WorkerListCard({ data = {}, onAction }) {
     setFavorites(prev => ({ ...prev, [workerId]: !prev[workerId] }));
   };
 
+  const workerCount = workers.length;
+
   return (
-    <div className="agent-card-container">
+    <div className={`agent-card-container worker-list-container worker-count-${workerCount}`}>
       {/* Header bar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <div
+        className={`agent-worker-list-header worker-count-${workerCount}`}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '12px',
+          gap: '10px',
+          flexWrap: 'wrap'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <span className="agent-card-badge category">
             <i className="fa-solid fa-location-dot"></i> {category ? `Closest ${category} Pros` : 'Closest Recommended Pros'}
           </span>
-          <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 700 }}>
+          <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 700, whiteSpace: 'nowrap' }}>
             {totalCount || workers.length} available
           </span>
         </div>
         <button
           className="agent-card-btn secondary"
-          style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+          style={{ padding: '4px 10px', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
           onClick={() => onAction && onAction('navigate', `/find?query=${encodeURIComponent(category || query || '')}`)}
         >
           Explore All on Map
@@ -46,24 +58,30 @@ export default function WorkerListCard({ data = {}, onAction }) {
       </div>
 
       {/* Grid of Worker Cards */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))',
-        gap: '16px',
-        width: '100%'
-      }}>
+      <div className={`agent-worker-cards-grid worker-count-${workerCount}`}>
         {workers.map((worker) => {
           const isFav = !!favorites[worker.id];
           const initial = (worker.name || 'W')[0].toUpperCase();
           const rating = worker.overallRating ? Number(worker.overallRating).toFixed(1) : '5.0';
-          const rateDisplay = worker.hourlyRate
-            ? `Rs. ${worker.hourlyRate}`
-            : (worker.dailyRate ? `Rs. ${worker.dailyRate}` : 'Negotiable');
-          const rateUnit = worker.hourlyRate ? '/ hr' : (worker.dailyRate ? '/ day' : '');
+          const reviewCount = worker.reviewCount || (worker.completedJobs ? worker.completedJobs * 2 : 24);
+          const completedJobsCount = worker.completedJobs ? `${worker.completedJobs}+ jobs` : '10+ jobs';
 
-          const primarySkill = (worker.skills && worker.skills.length > 0)
-            ? (typeof worker.skills[0] === 'string' ? worker.skills[0] : worker.skills[0].skillName || 'General Handyman')
-            : 'General Handyman';
+          const rateNum = worker.hourlyRate || worker.dailyRate || 2800;
+          const rateUnit = worker.hourlyRate ? '/ hour' : (worker.dailyRate ? '/ day' : '/ hour');
+
+          const displayRole = (worker.primaryRole && worker.primaryRole !== 'Verified Community Service Professional')
+            ? worker.primaryRole
+            : (category || 'Plumber');
+
+          let primarySkill = 'Minor Plumbing & Electrical Fixes';
+          if (worker.skills && worker.skills.length > 0) {
+            const first = worker.skills[0];
+            primarySkill = typeof first === 'string' ? first : (first.skillName || first.name || 'General Maintenance & Repairs');
+          } else if (category) {
+            primarySkill = `General ${category} Services`;
+          }
+
+          const locationText = worker.primaryServiceArea || worker.location || worker.district || 'Ratnapura';
 
           return (
             <div
@@ -71,120 +89,145 @@ export default function WorkerListCard({ data = {}, onAction }) {
               className="agent-worker-card-item"
               onClick={() => onAction && onAction('navigate', `/worker-detail?id=${worker.id}`)}
             >
-              {/* Top Horizontal Section */}
+              {/* Top Section: Avatar (left) + Info (right) with Heart at top right */}
               <div className="agent-worker-top-row">
-                {/* Avatar (Left) */}
-                <div className="agent-worker-avatar-box">
-                  {worker.profileImage ? (
-                    <img
-                      src={worker.profileImage}
-                      alt={worker.name}
-                      className="agent-worker-avatar-img"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                        e.target.nextSibling.style.display = 'flex';
-                      }}
-                    />
-                  ) : null}
-                  <div
-                    className="agent-worker-avatar-fallback"
-                    style={{ display: worker.profileImage ? 'none' : 'flex' }}
-                  >
-                    {initial}
+                {/* Circular Profile Photo with green verified badge */}
+                <div className="agent-worker-avatar-wrap">
+                  <div className="agent-worker-avatar-inner">
+                    {worker.profileImage ? (
+                      <img
+                        src={worker.profileImage}
+                        alt={worker.name}
+                        className="agent-worker-avatar-img"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          if (e.target.nextSibling) {
+                            e.target.nextSibling.style.display = 'flex';
+                          }
+                        }}
+                      />
+                    ) : null}
+                    <div
+                      className="agent-worker-avatar-fallback"
+                      style={{ display: worker.profileImage ? 'none' : 'flex' }}
+                    >
+                      {initial}
+                    </div>
+                  </div>
+                  <div className="agent-worker-verified-badge" title="Verified Professional">
+                    <i className="fa-solid fa-check"></i>
                   </div>
                 </div>
 
-                {/* Info Column (Right) */}
+                {/* Info Column */}
                 <div className="agent-worker-info-col">
-                  {/* Title line: Name, Verified Badge & Heart */}
-                  <div className="agent-worker-title-line">
-                    <div className="agent-worker-name-group">
-                      <h4 className="agent-worker-name" title={worker.name}>
-                        {worker.name}
-                      </h4>
-                      <span className="agent-worker-verified-badge" title="Verified Professional">
-                        <i className="fa-solid fa-circle-check"></i>
-                      </span>
-                    </div>
-
+                  {/* Name & Favorite Heart */}
+                  <div className="agent-worker-name-row">
+                    <h3 className="agent-worker-name" title={worker.name}>
+                      {worker.name}
+                    </h3>
                     <button
                       type="button"
                       className={`agent-worker-fav-btn ${isFav ? 'active' : ''}`}
                       onClick={(e) => toggleFav(e, worker.id)}
-                      title={isFav ? "Saved to favorites" : "Save to favorites"}
+                      aria-label={isFav ? "Remove from favorites" : "Save to favorites"}
                     >
                       <i className={isFav ? "fa-solid fa-heart" : "fa-regular fa-heart"}></i>
                     </button>
                   </div>
 
-                  {/* Role / Description */}
-                  <p className="agent-worker-role">
-                    {worker.primaryRole || 'Verified Community Service Professional'}
-                  </p>
+                  {/* Primary Role (e.g. Plumber) */}
+                  <div className="agent-worker-role-text">
+                    {displayRole}
+                  </div>
 
-                  {/* Category / Skill Pill */}
-                  <div className="agent-worker-skills-row">
+                  {/* Skill Pill */}
+                  <div className="agent-worker-skill-pill-box">
                     <span className="agent-worker-skill-pill">
-                      {primarySkill}
+                      <i className="fa-solid fa-wrench"></i>
+                      <span>{primarySkill}</span>
                     </span>
                   </div>
 
-                  {/* Distance Pill */}
-                  <div className="agent-worker-distance-pill">
-                    <i className="fa-solid fa-person-walking"></i>
-                    <span>
-                      {typeof worker.distance === 'number'
-                        ? `${worker.distance < 1 ? '< 1' : worker.distance.toFixed(1)} km away`
-                        : ''}
-                      {typeof worker.distance === 'number' && worker.primaryServiceArea ? ' • ' : ''}
-                      {worker.primaryServiceArea || (typeof worker.distance === 'number' ? '' : 'Distance unknown')}
+                  {/* Location Capsule */}
+                  <div className="agent-worker-location-box">
+                    <span className="agent-worker-location-pill">
+                      <i className="fa-solid fa-location-dot"></i>
+                      <span>{locationText}</span>
                     </span>
-                  </div>
-
-                  {/* Rating & Availability Chips */}
-                  <div className="agent-worker-chips-row">
-                    <span className="agent-worker-rating-chip">
-                      <i className="fa-solid fa-star"></i>
-                      <span>{rating}</span>
-                    </span>
-                    {worker.isAvailable !== false && (
-                      <span className="agent-worker-avail-chip">
-                        Available
-                      </span>
-                    )}
                   </div>
                 </div>
               </div>
 
-              {/* Card Footer: Estimated Rate & Action Button */}
-              <div className="agent-worker-footer">
-                <div className="agent-worker-rate-box">
-                  <span className="agent-worker-rate-label">ESTIMATED RATE</span>
-                  <div className="agent-worker-rate-value-wrap">
-                    <span className="agent-worker-rate-val">{rateDisplay}</span>
-                    {rateUnit && <span className="agent-worker-rate-unit">{rateUnit}</span>}
-                  </div>
+              {/* Middle Stats Row: Rating & Jobs */}
+              <div className="agent-worker-stats-row">
+                <div className="agent-worker-rating-group">
+                  <i className="fa-solid fa-star worker-star-icon"></i>
+                  <span className="worker-rating-val">{rating}</span>
+                  <span className="worker-reviews-count">({reviewCount} reviews)</span>
+                </div>
+                <div className="worker-stats-v-divider"></div>
+                <div className="agent-worker-jobs-group">
+                  <i className="fa-solid fa-briefcase worker-briefcase-icon"></i>
+                  <span className="worker-jobs-count">{completedJobsCount}</span>
+                </div>
+              </div>
+
+              {/* Subtle Horizontal Divider */}
+              <div className="agent-worker-hr-divider"></div>
+
+              {/* Rate & Action Buttons */}
+              <div className="agent-worker-rate-actions-row">
+                <div className="agent-worker-rate-col">
+                  <div className="worker-rate-label">ESTIMATED RATE</div>
+                  <div className="worker-rate-main">Rs. {rateNum}</div>
+                  <div className="worker-rate-sub">{rateUnit}</div>
                 </div>
 
-                <div className="agent-worker-actions-wrap" onClick={(e) => e.stopPropagation()}>
+                <div className="agent-worker-actions-group" onClick={(e) => e.stopPropagation()}>
                   <button
                     type="button"
-                    className="agent-worker-select-btn"
+                    className="agent-worker-book-btn"
                     onClick={() => onAction && onAction('send_prompt', `I would like to book ${worker.name} (Worker ID: ${worker.id})`)}
-                    title="Select this worker to book"
+                    title="Book this worker"
                   >
-                    <span>Book</span>
-                    <i className="fa-solid fa-calendar-check" style={{ fontSize: '0.75rem' }}></i>
+                    <svg className="worker-book-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                      <line x1="16" y1="2" x2="16" y2="6" />
+                      <line x1="8" y1="2" x2="8" y2="6" />
+                      <line x1="3" y1="10" x2="21" y2="10" />
+                      <circle cx="8" cy="14" r="1" fill="#1d4ed8" />
+                      <circle cx="12" cy="14" r="1" fill="#1d4ed8" />
+                      <circle cx="16" cy="14" r="1" fill="#1d4ed8" />
+                      <circle cx="8" cy="18" r="1" fill="#1d4ed8" />
+                      <circle cx="12" cy="18" r="1" fill="#1d4ed8" />
+                    </svg>
+                    <div className="worker-stacked-text dark">
+                      <span>Book</span>
+                      <span>Now</span>
+                    </div>
                   </button>
 
                   <button
                     type="button"
                     className="agent-worker-profile-btn"
                     onClick={() => onAction && onAction('navigate', `/worker-detail?id=${worker.id}`)}
+                    title="View full profile"
                   >
-                    <span>Profile</span>
-                    <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.75rem' }}></i>
+                    <div className="worker-stacked-text light">
+                      <span>View</span>
+                      <span>Profile</span>
+                    </div>
+                    <i className="fa-solid fa-arrow-right worker-arrow-icon"></i>
                   </button>
+                </div>
+              </div>
+
+              {/* Bottom Status Row: Available status */}
+              <div className="agent-worker-bottom-status-row">
+                <div className="worker-avail-pill">
+                  <span className="worker-status-dot"></span>
+                  <span>{worker.isAvailable !== false ? 'Available' : 'Unavailable'}</span>
                 </div>
               </div>
             </div>

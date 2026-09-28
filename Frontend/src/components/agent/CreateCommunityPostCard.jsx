@@ -1,7 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
 import craftsmanAvatar from '../../assets/carftman.png';
 import { SERVICE_CATEGORIES } from '../ServiceCategories.jsx';
+import sriLankaDistrictsData from '../../data/sriLankaDistricts.json';
 import './AgentCards.css';
+
+const ALL_DISTRICTS = Object.values(sriLankaDistrictsData).flat();
+
+const resolveDistrict = (loc) => {
+  if (!loc) return 'Colombo';
+  const clean = String(loc).trim().toLowerCase();
+  const exact = ALL_DISTRICTS.find((d) => d.toLowerCase() === clean);
+  if (exact) return exact;
+  const partial = ALL_DISTRICTS.find((d) => clean.includes(d.toLowerCase()) || d.toLowerCase().includes(clean));
+  if (partial) return partial;
+  return 'Colombo';
+};
 
 const CATEGORY_OPTIONS = SERVICE_CATEGORIES.map((cat) => ({
   id: cat.name,
@@ -23,7 +36,7 @@ export default function CreateCommunityPostCard({ data = {}, onAction }) {
       data.description ||
       'I am looking for professional services in Colombo. Please reach out if you can assist.'
   );
-  const [location, setLocation] = useState(data.location || 'Colombo');
+  const [location, setLocation] = useState(resolveDistrict(data.location));
 
   useEffect(() => {
     if (data.communityId || data.category) {
@@ -31,7 +44,7 @@ export default function CreateCommunityPostCard({ data = {}, onAction }) {
     }
     if (data.title) setTitle(data.title);
     if (data.content || data.description) setDescription(data.content || data.description);
-    if (data.location) setLocation(data.location);
+    if (data.location) setLocation(resolveDistrict(data.location));
   }, [data.communityId, data.category, data.title, data.content, data.description, data.location]);
 
   // Initial photos start empty so user can attach real photos
@@ -238,16 +251,25 @@ export default function CreateCommunityPostCard({ data = {}, onAction }) {
 
           {/* Location */}
           <div className="create-post-field-group">
-            <label className="create-post-label">Location</label>
+            <label className="create-post-label">Location (District)</label>
             <div className="create-post-icon-input">
               <i className="fa-solid fa-location-dot input-left-icon"></i>
-              <input
-                type="text"
-                className="icon-input-field"
+              <select
+                className="icon-input-field location-select-field"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
-                placeholder="e.g. Colombo"
-              />
+              >
+                {Object.entries(sriLankaDistrictsData).map(([province, districts]) => (
+                  <optgroup key={province} label={province}>
+                    {districts.map((district) => (
+                      <option key={district} value={district}>
+                        {district}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+              <i className="fa-solid fa-chevron-down location-select-chevron"></i>
             </div>
           </div>
 

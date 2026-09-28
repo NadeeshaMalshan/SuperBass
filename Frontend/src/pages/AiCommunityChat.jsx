@@ -403,7 +403,7 @@ export default function AiCommunityChat() {
           <nav className="m3-drawer-nav">
             {[
               { label: 'Recent Posts', icon: 'campaign', msg: 'Show recent community posts in Colombo' },
-              { label: 'Find Craftsmen', icon: 'handyman', msg: 'Find available verified craftsmen near me' },
+              { label: 'Find Craftsmen', icon: 'handyman', msg: 'I want to find a worker' },
               { label: 'My Posts', icon: 'badge', msg: 'Show all my community posts' },
               { label: 'My Profile', icon: 'person', msg: 'What is my user role and profile details?' },
             ].map(({ label, icon, msg }) => (
@@ -525,8 +525,26 @@ export default function AiCommunityChat() {
               ) : (
                 messages.map((msg) => {
                   const isUser = msg.sender === 'user';
+                  const hasPlainTextMessage = Boolean(
+                    !isUser &&
+                    msg.cardResponse?.message &&
+                    msg.cardResponse.response_type !== 'text_message' &&
+                    msg.cardResponse.response_type !== 'initial_welcome'
+                  );
+
+                  const isWorkerList = !isUser && msg.cardResponse?.response_type === 'worker_list';
+                  const workerCount = isWorkerList ? (msg.cardResponse?.card_data?.workers?.length || 0) : 0;
+                  const isFullWidthWorkerList = isWorkerList && workerCount >= 3;
+                  const workerCountClass = isWorkerList ? `worker-count-${workerCount}` : '';
+
+                  const isCommunityPost = !isUser && (
+                    msg.cardResponse?.response_type === 'create_community_post' ||
+                    msg.cardResponse?.response_type === 'post_confirmation' ||
+                    msg.cardResponse?.response_type === 'post_created'
+                  );
+
                 return (
-                  <div key={msg.id} className={`ai-bubble-row ${isUser ? 'resident' : 'assistant'}`}>
+                  <div key={msg.id} className={`ai-bubble-row ${isUser ? 'resident' : 'assistant'} ${isWorkerList ? 'worker-list-row' : ''} ${isFullWidthWorkerList ? 'full-width' : ''} ${workerCountClass} ${isCommunityPost ? 'community-post-row' : ''}`}>
                     {!isUser && (
                       <div className="ai-msg-avatar bot-av">
                         <img
@@ -537,17 +555,26 @@ export default function AiCommunityChat() {
                       </div>
                     )}
 
-                    <div className="ai-msg-wrapper">
-                      <div className={`ai-bubble ${isUser ? 'resident' : 'assistant'}`}>
-                        {isUser ? (
+                    <div className={`ai-msg-wrapper ${isWorkerList ? 'worker-list-msg-wrapper' : ''} ${isFullWidthWorkerList ? 'full-width' : ''} ${workerCountClass} ${isCommunityPost ? 'community-post-msg-wrapper' : ''}`}>
+                      {isUser ? (
+                        <div className="ai-bubble resident">
                           <div>{msg.text}</div>
-                        ) : (
-                          <AgentCardDispatcher
-                            response={msg.cardResponse}
-                            onAction={handleCardAction}
-                          />
-                        )}
-                      </div>
+                        </div>
+                      ) : (
+                        <>
+                          {hasPlainTextMessage && (
+                            <div className="ai-bubble assistant text-bubble">
+                              <div>{msg.cardResponse.message}</div>
+                            </div>
+                          )}
+                          <div className={`ai-bubble assistant ai-card-bubble ${isWorkerList ? 'worker-list-bubble' : ''} ${workerCountClass} ${isCommunityPost ? 'community-post-bubble' : ''}`}>
+                            <AgentCardDispatcher
+                              response={msg.cardResponse}
+                              onAction={handleCardAction}
+                            />
+                          </div>
+                        </>
+                      )}
                       <span className="ai-msg-time">
                         {msg.time}
                         {isUser && (

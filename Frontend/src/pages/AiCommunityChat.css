@@ -649,6 +649,7 @@
   display: flex;
   flex-direction: column;
   max-width: 80%;
+  gap: 8px;
 }
 
 .ai-bubble-row.resident .ai-msg-wrapper {
@@ -684,6 +685,55 @@
   word-break: break-word;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
   width: 100%;
+  box-sizing: border-box;
+}
+
+.ai-bubble.assistant.text-bubble {
+  width: fit-content;
+  max-width: 100%;
+}
+
+.ai-bubble.assistant.ai-card-bubble {
+  padding: 18px 22px;
+  width: 100%;
+}
+
+.ai-bubble-row.assistant.full-width,
+.ai-bubble-row.assistant.full-width .ai-msg-wrapper {
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+.ai-bubble-row.assistant.worker-list-row.worker-count-1,
+.ai-bubble-row.assistant.worker-list-row.worker-count-1 .ai-msg-wrapper {
+  max-width: fit-content !important;
+  width: fit-content !important;
+}
+
+.ai-bubble-row.assistant.worker-list-row.worker-count-2,
+.ai-bubble-row.assistant.worker-list-row.worker-count-2 .ai-msg-wrapper {
+  max-width: fit-content !important;
+  width: fit-content !important;
+}
+
+.ai-bubble.assistant.ai-card-bubble.worker-list-bubble {
+  padding: 16px 18px;
+  box-sizing: border-box;
+}
+
+.ai-bubble.assistant.ai-card-bubble.worker-list-bubble.worker-count-1 {
+  width: fit-content !important;
+  max-width: 410px !important;
+}
+
+.ai-bubble.assistant.ai-card-bubble.worker-list-bubble.worker-count-2 {
+  width: fit-content !important;
+  max-width: 790px !important;
+}
+
+.ai-bubble.assistant.ai-card-bubble.worker-list-bubble:not(.worker-count-1):not(.worker-count-2) {
+  max-width: 100% !important;
+  width: 100% !important;
 }
 
 .ai-bubble.assistant.welcome-bubble {
@@ -693,6 +743,26 @@
   box-shadow: none !important;
   max-width: 390px !important;
   width: 100% !important;
+}
+
+.ai-bubble-row.assistant.community-post-row,
+.ai-bubble-row.assistant.community-post-row .ai-msg-wrapper,
+.ai-bubble-row.assistant .ai-msg-wrapper.community-post-msg-wrapper {
+  max-width: fit-content !important;
+  width: fit-content !important;
+}
+
+.ai-bubble.assistant.ai-card-bubble.community-post-bubble {
+  width: 520px !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .ai-bubble.assistant.ai-card-bubble.community-post-bubble {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
 }
 
 .ai-msg-time {

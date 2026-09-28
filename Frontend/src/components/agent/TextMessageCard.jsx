@@ -5,14 +5,19 @@ export default function TextMessageCard({ data, onAction }) {
   if (!data) return null;
 
   const { text, suggestions = [], is_choice } = data;
-  const showChoiceCards = Boolean(
-    is_choice ||
-    data?.is_choice ||
-    (Array.isArray(suggestions) &&
-      suggestions.length > 0 &&
-      (suggestions.some((s) => typeof s === 'object' && (s.type === 'find' || s.type === 'community')) ||
-       suggestions.some((s) => /community|post/i.test(typeof s === 'object' ? s.text || '' : String(s)))))
-  );
+  // Choice cards should ONLY be shown when explicitly set by the backend for a choice turn
+  const showChoiceCards = Boolean(is_choice || data?.is_choice);
+
+  // If not a choice turn, filter out any generic choice buttons that may have lingered
+  const filteredSuggestions = showChoiceCards
+    ? suggestions
+    : (Array.isArray(suggestions)
+        ? suggestions.filter((s) => {
+            const str = typeof s === 'object' && s !== null ? (s.text || s.label || '') : String(s);
+            const lower = str.toLowerCase();
+            return !lower.startsWith('find a') && !lower.startsWith('find trusted') && !lower.includes('create a community post');
+          })
+        : []);
 
   return (
     <div className="agent-choice-wrap">
@@ -22,10 +27,10 @@ export default function TextMessageCard({ data, onAction }) {
         </div>
       )}
 
-      {suggestions && suggestions.length > 0 && (
+      {filteredSuggestions && filteredSuggestions.length > 0 && (
         showChoiceCards ? (
           <div className="ai-choice-actions-list">
-            {suggestions.map((suggestion, idx) => {
+            {filteredSuggestions.map((suggestion, idx) => {
               const suggestionText =
                 typeof suggestion === 'object' && suggestion !== null
                   ? suggestion.text || suggestion.label || suggestion.prompt || JSON.stringify(suggestion)
@@ -72,7 +77,7 @@ export default function TextMessageCard({ data, onAction }) {
           </div>
         ) : (
           <div className="agent-chips-wrap">
-            {suggestions.map((suggestion, idx) => {
+            {filteredSuggestions.map((suggestion, idx) => {
               const suggestionText =
                 typeof suggestion === 'object' && suggestion !== null
                   ? suggestion.text || suggestion.label || suggestion.prompt || JSON.stringify(suggestion)

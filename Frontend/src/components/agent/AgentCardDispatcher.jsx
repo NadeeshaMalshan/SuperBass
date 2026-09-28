@@ -20,19 +20,9 @@ export default function AgentCardDispatcher({ response, onAction }) {
 
   const { response_type, message, card_data = {} } = response;
 
-  // Render message bubble if present alongside card
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
-      {message && response_type !== 'text_message' && response_type !== 'initial_welcome' && (
-        <div style={{ fontSize: '0.935rem', lineHeight: '1.5', color: '#1e293b' }}>
-          {message}
-        </div>
-      )}
-
-      {(() => {
-        switch (response_type) {
-          case 'initial_welcome':
-            return <InitialWelcomeCard data={card_data} onAction={onAction} />;
+  switch (response_type) {
+    case 'initial_welcome':
+      return <InitialWelcomeCard data={card_data} onAction={onAction} />;
           case 'create_community_post':
           case 'post_confirmation':
             return <CreateCommunityPostCard data={card_data} onAction={onAction} />;
@@ -67,8 +57,5 @@ export default function AgentCardDispatcher({ response, onAction }) {
                 onAction={onAction}
               />
             );
-        }
-      })()}
-    </div>
-  );
+  }
 }

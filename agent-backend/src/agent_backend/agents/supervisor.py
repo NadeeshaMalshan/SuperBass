@@ -12,6 +12,7 @@ import logging
 from agent_backend.config import settings
 from agent_backend.state.state import AgentState
 from agent_backend.prompts.supervisor_prompts import SUPERVISOR_SYSTEM_PROMPT
+from agent_backend.tools.booking_tools import get_live_service_categories
 from agent_backend.utils.sanitizer import sanitize_messages_for_llm
 
 logger = logging.getLogger("agent_backend.supervisor")
@@ -24,7 +25,7 @@ class SupervisorDecision(BaseModel):
     )
     inferred_category: Optional[str] = Field(
         default=None,
-        description="The matching Workio service category from the 21 official categories if a problem or service was described"
+        description="The matching Workio service category from the official categories if a problem or service was described"
     )
     direct_response: str = Field(
         default="",
@@ -56,9 +57,13 @@ async def supervisor_node(state: AgentState) -> Dict[str, Any]:
             )
             structured_router = llm.with_structured_output(SupervisorDecision, method="function_calling")
 
+            cats = await get_live_service_categories()
+            categories_list = "\n".join(f"{idx+1}. {c}" for idx, c in enumerate(cats))
+            formatted_prompt = SUPERVISOR_SYSTEM_PROMPT.format(categories_list=categories_list)
+
             clean_messages = sanitize_messages_for_llm(messages)
             prompt_messages = [
-                SystemMessage(content=SUPERVISOR_SYSTEM_PROMPT),
+                SystemMessage(content=formatted_prompt),
                 SystemMessage(
                     content=f"Current user session: email={state.get('email', 'unknown')}, role={state.get('user_type', 'Resident')}"
                 )
@@ -71,7 +76,12 @@ async def supervisor_node(state: AgentState) -> Dict[str, Any]:
                 updates["messages"] = [AIMessage(content=decision.direct_response)]
 
             if decision.suggested_actions:
-                metadata["suggested_actions"] = decision.suggested_actions
+                # Strictly filter out tips, DIY, tutorials, and advice
+                clean_actions = [
+                    a for a in decision.suggested_actions
+                    if not any(t in a.lower() for t in ["tip", "diy", "myself", "advice", "tutorial", "guide"])
+                ]
+                metadata["suggested_actions"] = clean_actions
             if decision.inferred_category:
                 metadata["inferred_category"] = decision.inferred_category
 
@@ -84,7 +94,7 @@ async def supervisor_node(state: AgentState) -> Dict[str, Any]:
     raw_text = messages[-1].content if messages[-1].content else ""
     lower_text = raw_text.lower()
 
-    if any(w in lower_text for w in ["book", "appointment", "schedule", "hire"]):
+    if any(w in lower_text for w in ["worker", "find a worker", "find worker", "book", "appointment", "schedule", "hire", "technician", "craftsman"]):
         return {"next": "booking_agent", "metadata": metadata}
     if any(w in lower_text for w in ["post", "community", "feed"]):
         return {"next": "community_agent", "metadata": metadata}
