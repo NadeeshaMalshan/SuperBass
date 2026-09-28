@@ -7,19 +7,11 @@ export default function TextMessageCard({ data, onAction }) {
   const { text, suggestions = [], is_choice } = data;
 
   // Determine if this card is an action choice card
-  const isChoice =
+  const isChoice = Boolean(
     is_choice ||
-    (text && /how would you like to proceed/i.test(text)) ||
-    (suggestions &&
-      suggestions.length > 0 &&
-      suggestions.some((s) => {
-        const str = typeof s === 'object' ? s.text || '' : String(s);
-        return /find|worker|electrician|plumber|carpenter|handyman|repair|technician|book|hire/i.test(str);
-      }) &&
-      suggestions.some((s) => {
-        const str = typeof s === 'object' ? s.text || '' : String(s);
-        return /community|post/i.test(str);
-      }));
+    data?.is_choice ||
+    (text && /how would you like to proceed/i.test(text))
+  );
 
   if (isChoice) {
     let introText = '';
@@ -56,11 +48,14 @@ export default function TextMessageCard({ data, onAction }) {
                 ? suggestion.text || suggestion.label || suggestion.prompt || JSON.stringify(suggestion)
                 : String(suggestion);
 
-            const isFind = /find|search|worker|plumber|electrician|carpenter|handyman|repair|technician|book|hire/i.test(
-              suggestionText
-            );
-            const isCommunity = /community|post|feed|board|share/i.test(suggestionText);
-            const iconType = isFind ? 'find' : isCommunity ? 'community' : 'general';
+            // Action type is provided by backend or defaults by option index (1st = find worker, 2nd = community post)
+            const optionType =
+              typeof suggestion === 'object' && suggestion !== null && suggestion.type
+                ? suggestion.type
+                : (idx === 1 ? 'community' : 'find');
+
+            const isFind = optionType === 'find' || optionType === 'worker';
+            const iconType = optionType === 'community' ? 'community' : 'find';
 
             return (
               <button

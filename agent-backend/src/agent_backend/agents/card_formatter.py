@@ -445,9 +445,21 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
                 "Create a community post"
             ]
 
+        structured_suggestions = []
+        for idx, item in enumerate(dyn_suggestions):
+            if isinstance(item, dict):
+                structured_suggestions.append(item)
+            else:
+                item_str = str(item)
+                item_type = "community" if idx == 1 or "community" in item_str.lower() or "post" in item_str.lower() else "find"
+                structured_suggestions.append({
+                    "text": item_str,
+                    "type": item_type
+                })
+
         card = TextMessageCard(
             text=last_ai_content,
-            suggestions=dyn_suggestions
+            suggestions=structured_suggestions
         )
         card_data = card.model_dump()
         card_data["is_choice"] = True
