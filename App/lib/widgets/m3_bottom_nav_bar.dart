@@ -57,7 +57,6 @@ class M3BottomNavigationBar extends StatelessWidget {
         decoration: BoxDecoration(
           color: navSurfaceColor,
           borderRadius: BorderRadius.circular(34),
-          border: Border.all(color: borderColor, width: 0.8),
           boxShadow: [
             // White radiant ambient shadow / glow
             BoxShadow(

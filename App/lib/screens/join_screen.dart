@@ -245,11 +245,9 @@ class _JoinScreenState extends State<JoinScreen> {
                     backgroundColor: AppColors.primaryContainer,
                     child: Icon(Icons.person, color: AppColors.onPrimaryContainer),
                   ),
-                  title: const Text('Sign in as Resident'),
-                  subtitle: const Text('Access community, book pros, search services'),
+                  tileColor: AppColors.surfaceVariant,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
-                    side: const BorderSide(color: AppColors.outlineVariant),
                   ),
                   onTap: () {
                     Navigator.pop(ctx);
@@ -264,9 +262,9 @@ class _JoinScreenState extends State<JoinScreen> {
                   ),
                   title: const Text('Sign in as Worker (Pro)'),
                   subtitle: const Text('Access worker portal, incoming jobs, earnings'),
+                  tileColor: AppColors.surfaceVariant,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
-                    side: const BorderSide(color: AppColors.outlineVariant),
                   ),
                   onTap: () {
                     Navigator.pop(ctx);

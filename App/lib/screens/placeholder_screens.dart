@@ -362,9 +362,13 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
             const Divider(height: 64),
             const Text('Danger Zone', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red)),
             const SizedBox(height: 16),
-            OutlinedButton(
+            ElevatedButton(
               onPressed: _isLoading ? null : _deleteAccount,
-              style: OutlinedButton.styleFrom(foregroundColor: Colors.red, side: const BorderSide(color: Colors.red)),
+              style: ElevatedButton.styleFrom(
+                elevation: 0,
+                foregroundColor: Colors.red,
+                backgroundColor: const Color(0xFFFEE2E2),
+              ),
               child: const Text('Delete Account'),
             ),
           ],

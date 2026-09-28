@@ -385,15 +385,15 @@ class _FindTabScreenState extends State<FindTabScreen> {
                     fillColor: AppColors.surfaceVariant,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: AppColors.outlineVariant),
+                      borderSide: BorderSide.none,
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: AppColors.outlineVariant),
+                      borderSide: BorderSide.none,
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(color: AppColors.brandBlack, width: 1.5),
+                      borderSide: BorderSide.none,
                     ),
                   ),
                 ),
@@ -419,7 +419,6 @@ class _FindTabScreenState extends State<FindTabScreen> {
                       decoration: BoxDecoration(
                         color: AppColors.surfaceVariant,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.outlineVariant),
                       ),
                       child: Text(
                         tag,
@@ -877,7 +876,6 @@ class _FindTabScreenState extends State<FindTabScreen> {
                   decoration: BoxDecoration(
                     color: AppColors.surfaceVariant,
                     borderRadius: BorderRadius.circular(9999),
-                    border: Border.all(color: AppColors.outlineVariant),
                   ),
                   child: Text(
                     skill,
@@ -966,10 +964,9 @@ class _FindTabScreenState extends State<FindTabScreen> {
                   child: Container(
                     width: 36,
                     height: 36,
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       shape: BoxShape.circle,
                       color: AppColors.primaryContainer,
-                      border: Border.all(color: AppColors.brandYellow, width: 1.5),
                     ),
                     child: ClipOval(
                       child: (user?.picture != null && user!.picture!.isNotEmpty)
@@ -1358,7 +1355,6 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                 decoration: BoxDecoration(
                   color: AppColors.surfaceVariant.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.outlineVariant),
                 ),
                 child: Row(
                   children: [
@@ -1496,7 +1492,7 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                 SizedBox(
                   width: double.infinity,
                   height: 48,
-                  child: OutlinedButton.icon(
+                  child: ElevatedButton.icon(
                     onPressed: () {
                       Navigator.of(ctx).pop();
                       _confirmCancelBooking(b);
@@ -1510,10 +1506,10 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                         color: AppColors.error,
                       ),
                     ),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: AppColors.error, width: 1.5),
+                    style: ElevatedButton.styleFrom(
+                      elevation: 0,
                       foregroundColor: AppColors.error,
-                      backgroundColor: AppColors.error.withValues(alpha: 0.05),
+                      backgroundColor: const Color(0xFFFEE2E2),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -1922,8 +1918,14 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                               padding: const EdgeInsets.all(18),
                               decoration: BoxDecoration(
                                 color: AppColors.surface,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: AppColors.outlineVariant),
+                                borderRadius: BorderRadius.circular(18),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.04),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -2011,8 +2013,8 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                                       Expanded(
                                         flex: (b.status.toLowerCase() == 'requested' || b.status.toLowerCase() == 'pending') ? 3 : 1,
                                         child: SizedBox(
-                                          height: 40,
-                                          child: OutlinedButton.icon(
+                                          height: 42,
+                                          child: ElevatedButton.icon(
                                             onPressed: () => _showBookingDetails(b),
                                             icon: const Icon(Icons.visibility_outlined, size: 16),
                                             label: Text(
@@ -2022,15 +2024,12 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                                                 fontWeight: FontWeight.w700,
                                               ),
                                             ),
-                                            style: OutlinedButton.styleFrom(
-                                              minimumSize: const Size(0, 40),
+                                            style: ElevatedButton.styleFrom(
+                                              elevation: 0,
                                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                              side: const BorderSide(color: AppColors.outlineVariant, width: 1.5),
                                               foregroundColor: AppColors.onSurface,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(10),
-                                              ),
-                                              backgroundColor: AppColors.surfaceVariant.withValues(alpha: 0.4),
+                                              backgroundColor: AppColors.surfaceVariant,
+                                              shape: const StadiumBorder(),
                                             ),
                                           ),
                                         ),
@@ -2040,8 +2039,8 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                                         Expanded(
                                           flex: 2,
                                           child: SizedBox(
-                                            height: 40,
-                                            child: OutlinedButton.icon(
+                                            height: 42,
+                                            child: ElevatedButton.icon(
                                               onPressed: () => _confirmCancelBooking(b),
                                               icon: const Icon(Icons.cancel_outlined, size: 16, color: AppColors.error),
                                               label: Text(
@@ -2052,15 +2051,12 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                                                   color: AppColors.error,
                                                 ),
                                               ),
-                                              style: OutlinedButton.styleFrom(
-                                                minimumSize: const Size(0, 40),
+                                              style: ElevatedButton.styleFrom(
+                                                elevation: 0,
                                                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                                side: const BorderSide(color: AppColors.error, width: 1.2),
                                                 foregroundColor: AppColors.error,
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(10),
-                                                ),
-                                                backgroundColor: AppColors.error.withValues(alpha: 0.05),
+                                                backgroundColor: const Color(0xFFFEE2E2),
+                                                shape: const StadiumBorder(),
                                               ),
                                             ),
                                           ),
@@ -2361,10 +2357,9 @@ class AccountTabScreen extends StatelessWidget {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: AppColors.primaryContainer,
-                          border: Border.all(color: AppColors.brandYellow, width: 3),
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.brandYellow.withValues(alpha: 0.3),
+                              color: Colors.black.withValues(alpha: 0.08),
                               blurRadius: 16,
                               offset: const Offset(0, 4),
                             ),

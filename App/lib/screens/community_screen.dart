@@ -323,14 +323,14 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                       maxLines: 4,
                       decoration: InputDecoration(
                         hintText: 'Describe what service, recommendation, or advice you are seeking...',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: AppColors.outlineVariant),
+                          borderSide: BorderSide.none,
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: AppColors.brandYellow, width: 2),
+                          borderSide: BorderSide.none,
                         ),
                       ),
                     ),
@@ -346,13 +346,12 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                       decoration: BoxDecoration(
                         color: AppColors.surfaceVariant.withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.outlineVariant),
                       ),
                       padding: const EdgeInsets.all(12),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          OutlinedButton.icon(
+                          ElevatedButton.icon(
                             onPressed: () async {
                               final ImagePicker picker = ImagePicker();
                               final XFile? file = await picker.pickImage(
@@ -373,7 +372,10 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                             },
                             icon: const Icon(Icons.add_a_photo_outlined),
                             label: Text(hasImage ? 'Change Selected Photo' : 'Attach Photo from Device'),
-                            style: OutlinedButton.styleFrom(
+                            style: ElevatedButton.styleFrom(
+                              elevation: 0,
+                              backgroundColor: AppColors.surfaceVariant,
+                              foregroundColor: AppColors.onSurface,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             ),
                           ),
@@ -388,7 +390,6 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                                   width: double.infinity,
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(color: AppColors.outlineVariant),
                                   ),
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(10),
@@ -743,7 +744,6 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
             decoration: BoxDecoration(
               color: AppColors.primaryContainer,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.brandYellow),
             ),
             child: Row(
               children: [
@@ -894,7 +894,13 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.outlineVariant),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

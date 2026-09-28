@@ -147,10 +147,12 @@ class SecondaryOutlinedButton extends StatelessWidget {
     return SizedBox(
       height: 56,
       width: isFullWidth ? double.infinity : null,
-      child: OutlinedButton(
+      child: ElevatedButton(
         onPressed: onPressed,
-        style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: AppColors.outline, width: 1.5),
+        style: ElevatedButton.styleFrom(
+          elevation: 0,
+          backgroundColor: AppColors.surfaceVariant,
+          foregroundColor: AppColors.onSurface,
           shape: const StadiumBorder(),
           padding: const EdgeInsets.symmetric(horizontal: 24),
         ),
@@ -196,7 +198,6 @@ class ServiceSearchBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surfaceVariant,
         borderRadius: BorderRadius.circular(9999),
-        border: Border.all(color: AppColors.outlineVariant),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       child: Row(
@@ -497,12 +498,12 @@ class WorkerCard extends StatelessWidget {
                     Expanded(
                       child: SizedBox(
                         height: 38,
-                        child: OutlinedButton(
+                        child: ElevatedButton(
                           onPressed: onProfileTap ?? () {},
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(
-                              color: AppColors.outlineVariant,
-                            ),
+                          style: ElevatedButton.styleFrom(
+                            elevation: 0,
+                            backgroundColor: AppColors.surfaceVariant,
+                            foregroundColor: AppColors.onSurface,
                             shape: const StadiumBorder(),
                             padding: EdgeInsets.zero,
                           ),
@@ -580,7 +581,6 @@ class UberPromoBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.outlineVariant, width: 1),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -679,10 +679,6 @@ class UberPromoBanner extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: const Color(0xFFF3F3F3),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: const Color(0xFFE5E5E5),
-                          width: 0.8,
-                        ),
                       ),
                       child: Text(
                         buttonText,

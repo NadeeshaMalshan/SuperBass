@@ -165,7 +165,6 @@ class _WorkerPortalScreenState extends State<WorkerPortalScreen> {
               decoration: BoxDecoration(
                 color: WorkerColors.primaryLight,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: WorkerColors.primaryBorder),
               ),
               child: Text(
                 'WORKER',
@@ -190,11 +189,6 @@ class _WorkerPortalScreenState extends State<WorkerPortalScreen> {
               decoration: BoxDecoration(
                 color: _isOnline ? WorkerColors.onlineLight : WorkerColors.offlineLight,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: _isOnline
-                      ? WorkerColors.online.withValues(alpha: 0.4)
-                      : WorkerColors.outlineVariant,
-                ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -355,7 +349,6 @@ class _WorkerPortalScreenState extends State<WorkerPortalScreen> {
         decoration: BoxDecoration(
           color: WorkerColors.surface,
           borderRadius: BorderRadius.circular(33),
-          border: Border.all(color: WorkerColors.outlineVariant, width: 0.5),
           boxShadow: [
             BoxShadow(
               color: const Color(0xFF0F172A).withValues(alpha: 0.08),

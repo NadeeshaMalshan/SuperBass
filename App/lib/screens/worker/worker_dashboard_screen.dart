@@ -521,7 +521,6 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
                 boxShadow: [
                   BoxShadow(
                     color: const Color(0xFF0F172A).withValues(alpha: 0.04),
@@ -637,7 +636,6 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                     decoration: BoxDecoration(
                       color: const Color(0xFFF8FAFC),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -690,7 +688,6 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(color: const Color(0xFFE2E8F0)),
                                 ),
                                 child: Text(
                                   currentTip.badge,
@@ -794,7 +791,6 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -924,7 +920,6 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(22),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
                     boxShadow: [
                       BoxShadow(
                         color: const Color(0xFF0F172A).withValues(alpha: 0.03),
@@ -955,7 +950,6 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                             decoration: BoxDecoration(
                               color: const Color(0xFFFFFBEB),
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: const Color(0xFFFDE68A)),
                             ),
                             child: Text(
                               req.urgency,
@@ -999,7 +993,6 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                         decoration: BoxDecoration(
                           color: const Color(0xFFF8FAFC),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFF1F5F9)),
                         ),
                         child: Row(
                           children: [
@@ -1249,7 +1242,6 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
                   boxShadow: [
                     BoxShadow(
                       color: const Color(0xFF0F172A).withValues(alpha: 0.02),
@@ -1318,7 +1310,6 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFF0F172A).withValues(alpha: 0.02),
@@ -1408,7 +1399,6 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
           boxShadow: [
             BoxShadow(
               color: const Color(0xFF0F172A).withValues(alpha: 0.02),

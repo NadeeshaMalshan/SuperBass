@@ -201,7 +201,6 @@ class _NotificationsSheetState extends State<NotificationsSheet> {
             decoration: BoxDecoration(
               color: AppColors.brandYellow.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.brandYellow.withValues(alpha: 0.35)),
             ),
             child: Row(
               children: [
