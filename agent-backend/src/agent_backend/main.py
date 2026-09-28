@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="SuperBass Agent Backend",
+    title="Workio Agent Backend",
     description="Multi-Agent AI Workflow powered by LangGraph, OpenAI gpt-4o-mini, and MCP Tools with Neon DB Persistence",
     version="0.2.0",
     lifespan=lifespan
@@ -56,10 +56,14 @@ app.add_middleware(
 )
 
 
+# In-memory conversation fallback cache (preserves multi-turn state even if DB is unavailable)
+_IN_MEMORY_CONV_CACHE: Dict[str, List[Dict[str, Any]]] = {}
+
 # Conversation Creation Model
 class CreateConversationRequest(BaseModel):
     email: str = Field(description="User email address")
     title: Optional[str] = Field(default="New Conversation", description="Thread title")
+
 
 
 @app.get("/health")
@@ -76,7 +80,7 @@ async def health():
 
 @app.get("/api/mcp/health")
 async def mcp_health():
-    """Check connectivity to the SuperBass MCP Server."""
+    """Check connectivity to the Workio MCP Server."""
     result = await mcp_client.health_check()
     return result
 
@@ -146,31 +150,42 @@ async def chat_endpoint(request: ChatRequest):
     )
 
     try:
-        # 1. Retrieve prior messages from Neon DB to supply bounded conversational context
+        # 1. Retrieve prior messages to supply bounded conversational context
         history_msgs = []
+        db_messages = []
         try:
             db_messages = await chat_repository.get_conversation_messages(conv_id)
-            # Safe context window: take the most recent 8 messages (4 turns)
-            recent_db_messages = db_messages[-8:] if len(db_messages) > 8 else db_messages
-            for m in recent_db_messages:
-                msg_content = str(m.get("message", "") or "")
-                # Prevent legacy bloated messages from expanding context
-                if len(msg_content) > 1200:
-                    msg_content = msg_content[:1200] + "... [truncated]"
-
-                if m.get("sender") == "user":
-                    history_msgs.append(HumanMessage(content=msg_content))
-                elif m.get("sender") == "assistant":
-                    history_msgs.append(AIMessage(content=msg_content))
         except Exception as e:
             logger.warning(f"Could not load DB history for {conv_id}: {e}")
 
-        # 2. Build initial state for this turn
+        # Fallback to in-memory conversation cache if DB returned empty or errored
+        if not db_messages and conv_id in _IN_MEMORY_CONV_CACHE:
+            db_messages = _IN_MEMORY_CONV_CACHE[conv_id]
+
+        recent_db_messages = db_messages[-8:] if len(db_messages) > 8 else db_messages
+        for m in recent_db_messages:
+            msg_content = str(m.get("message", "") or "")
+            if len(msg_content) > 1200:
+                msg_content = msg_content[:1200] + "... [truncated]"
+            if m.get("sender") == "user":
+                history_msgs.append(HumanMessage(content=msg_content))
+            elif m.get("sender") == "assistant":
+                history_msgs.append(AIMessage(content=msg_content))
+
+        # 2. Retrieve user profile if available
+        user_profile = None
+        if request.email:
+            try:
+                user_profile = await mcp_client.call_tool("get_user_details", {"email": request.email})
+            except Exception as pe:
+                logger.warning(f"Could not load user profile for {request.email}: {pe}")
+
+        # 3. Build initial state for this turn
         initial_state = {
             "messages": history_msgs + [HumanMessage(content=request.message)],
             "email": request.email,
             "user_type": request.user_type,
-            "user_profile": None,
+            "user_profile": user_profile,
             "next": None,
             "structured_response": None,
             "metadata": request.metadata or {}
@@ -196,7 +211,13 @@ async def chat_endpoint(request: ChatRequest):
                 metadata={"agent": "system", "user_email": request.email}
             )
 
-        # 6. Save turn (user prompt + assistant card response) to Neon PostgreSQL
+        # 6. Save turn to in-memory fallback cache
+        _IN_MEMORY_CONV_CACHE.setdefault(conv_id, []).extend([
+            {"sender": "user", "message": request.message},
+            {"sender": "assistant", "message": card_response.message or str(card_response.card_data.get("title", "")) or "response"}
+        ])
+
+        # 7. Persist turn to Neon PostgreSQL if available
         try:
             await chat_repository.save_chat_turn(
                 conv_id=conv_id,

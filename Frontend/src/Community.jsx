@@ -74,9 +74,32 @@ export default function Community() {
 
   const token = localStorage.getItem('token');
   const isLoggedIn = !!token;
-  const currentUserEmail = localStorage.getItem('email');
+  const currentUserEmail = localStorage.getItem('email') || localStorage.getItem('workerEmail');
   const currentUserName = localStorage.getItem('userName');
   const activeRole = localStorage.getItem('activeRole') || 'Resident';
+
+  const getPostAuthorName = (post) => {
+    if (!post) return 'Community Resident';
+    if (currentUserEmail && post.userId && post.userId.toLowerCase() === currentUserEmail.toLowerCase()) {
+      return currentUserName || (currentUserEmail.includes('@') ? currentUserEmail.split('@')[0] : 'You');
+    }
+    if (post.userName && post.userName !== 'Community Resident' && post.userName !== 'You (Resident)') {
+      return post.userName;
+    }
+    if (post.userId && post.userId.includes('@')) {
+      return post.userId.split('@')[0];
+    }
+    return post.userName || 'Community Resident';
+  };
+
+  const getPostAvatar = (post) => {
+    if (!post) return 'https://api.dicebear.com/7.x/avataaars/svg?seed=Workio';
+    if (currentUserEmail && post.userId && post.userId.toLowerCase() === currentUserEmail.toLowerCase()) {
+      const pic = localStorage.getItem('userPicture');
+      if (pic) return pic;
+    }
+    return post.userAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.postId}`;
+  };
 
   // Comments map per post
   const [commentsMap, setCommentsMap] = useState({});
@@ -806,15 +829,15 @@ export default function Community() {
                               <div className="uber-list-header-row">
                                 <div className="uber-card-author">
                                   <img
-                                    src={post.userAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.postId}`}
-                                    alt={post.userName || 'Resident'}
+                                    src={getPostAvatar(post)}
+                                    alt={getPostAuthorName(post)}
                                     className="uber-card-avatar"
                                     onError={(e) => {
                                       e.target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.postId}`;
                                     }}
                                   />
                                   <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                                    <span className="uber-card-author-name">{post.userName || 'Community Resident'}</span>
+                                    <span className="uber-card-author-name">{getPostAuthorName(post)}</span>
                                     <span className="uber-card-time">{formatTimeAgo(post.createdAt)}</span>
                                   </div>
                                 </div>
@@ -915,15 +938,15 @@ export default function Community() {
                       <div className="uber-card-header">
                         <div className="uber-card-author">
                           <img
-                            src={post.userAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.postId}`}
-                            alt={post.userName || 'Resident'}
+                            src={getPostAvatar(post)}
+                            alt={getPostAuthorName(post)}
                             className="uber-card-avatar"
                             onError={(e) => {
                               e.target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.postId}`;
                             }}
                           />
                           <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                            <span className="uber-card-author-name">{post.userName || 'Community Resident'}</span>
+                            <span className="uber-card-author-name">{getPostAuthorName(post)}</span>
                             <span className="uber-card-time">{formatTimeAgo(post.createdAt)}</span>
                           </div>
                         </div>
@@ -1170,13 +1193,13 @@ export default function Community() {
               <div className="uber-poster-card">
                 <div className="uber-poster-left">
                   <img
-                    src={selectedPostForDetail.userAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedPostForDetail.postId}`}
-                    alt={selectedPostForDetail.userName}
+                    src={getPostAvatar(selectedPostForDetail)}
+                    alt={getPostAuthorName(selectedPostForDetail)}
                     className="uber-poster-avatar"
                   />
                   <div>
                     <div className="uber-poster-name">
-                      {selectedPostForDetail.userName}
+                      {getPostAuthorName(selectedPostForDetail)}
                     </div>
                     <div className="uber-poster-email">
                       Posted {formatTimeAgo(selectedPostForDetail.createdAt)}

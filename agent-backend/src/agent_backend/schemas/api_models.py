@@ -11,12 +11,12 @@ class ChatRequest(BaseModel):
     """Payload sent by Frontend/Client when submitting a chat prompt."""
     message: str = Field(description="The user's input prompt or instruction")
     email: str = Field(
-        default="resident@superbass.lk",
+        default="resident@workio.lk",
         description="The authenticated user's email address"
     )
     user_type: Literal["Resident", "Worker", "Unknown"] = Field(
         default="Resident",
-        description="User role in SuperBass platform"
+        description="User role in Workio platform"
     )
     conversation_id: Optional[str] = Field(
         default=None,

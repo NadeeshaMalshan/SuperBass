@@ -1,6 +1,6 @@
 """
-LangGraph Multi-Agent Workflow for SuperBass.
-Coordinates Supervisor Agent, Community Agent, MCP ToolNode, and Card Formatter.
+LangGraph Multi-Agent Workflow for Workio.
+Coordinates Supervisor Agent, Community Agent, Booking Agent, MCP ToolNodes, and Card Formatter.
 """
 
 from typing import Literal
@@ -12,15 +12,19 @@ from agent_backend.state.state import AgentState
 from agent_backend.agents.supervisor import supervisor_node
 from agent_backend.agents.community_agent import community_agent_node
 from agent_backend.agents.booking_agent import booking_agent_node
+from agent_backend.agents.support_agent import support_agent_node
+from agent_backend.agents.review_agent import review_agent_node
 from agent_backend.agents.card_formatter import card_formatter_node
+
 from agent_backend.tools.community_tools import COMMUNITY_TOOLS
 from agent_backend.tools.booking_tools import BOOKING_TOOLS
+from agent_backend.tools.support_review_tools import SUPPORT_TOOLS, REVIEW_TOOLS
 
 
-def route_supervisor(state: AgentState) -> Literal["community_agent", "booking_agent", "card_formatter"]:
-    """Routes from supervisor to the community agent, booking agent, or to the card formatter."""
+def route_supervisor(state: AgentState) -> Literal["community_agent", "booking_agent", "support_agent", "review_agent", "card_formatter"]:
+    """Routes from supervisor to the specialized agents or to the card formatter."""
     next_node = state.get("next")
-    if next_node in ("community_agent", "booking_agent"):
+    if next_node in ("community_agent", "booking_agent", "support_agent", "review_agent"):
         return next_node
     return "card_formatter"
 
@@ -31,10 +35,24 @@ def build_graph() -> StateGraph:
 
     # 1. Add Nodes
     builder.add_node("supervisor", supervisor_node)
+    
+    # Community Agent & Tools
     builder.add_node("community_agent", community_agent_node)
     builder.add_node("community_tools", ToolNode(COMMUNITY_TOOLS))
+    
+    # Booking Agent & Tools
     builder.add_node("booking_agent", booking_agent_node)
     builder.add_node("booking_tools", ToolNode(BOOKING_TOOLS))
+    
+    # Support Agent & Tools
+    builder.add_node("support_agent", support_agent_node)
+    builder.add_node("support_tools", ToolNode(SUPPORT_TOOLS))
+    
+    # Review Agent & Tools
+    builder.add_node("review_agent", review_agent_node)
+    builder.add_node("review_tools", ToolNode(REVIEW_TOOLS))
+    
+    # Formatter
     builder.add_node("card_formatter", card_formatter_node)
 
     # 2. Add Edges
@@ -46,6 +64,8 @@ def build_graph() -> StateGraph:
         {
             "community_agent": "community_agent",
             "booking_agent": "booking_agent",
+            "support_agent": "support_agent",
+            "review_agent": "review_agent",
             "card_formatter": "card_formatter"
         }
     )
@@ -71,6 +91,28 @@ def build_graph() -> StateGraph:
         }
     )
     builder.add_edge("booking_tools", "booking_agent")
+    
+    # Support Agent tool loop
+    builder.add_conditional_edges(
+        "support_agent",
+        tools_condition,
+        {
+            "tools": "support_tools",
+            END: "card_formatter"
+        }
+    )
+    builder.add_edge("support_tools", "support_agent")
+    
+    # Review Agent tool loop
+    builder.add_conditional_edges(
+        "review_agent",
+        tools_condition,
+        {
+            "tools": "review_tools",
+            END: "card_formatter"
+        }
+    )
+    builder.add_edge("review_tools", "review_agent")
 
     # Structured UI Card formatting
     builder.add_edge("card_formatter", END)

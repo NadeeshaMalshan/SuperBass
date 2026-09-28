@@ -1,5 +1,5 @@
 """
-Community and User Management Tools backed by SuperBass MCP Server.
+Community and User Management Tools backed by Workio MCP Server.
 Each LangChain tool routes its execution through JSON-RPC 2.0 to the MCP Server.
 """
 
@@ -45,18 +45,20 @@ async def create_community_post(
     title: str,
     content: str,
     communityId: str = "General",
-    location: str = "Colombo"
+    location: str = "Colombo",
+    userName: Optional[str] = None
 ) -> Dict[str, Any]:
     """
-    Publish a new community post via the MCP Server.
+    Publish a new community post via the MCP Server under the authenticated user's account.
 
     MCP Tool: create_community_post
     Arguments:
-    - authorId (string, required): Author user ID or email
+    - authorId (string, required): Author email or user ID of the logged-in user
     - title (string, required): Post title
     - content (string, required): Post body content
-    - communityId (string, required): Category or community identifier (e.g., 'General', 'Electrical')
+    - communityId (string, required): Category or community identifier (e.g., 'General', 'Plumbing', 'Electrical')
     - location (string, optional): Service location (default: 'Colombo')
+    - userName (string, optional): Author display name of the logged-in user
     """
     args = {
         "authorId": authorId,
@@ -65,6 +67,8 @@ async def create_community_post(
         "communityId": communityId or "General",
         "location": location or "Colombo"
     }
+    if userName:
+        args["userName"] = userName
     raw = await mcp_client.call_tool("create_community_post", args)
     return sanitize_payload(raw)
 
@@ -192,7 +196,7 @@ async def get_service_categories(
     includeDetails: bool = True
 ) -> Dict[str, Any]:
     """
-    Retrieve the official list of 21 standardized service categories available across SuperBass.
+    Retrieve the official list of 21 standardized service categories available across Workio.
 
     MCP Tool: get_service_categories
     Arguments:

@@ -136,11 +136,45 @@ namespace Superbass.Services
                 string categoryName = ServiceCategoryConstants.NormalizeCategoryName(request.ServiceCategoryId);
                 string categoryId = ServiceCategoryConstants.ToCategoryId(categoryName);
 
+                string? resolvedName = request.UserName;
+                string? resolvedAvatar = request.UserAvatar;
+
+                if (string.IsNullOrWhiteSpace(resolvedName) || resolvedName == "Community Resident" || resolvedName == "You (Resident)")
+                {
+                    var res = _context.Residents.FirstOrDefault(r => r.Email == userId);
+                    if (res != null && !string.IsNullOrWhiteSpace(res.Name))
+                    {
+                        resolvedName = res.Name;
+                    }
+                    else
+                    {
+                        var worker = _context.Workers.FirstOrDefault(w => w.ResidentEmail == userId || w.Email == userId);
+                        if (worker != null && !string.IsNullOrWhiteSpace(worker.Name))
+                        {
+                            resolvedName = worker.Name;
+                            if (string.IsNullOrWhiteSpace(resolvedAvatar) && !string.IsNullOrWhiteSpace(worker.ProfileImage))
+                            {
+                                resolvedAvatar = worker.ProfileImage;
+                            }
+                        }
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(resolvedName))
+                {
+                    resolvedName = userId.Contains("@") ? userId.Split('@')[0] : "Community Resident";
+                }
+
+                if (string.IsNullOrWhiteSpace(resolvedAvatar))
+                {
+                    resolvedAvatar = $"https://api.dicebear.com/7.x/avataaars/svg?seed={userId}";
+                }
+
                 var post = new CommunityPost
                 {
                     UserId = userId,
-                    UserName = !string.IsNullOrWhiteSpace(request.UserName) ? request.UserName : "Community Resident",
-                    UserAvatar = !string.IsNullOrWhiteSpace(request.UserAvatar) ? request.UserAvatar : $"https://api.dicebear.com/7.x/avataaars/svg?seed={userId}",
+                    UserName = resolvedName,
+                    UserAvatar = resolvedAvatar,
                     Title = request.Title,
                     Content = request.Content,
                     ServiceCategoryId = categoryId,

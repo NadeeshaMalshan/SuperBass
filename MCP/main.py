@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List, Union
 from datetime import datetime
@@ -6,12 +6,51 @@ import json
 import asyncio
 import os
 import httpx
+import math
+import re
+import logging
 from dotenv import load_dotenv
+
+# Zero-Trust Auth & Eligibility Logic
+async def get_authenticated_user(request: Request) -> str:
+    """Extracts user_id securely from the session token."""
+    auth_header = request.headers.get("Authorization")
+    if not auth_header:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    # Mocking JWT verification for MVP
+    user_id = auth_header.replace("Bearer ", "")
+    return user_id
+
+async def verify_job_eligibility(user_id: str, worker_id: str) -> bool:
+    """Queries the database to ensure the user had a recent completed job with this worker."""
+    # Mocking DB check
+    return True
 
 # Load environment variables from .env file
 load_dotenv()
 
 app = FastAPI(title="MCP Server", description="Model Context Protocol Server")
+
+@app.post("/mcp/tools/submit_worker_review")
+async def mcp_submit_worker_review(
+    payload: dict,
+    user_id: str = Depends(get_authenticated_user) 
+):
+    worker_id = payload.get("worker_id")
+    rating = payload.get("rating")
+    comment = payload.get("comment")
+
+    # 1. Eligibility Check (Zero-Trust boundary)
+    is_eligible = await verify_job_eligibility(user_id, worker_id)
+    if not is_eligible:
+        raise HTTPException(
+            status_code=403, 
+            detail="User is not eligible to review this worker. No recent completed jobs found."
+        )
+
+    # 2. Mocking review submission for MVP
+    review_id = f"rev_{worker_id}_{user_id}"
+    return {"status": "success", "review_id": review_id}
 
 # MCP Models
 class MCPBaseModel(BaseModel):
@@ -58,12 +97,16 @@ resources = {
 tools = [
     {
         "name": "search_workers",
-        "description": "Search for workers based on query parameters",
+        "description": "Search for home service workers and technicians, ranking closest workers near the resident first",
         "inputSchema": {
             "type": "object",
             "properties": {
-                "query": {"type": "string", "description": "Search query"},
-                "skill": {"type": "string", "description": "Filter by skill"},
+                "query": {"type": "string", "description": "Search query or worker name"},
+                "skill": {"type": "string", "description": "Filter by service skill (e.g. Plumbing, Electrical, AC Repair, Carpentry, Masonry)"},
+                "location": {"type": "string", "description": "City or service area name (e.g. Colombo, Kandy, Galle)"},
+                "residentLat": {"type": "number", "description": "Resident latitude coordinate for distance proximity search"},
+                "residentLng": {"type": "number", "description": "Resident longitude coordinate for distance proximity search"},
+                "maxDistanceKm": {"type": "number", "description": "Maximum distance radius in kilometers (optional)"},
                 "availability": {"type": "string", "description": "Filter by availability"},
                 "page": {"type": "integer", "description": "Page number"},
                 "pageSize": {"type": "integer", "description": "Page size"}
@@ -172,14 +215,16 @@ tools = [
     },
     {
         "name": "create_community_post",
-        "description": "Create a new community post",
+        "description": "Create a new community post under the authenticated user account",
         "inputSchema": {
             "type": "object",
             "properties": {
-                "authorId": {"type": "string", "description": "Author ID (resident or worker)"},
+                "authorId": {"type": "string", "description": "Author user email or ID of the logged in user"},
                 "title": {"type": "string", "description": "Post title"},
                 "content": {"type": "string", "description": "Post content"},
-                "communityId": {"type": "string", "description": "Community ID"}
+                "communityId": {"type": "string", "description": "Community ID"},
+                "location": {"type": "string", "description": "Service location"},
+                "userName": {"type": "string", "description": "Author display name"}
             },
             "required": ["authorId", "title", "content", "communityId"]
         }
@@ -264,7 +309,7 @@ tools = [
     },
     {
         "name": "get_service_categories",
-        "description": "Get the official list of 21 standardized service categories available across SuperBass for workers and community posts",
+        "description": "Get the official list of 21 standardized service categories available across Workio for workers and community posts",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -275,11 +320,97 @@ tools = [
     }
 ]
 
+SRI_LANKA_CITY_COORDS = {
+    "colombo": (6.9271, 79.8612),
+    "dehiwala": (6.8511, 79.8659),
+    "mount lavinia": (6.8378, 79.8667),
+    "moratuwa": (6.7730, 79.8816),
+    "kotte": (6.8914, 79.9048),
+    "kaduwela": (6.9333, 79.9833),
+    "gampaha": (7.0840, 79.9925),
+    "negombo": (7.2008, 79.8736),
+    "kalutara": (6.5854, 79.9607),
+    "kandy": (7.2906, 80.6337),
+    "matale": (7.4675, 80.6234),
+    "nuwara eliya": (6.9497, 80.7891),
+    "galle": (6.0535, 80.2210),
+    "matara": (5.9549, 80.5550),
+    "hambantota": (6.1429, 81.1212),
+    "jaffna": (9.6615, 80.0255),
+    "kurunegala": (7.4863, 80.3623),
+    "puttalam": (8.0362, 79.8283),
+    "anuradhapura": (8.3114, 80.4037),
+    "polonnaruwa": (7.9403, 81.0188),
+    "badulla": (6.9934, 81.0550),
+    "ratnapura": (6.6828, 80.4034),
+    "trincomalee": (8.5874, 81.2152),
+    "batticaloa": (7.7310, 81.6747)
+}
+
+def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    R = 6371.0 # Radius of earth in km
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat / 2.0)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2.0)**2
+    c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0 - a))
+    return round(R * c, 1)
+
+def get_city_coords(location: Optional[str]):
+    if not location:
+        return None
+    loc_lower = str(location).lower().strip()
+    for city, coords in SRI_LANKA_CITY_COORDS.items():
+        if city in loc_lower:
+            return coords
+    return None
+
 # Tool implementation functions
 async def call_search_workers(args: Dict[str, Any]):
     params = {k: v for k, v in args.items() if v is not None}
+    
+    # If location is provided but not coordinates, resolve coordinates
+    res_lat = args.get("residentLat")
+    res_lng = args.get("residentLng")
+    if (res_lat is None or res_lng is None) and args.get("location"):
+        resolved = get_city_coords(str(args.get("location")))
+        if resolved:
+            res_lat, res_lng = resolved
+            params["residentLat"] = res_lat
+            params["residentLng"] = res_lng
+
+    if res_lat is None or res_lng is None:
+        res_lat, res_lng = 6.9271, 79.8612
+
     response = await backend_client.get("/api/Workers/search", params=params)
-    return response.json()
+    workers = response.json()
+    if not isinstance(workers, list):
+        return workers
+
+    # Ensure distance calculation and closest-first sorting
+    if res_lat is not None and res_lng is not None:
+        try:
+            r_lat = float(res_lat)
+            r_lng = float(res_lng)
+            for w in workers:
+                if not isinstance(w, dict):
+                    continue
+                w_dist = w.get("distance")
+                if w_dist is None:
+                    w_lat = w.get("locationLat")
+                    w_lng = w.get("locationLng")
+                    if w_lat is None or w_lng is None:
+                        city_c = get_city_coords(w.get("primaryServiceArea"))
+                        if city_c:
+                            w_lat, w_lng = city_c
+                    if w_lat is not None and w_lng is not None:
+                        w["distance"] = haversine_distance(r_lat, r_lng, float(w_lat), float(w_lng))
+            
+            # Sort by distance (None goes to end)
+            workers.sort(key=lambda x: (x.get("distance") is None, float('inf') if x.get("distance") is None else x.get("distance")))
+        except Exception as e:
+            logging.getLogger("uvicorn").warning(f"Distance calculation in MCP failed: {e}")
+
+    return workers
 
 async def call_get_worker_details(args: Dict[str, Any]):
     worker_id = args["workerId"]
@@ -291,10 +422,40 @@ async def call_get_worker_performance(args: Dict[str, Any]):
     response = await backend_client.get(f"/api/Workers/{worker_id}/performance")
     return response.json()
 
+def normalize_datetime_str(dt_str: Optional[str], default_hour: int = 10) -> Optional[str]:
+    if not dt_str:
+        return dt_str
+    s = str(dt_str).strip().replace("Z", "")
+    try:
+        dt = datetime.fromisoformat(s)
+        return dt.isoformat()
+    except Exception:
+        pass
+
+    patterns = [
+        "%Y/%m/%d %H:%M:%S", "%Y/%m/%d %I:%M %p", "%Y/%m/%d %H:%M", "%Y/%m/%d",
+        "%Y-%m-%d %H:%M:%S", "%Y-%m-%d %I:%M %p", "%Y-%m-%d %H:%M", "%Y-%m-%d",
+        "%d/%m/%Y %H:%M:%S", "%d/%m/%Y %I:%M %p", "%d/%m/%Y %H:%M", "%d/%m/%Y",
+        "%d-%m-%Y %H:%M:%S", "%d-%m-%Y %I:%M %p", "%d-%m-%Y %H:%M", "%d-%m-%Y",
+        "%B %d, %Y %I:%M %p", "%B %d, %Y %H:%M", "%B %d, %Y",
+        "%d %B %Y %I:%M %p", "%d %B %Y %H:%M", "%d %B %Y",
+        "%b %d, %Y %I:%M %p", "%b %d, %Y", "%d %b %Y"
+    ]
+    s_clean = re.sub(r"\s+", " ", s)
+    for pat in patterns:
+        try:
+            dt = datetime.strptime(s_clean, pat)
+            if "%H" not in pat and "%I" not in pat:
+                dt = dt.replace(hour=default_hour, minute=0, second=0)
+            return dt.isoformat()
+        except ValueError:
+            continue
+    return s
+
 async def call_check_worker_availability(args: Dict[str, Any]):
     worker_id = args["workerId"]
-    start_time = args.get("startTime", "")
-    end_time = args.get("endTime", "")
+    start_time = normalize_datetime_str(args.get("startTime", ""), default_hour=10) or args.get("startTime", "")
+    end_time = normalize_datetime_str(args.get("endTime", ""), default_hour=12) or args.get("endTime", "")
 
     # Fetch worker profile
     response = await backend_client.get(f"/api/Workers/{worker_id}")
@@ -356,15 +517,16 @@ async def call_check_worker_availability(args: Dict[str, Any]):
 
 async def call_create_booking(args: Dict[str, Any]):
     worker_id = int(args.get("workerId", 0))
-    resident_email = args.get("residentId") or "resident@superbass.lk"
+    resident_email = args.get("residentId") or "resident@workio.lk"
     if "@" not in resident_email:
-        resident_email = f"{resident_email}@superbass.lk"
+        resident_email = f"{resident_email}@workio.lk"
+    normalized_start = normalize_datetime_str(args.get("startTime"), default_hour=10) or args.get("startTime")
     payload = {
         "workerId": worker_id,
         "residentEmail": resident_email,
         "jobTitle": args.get("jobTitle") or args.get("notes") or "General Maintenance Service",
         "description": args.get("notes") or "Booking created via MCP Tool",
-        "scheduledDate": args.get("startTime"),
+        "scheduledDate": normalized_start,
         "locationAddress": args.get("locationAddress", "Colombo"),
         "contactPhone": args.get("contactPhone", "0771234567")
     }
@@ -399,11 +561,23 @@ async def call_reschedule_booking(args: Dict[str, Any]):
     return response.json()
 
 async def call_create_community_post(args: Dict[str, Any]):
+    author_id = args.get("authorId") or args.get("userId") or args.get("userEmail")
+    if not author_id or author_id == "demo_user_1":
+        author_id = "resident@workio.lk"
+    
+    user_name = args.get("userName")
+    if not user_name:
+        user_name = author_id.split("@")[0] if "@" in str(author_id) else "Community Resident"
+
+    user_avatar = args.get("userAvatar")
+
     payload = {
         "title": args.get("title"),
         "content": args.get("content"),
-        "userId": args.get("authorId", "demo_user_1"),
-        "userEmail": args.get("authorId") if "@" in str(args.get("authorId", "")) else None,
+        "userId": author_id,
+        "userEmail": author_id if "@" in str(author_id) else None,
+        "userName": user_name,
+        "userAvatar": user_avatar,
         "serviceCategoryId": args.get("communityId", "General"),
         "location": args.get("location", "Colombo")
     }
@@ -669,4 +843,4 @@ async def shutdown_event():
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)

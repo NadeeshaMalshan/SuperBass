@@ -1257,7 +1257,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
               <div style={{ marginBottom: '1.5rem' }}>
                 <h2 style={{ fontSize: '1.5rem', fontWeight: '800', margin: 0, color: '#111827' }}>Upgrade to Worker Profile</h2>
                 <p style={{ color: '#6b7280', marginTop: '0.5rem', fontSize: '0.95rem' }}>
-                  Complete your trade profile details below to start listing your services on SuperBass.
+                  Complete your trade profile details below to start listing your services on Workio.
                 </p>
               </div>
 

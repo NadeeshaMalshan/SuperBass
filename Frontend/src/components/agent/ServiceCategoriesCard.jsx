@@ -86,7 +86,7 @@ export default function ServiceCategoriesCard({ data = {}, onAction }) {
                     type="button"
                     className="landing-chat-btn-secondary"
                     style={{ padding: '5px 14px', fontSize: '0.78rem' }}
-                    onClick={() => onAction && onAction(`Show community posts in ${cat.name}`)}
+                    onClick={() => onAction && onAction('send_prompt', `Show community posts in ${cat.name}`)}
                   >
                     <span>Details</span>
                     <i className="fa-solid fa-chevron-right landing-chevron" style={{ fontSize: '0.65rem' }}></i>
