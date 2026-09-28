@@ -328,6 +328,19 @@ def test_deterministic_card_builder_search_workers_budget_filtering():
     assert card_resp2.card_data["workers"][0]["name"] == "Kamal Perera"
 
 
+def test_service_category_normalization():
+    """Verify that informal phrases, typos, and synonyms correctly map to official categories."""
+    from agent_backend.tools.booking_tools import normalize_service_category
+
+    assert normalize_service_category("for repir my car") == "Vehicle Repair & Mechanic"
+    assert normalize_service_category("mcanins") == "Vehicle Repair & Mechanic"
+    assert normalize_service_category("vechila repiring") == "Vehicle Repair & Mechanic"
+    assert normalize_service_category("car repair") == "Vehicle Repair & Mechanic"
+    assert normalize_service_category("mechanic") == "Vehicle Repair & Mechanic"
+    assert normalize_service_category("tap leakage") == "Plumbing"
+    assert normalize_service_category("electrician") == "Electrical"
+    assert normalize_service_category("ac repair") == "AC & Air Conditioning"
+
 
 if __name__ == "__main__":
     test_card_schemas()

@@ -35,11 +35,41 @@ namespace Superbass.Services
             if (!string.IsNullOrWhiteSpace(skill))
             {
                 var term = skill.Trim().ToLower();
-                query = query.Where(w => w.Skills.Any(s => 
-                    (s.ServiceName != null && s.ServiceName.ToLower().Contains(term)) ||
-                    (s.SkillName != null && s.SkillName.ToLower().Contains(term)) ||
-                    s.Skills.Any(sub => sub.ToLower().Contains(term))
-                ));
+                var primary = term;
+                var alias = "";
+                if (term.Contains("car") || term.Contains("vehicle") || term.Contains("mechanic") || term.Contains("auto") || term.Contains("mcanin") || term.Contains("vechil"))
+                {
+                    alias = "vehicle";
+                }
+                else if (term.Contains("plumb") || term.Contains("pipe") || term.Contains("leak") || term.Contains("tap"))
+                {
+                    alias = "plumbing";
+                }
+                else if (term.Contains("electr") || term.Contains("wire") || term.Contains("wiring"))
+                {
+                    alias = "electrical";
+                }
+                else if (term.Contains("ac") || term.Contains("air condition"))
+                {
+                    alias = "air conditioning";
+                }
+
+                if (!string.IsNullOrEmpty(alias))
+                {
+                    query = query.Where(w => w.Skills.Any(s => 
+                        (s.ServiceName != null && (s.ServiceName.ToLower().Contains(primary) || s.ServiceName.ToLower().Contains(alias))) ||
+                        (s.SkillName != null && (s.SkillName.ToLower().Contains(primary) || s.SkillName.ToLower().Contains(alias))) ||
+                        s.Skills.Any(sub => sub.ToLower().Contains(primary) || sub.ToLower().Contains(alias))
+                    ));
+                }
+                else
+                {
+                    query = query.Where(w => w.Skills.Any(s => 
+                        (s.ServiceName != null && s.ServiceName.ToLower().Contains(primary)) ||
+                        (s.SkillName != null && s.SkillName.ToLower().Contains(primary)) ||
+                        s.Skills.Any(sub => sub.ToLower().Contains(primary))
+                    ));
+                }
             }
 
             if (!string.IsNullOrWhiteSpace(location))
