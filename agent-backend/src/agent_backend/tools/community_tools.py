@@ -46,7 +46,8 @@ async def create_community_post(
     content: str,
     communityId: str = "General",
     location: str = "Colombo",
-    userName: Optional[str] = None
+    userName: Optional[str] = None,
+    images: Optional[List[str]] = None
 ) -> Dict[str, Any]:
     """
     Publish a new community post via the MCP Server under the authenticated user's account.
@@ -59,6 +60,7 @@ async def create_community_post(
     - communityId (string, required): Category or community identifier (e.g., 'General', 'Plumbing', 'Electrical')
     - location (string, optional): Service location (default: 'Colombo')
     - userName (string, optional): Author display name of the logged-in user
+    - images (list of strings, optional): Base64 data URLs or image URLs attached to the post
     """
     args = {
         "authorId": authorId,
@@ -69,6 +71,8 @@ async def create_community_post(
     }
     if userName:
         args["userName"] = userName
+    if images:
+        args["images"] = images
     raw = await mcp_client.call_tool("create_community_post", args)
     return sanitize_payload(raw)
 

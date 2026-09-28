@@ -29,6 +29,32 @@ def route_supervisor(state: AgentState) -> Literal["community_agent", "booking_a
     return "card_formatter"
 
 
+async def community_tools_node(state: AgentState):
+    """Execute community tools with automatic injection of user attached images/data from metadata."""
+    messages = list(state.get("messages", []))
+    if messages:
+        last_msg = messages[-1]
+        if hasattr(last_msg, "tool_calls") and last_msg.tool_calls:
+            metadata = state.get("metadata") or {}
+            post_images = metadata.get("post_images") or []
+            post_data = metadata.get("post_data") or {}
+            for tc in last_msg.tool_calls:
+                if tc.get("name") == "create_community_post":
+                    args = tc.setdefault("args", {})
+                    if post_images and not args.get("images"):
+                        args["images"] = post_images
+                    if post_data.get("title"):
+                        args["title"] = post_data["title"]
+                    if post_data.get("content"):
+                        args["content"] = post_data["content"]
+                    if post_data.get("communityId"):
+                        args["communityId"] = post_data["communityId"]
+                    if post_data.get("location"):
+                        args["location"] = post_data["location"]
+    node = ToolNode(COMMUNITY_TOOLS)
+    return await node.ainvoke(state)
+
+
 def build_graph() -> StateGraph:
     """Build and assemble the multi-agent StateGraph."""
     builder = StateGraph(AgentState)
@@ -38,7 +64,7 @@ def build_graph() -> StateGraph:
     
     # Community Agent & Tools
     builder.add_node("community_agent", community_agent_node)
-    builder.add_node("community_tools", ToolNode(COMMUNITY_TOOLS))
+    builder.add_node("community_tools", community_tools_node)
     
     # Booking Agent & Tools
     builder.add_node("booking_agent", booking_agent_node)
