@@ -12,8 +12,8 @@ import json
 def normalize_database_url(raw: str) -> str:
     """Converts ADO.NET connection strings or standard postgres URLs to asyncpg format."""
     default_url = (
-        "postgresql+asyncpg://neondb_owner:npg_0ObrwYI7dLaH@"
-        "ep-blue-forest-b3zdeko1-pooler.c-4.ap-southeast-1.aws.neon.tech/neondb?ssl=require"
+        "postgresql+asyncpg://neondb_owner:npg_XHrA2OFlP1vg@"
+        "ep-bitter-surf-b4ey6xhv-pooler.c-6.us-east-2.aws.neon.tech/neondb?ssl=require"
     )
     if not raw or not raw.strip():
         return default_url
@@ -77,8 +77,8 @@ class Settings(BaseSettings):
     # Neon PostgreSQL Database configuration
     database_url: str = Field(
         default=(
-            "postgresql+asyncpg://neondb_owner:npg_0ObrwYI7dLaH@"
-            "ep-blue-forest-b3zdeko1-pooler.c-4.ap-southeast-1.aws.neon.tech/neondb?ssl=require"
+            "postgresql+asyncpg://neondb_owner:npg_XHrA2OFlP1vg@"
+            "ep-bitter-surf-b4ey6xhv-pooler.c-6.us-east-2.aws.neon.tech/neondb?ssl=require"
         ),
         description="Async SQLAlchemy database connection URL"
     )
