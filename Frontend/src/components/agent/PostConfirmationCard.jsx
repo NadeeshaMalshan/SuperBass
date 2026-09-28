@@ -12,6 +12,8 @@ export default function PostConfirmationCard({ data, onAction }) {
     content,
     communityId,
     location,
+    authorId,
+    authorName,
     validationStatus = 'valid',
     validationNotes,
     confirmPrompt
@@ -33,6 +35,11 @@ export default function PostConfirmationCard({ data, onAction }) {
             <span className="landing-card-draft-badge">
               <i className="fa-solid fa-file-pen"></i> {isUpdate ? 'Review Update' : 'Review Draft & Confirm'}
             </span>
+            {(authorName || authorId) && (
+              <span className="landing-card-category-badge" style={{ background: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.25)' }}>
+                <i className="fa-solid fa-user-check"></i> {authorName || authorId}
+              </span>
+            )}
           </div>
           {location && (
             <span className="landing-card-location">

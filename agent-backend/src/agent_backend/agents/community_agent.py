@@ -19,10 +19,16 @@ async def community_agent_node(state: AgentState) -> Dict[str, Any]:
     messages = list(state.get("messages", []))
     email = state.get("email", "resident@workio.lk")
     user_type = state.get("user_type", "Resident")
+    metadata = state.get("metadata") or {}
+    user_profile = state.get("user_profile") or {}
+    user_name = metadata.get("user_name") or user_profile.get("displayName") or (email.split("@")[0] if "@" in email else "Resident")
+    user_location = metadata.get("location") or user_profile.get("address") or "Colombo"
 
     system_instruction = COMMUNITY_AGENT_SYSTEM_PROMPT.format(
         email=email,
-        user_type=user_type
+        user_type=user_type,
+        user_name=user_name,
+        user_location=user_location
     )
 
     prompt_messages = [SystemMessage(content=system_instruction)] + messages

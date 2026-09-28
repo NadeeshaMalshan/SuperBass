@@ -19,8 +19,38 @@ export default function AiCommunityChat() {
     window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
-  const currentUserEmail = localStorage.getItem('email') || '';
-  const currentUserName = localStorage.getItem('userName') || (currentUserEmail ? currentUserEmail.split('@')[0] : 'Resident');
+  const getLoggedInUser = () => {
+    let email = localStorage.getItem('email') || localStorage.getItem('workerEmail') || '';
+    let name = localStorage.getItem('userName') || '';
+    let picture = localStorage.getItem('userPicture') || '';
+    const token = localStorage.getItem('token');
+
+    if ((!email || !name) && token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (!email) {
+          email = payload.email || payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] || '';
+        }
+        if (!name) {
+          name = payload.name || payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] || '';
+        }
+        if (!picture && payload.picture) {
+          picture = payload.picture;
+        }
+      } catch {}
+    }
+
+    if (!name && email) {
+      name = email.split('@')[0];
+    }
+
+    return { email: email.trim(), name: name.trim() || 'Resident', picture };
+  };
+
+  const loggedInUser = getLoggedInUser();
+  const currentUserEmail = loggedInUser.email;
+  const currentUserName = loggedInUser.name;
+  const currentUserPicture = loggedInUser.picture;
   const activeRole = localStorage.getItem('activeRole') || 'Resident';
 
   const getStorageKey = () => {
@@ -209,10 +239,12 @@ export default function AiCommunityChat() {
     try {
       const res = await sendAgentMessage({
         message: prompt,
-        email: currentUserEmail,
+        email: currentUserEmail || 'resident@workio.lk',
         user_type: activeRole,
         conversation_id: conversationId,
         metadata: {
+          user_name: currentUserName,
+          user_picture: currentUserPicture,
           user_lat: userLocation.lat,
           user_lng: userLocation.lng,
           location: userLocation.city || 'Colombo',

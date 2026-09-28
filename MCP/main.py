@@ -215,14 +215,16 @@ tools = [
     },
     {
         "name": "create_community_post",
-        "description": "Create a new community post",
+        "description": "Create a new community post under the authenticated user account",
         "inputSchema": {
             "type": "object",
             "properties": {
-                "authorId": {"type": "string", "description": "Author ID (resident or worker)"},
+                "authorId": {"type": "string", "description": "Author user email or ID of the logged in user"},
                 "title": {"type": "string", "description": "Post title"},
                 "content": {"type": "string", "description": "Post content"},
-                "communityId": {"type": "string", "description": "Community ID"}
+                "communityId": {"type": "string", "description": "Community ID"},
+                "location": {"type": "string", "description": "Service location"},
+                "userName": {"type": "string", "description": "Author display name"}
             },
             "required": ["authorId", "title", "content", "communityId"]
         }
@@ -559,11 +561,23 @@ async def call_reschedule_booking(args: Dict[str, Any]):
     return response.json()
 
 async def call_create_community_post(args: Dict[str, Any]):
+    author_id = args.get("authorId") or args.get("userId") or args.get("userEmail")
+    if not author_id or author_id == "demo_user_1":
+        author_id = "resident@workio.lk"
+    
+    user_name = args.get("userName")
+    if not user_name:
+        user_name = author_id.split("@")[0] if "@" in str(author_id) else "Community Resident"
+
+    user_avatar = args.get("userAvatar")
+
     payload = {
         "title": args.get("title"),
         "content": args.get("content"),
-        "userId": args.get("authorId", "demo_user_1"),
-        "userEmail": args.get("authorId") if "@" in str(args.get("authorId", "")) else None,
+        "userId": author_id,
+        "userEmail": author_id if "@" in str(author_id) else None,
+        "userName": user_name,
+        "userAvatar": user_avatar,
         "serviceCategoryId": args.get("communityId", "General"),
         "location": args.get("location", "Colombo")
     }
@@ -829,4 +843,4 @@ async def shutdown_event():
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)

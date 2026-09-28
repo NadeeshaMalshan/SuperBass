@@ -66,6 +66,9 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
     messages = list(state.get("messages", []))
     email = state.get("email", "resident@workio.lk")
     user_type = state.get("user_type", "Resident")
+    metadata = state.get("metadata") or {}
+    user_profile = state.get("user_profile") or {}
+    user_name = metadata.get("user_name") or user_profile.get("displayName") or (email.split("@")[0] if "@" in email else "Resident")
 
     last_ai_content = ""
     for msg in reversed(messages):
@@ -418,9 +421,11 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
             content=last_ai_content,
             communityId=draft_category,
             location=draft_location,
+            authorId=email,
+            authorName=user_name,
             validationStatus="valid",
-            validationNotes="Please review your draft details above and confirm to publish.",
-            confirmPrompt=f"CONFIRM_PUBLISH: Yes, please publish the post '{draft_title}' in {draft_category} for {draft_location}."
+            validationNotes=f"Please review your draft details above and confirm to publish under your account ({user_name}).",
+            confirmPrompt=f"CONFIRM_PUBLISH: Yes, please publish the post '{draft_title}' in {draft_category} for {draft_location} under author account {email}."
         )
         return AgentCardResponse(
             response_type="post_confirmation",

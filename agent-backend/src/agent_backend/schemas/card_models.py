@@ -110,6 +110,8 @@ class PostConfirmationCard(BaseModel):
     content: str = Field(description="Drafted post body content")
     communityId: str = Field(default="General", description="Category or community identifier")
     location: str = Field(default="Colombo", description="Service location")
+    authorId: Optional[str] = Field(default=None, description="Logged in author ID or email")
+    authorName: Optional[str] = Field(default=None, description="Author display name")
     validationStatus: Literal["valid", "warning", "missing_info"] = Field(
         default="valid",
         description="Validation outcome: 'valid', 'warning', or 'missing_info'"
