@@ -358,7 +358,7 @@ class _ChatScreenState extends State<ChatScreen> {
         imgWidget = Image.memory(
           bytes,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _buildImageError(),
+          errorBuilder: (context, error, stackTrace) => _buildImageError(),
         );
       } catch (_) {
         imgWidget = _buildImageError();
@@ -378,7 +378,7 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           );
         },
-        errorBuilder: (_, __, ___) => _buildImageError(),
+        errorBuilder: (context, error, stackTrace) => _buildImageError(),
       );
     }
 

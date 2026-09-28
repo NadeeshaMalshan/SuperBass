@@ -146,7 +146,7 @@ class _WorkerPortalScreenState extends State<WorkerPortalScreen> {
                 'assets/images/icon.png',
                 width: 22,
                 height: 22,
-                errorBuilder: (_, __, ___) => const Icon(Icons.bolt_rounded, size: 20, color: WorkerColors.onSurface),
+                errorBuilder: (context, error, stackTrace) => const Icon(Icons.bolt_rounded, size: 20, color: WorkerColors.onSurface),
               ),
             ),
             const SizedBox(width: 8),

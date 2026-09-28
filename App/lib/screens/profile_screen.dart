@@ -79,7 +79,7 @@ class ProfileScreen extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(
@@ -177,7 +177,7 @@ class _WorkerModeBanner extends StatelessWidget {
   const _WorkerModeBanner();
 
   void _handleSwitchToWorker(BuildContext context) {
-    print("Tapped Switch to Worker Mode");
+    debugPrint("Tapped Switch to Worker Mode");
     // Using a dialog for a clean, modern user interaction flow.
     showDialog(
       context: context,
@@ -220,7 +220,7 @@ class _WorkerModeBanner extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.15),
+            color: Colors.black.withValues(alpha: 0.15),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
@@ -238,7 +238,7 @@ class _WorkerModeBanner extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.yellow.shade700.withOpacity(0.2),
+                    color: Colors.yellow.shade700.withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(Icons.handyman, color: Colors.yellow.shade700, size: 28),
@@ -284,7 +284,7 @@ class _ProfileMenu extends StatelessWidget {
   const _ProfileMenu();
 
   void _navigateToScreen(BuildContext context, String title) {
-    print('Tapped $title');
+    debugPrint('Tapped $title');
     Widget targetScreen;
     switch (title) {
       case "Edit Profile":
@@ -336,7 +336,7 @@ class _ProfileMenu extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.08),
+            color: Colors.grey.withValues(alpha: 0.08),
             blurRadius: 20,
             offset: const Offset(0, 4),
           ),
@@ -414,8 +414,8 @@ class _MenuTile extends StatelessWidget {
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: isDestructive
-                      ? Colors.red.withOpacity(0.1)
-                      : Colors.grey.withOpacity(isDark ? 0.2 : 0.08),
+                      ? Colors.red.withValues(alpha: 0.1)
+                      : Colors.grey.withValues(alpha: isDark ? 0.2 : 0.08),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, color: color, size: 22),
@@ -451,7 +451,7 @@ class _MenuDivider extends StatelessWidget {
       child: Divider(
         height: 1, 
         thickness: 1, 
-        color: Theme.of(context).dividerColor.withOpacity(0.1)
+        color: Theme.of(context).dividerColor.withValues(alpha: 0.1)
       ),
     );
   }
