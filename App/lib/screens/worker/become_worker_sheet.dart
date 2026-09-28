@@ -256,7 +256,6 @@ class _BecomeWorkerSheetState extends State<BecomeWorkerSheet> {
                     decoration: BoxDecoration(
                       color: WorkerColors.primaryLight,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: WorkerColors.primaryBorder),
                     ),
                     child: const Icon(
                       Icons.handyman_rounded,
@@ -300,7 +299,6 @@ class _BecomeWorkerSheetState extends State<BecomeWorkerSheet> {
                   decoration: BoxDecoration(
                     color: WorkerColors.errorLight,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: WorkerColors.error.withValues(alpha: 0.3)),
                   ),
                   child: Row(
                     children: [
@@ -398,7 +396,6 @@ class _BecomeWorkerSheetState extends State<BecomeWorkerSheet> {
                   decoration: BoxDecoration(
                     color: const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -427,7 +424,6 @@ class _BecomeWorkerSheetState extends State<BecomeWorkerSheet> {
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: const Color(0xFFCBD5E1)),
                             ),
                             child: DropdownButton<int>(
                               value: service.experienceYears,

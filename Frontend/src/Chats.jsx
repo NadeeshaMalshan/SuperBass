@@ -110,6 +110,18 @@ export default function Chats() {
   const [isOtherUserOnline, setIsOtherUserOnline] = useState(false);
   const [otherUserLastSeen, setOtherUserLastSeen] = useState(null);
   const [failedWorkerAvatars, setFailedWorkerAvatars] = useState({});
+  const [fullScreenImage, setFullScreenImage] = useState(null);
+
+  // Close full screen image preview with Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && fullScreenImage) {
+        setFullScreenImage(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [fullScreenImage]);
 
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -1320,12 +1332,20 @@ export default function Chats() {
                                     </div>
                                   )}
                                   {msg.attachmentUrl && (
-                                    <img
-                                      src={msg.attachmentUrl}
-                                      alt="attachment"
-                                      style={{ maxWidth: '100%', maxHeight: '220px', borderRadius: '12px', marginTop: '6px', objectFit: 'cover' }}
-                                      onClick={() => window.open(msg.attachmentUrl, '_blank')}
-                                    />
+                                    <div
+                                      className="chats-msg-image-wrap"
+                                      title="Click to view full screen"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setFullScreenImage(msg.attachmentUrl);
+                                      }}
+                                    >
+                                      <img
+                                        src={msg.attachmentUrl}
+                                        alt="Shared attachment"
+                                        className="chats-msg-image"
+                                      />
+                                    </div>
                                   )}
                                 </div>
                                 <span className="chats-msg-time">
@@ -1376,7 +1396,13 @@ export default function Chats() {
                 {/* Image Preview Bar if attached */}
                 {previewImage && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 20px', background: '#f1f5f9', borderTop: '1px solid #e2e8f0' }}>
-                    <img src={previewImage} alt="preview" style={{ width: '44px', height: '44px', borderRadius: '8px', objectFit: 'cover' }} />
+                    <img
+                      src={previewImage}
+                      alt="preview"
+                      title="Click to view full screen"
+                      style={{ width: '44px', height: '44px', borderRadius: '8px', objectFit: 'cover', cursor: 'pointer' }}
+                      onClick={() => setFullScreenImage(previewImage)}
+                    />
                     <span style={{ fontSize: '0.85rem', color: '#475569', flex: 1 }}>Photo ready to send</span>
                     <button
                       onClick={() => setPreviewImage(null)}
@@ -1488,6 +1514,50 @@ export default function Chats() {
             </md-filled-button>
           </div>
         </md-dialog>,
+        document.body
+      )}
+
+      {/* Full Screen Image Lightbox Modal via Portal */}
+      {fullScreenImage && createPortal(
+        <div
+          className="chat-image-lightbox-overlay"
+          onClick={() => setFullScreenImage(null)}
+          title="Click anywhere to close"
+        >
+          {/* Top Bar Controls */}
+          <div className="chat-image-lightbox-topbar" onClick={(e) => e.stopPropagation()}>
+            <a
+              href={fullScreenImage}
+              download="shared-image"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="chat-image-lightbox-btn"
+              title="Open full image in new tab"
+            >
+              <md-icon>open_in_new</md-icon>
+            </a>
+            <button
+              type="button"
+              className="chat-image-lightbox-btn"
+              onClick={() => setFullScreenImage(null)}
+              title="Close full screen (Esc)"
+            >
+              <md-icon>close</md-icon>
+            </button>
+          </div>
+
+          {/* Full Screen Image Content */}
+          <div
+            className="chat-image-lightbox-content"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={fullScreenImage}
+              alt="Full Screen Preview"
+              className="chat-image-lightbox-img"
+            />
+          </div>
+        </div>,
         document.body
       )}
 

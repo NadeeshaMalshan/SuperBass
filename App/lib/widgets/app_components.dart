@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_colors.dart';
 
-/// The signature SuperBass brand badge
+/// The signature Workio brand badge
 class BrandBadge extends StatelessWidget {
   final double fontSize;
   const BrandBadge({super.key, this.fontSize = 18});
@@ -12,8 +12,8 @@ class BrandBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
       decoration: BoxDecoration(
-        color: AppColors.brandYellow,
-        borderRadius: BorderRadius.circular(10),
+        color: AppColors.brandBlack,
+        borderRadius: BorderRadius.circular(12),
         boxShadow: const [
           BoxShadow(
             color: AppColors.brandYellowGlow,
@@ -25,10 +25,22 @@ class BrandBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.handyman_rounded, size: 18, color: AppColors.onPrimary),
-          const SizedBox(width: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: Image.asset(
+              'assets/images/icon.png',
+              width: 20,
+              height: 20,
+              errorBuilder: (_, __, ___) => const Icon(
+                Icons.bolt_rounded,
+                size: 18,
+                color: AppColors.onPrimary,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
           Text(
-            'superබාස්',
+            'Workio',
             style: GoogleFonts.dmSans(
               color: AppColors.onPrimary,
               fontWeight: FontWeight.w800,
@@ -91,13 +103,13 @@ class PrimaryCtaButton extends StatelessWidget {
               mainAxisSize: isFullWidth ? MainAxisSize.max : MainAxisSize.min,
               children: [
                 if (icon != null) ...[
-                  Icon(icon, color: const Color(0xFF111827), size: 20),
+                  Icon(icon, color: AppColors.onPrimary, size: 20),
                   const SizedBox(width: 8),
                 ],
                 Text(
                   label,
                   style: GoogleFonts.dmSans(
-                    color: const Color(0xFF111827),
+                    color: AppColors.onPrimary,
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
                   ),
@@ -109,7 +121,9 @@ class PrimaryCtaButton extends StatelessWidget {
       ),
     );
 
-    return isFullWidth ? SizedBox(width: double.infinity, child: button) : button;
+    return isFullWidth
+        ? SizedBox(width: double.infinity, child: button)
+        : button;
   }
 }
 
@@ -133,10 +147,12 @@ class SecondaryOutlinedButton extends StatelessWidget {
     return SizedBox(
       height: 56,
       width: isFullWidth ? double.infinity : null,
-      child: OutlinedButton(
+      child: ElevatedButton(
         onPressed: onPressed,
-        style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: AppColors.outline, width: 1.5),
+        style: ElevatedButton.styleFrom(
+          elevation: 0,
+          backgroundColor: AppColors.surfaceVariant,
+          foregroundColor: AppColors.onSurface,
           shape: const StadiumBorder(),
           padding: const EdgeInsets.symmetric(horizontal: 24),
         ),
@@ -182,7 +198,6 @@ class ServiceSearchBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surfaceVariant,
         borderRadius: BorderRadius.circular(9999),
-        border: Border.all(color: AppColors.outlineVariant),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       child: Row(
@@ -250,12 +265,14 @@ class CategoryCard extends StatelessWidget {
             height: 66,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: isSelected ? const Color(0xFFFEF08A) : const Color(0xFFF3F4F6),
+              color: isSelected
+                  ? const Color(0xFFe7e7e7)
+                  : AppColors.surfaceVariant,
               boxShadow: isSelected
                   ? [
                       BoxShadow(
-                        color: AppColors.brandYellow.withValues(alpha: 0.28),
-                        blurRadius: 10,
+                        color: Colors.black.withValues(alpha: 0.10),
+                        blurRadius: 8,
                         offset: const Offset(0, 3),
                       ),
                     ]
@@ -278,14 +295,14 @@ class CategoryCard extends StatelessWidget {
                         fit: BoxFit.contain,
                         errorBuilder: (_, __, ___) => Icon(
                           icon ?? Icons.category_rounded,
-                          color: isSelected ? const Color(0xFF18181B) : const Color(0xFF374151),
+                          color: AppColors.onSurface,
                           size: 28,
                         ),
                       ),
                     )
                   : Icon(
                       icon ?? Icons.category_rounded,
-                      color: isSelected ? const Color(0xFF18181B) : const Color(0xFF374151),
+                      color: AppColors.onSurface,
                       size: 28,
                     ),
             ),
@@ -294,9 +311,11 @@ class CategoryCard extends StatelessWidget {
           Text(
             title,
             style: GoogleFonts.dmSans(
-              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
               fontSize: 13,
-              color: isSelected ? AppColors.onSurface : const Color(0xFF374151),
+              color: isSelected
+                  ? AppColors.onSurface
+                  : AppColors.onSurfaceVariant,
             ),
             textAlign: TextAlign.center,
             maxLines: 1,
@@ -363,7 +382,10 @@ class WorkerCard extends StatelessWidget {
               color: AppColors.surfaceVariant,
             ),
             child: ClipOval(
-              child: (profileImage != null && profileImage!.isNotEmpty && profileImage != 'null')
+              child:
+                  (profileImage != null &&
+                      profileImage!.isNotEmpty &&
+                      profileImage != 'null')
                   ? Image.network(
                       profileImage!,
                       width: 56,
@@ -417,10 +439,16 @@ class WorkerCard extends StatelessWidget {
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    const Icon(Icons.star_rounded, size: 18, color: AppColors.starRating),
+                    const Icon(
+                      Icons.star_rounded,
+                      size: 18,
+                      color: AppColors.starRating,
+                    ),
                     const SizedBox(width: 4),
                     Text(
-                      (rating != null && rating! > 0) ? rating!.toStringAsFixed(1) : '0',
+                      (rating != null && rating! > 0)
+                          ? rating!.toStringAsFixed(1)
+                          : '0',
                       style: GoogleFonts.dmSans(
                         fontWeight: FontWeight.w700,
                         fontSize: 13,
@@ -438,7 +466,11 @@ class WorkerCard extends StatelessWidget {
                       ),
                     ],
                     const Spacer(),
-                    const Icon(Icons.location_on_outlined, size: 14, color: AppColors.onSurfaceVariant),
+                    const Icon(
+                      Icons.location_on_outlined,
+                      size: 14,
+                      color: AppColors.onSurfaceVariant,
+                    ),
                     const SizedBox(width: 2),
                     Text(
                       distance,
@@ -466,10 +498,12 @@ class WorkerCard extends StatelessWidget {
                     Expanded(
                       child: SizedBox(
                         height: 38,
-                        child: OutlinedButton(
+                        child: ElevatedButton(
                           onPressed: onProfileTap ?? () {},
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: AppColors.outlineVariant),
+                          style: ElevatedButton.styleFrom(
+                            elevation: 0,
+                            backgroundColor: AppColors.surfaceVariant,
+                            foregroundColor: AppColors.onSurface,
                             shape: const StadiumBorder(),
                             padding: EdgeInsets.zero,
                           ),
@@ -517,6 +551,235 @@ class WorkerCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Uber-style Promo & Feature Banner Card
+class UberPromoBanner extends StatelessWidget {
+  final String title;
+  final String? subtitle;
+  final String buttonText;
+  final String imageAsset;
+  final VoidCallback onTap;
+  final Color blobColor;
+
+  const UberPromoBanner({
+    super.key,
+    required this.title,
+    this.subtitle,
+    required this.buttonText,
+    required this.imageAsset,
+    required this.onTap,
+    this.blobColor = const Color(0xFFFFECE5),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 145,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Stack(
+          children: [
+            // Right organic pastel blob background
+            Positioned(
+              right: -15,
+              top: -20,
+              bottom: -20,
+              width: 160,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: blobColor,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(85),
+                    bottomLeft: Radius.circular(75),
+                    topRight: Radius.circular(20),
+                    bottomRight: Radius.circular(20),
+                  ),
+                ),
+              ),
+            ),
+
+            // 3D Illustration Graphic on Right
+            Positioned(
+              right: 14,
+              top: 12,
+              bottom: 12,
+              width: 120,
+              child: Center(
+                child: Image.asset(
+                  imageAsset,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => const Icon(
+                    Icons.auto_awesome,
+                    size: 48,
+                    color: AppColors.onSurface,
+                  ),
+                ),
+              ),
+            ),
+
+            // Left Content (Title, Subtitle & Button)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 16, 140, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.dmSans(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.onSurface,
+                          height: 1.2,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      if (subtitle != null) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          subtitle!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.dmSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  InkWell(
+                    onTap: onTap,
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3F3F3),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        buttonText,
+                        style: GoogleFonts.dmSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.onSurface,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Tappable Ink overlay
+            Positioned.fill(
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(20),
+                  onTap: onTap,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Swipeable Banner Carousel with Indicator Dots
+class UberPromoCarousel extends StatefulWidget {
+  final List<UberPromoBanner> banners;
+  const UberPromoCarousel({super.key, required this.banners});
+
+  @override
+  State<UberPromoCarousel> createState() => _UberPromoCarouselState();
+}
+
+class _UberPromoCarouselState extends State<UberPromoCarousel> {
+  int _currentPage = 0;
+  late final PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(viewportFraction: 0.93);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.banners.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      children: [
+        SizedBox(
+          height: 145,
+          child: PageView.builder(
+            controller: _pageController,
+            itemCount: widget.banners.length,
+            onPageChanged: (idx) {
+              setState(() {
+                _currentPage = idx;
+              });
+            },
+            itemBuilder: (context, index) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 5),
+                child: widget.banners[index],
+              );
+            },
+          ),
+        ),
+        if (widget.banners.length > 1) ...[
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(widget.banners.length, (idx) {
+              final bool isActive = _currentPage == idx;
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                width: isActive ? 16 : 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: isActive ? AppColors.onSurface : AppColors.outline,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              );
+            }),
+          ),
+        ],
+      ],
     );
   }
 }

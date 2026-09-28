@@ -515,12 +515,11 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen> with SingleTickerPr
       decoration: BoxDecoration(
         color: WorkerColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: WorkerColors.outlineVariant),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
-            offset: const Offset(0, 4),
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -537,7 +536,6 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen> with SingleTickerPr
                 decoration: BoxDecoration(
                   color: statusBg,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: statusColor.withValues(alpha: 0.3)),
                 ),
                 child: Text(
                   b.status.toUpperCase(),

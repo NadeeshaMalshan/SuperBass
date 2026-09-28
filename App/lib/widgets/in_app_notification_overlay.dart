@@ -99,10 +99,6 @@ class _InAppNotificationWidgetState extends State<_InAppNotificationWidget>
                   decoration: BoxDecoration(
                     color: const Color(0xFF1E293B), // Premium Slate Dark
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: widget.notification.iconColor.withValues(alpha: 0.35),
-                      width: 1.5,
-                    ),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.35),

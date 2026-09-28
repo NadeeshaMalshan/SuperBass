@@ -169,3 +169,26 @@ md-select-option, md-menu-item {
   --md-menu-item-focus-container-color: #f0f0f0;
   --md-menu-item-hover-container-color: #f6f6f6;
 }
+
+/* ==========================================================================
+   Global Unified Spinner Ring (Community Theme)
+   ========================================================================== */
+.uber-spinner-ring {
+  width: 42px;
+  height: 42px;
+  border: 3.5px solid #eeeeee;
+  border-top-color: #000000;
+  border-radius: 50%;
+  animation: uber-spin 0.75s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  display: inline-block;
+  box-sizing: border-box;
+}
+
+@keyframes uber-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}

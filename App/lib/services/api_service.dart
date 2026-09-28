@@ -896,14 +896,19 @@ class ApiService {
     required String content,
     required String senderEmail,
     String senderRole = 'Resident',
+    String? attachmentUrl,
   }) async {
     try {
       final uri = Uri.parse('${ApiConfig.baseUrl}/api/conversations/$conversationId/messages');
-      final body = jsonEncode({
+      final Map<String, dynamic> bodyMap = {
         'senderEmail': senderEmail,
         'senderRole': senderRole,
         'content': content,
-      });
+      };
+      if (attachmentUrl != null && attachmentUrl.isNotEmpty) {
+        bodyMap['attachmentUrl'] = attachmentUrl;
+      }
+      final body = jsonEncode(bodyMap);
 
       final response = await http.post(uri, headers: _headers, body: body);
       if (response.statusCode >= 200 && response.statusCode < 300) {

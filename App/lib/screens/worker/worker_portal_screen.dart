@@ -139,9 +139,19 @@ class _WorkerPortalScreenState extends State<WorkerPortalScreen> {
         titleSpacing: 16,
         title: Row(
           children: [
-            // SuperBass brand + Worker Portal pill
+            // Workio brand + Worker Portal pill
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: Image.asset(
+                'assets/images/icon.png',
+                width: 22,
+                height: 22,
+                errorBuilder: (_, __, ___) => const Icon(Icons.bolt_rounded, size: 20, color: WorkerColors.onSurface),
+              ),
+            ),
+            const SizedBox(width: 8),
             Text(
-              'superබාස්',
+              'Workio',
               style: GoogleFonts.dmSans(
                 fontWeight: FontWeight.w900,
                 fontSize: 20,
@@ -155,7 +165,6 @@ class _WorkerPortalScreenState extends State<WorkerPortalScreen> {
               decoration: BoxDecoration(
                 color: WorkerColors.primaryLight,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: WorkerColors.primaryBorder),
               ),
               child: Text(
                 'WORKER',
@@ -180,11 +189,6 @@ class _WorkerPortalScreenState extends State<WorkerPortalScreen> {
               decoration: BoxDecoration(
                 color: _isOnline ? WorkerColors.onlineLight : WorkerColors.offlineLight,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: _isOnline
-                      ? WorkerColors.online.withValues(alpha: 0.4)
-                      : WorkerColors.outlineVariant,
-                ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -345,7 +349,6 @@ class _WorkerPortalScreenState extends State<WorkerPortalScreen> {
         decoration: BoxDecoration(
           color: WorkerColors.surface,
           borderRadius: BorderRadius.circular(33),
-          border: Border.all(color: WorkerColors.outlineVariant, width: 0.5),
           boxShadow: [
             BoxShadow(
               color: const Color(0xFF0F172A).withValues(alpha: 0.08),
