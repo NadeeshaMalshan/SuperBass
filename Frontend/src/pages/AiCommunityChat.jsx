@@ -532,8 +532,10 @@ export default function AiCommunityChat() {
                     msg.cardResponse.response_type !== 'initial_welcome'
                   );
 
+                  const isWorkerList = !isUser && msg.cardResponse?.response_type === 'worker_list';
+
                 return (
-                  <div key={msg.id} className={`ai-bubble-row ${isUser ? 'resident' : 'assistant'}`}>
+                  <div key={msg.id} className={`ai-bubble-row ${isUser ? 'resident' : 'assistant'} ${isWorkerList ? 'full-width' : ''}`}>
                     {!isUser && (
                       <div className="ai-msg-avatar bot-av">
                         <img
@@ -544,7 +546,7 @@ export default function AiCommunityChat() {
                       </div>
                     )}
 
-                    <div className="ai-msg-wrapper">
+                    <div className={`ai-msg-wrapper ${isWorkerList ? 'full-width' : ''}`}>
                       {isUser ? (
                         <div className="ai-bubble resident">
                           <div>{msg.text}</div>
@@ -556,7 +558,7 @@ export default function AiCommunityChat() {
                               <div>{msg.cardResponse.message}</div>
                             </div>
                           )}
-                          <div className="ai-bubble assistant ai-card-bubble">
+                          <div className={`ai-bubble assistant ai-card-bubble ${isWorkerList ? 'worker-list-bubble' : ''}`}>
                             <AgentCardDispatcher
                               response={msg.cardResponse}
                               onAction={handleCardAction}

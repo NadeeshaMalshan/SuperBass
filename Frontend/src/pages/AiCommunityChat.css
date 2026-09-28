@@ -698,6 +698,18 @@
   width: 100%;
 }
 
+.ai-bubble-row.assistant.full-width,
+.ai-bubble-row.assistant.full-width .ai-msg-wrapper {
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+.ai-bubble.assistant.ai-card-bubble.worker-list-bubble {
+  max-width: 100% !important;
+  width: 100% !important;
+  padding: 16px 18px;
+}
+
 .ai-bubble.assistant.welcome-bubble {
   background: transparent !important;
   border: none !important;

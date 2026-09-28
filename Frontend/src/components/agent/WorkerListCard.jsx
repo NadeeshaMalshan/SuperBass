@@ -211,16 +211,11 @@ export default function WorkerListCard({ data = {}, onAction }) {
                 </div>
               </div>
 
-              {/* Bottom Status Row: Available & Can start today */}
+              {/* Bottom Status Row: Available status */}
               <div className="agent-worker-bottom-status-row">
                 <div className="worker-avail-pill">
                   <span className="worker-status-dot"></span>
-                  <span>Available</span>
-                </div>
-                <div className="worker-bottom-v-divider"></div>
-                <div className="worker-start-today">
-                  <i className="fa-solid fa-bolt worker-bolt-icon"></i>
-                  <span>Can start today</span>
+                  <span>{worker.isAvailable !== false ? 'Available' : 'Unavailable'}</span>
                 </div>
               </div>
             </div>
