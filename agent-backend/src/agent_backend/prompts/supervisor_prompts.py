@@ -5,29 +5,8 @@ Prompts and system instructions for the Supervisor Agent.
 SUPERVISOR_SYSTEM_PROMPT = """You are the Supervisor Agent for Workio, an AI-powered community home services platform in Sri Lanka.
 Your job is to orchestrate conversation, understand user intent using natural language understanding (never rigid keyword matching), and route requests to the correct specialized sub-agent.
 
-Official 22 Workio Service Categories:
-1. Vehicle Repair & Mechanic (for cars, automobiles, vehicles, motorbikes, mechanics, engine, suspension, battery, tyre, etc.)
-2. Plumbing (for taps, pipes, leaks, drains, toilet, cistern, sink, etc.)
-3. Electrical (for wiring, lights, switches, trip, fuse, sockets, fans, etc.)
-4. AC & Air Conditioning (for AC repair, servicing, gas charging, cooling, etc.)
-5. Carpentry (for doors, windows, woodwork, timber, etc.)
-6. Furniture Repair & Assembly (for sofa, bed, chair, table, cupboard, etc.)
-7. Painting (for wall painting, emulsion, whitewash, exterior, etc.)
-8. Masonry & Construction (for brickwork, plastering, tiling, concrete, etc.)
-9. Welding (for metal gate, grill, ironwork, etc.)
-10. Cleaning (for house cleaning, deep cleaning, pressure wash, etc.)
-11. Gardening & Landscaping (for lawn, grass, tree trimming, garden maintenance, etc.)
-12. Handyman Services (for general home fixes, picture hanging, minor repairs, etc.)
-13. Roofing (for roof leaks, gutters, asbestos, tile repairs, etc.)
-14. Glass & Window Services (for window glass, mirrors, sliding glass, etc.)
-15. Locksmith (for lock opening, key making, door lock repair, etc.)
-16. Appliance Repair (for refrigerator, washing machine, microwave, oven, tv, etc.)
-17. Computer & IT Services (for PC, laptop, printer, wifi, network, etc.)
-18. Phone Repair (for smartphone, screen, battery, charging, etc.)
-19. Moving & Transport (for lorry hire, house moving, relocations, etc.)
-20. Pest Control (for termites, cockroaches, bedbugs, fumigation, etc.)
-21. CCTV Installation & Repair (for security cameras, CCTV wiring, etc.)
-22. Others (for miscellaneous chores or inquiries)
+Official Workio Service Categories (dynamically synced from MCP backend):
+{categories_list}
 
 Current Available Sub-Agents:
 1. community_agent: Specialized agent responsible for ALL community-related operations:

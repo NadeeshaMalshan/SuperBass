@@ -12,6 +12,7 @@ import logging
 from agent_backend.config import settings
 from agent_backend.state.state import AgentState
 from agent_backend.prompts.supervisor_prompts import SUPERVISOR_SYSTEM_PROMPT
+from agent_backend.tools.booking_tools import get_live_service_categories
 from agent_backend.utils.sanitizer import sanitize_messages_for_llm
 
 logger = logging.getLogger("agent_backend.supervisor")
@@ -24,7 +25,7 @@ class SupervisorDecision(BaseModel):
     )
     inferred_category: Optional[str] = Field(
         default=None,
-        description="The matching Workio service category from the 21 official categories if a problem or service was described"
+        description="The matching Workio service category from the official categories if a problem or service was described"
     )
     direct_response: str = Field(
         default="",
@@ -56,9 +57,13 @@ async def supervisor_node(state: AgentState) -> Dict[str, Any]:
             )
             structured_router = llm.with_structured_output(SupervisorDecision, method="function_calling")
 
+            cats = await get_live_service_categories()
+            categories_list = "\n".join(f"{idx+1}. {c}" for idx, c in enumerate(cats))
+            formatted_prompt = SUPERVISOR_SYSTEM_PROMPT.format(categories_list=categories_list)
+
             clean_messages = sanitize_messages_for_llm(messages)
             prompt_messages = [
-                SystemMessage(content=SUPERVISOR_SYSTEM_PROMPT),
+                SystemMessage(content=formatted_prompt),
                 SystemMessage(
                     content=f"Current user session: email={state.get('email', 'unknown')}, role={state.get('user_type', 'Resident')}"
                 )

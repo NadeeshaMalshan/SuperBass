@@ -1,8 +1,11 @@
 import math
-from typing import Dict, Any, Optional
+import logging
+from typing import Dict, Any, Optional, List
 from langchain_core.tools import tool
 from agent_backend.tools.mcp_client import mcp_client
-from agent_backend.tools.community_tools import sanitize_payload
+from agent_backend.tools.community_tools import sanitize_payload, get_service_categories
+
+logger = logging.getLogger("agent_backend.booking_tools")
 
 SRI_LANKA_CITY_COORDS = {
     "colombo": (6.9271, 79.8612),
@@ -352,4 +355,37 @@ async def search_workers(
 
     return data
 
-BOOKING_TOOLS = [search_workers, check_worker_availability, create_booking]
+
+_cached_mcp_categories: List[str] = []
+
+async def get_live_service_categories() -> List[str]:
+    """
+    Fetch live official service categories dynamically from the backend database via MCP get_service_categories tool.
+    Caches the list in memory for fast performance.
+    """
+    global _cached_mcp_categories
+    if _cached_mcp_categories:
+        return _cached_mcp_categories
+
+    try:
+        raw = await mcp_client.call_tool("get_service_categories", {"includeDetails": True})
+        items = raw if isinstance(raw, list) else (raw.get("categories") or raw.get("items") if isinstance(raw, dict) else [])
+        names = []
+        if isinstance(items, list):
+            for it in items:
+                if isinstance(it, dict):
+                    n = it.get("name") or it.get("categoryName") or it.get("title") or it.get("id")
+                    if n:
+                        names.append(str(n))
+                elif isinstance(it, str):
+                    names.append(it)
+        if names:
+            _cached_mcp_categories = names
+            return _cached_mcp_categories
+    except Exception as e:
+        logger.warning(f"Could not fetch categories from MCP: {e}")
+
+    return OFFICIAL_WORKIO_CATEGORIES
+
+
+BOOKING_TOOLS = [search_workers, check_worker_availability, create_booking, get_service_categories]
