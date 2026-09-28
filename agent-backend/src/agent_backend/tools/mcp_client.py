@@ -1,6 +1,6 @@
 """
-Model Context Protocol (MCP) Client for SuperBass.
-Communicates with SuperBass MCP Server using JSON-RPC 2.0 protocol over HTTP.
+Model Context Protocol (MCP) Client for Workio.
+Communicates with Workio MCP Server using JSON-RPC 2.0 protocol over HTTP.
 """
 
 from typing import Any, Dict, List, Optional
@@ -13,7 +13,7 @@ logger = logging.getLogger("agent_backend.mcp_client")
 
 
 class MCPClient:
-    """Async client communicating with SuperBass MCP Server via JSON-RPC 2.0."""
+    """Async client communicating with Workio MCP Server via JSON-RPC 2.0."""
 
     def __init__(self, server_url: Optional[str] = None, timeout: Optional[float] = None):
         self.server_url = server_url or settings.mcp_server_url

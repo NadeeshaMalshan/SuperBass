@@ -1,5 +1,5 @@
 """
-API endpoint tests for SuperBass Agent Backend.
+API endpoint tests for Workio Agent Backend.
 """
 
 import pytest

@@ -670,7 +670,7 @@ export default function WorkerDetail() {
                       ))}
                     </div>
                     <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', marginTop: '2px' }}>
-                      {worker.completedJobs > 0 ? `${worker.completedJobs} Verified Review${worker.completedJobs > 1 ? 's' : ''}` : 'Verified SuperBass Pro'}
+                      {worker.completedJobs > 0 ? `${worker.completedJobs} Verified Review${worker.completedJobs > 1 ? 's' : ''}` : 'Verified Workio Pro'}
                     </div>
                   </div>
                 </div>

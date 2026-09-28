@@ -1,6 +1,6 @@
 """
-LangGraph Multi-Agent Workflow for SuperBass.
-Coordinates Supervisor Agent, Community Agent, MCP ToolNode, and Card Formatter.
+LangGraph Multi-Agent Workflow for Workio.
+Coordinates Supervisor Agent, Community Agent, Booking Agent, MCP ToolNodes, and Card Formatter.
 """
 
 from typing import Literal

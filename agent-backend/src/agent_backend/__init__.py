@@ -1,2 +1,2 @@
-"""SuperBass Agent Backend Package."""
+"""Workio Agent Backend Package."""
 __version__ = "0.1.0"

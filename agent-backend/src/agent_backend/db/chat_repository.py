@@ -7,7 +7,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 import uuid
 import logging
-from sqlalchemy import select, delete, desc
+from sqlalchemy import select, delete, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from agent_backend.db.database import AsyncSessionLocal, ConversationModel, ChatMessageModel
 from agent_backend.schemas.card_models import AgentCardResponse
@@ -47,11 +47,10 @@ class ChatRepository:
     async def list_conversations(user_email: str) -> List[Dict[str, Any]]:
         """List all conversations for a user, ordered by most recently updated."""
         async with AsyncSessionLocal() as session:
-            stmt = (
-                select(ConversationModel)
-                .where(ConversationModel.user_email == user_email)
-                .order_by(desc(ConversationModel.updated_at))
-            )
+            stmt = select(ConversationModel)
+            if user_email and user_email.strip():
+                stmt = stmt.where(func.lower(ConversationModel.user_email) == user_email.strip().lower())
+            stmt = stmt.order_by(desc(ConversationModel.updated_at))
             res = await session.execute(stmt)
             conversations = res.scalars().all()
 
@@ -158,8 +157,8 @@ class ChatRepository:
         """Delete a conversation and all its messages."""
         async with AsyncSessionLocal() as session:
             stmt = delete(ConversationModel).where(ConversationModel.id == conv_id)
-            if user_email:
-                stmt = stmt.where(ConversationModel.user_email == user_email)
+            if user_email and user_email.strip():
+                stmt = stmt.where(func.lower(ConversationModel.user_email) == user_email.strip().lower())
             res = await session.execute(stmt)
             await session.commit()
             return res.rowcount > 0
