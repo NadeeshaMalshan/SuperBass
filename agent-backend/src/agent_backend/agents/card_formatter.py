@@ -34,7 +34,8 @@ CARD_FORMATTER_PROMPT = """You are the Frontend UI Card Formatter for Workio.
 Your role is to format the conversation output and any tool results into a structured AgentCardResponse JSON object so the Frontend can render the appropriate interactive UI card component.
 
 Available response_type values and their corresponding card_data schemas:
-0. "post_confirmation": Use whenever a community post draft is formulated and presented for user review/confirmation before publishing or updating.
+0. "post_confirmation": Use ONLY when the user has explicitly requested or confirmed creating/updating a community post and the assistant is presenting the complete draft with title, content, and category.
+   DO NOT use "post_confirmation" when the assistant is summarizing a user's problem or asking whether to find a worker vs create a post! In those cases, use "text_message" with suggestions.
    card_data fields: action ("create" or "update"), postId (if update), title, content, communityId, location, validationStatus ("valid"), validationNotes, confirmPrompt (e.g. "CONFIRM_PUBLISH: title=... content=...").
 1. "post_created": Use when a new community post has actually been published to the backend via tool execution.
    card_data fields: id, title, content, communityId, location, authorId, authorName, status, createdAt.
@@ -424,10 +425,41 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
             metadata={"agent": "community_agent", "user_email": email}
         )
 
+    # Check if the assistant is offering the choice between finding a worker and creating a community post
+    is_choice_turn = any(kw in lower_content for kw in [
+        "create a community post or find",
+        "find a verified",
+        "find an existing worker",
+        "how would you like to proceed",
+        "would you like to:",
+        "or create a community post",
+        "publish your service request to the community board"
+    ])
+
+    if is_choice_turn:
+        # Use dynamic suggested actions provided by the LLM in metadata, or sensible clean defaults
+        dyn_suggestions = (metadata or {}).get("suggested_actions")
+        if not dyn_suggestions or not isinstance(dyn_suggestions, list):
+            dyn_suggestions = [
+                "Find a verified service worker",
+                "Create a community post"
+            ]
+
+        card = TextMessageCard(
+            text=last_ai_content,
+            suggestions=dyn_suggestions
+        )
+        return AgentCardResponse(
+            response_type="text_message",
+            message=card.text,
+            card_data=card.model_dump(),
+            metadata={"agent": "supervisor", "user_email": email}
+        )
+
     # Check if the assistant has prepared a community post draft awaiting confirmation
-    is_draft = any(keyword in lower_content for keyword in ["draft", "confirm and publish", "would you like me to confirm", "would you like me to publish"]) or (
+    is_draft = not is_choice_turn and (any(keyword in lower_content for keyword in ["draft", "confirm and publish", "would you like me to confirm", "would you like me to publish"]) or (
         ("title:" in lower_content or "• title" in lower_content) and ("category:" in lower_content or "• category" in lower_content)
-    )
+    ))
 
     if is_draft:
         # Extract title, category, location, urgency, content
@@ -458,34 +490,18 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
         if not draft_location or draft_location.lower() in ["your location", "location", "n/a", "unknown", "none", "{location}"]:
             draft_location = user_loc_default
 
-        # Resolve clean category name if numeric ID or generic
-        if draft_category.isdigit() or draft_category.lower() in ["general", "none", "unknown", "community", "colombo-community"]:
-            lower_text = (draft_title + " " + draft_content).lower()
-            if any(k in lower_text for k in ["plumb", "leak", "pipe", "tap", "drain", "washroom", "toilet"]):
-                draft_category = "Plumbing"
-            elif any(k in lower_text for k in ["ac", "air condition", "cool", "filter", "compressor"]):
-                draft_category = "AC Repair & Air Conditioning"
-            elif any(k in lower_text for k in ["electr", "wiring", "switch", "light", "breaker", "power"]):
-                draft_category = "Electrical"
-            elif any(k in lower_text for k in ["carpent", "wood", "door", "furniture", "table"]):
-                draft_category = "Carpentry"
-            elif any(k in lower_text for k in ["clean", "maid", "sweep", "mop"]):
-                draft_category = "Cleaning"
-            elif any(k in lower_text for k in ["paint", "color", "wall"]):
-                draft_category = "Painting"
-
         card = PostConfirmationCard(
             action="create",
             title=draft_title,
             content=draft_content,
             communityId=draft_category,
             location=draft_location,
-            urgency=draft_urgency,
+            urgency=None,
             authorId=email,
             authorName=user_name,
             validationStatus="valid",
             validationNotes=f"Please review your draft details above and confirm to publish under your account ({user_name}).",
-            confirmPrompt=f"CONFIRM_PUBLISH: Yes, please publish the post '{draft_title}' in {draft_category} for {draft_location} with urgency '{draft_urgency}'."
+            confirmPrompt=f"CONFIRM_PUBLISH: Yes, please publish the post '{draft_title}' in {draft_category} for {draft_location}."
         )
         return AgentCardResponse(
             response_type="post_confirmation",

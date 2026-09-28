@@ -129,7 +129,7 @@ class PostConfirmationCard(BaseModel):
 class TextMessageCard(BaseModel):
     """UI Card rendered for conversational answers, clarifications, or greetings."""
     text: str = Field(description="Agent conversational message")
-    suggestions: Optional[List[str]] = Field(
+    suggestions: Optional[List[Union[str, Dict[str, Any]]]] = Field(
         default=None,
         description="Quick action suggestions/chips for user to click"
     )

@@ -16,16 +16,22 @@ export default function TextMessageCard({ data, onAction }) {
 
       {suggestions && suggestions.length > 0 && (
         <div className="agent-chips-wrap">
-          {suggestions.map((suggestion, idx) => (
-            <button
-              key={idx}
-              className="agent-chip-btn"
-              onClick={() => onAction && onAction('send_prompt', suggestion)}
-            >
-              <i className="fa-regular fa-lightbulb"></i>
-              {suggestion}
-            </button>
-          ))}
+          {suggestions.map((suggestion, idx) => {
+            const suggestionText =
+              typeof suggestion === 'object' && suggestion !== null
+                ? suggestion.text || suggestion.label || suggestion.prompt || JSON.stringify(suggestion)
+                : String(suggestion);
+            return (
+              <button
+                key={idx}
+                className="agent-chip-btn"
+                onClick={() => onAction && onAction('send_prompt', suggestionText)}
+              >
+                <i className="fa-regular fa-lightbulb"></i>
+                {suggestionText}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>

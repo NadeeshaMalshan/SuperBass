@@ -142,6 +142,35 @@ async def test_supervisor_booking_routing():
     assert result.get("next") == "booking_agent"
 
 
+@pytest.mark.asyncio
+async def test_supervisor_issue_description_clarification():
+    """Verify that when a user simply describes a problem, supervisor asks whether to find worker or post on community."""
+    state = {
+        "messages": [HumanMessage(content="my room electrict wiring is not good it is messy")],
+        "email": "resident@workio.lk",
+        "user_type": "Resident",
+        "user_profile": {"address": "Colombo"},
+        "next": None,
+        "structured_response": None,
+        "metadata": {}
+    }
+    result = await supervisor_node(state)
+    # When using heuristic fallback or structured router, intent is clarified
+    assert result.get("next") == "FINISH"
+    asst_msg = result.get("messages", [])[0].content.lower()
+    assert "find a verified" in asst_msg or "find an electrician" in asst_msg or "worker" in asst_msg
+    assert "community post" in asst_msg
+
+    # Verify card formatter builds a text_message card with suggestions, NOT a post_confirmation card
+    state["messages"].append(result["messages"][0])
+    if result.get("metadata"):
+        state["metadata"] = result["metadata"]
+    card_resp = _deterministic_card_builder(state)
+    assert card_resp.response_type == "text_message"
+    assert any("worker" in str(s).lower() or "electrician" in str(s).lower() for s in card_resp.card_data.get("suggestions", []))
+    assert any("community post" in str(s).lower() for s in card_resp.card_data.get("suggestions", []))
+
+
 def test_deterministic_card_builder_for_created_post():
     """Verify card formatter correctly constructs a PostCreatedCard from tool output."""
     tool_content = '{"id": 42, "title": "Electrical socket issue", "content": "Living room socket spark", "serviceCategoryId": "Electrical", "userId": "kpjmp28@gmail.com", "location": "Kandy"}'
@@ -204,6 +233,43 @@ def test_community_tools_count():
     ]
     for exp in expected:
         assert exp in names
+
+
+def test_sanitizer_and_post_image_contextvar():
+    """Verify that huge base64 images are kept out of LLM messages and correctly passed via contextvar."""
+    from agent_backend.utils.sanitizer import sanitize_messages_for_llm, sanitize_text
+    from agent_backend.tools.community_tools import current_post_images
+
+    # 1. Test massive base64 payload sanitization
+    huge_base64 = "data:image/png;base64," + "A" * 100000
+    user_prompt = f"Please post this image: {huge_base64}"
+    clean_text = sanitize_text(user_prompt)
+    assert "data:image" not in clean_text
+    assert "[attached_image]" in clean_text
+
+    # 2. Test AIMessage tool call args sanitization
+    ai_msg = AIMessage(
+        content="I will create the post",
+        tool_calls=[{
+            "id": "call_1",
+            "name": "create_community_post",
+            "args": {
+                "authorId": "resident@workio.lk",
+                "title": "Broken pipe",
+                "content": "Water leaking",
+                "images": [huge_base64, huge_base64]
+            }
+        }]
+    )
+    clean_msgs = sanitize_messages_for_llm([HumanMessage(content=clean_text), ai_msg])
+    tool_args = clean_msgs[1].tool_calls[0]["args"]
+    assert "data:image" not in tool_args["images"][0]
+    assert "[attached_image_1]" in tool_args["images"][0]
+
+    # 3. Test contextvar storage and retrieval
+    current_post_images.set([huge_base64])
+    assert current_post_images.get() == [huge_base64]
+
 
 
 if __name__ == "__main__":

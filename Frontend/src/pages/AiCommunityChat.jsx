@@ -220,7 +220,21 @@ export default function AiCommunityChat() {
   }, [messages, loading]);
 
   const handleSendMessage = async (textToSend) => {
-    const prompt = (textToSend || inputText).trim();
+    let prompt = '';
+    let extraMeta = {};
+
+    if (typeof textToSend === 'object' && textToSend !== null) {
+      prompt = (textToSend.prompt || textToSend.text || textToSend.message || '').trim();
+      if (textToSend.postData) {
+        extraMeta.post_data = textToSend.postData;
+        if (Array.isArray(textToSend.postData.images) && textToSend.postData.images.length > 0) {
+          extraMeta.post_images = textToSend.postData.images;
+        }
+      }
+    } else {
+      prompt = (textToSend || inputText).trim();
+    }
+
     if (!prompt || loading) return;
 
     const userMessage = {
@@ -247,6 +261,7 @@ export default function AiCommunityChat() {
           user_lng: userLocation.lng,
           location: userLocation.city || 'Colombo',
           user_location_name: userLocation.city || 'Colombo',
+          ...extraMeta,
         },
       });
 

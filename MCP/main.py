@@ -224,7 +224,8 @@ tools = [
                 "content": {"type": "string", "description": "Post content"},
                 "communityId": {"type": "string", "description": "Community ID"},
                 "location": {"type": "string", "description": "Service location"},
-                "userName": {"type": "string", "description": "Author display name"}
+                "userName": {"type": "string", "description": "Author display name"},
+                "images": {"type": "array", "items": {"type": "string"}, "description": "List of attached image URLs or base64 data URLs"}
             },
             "required": ["authorId", "title", "content", "communityId"]
         }
@@ -579,7 +580,8 @@ async def call_create_community_post(args: Dict[str, Any]):
         "userName": user_name,
         "userAvatar": user_avatar,
         "serviceCategoryId": args.get("communityId", "General"),
-        "location": args.get("location", "Colombo")
+        "location": args.get("location", "Colombo"),
+        "images": args.get("images") or []
     }
     response = await backend_client.post("/api/community-posts", json=payload)
     if response.status_code >= 400:

@@ -10,6 +10,7 @@ from agent_backend.config import settings
 from agent_backend.state.state import AgentState
 from agent_backend.tools.community_tools import COMMUNITY_TOOLS
 from agent_backend.prompts.community_prompts import COMMUNITY_AGENT_SYSTEM_PROMPT
+from agent_backend.utils.sanitizer import sanitize_messages_for_llm
 
 
 async def community_agent_node(state: AgentState) -> Dict[str, Any]:
@@ -31,7 +32,8 @@ async def community_agent_node(state: AgentState) -> Dict[str, Any]:
         user_location=user_location
     )
 
-    prompt_messages = [SystemMessage(content=system_instruction)] + messages
+    clean_messages = sanitize_messages_for_llm(messages)
+    prompt_messages = [SystemMessage(content=system_instruction)] + clean_messages
 
     # If OpenAI API Key is valid, use gpt-4o-mini with tool bindings
     if settings.openai_api_key and settings.openai_api_key != "your_openai_api_key_here":
