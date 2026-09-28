@@ -1471,6 +1471,42 @@
   pointer-events: none;
 }
 
+select.icon-input-field.location-select-field {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  cursor: pointer;
+  padding-right: 28px;
+  font-weight: 600;
+  font-family: inherit;
+  color: #0f172a;
+}
+
+.location-select-chevron {
+  position: absolute;
+  right: 14px;
+  pointer-events: none;
+  font-size: 0.8rem;
+  color: #64748b;
+  transition: transform 0.2s ease;
+}
+
+.create-post-icon-input:focus-within .location-select-chevron {
+  color: #2563eb;
+}
+
+.location-select-field optgroup {
+  font-weight: 700;
+  color: #64748b;
+  background-color: #f8fafc;
+}
+
+.location-select-field option {
+  font-weight: 500;
+  color: #0f172a;
+  background-color: #ffffff;
+}
+
 /* Photos Section */
 .create-post-photos-section {
   display: flex;
