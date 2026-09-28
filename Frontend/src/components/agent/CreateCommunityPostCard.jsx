@@ -41,7 +41,6 @@ export default function CreateCommunityPostCard({ data = {}, onAction }) {
       'I am looking for professional services in Colombo. Please reach out if you can assist.'
   );
   const [location, setLocation] = useState(data.location || 'Colombo');
-  const [urgency, setUrgency] = useState(data.urgency || 'As soon as possible');
 
   // Initial photos start empty so user can attach real photos
   const [photos, setPhotos] = useState(
@@ -93,7 +92,7 @@ export default function CreateCommunityPostCard({ data = {}, onAction }) {
     } else if (currentStep === 2) {
       setCurrentStep(3);
       // Trigger confirmation action to Agent backend with current edited values and real attached images
-      const promptToExecute = `CONFIRM_PUBLISH: Yes, please publish the community post '${title}' in ${selectedCategory} for ${location} with urgency '${urgency}'. Description: ${description}`;
+      const promptToExecute = `CONFIRM_PUBLISH: Yes, please publish the community post '${title}' in ${selectedCategory} for ${location}. Description: ${description}`;
       const payloadObj = {
         prompt: promptToExecute,
         postData: {
@@ -101,7 +100,6 @@ export default function CreateCommunityPostCard({ data = {}, onAction }) {
           content: description,
           communityId: selectedCategory,
           location,
-          urgency,
           images: photos.map((p) => p.url),
         },
       };
@@ -234,40 +232,18 @@ export default function CreateCommunityPostCard({ data = {}, onAction }) {
             />
           </div>
 
-          {/* Location & Urgency Row */}
-          <div className="create-post-grid-row">
-            {/* Location */}
-            <div className="create-post-field-group">
-              <label className="create-post-label">Location</label>
-              <div className="create-post-icon-input">
-                <i className="fa-solid fa-location-dot input-left-icon"></i>
-                <input
-                  type="text"
-                  className="icon-input-field"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  placeholder="e.g. Colombo"
-                />
-              </div>
-            </div>
-
-            {/* Urgency */}
-            <div className="create-post-field-group">
-              <label className="create-post-label">Urgency</label>
-              <div className="create-post-icon-input select-container">
-                <i className="fa-regular fa-clock input-left-icon"></i>
-                <select
-                  className="icon-select-field"
-                  value={urgency}
-                  onChange={(e) => setUrgency(e.target.value)}
-                >
-                  <option value="As soon as possible">As soon as possible</option>
-                  <option value="Within 24 hours">Within 24 hours</option>
-                  <option value="This week">This week</option>
-                  <option value="Flexible">Flexible</option>
-                </select>
-                <i className="fa-solid fa-chevron-down select-chevron"></i>
-              </div>
+          {/* Location */}
+          <div className="create-post-field-group">
+            <label className="create-post-label">Location</label>
+            <div className="create-post-icon-input">
+              <i className="fa-solid fa-location-dot input-left-icon"></i>
+              <input
+                type="text"
+                className="icon-input-field"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="e.g. Colombo"
+              />
             </div>
           </div>
 
@@ -342,9 +318,6 @@ export default function CreateCommunityPostCard({ data = {}, onAction }) {
             <div className="review-category-badge">
               <img src={currentCategoryObj.icon} alt={currentCategoryObj.label} />
               <span>{selectedCategory}</span>
-              <span className="review-urgency-pill">
-                <i className="fa-regular fa-clock"></i> {urgency}
-              </span>
             </div>
 
             <h3 className="review-title">{title}</h3>

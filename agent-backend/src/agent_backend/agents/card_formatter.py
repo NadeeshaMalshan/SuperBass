@@ -512,12 +512,12 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
             content=draft_content,
             communityId=draft_category,
             location=draft_location,
-            urgency=draft_urgency,
+            urgency=None,
             authorId=email,
             authorName=user_name,
             validationStatus="valid",
             validationNotes=f"Please review your draft details above and confirm to publish under your account ({user_name}).",
-            confirmPrompt=f"CONFIRM_PUBLISH: Yes, please publish the post '{draft_title}' in {draft_category} for {draft_location} with urgency '{draft_urgency}'."
+            confirmPrompt=f"CONFIRM_PUBLISH: Yes, please publish the post '{draft_title}' in {draft_category} for {draft_location}."
         )
         return AgentCardResponse(
             response_type="post_confirmation",
