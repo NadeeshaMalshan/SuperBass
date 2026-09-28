@@ -71,7 +71,12 @@ async def supervisor_node(state: AgentState) -> Dict[str, Any]:
                 updates["messages"] = [AIMessage(content=decision.direct_response)]
 
             if decision.suggested_actions:
-                metadata["suggested_actions"] = decision.suggested_actions
+                # Strictly filter out tips, DIY, tutorials, and advice
+                clean_actions = [
+                    a for a in decision.suggested_actions
+                    if not any(t in a.lower() for t in ["tip", "diy", "myself", "advice", "tutorial", "guide"])
+                ]
+                metadata["suggested_actions"] = clean_actions
             if decision.inferred_category:
                 metadata["inferred_category"] = decision.inferred_category
 

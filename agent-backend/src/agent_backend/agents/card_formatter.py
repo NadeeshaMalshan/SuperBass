@@ -55,6 +55,7 @@ Available response_type values and their corresponding card_data schemas:
    card_data fields: category, query, totalCount, workers (list of {id, name, profileImage, primaryRole, skills, primaryServiceArea, hourlyRate, dailyRate, pricingModel, overallRating, reviewCount, completedJobs, isAvailable}).
 9. "text_message": Use for conversational replies, greetings, booking updates, explanations, or questions.
    card_data fields: text, suggestions (list of quick prompt suggestions).
+   CRITICAL: NEVER output suggestions for tips, gardening tips, advice, or DIY tutorials (e.g. NEVER output "Get gardening tips", "Get tips on fixing it myself", etc.). When asking how to proceed, suggestions MUST be strictly 2 choices: ["Find a <trade/worker>", "Create a community post"].
 10. "error": Use if a tool or operation failed with an error.
    card_data fields: errorCode, message, actionRequired.
 
@@ -448,10 +449,15 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
         structured_suggestions = []
         for idx, item in enumerate(dyn_suggestions):
             if isinstance(item, dict):
+                text_val = str(item.get("text") or item.get("label") or "")
+                if any(t in text_val.lower() for t in ["tip", "diy", "myself", "advice", "tutorial", "guide"]):
+                    continue
                 structured_suggestions.append(item)
             else:
                 item_str = str(item)
-                item_type = "community" if idx == 1 or "community" in item_str.lower() or "post" in item_str.lower() else "find"
+                if any(t in item_str.lower() for t in ["tip", "diy", "myself", "advice", "tutorial", "guide"]):
+                    continue
+                item_type = "community" if "community" in item_str.lower() or "post" in item_str.lower() or idx == 1 else "find"
                 structured_suggestions.append({
                     "text": item_str,
                     "type": item_type
@@ -581,6 +587,39 @@ async def card_formatter_node(state: AgentState) -> Dict[str, Any]:
 
             card_response: AgentCardResponse = await structured_formatter.ainvoke(format_messages)
             if card_response:
+                # Sanitize card_data suggestions to remove any tips or DIY advice
+                if isinstance(card_response.card_data, dict):
+                    metadata_sugg = state.get("metadata", {}).get("suggested_actions")
+                    raw_sugg = metadata_sugg or card_response.card_data.get("suggestions") or []
+                    clean_sugg = []
+                    for s in raw_sugg:
+                        s_text = str(s.get("text") if isinstance(s, dict) else s)
+                        if any(t in s_text.lower() for t in ["tip", "diy", "myself", "advice", "tutorial", "guide"]):
+                            continue
+                        clean_sugg.append(s)
+
+                    lower_msg = (card_response.message or "").lower()
+                    is_choice = any(k in lower_msg for k in [
+                        "how would you like to proceed",
+                        "would you like to",
+                        "proceed with finding",
+                        "or creating a community post",
+                        "find a verified"
+                    ])
+                    if is_choice or card_response.card_data.get("is_choice"):
+                        card_response.card_data["is_choice"] = True
+                        structured = []
+                        for idx, s in enumerate(clean_sugg):
+                            if isinstance(s, dict):
+                                structured.append(s)
+                            else:
+                                s_str = str(s)
+                                s_type = "community" if "community" in s_str.lower() or "post" in s_str.lower() or idx == 1 else "find"
+                                structured.append({"text": s_str, "type": s_type})
+                        card_response.card_data["suggestions"] = structured
+                    else:
+                        card_response.card_data["suggestions"] = clean_sugg
+
                 return {"structured_response": card_response}
         except Exception as e:
             logger.warning(f"Structured card formatter LLM error: {e}. Falling back to deterministic builder.")
