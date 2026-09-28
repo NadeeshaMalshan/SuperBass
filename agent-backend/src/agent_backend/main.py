@@ -146,7 +146,6 @@ async def delete_user_conversation(conversation_id: str, email: Optional[str] = 
 # Chat Invocation with Database Persistence
 # -------------------------------------------------------------
 
-@app.post("/api/chat", response_model=ChatResponse)
 @app.get("/api/chat/logs")
 async def get_chat_logs(limit: int = Query(default=100, ge=1, le=1000)):
     """
