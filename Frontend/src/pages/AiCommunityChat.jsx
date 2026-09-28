@@ -403,7 +403,7 @@ export default function AiCommunityChat() {
           <nav className="m3-drawer-nav">
             {[
               { label: 'Recent Posts', icon: 'campaign', msg: 'Show recent community posts in Colombo' },
-              { label: 'Find Craftsmen', icon: 'handyman', msg: 'Find available verified craftsmen near me' },
+              { label: 'Find Craftsmen', icon: 'handyman', msg: 'I want to find a worker' },
               { label: 'My Posts', icon: 'badge', msg: 'Show all my community posts' },
               { label: 'My Profile', icon: 'person', msg: 'What is my user role and profile details?' },
             ].map(({ label, icon, msg }) => (

@@ -22,7 +22,7 @@ export default function InitialWelcomeCard({ data = {}, onAction }) {
       icon: 'search',
       color: '#f59e0b',
       actionType: 'send_prompt',
-      payload: 'Find available verified craftsmen near me',
+      payload: 'I want to find a worker',
     },
     {
       id: 'create_post',
