@@ -155,10 +155,9 @@ class _WorkerPerformanceScreenState extends State<WorkerPerformanceScreen> {
               decoration: BoxDecoration(
                 color: WorkerColors.surface,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: WorkerColors.outlineVariant),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.02),
+                    color: Colors.black.withValues(alpha: 0.03),
                     blurRadius: 10,
                     offset: const Offset(0, 3),
                   ),
@@ -213,7 +212,13 @@ class _WorkerPerformanceScreenState extends State<WorkerPerformanceScreen> {
                 decoration: BoxDecoration(
                   color: WorkerColors.surface,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: WorkerColors.outlineVariant),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.03),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: Column(
                   children: [
@@ -258,10 +263,9 @@ class _WorkerPerformanceScreenState extends State<WorkerPerformanceScreen> {
                     decoration: BoxDecoration(
                       color: WorkerColors.surface,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: WorkerColors.outlineVariant),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.02),
+                          color: Colors.black.withValues(alpha: 0.03),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -363,10 +367,9 @@ class _WorkerPerformanceScreenState extends State<WorkerPerformanceScreen> {
       decoration: BoxDecoration(
         color: WorkerColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: WorkerColors.outlineVariant),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),

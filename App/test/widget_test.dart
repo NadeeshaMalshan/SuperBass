@@ -20,7 +20,7 @@ void main() {
     await tester.pumpWidget(const SuperBassApp());
 
     // Verify that the brand and search exist
-    expect(find.text('superබාස්'), findsWidgets);
+    expect(find.text('Workio'), findsWidgets);
     expect(find.text('Find Trusted Community Pros'), findsOneWidget);
   });
 }

@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import '../theme/app_colors.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
@@ -292,9 +294,171 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  void _pickImage() {
-    // Open gallery logic goes here
-    debugPrint('Pick image from gallery');
+  Future<void> _pickImage() async {
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 70,
+        maxWidth: 1024,
+      );
+      if (picked != null) {
+        final bytes = await picked.readAsBytes();
+        final base64Image = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+
+        final email = AuthService().currentUser?.email;
+        if (email != null) {
+          final sent = await ApiService().sendMessage(
+            conversationId: widget.conversationId,
+            content: '',
+            senderEmail: email,
+            attachmentUrl: base64Image,
+          );
+          if (sent != null) {
+            await _fetchMessages(isBackground: true);
+            _scrollToBottom(isInitial: false);
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error picking image: $e');
+    }
+  }
+
+  Widget _buildImageError() {
+    return Container(
+      width: 220,
+      height: 150,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.broken_image_rounded, color: Colors.grey.shade500, size: 32),
+            const SizedBox(height: 4),
+            Text(
+              'Image unavailable',
+              style: GoogleFonts.dmSans(fontSize: 12, color: Colors.grey.shade600),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMessageImage(String attachmentUrl, bool isMe) {
+    Widget imgWidget;
+    if (attachmentUrl.startsWith('data:image')) {
+      try {
+        final base64Str = attachmentUrl.split(',').last;
+        final bytes = base64Decode(base64Str);
+        imgWidget = Image.memory(
+          bytes,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildImageError(),
+        );
+      } catch (_) {
+        imgWidget = _buildImageError();
+      }
+    } else {
+      imgWidget = Image.network(
+        attachmentUrl,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            width: 220,
+            height: 150,
+            color: Colors.black12,
+            child: const Center(
+              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.onSurface),
+            ),
+          );
+        },
+        errorBuilder: (_, __, ___) => _buildImageError(),
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => _showFullScreenImage(attachmentUrl),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxHeight: 240,
+                maxWidth: 240,
+                minWidth: 140,
+                minHeight: 140,
+              ),
+              child: imgWidget,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showFullScreenImage(String attachmentUrl) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (ctx) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black.withValues(alpha: 0.75),
+            elevation: 0,
+            iconTheme: const IconThemeData(color: Colors.white),
+            title: Text(
+              'Photo Preview',
+              style: GoogleFonts.dmSans(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          body: Center(
+            child: InteractiveViewer(
+              panEnabled: true,
+              minScale: 0.5,
+              maxScale: 4.0,
+              child: attachmentUrl.startsWith('data:image')
+                  ? Image.memory(
+                      base64Decode(attachmentUrl.split(',').last),
+                      fit: BoxFit.contain,
+                    )
+                  : Image.network(
+                      attachmentUrl,
+                      fit: BoxFit.contain,
+                      loadingBuilder: (context, child, progress) {
+                        if (progress == null) return child;
+                        return const Center(
+                          child: CircularProgressIndicator(color: Colors.white),
+                        );
+                      },
+                    ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -467,9 +631,12 @@ class _ChatScreenState extends State<ChatScreen> {
           ? msg['id'] as int
           : int.tryParse(msg['id']?.toString() ?? '0') ?? 0;
 
+      final attachmentUrl = msg['attachmentUrl']?.toString() ?? msg['AttachmentUrl']?.toString();
+
       processed.add({
         'id': id,
         'text': msg['content']?.toString() ?? '',
+        'attachmentUrl': attachmentUrl != null && attachmentUrl.isNotEmpty && attachmentUrl != 'null' ? attachmentUrl : null,
         'isMe': isMe,
         'isRead': msg['isRead'] == true,
         'timeStr': timeStr,
@@ -501,11 +668,11 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Material 3 colors inspired by Google Messages
-    const Color bgSurface = Color(0xFFF3F3F3); // Light grey background
-    const Color myBubbleColor = Color(0xFFE5E7EB); // Light grey/black ("kalu patata" light)
-    const Color otherBubbleColor = Color(0xFFFEF3C7); // Light yellow ("kala/kaha patata" light)
-    const Color sendFabColor = AppColors.brandYellow; // Send button color
+    // Material 3 colors in Black & White Monochrome
+    const Color bgSurface = Color(0xFFFAFAFA); // Crisp light background
+    const Color myBubbleColor = Color(0xFF000000); // Solid Black outgoing bubble
+    const Color otherBubbleColor = Color(0xFFF4F4F5); // Light grey incoming bubble
+    const Color sendFabColor = Color(0xFF000000); // Send button color
 
     return PopScope(
       canPop: !_isSelectionMode,
@@ -712,15 +879,20 @@ class _ChatScreenState extends State<ChatScreen> {
                                     ? CrossAxisAlignment.end
                                     : CrossAxisAlignment.start,
                                 children: [
-                                  Container(
+                                  if (msg['attachmentUrl'] != null && msg['attachmentUrl'].toString().isNotEmpty) ...[
+                                    _buildMessageImage(msg['attachmentUrl'], isMe),
+                                    const SizedBox(height: 4),
+                                  ],
+                                  if (msg['text'] != null && msg['text'].toString().isNotEmpty)
+                                    Container(
                                     margin: const EdgeInsets.only(bottom: 4),
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 16, vertical: 12),
                                     decoration: BoxDecoration(
                                       color: isSelected
                                           ? (isMe
-                                              ? const Color(0xFFD1D5DB)
-                                              : const Color(0xFFFDE68A))
+                                              ? const Color(0xFF27272A)
+                                              : const Color(0xFFE4E4E7))
                                           : (isMe ? myBubbleColor : otherBubbleColor),
                                       borderRadius: BorderRadius.only(
                                         topLeft: const Radius.circular(24),
@@ -730,14 +902,14 @@ class _ChatScreenState extends State<ChatScreen> {
                                       ),
                                       border: isSelected
                                           ? Border.all(
-                                              color: AppColors.brandYellow, width: 2)
+                                              color: Colors.black, width: 2)
                                           : null,
                                     ),
                                     child: Text(
                                       msg['text'],
                                       style: GoogleFonts.dmSans(
                                         fontSize: 15,
-                                        color: const Color(0xFF1C1B1F),
+                                        color: isMe ? Colors.white : const Color(0xFF000000),
                                         fontWeight: FontWeight.w400,
                                       ),
                                     ),

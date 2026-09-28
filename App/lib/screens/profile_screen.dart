@@ -65,9 +65,8 @@ class ProfileScreen extends StatelessWidget {
       children: [
         Container(
           padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.yellow.shade700, width: 3),
           ),
           child: _buildRobustAvatar(user.picture, user.name),
         ),

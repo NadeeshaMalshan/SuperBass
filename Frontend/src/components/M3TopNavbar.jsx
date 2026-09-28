@@ -24,7 +24,16 @@ export default function M3TopNavbar({
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    setIsLoggedIn(!!localStorage.getItem('token'));
+    const checkAuth = () => {
+      setIsLoggedIn(!!localStorage.getItem('token'));
+    };
+    checkAuth();
+    window.addEventListener('storage', checkAuth);
+    window.addEventListener('popstate', checkAuth);
+    return () => {
+      window.removeEventListener('storage', checkAuth);
+      window.removeEventListener('popstate', checkAuth);
+    };
   }, []);
 
   useEffect(() => {
@@ -184,19 +193,9 @@ export default function M3TopNavbar({
           </button>
         )}
 
-        {/* 6. User Profile Avatar or Blue S circle */}
+        {/* 6. User Profile Avatar or Sign In button */}
         {isLoggedIn ? (
           <UserMenu variant="m3-google" />
-        ) : theme === 'dark' || alwaysShowLinks ? (
-          <div
-            className="m3-avatar-circle-s"
-            onClick={() => navigate('/resident-profile')}
-            title="Profile"
-            role="button"
-            tabIndex={0}
-          >
-            S
-          </div>
         ) : (
           <button
             type="button"

@@ -245,11 +245,9 @@ class _JoinScreenState extends State<JoinScreen> {
                     backgroundColor: AppColors.primaryContainer,
                     child: Icon(Icons.person, color: AppColors.onPrimaryContainer),
                   ),
-                  title: const Text('Sign in as Resident'),
-                  subtitle: const Text('Access community, book pros, search services'),
+                  tileColor: AppColors.surfaceVariant,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
-                    side: const BorderSide(color: AppColors.outlineVariant),
                   ),
                   onTap: () {
                     Navigator.pop(ctx);
@@ -264,9 +262,9 @@ class _JoinScreenState extends State<JoinScreen> {
                   ),
                   title: const Text('Sign in as Worker (Pro)'),
                   subtitle: const Text('Access worker portal, incoming jobs, earnings'),
+                  tileColor: AppColors.surfaceVariant,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
-                    side: const BorderSide(color: AppColors.outlineVariant),
                   ),
                   onTap: () {
                     Navigator.pop(ctx);
@@ -310,18 +308,26 @@ class _JoinScreenState extends State<JoinScreen> {
                           return Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(
-                                Icons.handyman_rounded,
-                                size: 36,
-                                color: AppColors.brandYellow,
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.asset(
+                                  'assets/images/icon.png',
+                                  width: 38,
+                                  height: 38,
+                                  errorBuilder: (_, __, ___) => const Icon(
+                                    Icons.bolt_rounded,
+                                    size: 36,
+                                    color: AppColors.brandBlack,
+                                  ),
+                                ),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 10),
                               Text(
-                                'superබාස්',
+                                'Workio',
                                 style: GoogleFonts.dmSans(
                                   fontSize: 34,
                                   fontWeight: FontWeight.w900,
-                                  color: const Color(0xFF18181B),
+                                  color: AppColors.onSurface,
                                   letterSpacing: -0.5,
                                 ),
                               ),
@@ -346,9 +352,9 @@ class _JoinScreenState extends State<JoinScreen> {
                       onPressed: _isLoading ? null : _handleGoogleLogin,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.brandYellow,
-                        foregroundColor: Colors.black,
+                        foregroundColor: Colors.white,
                         disabledBackgroundColor: AppColors.brandYellow.withValues(alpha: 0.6),
-                        disabledForegroundColor: Colors.black54,
+                        disabledForegroundColor: Colors.white60,
                         elevation: 0,
                         shadowColor: Colors.transparent,
                         shape: RoundedRectangleBorder(
@@ -376,7 +382,7 @@ class _JoinScreenState extends State<JoinScreen> {
                                     style: GoogleFonts.dmSans(
                                       fontSize: 18,
                                       fontWeight: FontWeight.w700,
-                                      color: Colors.black,
+                                      color: Colors.white,
                                       letterSpacing: -0.2,
                                     ),
                                   ),

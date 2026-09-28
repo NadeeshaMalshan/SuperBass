@@ -21,12 +21,22 @@ class ChatSignalRService {
   final StreamController<Map<String, dynamic>> _presenceController =
       StreamController<Map<String, dynamic>>.broadcast();
 
+  final ValueNotifier<int> unreadChatCountNotifier = ValueNotifier<int>(0);
+
   Stream<Map<String, dynamic>> get onMessageReceived => _messageController.stream;
   Stream<Map<String, dynamic>> get onMessagesRead => _readController.stream;
   Stream<Map<String, dynamic>> get onUserTyping => _typingController.stream;
   Stream<Map<String, dynamic>> get onPresenceChanged => _presenceController.stream;
 
   bool get isConnected => _hubConnection?.state == HubConnectionState.Connected;
+
+  void setUnreadChatCount(int count) {
+    unreadChatCountNotifier.value = count;
+  }
+
+  void incrementUnreadChatCount() {
+    unreadChatCountNotifier.value++;
+  }
 
   /// Connect to the SignalR ChatHub over WebSockets
   Future<void> connect(String userEmail) async {

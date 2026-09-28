@@ -323,14 +323,14 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                       maxLines: 4,
                       decoration: InputDecoration(
                         hintText: 'Describe what service, recommendation, or advice you are seeking...',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: AppColors.outlineVariant),
+                          borderSide: BorderSide.none,
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: AppColors.brandYellow, width: 2),
+                          borderSide: BorderSide.none,
                         ),
                       ),
                     ),
@@ -346,13 +346,12 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                       decoration: BoxDecoration(
                         color: AppColors.surfaceVariant.withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.outlineVariant),
                       ),
                       padding: const EdgeInsets.all(12),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          OutlinedButton.icon(
+                          ElevatedButton.icon(
                             onPressed: () async {
                               final ImagePicker picker = ImagePicker();
                               final XFile? file = await picker.pickImage(
@@ -373,7 +372,10 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                             },
                             icon: const Icon(Icons.add_a_photo_outlined),
                             label: Text(hasImage ? 'Change Selected Photo' : 'Attach Photo from Device'),
-                            style: OutlinedButton.styleFrom(
+                            style: ElevatedButton.styleFrom(
+                              elevation: 0,
+                              backgroundColor: AppColors.surfaceVariant,
+                              foregroundColor: AppColors.onSurface,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             ),
                           ),
@@ -388,7 +390,6 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                                   width: double.infinity,
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(color: AppColors.outlineVariant),
                                   ),
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(10),
@@ -604,7 +605,7 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
             actions: [
               TextButton(onPressed: () => Navigator.pop(dialogCtx), child: const Text('Cancel')),
               ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: AppColors.brandYellow, foregroundColor: Colors.black),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.brandYellow, foregroundColor: Colors.white),
                 onPressed: () async {
                   final finalReason = selectedReason == 'Other' ? reasonController.text.trim() : selectedReason;
                   Navigator.pop(dialogCtx);
@@ -704,8 +705,8 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
       floatingActionButton: Padding(
         padding: EdgeInsets.only(bottom: widget.isWorkerMode ? 74.0 : 0.0),
         child: FloatingActionButton.extended(
-          backgroundColor: widget.isWorkerMode ? const Color(0xFF2563EB) : AppColors.brandYellow,
-          foregroundColor: widget.isWorkerMode ? Colors.white : Colors.black,
+          backgroundColor: widget.isWorkerMode ? const Color(0xFF000000) : AppColors.brandYellow,
+          foregroundColor: Colors.white,
           elevation: 4,
         onPressed: () {
           if (AuthService().currentUser == null) {
@@ -743,7 +744,6 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
             decoration: BoxDecoration(
               color: AppColors.primaryContainer,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.brandYellow),
             ),
             child: Row(
               children: [
@@ -894,7 +894,13 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.outlineVariant),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1314,7 +1320,7 @@ class _PostCommentsSheetState extends State<PostCommentsSheet> {
                   ),
                   const SizedBox(width: 8),
                   IconButton.filled(
-                    style: IconButton.styleFrom(backgroundColor: AppColors.brandYellow, foregroundColor: Colors.black),
+                    style: IconButton.styleFrom(backgroundColor: AppColors.brandYellow, foregroundColor: Colors.white),
                     onPressed: _isSending ? null : _sendComment,
                     icon: _isSending
                         ? const SizedBox(width: 18, height: 18, child: LoadingIndicatorM3E())
