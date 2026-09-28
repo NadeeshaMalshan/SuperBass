@@ -449,10 +449,13 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
             text=last_ai_content,
             suggestions=dyn_suggestions
         )
+        card_data = card.model_dump()
+        card_data["is_choice"] = True
+
         return AgentCardResponse(
             response_type="text_message",
             message=card.text,
-            card_data=card.model_dump(),
+            card_data=card_data,
             metadata={"agent": "supervisor", "user_email": email}
         )
 

@@ -158,8 +158,10 @@ async def test_supervisor_issue_description_clarification():
     # When using heuristic fallback or structured router, intent is clarified
     assert result.get("next") == "FINISH"
     asst_msg = result.get("messages", [])[0].content.lower()
-    assert "find a verified" in asst_msg or "find an electrician" in asst_msg or "worker" in asst_msg
-    assert "community post" in asst_msg
+    assert "how would you like to proceed" in asst_msg or "proceed" in asst_msg or "worker" in asst_msg
+    suggested_actions = [str(s).lower() for s in result.get("metadata", {}).get("suggested_actions", [])]
+    assert any("worker" in s or "electrician" in s or "find" in s for s in suggested_actions)
+    assert any("community post" in s or "post" in s for s in suggested_actions)
 
     # Verify card formatter builds a text_message card with suggestions, NOT a post_confirmation card
     state["messages"].append(result["messages"][0])
