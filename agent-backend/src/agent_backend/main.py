@@ -20,6 +20,8 @@ from agent_backend.graph.workflow import graph
 from agent_backend.tools.mcp_client import mcp_client
 from agent_backend.db.database import init_db
 from agent_backend.db.chat_repository import chat_repository
+from agent_backend.tools.community_tools import current_post_images
+from agent_backend.utils.sanitizer import sanitize_text
 
 # Configure logging
 logging.basicConfig(
@@ -150,6 +152,16 @@ async def chat_endpoint(request: ChatRequest):
     )
 
     try:
+        # Pre-extract attached images to ContextVar out-of-band so LLM never sees base64 data
+        meta = request.metadata or {}
+        post_images = meta.get("post_images") or []
+        if not post_images and meta.get("post_data"):
+            post_images = meta.get("post_data", {}).get("images") or []
+        if post_images:
+            current_post_images.set(post_images)
+
+        clean_user_message = sanitize_text(request.message)
+
         # 1. Retrieve prior messages to supply bounded conversational context
         history_msgs = []
         db_messages = []
@@ -164,9 +176,7 @@ async def chat_endpoint(request: ChatRequest):
 
         recent_db_messages = db_messages[-8:] if len(db_messages) > 8 else db_messages
         for m in recent_db_messages:
-            msg_content = str(m.get("message", "") or "")
-            if len(msg_content) > 1200:
-                msg_content = msg_content[:1200] + "... [truncated]"
+            msg_content = sanitize_text(str(m.get("message", "") or ""), max_chars=1200)
             if m.get("sender") == "user":
                 history_msgs.append(HumanMessage(content=msg_content))
             elif m.get("sender") == "assistant":
@@ -182,7 +192,7 @@ async def chat_endpoint(request: ChatRequest):
 
         # 3. Build initial state for this turn
         initial_state = {
-            "messages": history_msgs + [HumanMessage(content=request.message)],
+            "messages": history_msgs + [HumanMessage(content=clean_user_message)],
             "email": request.email,
             "user_type": request.user_type,
             "user_profile": user_profile,
@@ -213,7 +223,7 @@ async def chat_endpoint(request: ChatRequest):
 
         # 6. Save turn to in-memory fallback cache
         _IN_MEMORY_CONV_CACHE.setdefault(conv_id, []).extend([
-            {"sender": "user", "message": request.message},
+            {"sender": "user", "message": clean_user_message},
             {"sender": "assistant", "message": card_response.message or str(card_response.card_data.get("title", "")) or "response"}
         ])
 
@@ -222,7 +232,7 @@ async def chat_endpoint(request: ChatRequest):
             await chat_repository.save_chat_turn(
                 conv_id=conv_id,
                 user_email=request.email,
-                user_text=request.message,
+                user_text=clean_user_message,
                 assistant_card_response=card_response
             )
         except Exception as db_err:

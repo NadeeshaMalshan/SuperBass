@@ -16,7 +16,7 @@ from agent_backend.agents.support_agent import support_agent_node
 from agent_backend.agents.review_agent import review_agent_node
 from agent_backend.agents.card_formatter import card_formatter_node
 
-from agent_backend.tools.community_tools import COMMUNITY_TOOLS
+from agent_backend.tools.community_tools import COMMUNITY_TOOLS, current_post_images
 from agent_backend.tools.booking_tools import BOOKING_TOOLS
 from agent_backend.tools.support_review_tools import SUPPORT_TOOLS, REVIEW_TOOLS
 
@@ -31,18 +31,24 @@ def route_supervisor(state: AgentState) -> Literal["community_agent", "booking_a
 
 async def community_tools_node(state: AgentState):
     """Execute community tools with automatic injection of user attached images/data from metadata."""
+    metadata = state.get("metadata") or {}
+    post_images = metadata.get("post_images") or []
+    if not post_images and metadata.get("post_data"):
+        post_images = metadata.get("post_data", {}).get("images") or []
+    if post_images:
+        current_post_images.set(post_images)
+
     messages = list(state.get("messages", []))
     if messages:
         last_msg = messages[-1]
         if hasattr(last_msg, "tool_calls") and last_msg.tool_calls:
-            metadata = state.get("metadata") or {}
-            post_images = metadata.get("post_images") or []
             post_data = metadata.get("post_data") or {}
             for tc in last_msg.tool_calls:
                 if tc.get("name") == "create_community_post":
                     args = tc.setdefault("args", {})
-                    if post_images and not args.get("images"):
-                        args["images"] = post_images
+                    # Never put raw base64 data into tool_calls args!
+                    if post_images:
+                        args["images"] = [f"[attached_image_{i+1}]" for i in range(len(post_images))]
                     if post_data.get("title"):
                         args["title"] = post_data["title"]
                     if post_data.get("content"):

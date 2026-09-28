@@ -39,6 +39,13 @@ def sanitize_payload(obj: Any) -> Any:
     return obj
 
 
+import contextvars
+
+# Scoped ContextVar storing user-attached real images for the current conversation turn
+# Keeps raw base64 data completely out of LLM token context to prevent 400 ContextLengthExceeded errors
+current_post_images: contextvars.ContextVar[Optional[List[str]]] = contextvars.ContextVar("current_post_images", default=None)
+
+
 @tool
 async def create_community_post(
     authorId: str,
@@ -62,6 +69,15 @@ async def create_community_post(
     - userName (string, optional): Author display name of the logged-in user
     - images (list of strings, optional): Base64 data URLs or image URLs attached to the post
     """
+    # Use real base64 images from contextvar if set, avoiding token explosion in LLM history
+    ctx_images = current_post_images.get()
+    if ctx_images:
+        real_images = ctx_images
+    elif images:
+        real_images = [img for img in images if not str(img).startswith("[attached_image_")]
+    else:
+        real_images = []
+
     args = {
         "authorId": authorId,
         "title": title,
@@ -71,8 +87,8 @@ async def create_community_post(
     }
     if userName:
         args["userName"] = userName
-    if images:
-        args["images"] = images
+    if real_images:
+        args["images"] = real_images
     raw = await mcp_client.call_tool("create_community_post", args)
     return sanitize_payload(raw)
 

@@ -11,6 +11,7 @@ from langchain_openai import ChatOpenAI
 from agent_backend.config import settings
 from agent_backend.state.state import AgentState
 from agent_backend.prompts.supervisor_prompts import SUPERVISOR_SYSTEM_PROMPT
+from agent_backend.utils.sanitizer import sanitize_messages_for_llm
 
 
 class SupervisorDecision(BaseModel):
@@ -42,12 +43,13 @@ async def supervisor_node(state: AgentState) -> Dict[str, Any]:
             )
             structured_router = llm.with_structured_output(SupervisorDecision, method="function_calling")
 
+            clean_messages = sanitize_messages_for_llm(messages)
             prompt_messages = [
                 SystemMessage(content=SUPERVISOR_SYSTEM_PROMPT),
                 SystemMessage(
                     content=f"Current user session: email={state.get('email', 'unknown')}, role={state.get('user_type', 'Resident')}"
                 )
-            ] + messages
+            ] + clean_messages
 
             decision: SupervisorDecision = await structured_router.ainvoke(prompt_messages)
 

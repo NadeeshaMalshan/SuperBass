@@ -206,6 +206,43 @@ def test_community_tools_count():
         assert exp in names
 
 
+def test_sanitizer_and_post_image_contextvar():
+    """Verify that huge base64 images are kept out of LLM messages and correctly passed via contextvar."""
+    from agent_backend.utils.sanitizer import sanitize_messages_for_llm, sanitize_text
+    from agent_backend.tools.community_tools import current_post_images
+
+    # 1. Test massive base64 payload sanitization
+    huge_base64 = "data:image/png;base64," + "A" * 100000
+    user_prompt = f"Please post this image: {huge_base64}"
+    clean_text = sanitize_text(user_prompt)
+    assert "data:image" not in clean_text
+    assert "[attached_image]" in clean_text
+
+    # 2. Test AIMessage tool call args sanitization
+    ai_msg = AIMessage(
+        content="I will create the post",
+        tool_calls=[{
+            "id": "call_1",
+            "name": "create_community_post",
+            "args": {
+                "authorId": "resident@workio.lk",
+                "title": "Broken pipe",
+                "content": "Water leaking",
+                "images": [huge_base64, huge_base64]
+            }
+        }]
+    )
+    clean_msgs = sanitize_messages_for_llm([HumanMessage(content=clean_text), ai_msg])
+    tool_args = clean_msgs[1].tool_calls[0]["args"]
+    assert "data:image" not in tool_args["images"][0]
+    assert "[attached_image_1]" in tool_args["images"][0]
+
+    # 3. Test contextvar storage and retrieval
+    current_post_images.set([huge_base64])
+    assert current_post_images.get() == [huge_base64]
+
+
+
 if __name__ == "__main__":
     test_card_schemas()
     test_langgraph_compilation()
