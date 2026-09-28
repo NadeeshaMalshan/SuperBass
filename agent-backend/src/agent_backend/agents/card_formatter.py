@@ -743,8 +743,10 @@ async def card_formatter_node(state: AgentState) -> Dict[str, Any]:
                             continue
                         clean_sugg.append(s)
 
-                    lower_msg = (card_response.message or "").lower()
-                    is_question = any(q in lower_msg for q in [
+                    card_text = str(card_response.card_data.get("text") or "")
+                    combined_text = f"{card_response.message or ''} {card_text}".lower()
+
+                    is_question = any(q in combined_text for q in [
                         "specify the type of service",
                         "type of service",
                         "what type of service",
@@ -760,16 +762,37 @@ async def card_formatter_node(state: AgentState) -> Dict[str, Any]:
                         "registered phone"
                     ])
 
+                    has_choice_actions = any(
+                        any(p in str(s).lower() for p in ["post", "community"]) for s in clean_sugg
+                    ) and any(
+                        any(w in str(s).lower() for w in ["worker", "find", "hire", "plumber", "electrician", "technician", "mechanic", "carpenter", "cleaner", "service"]) for s in clean_sugg
+                    )
+
+                    has_choice_text = any(k in combined_text for k in [
+                        "how would you like to proceed",
+                        "how would you like",
+                        "would you like to",
+                        "find a worker or create a community post",
+                        "proceed with finding a worker",
+                        "find a verified worker",
+                        "create a community post",
+                        "options:",
+                        "choose:"
+                    ])
+
                     is_choice = not is_question and (
-                        any(k in lower_msg for k in [
-                            "how would you like to proceed",
-                            "proceed with finding a worker or creating a community post",
-                            "find a worker or create a community post"
-                        ]) or card_response.card_data.get("is_choice") is True
+                        has_choice_actions or
+                        has_choice_text or
+                        card_response.card_data.get("is_choice") is True
                     )
 
                     if is_choice:
                         card_response.card_data["is_choice"] = True
+                        if not clean_sugg or len(clean_sugg) < 2:
+                            inferred = (state.get("metadata") or {}).get("inferred_category") or ""
+                            trade_name = inferred.split("&")[0].strip() if inferred else "worker"
+                            clean_sugg = [f"Find a {trade_name.lower()}", "Create a community post"]
+
                         structured = []
                         for idx, s in enumerate(clean_sugg):
                             if isinstance(s, dict):
@@ -779,6 +802,11 @@ async def card_formatter_node(state: AgentState) -> Dict[str, Any]:
                                 s_type = "community" if "community" in s_str.lower() or "post" in s_str.lower() or idx == 1 else "find"
                                 structured.append({"text": s_str, "type": s_type})
                         card_response.card_data["suggestions"] = structured
+
+                        if "how would you like" not in combined_text and "would you like" not in combined_text:
+                            prompt_msg = "How would you like to proceed?"
+                            card_response.message = f"{card_response.message}\n\n{prompt_msg}" if card_response.message else prompt_msg
+                            card_response.card_data["text"] = card_response.message
                     else:
                         card_response.card_data["is_choice"] = False
                         # If asking a question or not a choice turn, remove any generic choice buttons
