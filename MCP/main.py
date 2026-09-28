@@ -107,6 +107,8 @@ tools = [
                 "residentLat": {"type": "number", "description": "Resident latitude coordinate for distance proximity search"},
                 "residentLng": {"type": "number", "description": "Resident longitude coordinate for distance proximity search"},
                 "maxDistanceKm": {"type": "number", "description": "Maximum distance radius in kilometers (optional)"},
+                "maxHourlyRate": {"type": "number", "description": "Maximum hourly rate budget in LKR (e.g. 2000)"},
+                "minHourlyRate": {"type": "number", "description": "Minimum hourly rate in LKR"},
                 "availability": {"type": "string", "description": "Filter by availability"},
                 "page": {"type": "integer", "description": "Page number"},
                 "pageSize": {"type": "integer", "description": "Page size"}
@@ -410,6 +412,21 @@ async def call_search_workers(args: Dict[str, Any]):
             workers.sort(key=lambda x: (x.get("distance") is None, float('inf') if x.get("distance") is None else x.get("distance")))
         except Exception as e:
             logging.getLogger("uvicorn").warning(f"Distance calculation in MCP failed: {e}")
+
+    # Enforce budget / rate filtering if requested
+    if args.get("maxHourlyRate") is not None:
+        try:
+            max_r = float(args["maxHourlyRate"])
+            workers = [w for w in workers if w.get("hourlyRate") is not None and float(w["hourlyRate"]) <= max_r]
+        except (ValueError, TypeError):
+            pass
+
+    if args.get("minHourlyRate") is not None:
+        try:
+            min_r = float(args["minHourlyRate"])
+            workers = [w for w in workers if w.get("hourlyRate") is not None and float(w["hourlyRate"]) >= min_r]
+        except (ValueError, TypeError):
+            pass
 
     return workers
 

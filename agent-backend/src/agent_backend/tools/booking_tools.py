@@ -134,7 +134,9 @@ async def search_workers(
     location: Optional[str] = None,
     residentLat: Optional[float] = None,
     residentLng: Optional[float] = None,
-    maxDistanceKm: Optional[float] = None
+    maxDistanceKm: Optional[float] = None,
+    maxHourlyRate: Optional[float] = None,
+    minHourlyRate: Optional[float] = None
 ) -> Dict[str, Any]:
     """
     Search for verified home service workers and technicians, ranking closest workers near the resident first.
@@ -144,6 +146,8 @@ async def search_workers(
     - residentLat: Resident's latitude coordinate for proximity ranking and distance calculation
     - residentLng: Resident's longitude coordinate for proximity ranking and distance calculation
     - maxDistanceKm: Maximum distance in kilometers to search within (optional)
+    - maxHourlyRate: Maximum hourly rate in LKR (e.g. 2000, 2500) if the user specifies a budget or rate limit
+    - minHourlyRate: Minimum hourly rate in LKR (optional)
     """
     params: Dict[str, Any] = {}
     if skill:
@@ -158,6 +162,10 @@ async def search_workers(
         params["residentLng"] = residentLng
     if maxDistanceKm is not None:
         params["maxDistanceKm"] = maxDistanceKm
+    if maxHourlyRate is not None:
+        params["maxHourlyRate"] = maxHourlyRate
+    if minHourlyRate is not None:
+        params["minHourlyRate"] = minHourlyRate
 
     try:
         raw_result = await mcp_client.call_tool("search_workers", params)
@@ -167,6 +175,27 @@ async def search_workers(
 
     if not isinstance(data, list):
         data = []
+
+    # Enforce strict budget / rate filtering if requested
+    if maxHourlyRate is not None:
+        try:
+            max_limit = float(maxHourlyRate)
+            data = [
+                w for w in data
+                if isinstance(w, dict) and w.get("hourlyRate") is not None and float(w["hourlyRate"]) <= max_limit
+            ]
+        except (ValueError, TypeError):
+            pass
+
+    if minHourlyRate is not None:
+        try:
+            min_limit = float(minHourlyRate)
+            data = [
+                w for w in data
+                if isinstance(w, dict) and w.get("hourlyRate") is not None and float(w["hourlyRate"]) >= min_limit
+            ]
+        except (ValueError, TypeError):
+            pass
 
     # Determine reference resident coordinates for proximity ranking
     r_lat = residentLat

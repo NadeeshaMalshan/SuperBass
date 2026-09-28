@@ -7,7 +7,8 @@ UI Card responses (AgentCardResponse) for the frontend application.
 from typing import Dict, Any, List
 import json
 import logging
-from langchain_core.messages import SystemMessage, ToolMessage
+import re
+from langchain_core.messages import SystemMessage, ToolMessage, HumanMessage
 from langchain_openai import ChatOpenAI
 from agent_backend.config import settings
 from agent_backend.state.state import AgentState
@@ -287,6 +288,35 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
             if not isinstance(raw_workers, list):
                 raw_workers = []
 
+            # Check if there was a budget limit in tool calls or user messages
+            max_budget = None
+            for msg in reversed(messages):
+                t_calls = getattr(msg, "tool_calls", None)
+                if t_calls:
+                    for tc in t_calls:
+                        if tc.get("name") == "search_workers":
+                            tc_args = tc.get("args") or {}
+                            if tc_args.get("maxHourlyRate"):
+                                try:
+                                    max_budget = float(tc_args["maxHourlyRate"])
+                                except (ValueError, TypeError):
+                                    pass
+                            break
+                    if max_budget is not None:
+                        break
+
+            if max_budget is None:
+                for msg in reversed(messages):
+                    if isinstance(msg, HumanMessage) or getattr(msg, "type", "") == "human":
+                        user_txt = msg.content if isinstance(msg.content, str) else str(msg.content)
+                        m = re.search(r'(?:below|under|less than|max(?:imum)?|rate of|budget of)\s*(?:rs\.?|lkr)?\s*(\d+)', user_txt, re.IGNORECASE)
+                        if m:
+                            try:
+                                max_budget = float(m.group(1))
+                            except ValueError:
+                                pass
+                            break
+
             worker_summaries: List[WorkerSummary] = []
             for w in raw_workers:
                 if not isinstance(w, dict):
@@ -320,6 +350,9 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
                     )
                 )
 
+            if max_budget is not None:
+                worker_summaries = [w for w in worker_summaries if w.hourlyRate is not None and w.hourlyRate <= max_budget]
+
             if worker_summaries:
                 # Guarantee closest workers first
                 worker_summaries.sort(key=lambda x: (x.distance is None, float('inf') if x.distance is None else x.distance))
@@ -331,14 +364,19 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
                 )
                 return AgentCardResponse(
                     response_type="worker_list",
-                    message=last_ai_content or f"I found {len(worker_summaries)} verified professionals for you:",
+                    message=last_ai_content or f"I found {len(worker_summaries)} verified professionals matching your budget:",
                     card_data=card.model_dump(),
                     metadata={"agent": "booking_agent", "user_email": email}
                 )
 
+            rates = [float(w.get("hourlyRate")) for w in raw_workers if isinstance(w, dict) and w.get("hourlyRate") is not None]
+            min_rate = min(rates) if rates else None
+            rate_info = f" The lowest available rate for nearby workers starts from Rs. {int(min_rate)}/hr." if min_rate else ""
+            budget_str = f" with an hourly rate below Rs. {int(max_budget)}" if max_budget else " matching that criteria"
+            no_match_text = f"No verified service workers found{budget_str}.{rate_info}"
             card = TextMessageCard(
-                text=last_ai_content or "No verified service workers found matching that criteria.",
-                suggestions=["Search other categories", "Post a community request", "Check availability"]
+                text=no_match_text,
+                suggestions=["Create a community post", f"Show workers from Rs. {int(min_rate)}/hr"] if min_rate else ["Create a community post", "Search all workers"]
             )
             return AgentCardResponse(
                 response_type="text_message",
@@ -362,8 +400,59 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
             metadata={"agent": "booking_agent", "user_email": email}
         )
 
+    # Check if this is a choice turn offering finding a worker vs community post
+    is_choice_turn = any(kw in lower_content for kw in [
+        "create a community post or find",
+        "how would you like to proceed",
+        "would you like to proceed with finding a worker or creating a community post",
+        "would you like to find a worker or create a community post",
+        "proceed with finding a worker"
+    ]) or (
+        bool((metadata or {}).get("suggested_actions"))
+        and any(kw in lower_content for kw in ["how would you like", "proceed", "option", "recommendations and offers"])
+    )
+
+    if is_choice_turn:
+        dyn_suggestions = (metadata or {}).get("suggested_actions")
+        if not dyn_suggestions or not isinstance(dyn_suggestions, list):
+            dyn_suggestions = [
+                "Find a verified service worker",
+                "Create a community post"
+            ]
+
+        structured_suggestions = []
+        for idx, item in enumerate(dyn_suggestions):
+            if isinstance(item, dict):
+                text_val = str(item.get("text") or item.get("label") or "")
+                if any(t in text_val.lower() for t in ["tip", "diy", "myself", "advice", "tutorial", "guide"]):
+                    continue
+                structured_suggestions.append(item)
+            else:
+                item_str = str(item)
+                if any(t in item_str.lower() for t in ["tip", "diy", "myself", "advice", "tutorial", "guide"]):
+                    continue
+                item_type = "community" if "community" in item_str.lower() or "post" in item_str.lower() or idx == 1 else "find"
+                structured_suggestions.append({
+                    "text": item_str,
+                    "type": item_type
+                })
+
+        card = TextMessageCard(
+            text=last_ai_content,
+            suggestions=structured_suggestions
+        )
+        card_data = card.model_dump()
+        card_data["is_choice"] = True
+
+        return AgentCardResponse(
+            response_type="text_message",
+            message=card.text,
+            card_data=card_data,
+            metadata={"agent": "supervisor", "user_email": email}
+        )
+
     # Check if booking agent is asking for the service issue / problem (Step 2)
-    if any(kw in lower_content for kw in ["what issue", "issue or service", "need help with", "what problem", "what service"]):
+    if any(kw in lower_content for kw in ["what issue are you facing", "issue or service needed", "describe the issue", "describe the problem"]):
         card = TextMessageCard(
             text=last_ai_content,
             suggestions=["Leaking pipe repair", "Tap replacement", "Pipe installation", "Bathroom plumbing fix"]
@@ -477,53 +566,6 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
         "registered phone"
     ])
 
-    # Check if the assistant is offering the choice between finding a worker and creating a community post
-    is_choice_turn = not is_asking_question and any(kw in lower_content for kw in [
-        "create a community post or find",
-        "how would you like to proceed",
-        "would you like to proceed with finding a worker or creating a community post",
-        "would you like to find a worker or create a community post"
-    ])
-
-    if is_choice_turn:
-        # Use dynamic suggested actions provided by the LLM in metadata, or sensible clean defaults
-        dyn_suggestions = (metadata or {}).get("suggested_actions")
-        if not dyn_suggestions or not isinstance(dyn_suggestions, list):
-            dyn_suggestions = [
-                "Find a verified service worker",
-                "Create a community post"
-            ]
-
-        structured_suggestions = []
-        for idx, item in enumerate(dyn_suggestions):
-            if isinstance(item, dict):
-                text_val = str(item.get("text") or item.get("label") or "")
-                if any(t in text_val.lower() for t in ["tip", "diy", "myself", "advice", "tutorial", "guide"]):
-                    continue
-                structured_suggestions.append(item)
-            else:
-                item_str = str(item)
-                if any(t in item_str.lower() for t in ["tip", "diy", "myself", "advice", "tutorial", "guide"]):
-                    continue
-                item_type = "community" if "community" in item_str.lower() or "post" in item_str.lower() or idx == 1 else "find"
-                structured_suggestions.append({
-                    "text": item_str,
-                    "type": item_type
-                })
-
-        card = TextMessageCard(
-            text=last_ai_content,
-            suggestions=structured_suggestions
-        )
-        card_data = card.model_dump()
-        card_data["is_choice"] = True
-
-        return AgentCardResponse(
-            response_type="text_message",
-            message=card.text,
-            card_data=card_data,
-            metadata={"agent": "supervisor", "user_email": email}
-        )
 
     # Check if the assistant has prepared a community post draft awaiting confirmation
     is_draft = not is_choice_turn and (any(keyword in lower_content for keyword in ["draft", "confirm and publish", "would you like me to confirm", "would you like me to publish"]) or (
@@ -635,6 +677,61 @@ async def card_formatter_node(state: AgentState) -> Dict[str, Any]:
 
             card_response: AgentCardResponse = await structured_formatter.ainvoke(format_messages)
             if card_response:
+                # If worker_list, enforce budget constraint strictly
+                if card_response.response_type == "worker_list" and isinstance(card_response.card_data, dict):
+                    budget_limit = None
+                    for msg in reversed(messages):
+                        t_calls = getattr(msg, "tool_calls", None)
+                        if t_calls:
+                            for tc in t_calls:
+                                if tc.get("name") == "search_workers":
+                                    tc_args = tc.get("args") or {}
+                                    if tc_args.get("maxHourlyRate"):
+                                        try:
+                                            budget_limit = float(tc_args["maxHourlyRate"])
+                                        except (ValueError, TypeError):
+                                            pass
+                                    break
+                            if budget_limit is not None:
+                                break
+
+                    if budget_limit is None:
+                        for msg in reversed(messages):
+                            if isinstance(msg, HumanMessage) or getattr(msg, "type", "") == "human":
+                                user_txt = msg.content if isinstance(msg.content, str) else str(msg.content)
+                                m = re.search(r'(?:below|under|less than|max(?:imum)?|rate of|budget of)\s*(?:rs\.?|lkr)?\s*(\d+)', user_txt, re.IGNORECASE)
+                                if m:
+                                    try:
+                                        budget_limit = float(m.group(1))
+                                    except ValueError:
+                                        pass
+                                    break
+
+                    if budget_limit is not None:
+                        existing_workers = card_response.card_data.get("workers") or []
+                        valid_workers = [
+                            w for w in existing_workers
+                            if isinstance(w, dict) and w.get("hourlyRate") is not None and float(w["hourlyRate"]) <= budget_limit
+                        ]
+                        if valid_workers:
+                            card_response.card_data["workers"] = valid_workers
+                            card_response.card_data["totalCount"] = len(valid_workers)
+                        else:
+                            rates = [float(w["hourlyRate"]) for w in existing_workers if isinstance(w, dict) and w.get("hourlyRate") is not None]
+                            min_rate = min(rates) if rates else None
+                            rate_info = f" The lowest available rate for nearby workers starts from Rs. {int(min_rate)}/hr." if min_rate else ""
+                            msg_text = f"No verified service workers found with an hourly rate below Rs. {int(budget_limit)}.{rate_info}"
+                            card = TextMessageCard(
+                                text=msg_text,
+                                suggestions=["Create a community post", f"Show workers from Rs. {int(min_rate)}/hr"] if min_rate else ["Create a community post", "Search all workers"]
+                            )
+                            card_response = AgentCardResponse(
+                                response_type="text_message",
+                                message=msg_text,
+                                card_data=card.model_dump(),
+                                metadata={"agent": "booking_agent", "user_email": email}
+                            )
+
                 # Sanitize card_data suggestions to remove any tips or DIY advice
                 if isinstance(card_response.card_data, dict):
                     metadata_sugg = state.get("metadata", {}).get("suggested_actions")

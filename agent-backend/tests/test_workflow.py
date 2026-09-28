@@ -3,6 +3,7 @@ Verification test suite for Workio Agent Backend.
 Tests graph compilation, MCP tools, card schema validation, and routing.
 """
 
+import json
 import pytest
 import asyncio
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
@@ -271,6 +272,60 @@ def test_sanitizer_and_post_image_contextvar():
     # 3. Test contextvar storage and retrieval
     current_post_images.set([huge_base64])
     assert current_post_images.get() == [huge_base64]
+
+
+def test_deterministic_card_builder_search_workers_budget_filtering():
+    """Verify that worker results strictly enforce user's hourly rate budget."""
+    raw_workers_json = json.dumps([
+        {"id": 1, "name": "Kamal Perera", "hourlyRate": 2400.0, "description": "Plumber", "skills": ["Plumbing"]},
+        {"id": 2, "name": "Malith Mendis", "hourlyRate": 2900.0, "description": "Plumber", "skills": ["Plumbing"]}
+    ])
+
+    # Case 1: Budget 2000 -> Neither qualifies -> TextMessageCard explaining lowest rate is 2400
+    state_below_2000 = {
+        "messages": [
+            HumanMessage(content="i want hourly rate below 2000"),
+            AIMessage(
+                content="Searching plumbers...",
+                tool_calls=[{"id": "call_w1", "name": "search_workers", "args": {"category": "Plumbing", "maxHourlyRate": 2000}}]
+            ),
+            ToolMessage(content=raw_workers_json, tool_call_id="call_w1", name="search_workers"),
+            AIMessage(content="Here are the available plumbers:")
+        ],
+        "email": "resident@workio.lk",
+        "user_type": "Resident",
+        "user_profile": None,
+        "next": None,
+        "structured_response": None,
+        "metadata": {}
+    }
+    card_resp1 = _deterministic_card_builder(state_below_2000)
+    assert card_resp1.response_type == "text_message"
+    assert "2000" in card_resp1.message
+    assert "2400" in card_resp1.message
+
+    # Case 2: Budget 2500 -> Only Kamal (2400) qualifies
+    state_below_2500 = {
+        "messages": [
+            HumanMessage(content="i want hourly rate below 2500"),
+            AIMessage(
+                content="Searching plumbers...",
+                tool_calls=[{"id": "call_w2", "name": "search_workers", "args": {"category": "Plumbing", "maxHourlyRate": 2500}}]
+            ),
+            ToolMessage(content=raw_workers_json, tool_call_id="call_w2", name="search_workers"),
+            AIMessage(content="Here are the available plumbers:")
+        ],
+        "email": "resident@workio.lk",
+        "user_type": "Resident",
+        "user_profile": None,
+        "next": None,
+        "structured_response": None,
+        "metadata": {}
+    }
+    card_resp2 = _deterministic_card_builder(state_below_2500)
+    assert card_resp2.response_type == "worker_list"
+    assert card_resp2.card_data["totalCount"] == 1
+    assert card_resp2.card_data["workers"][0]["name"] == "Kamal Perera"
 
 
 

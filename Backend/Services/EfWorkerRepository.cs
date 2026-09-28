@@ -28,7 +28,7 @@ namespace Superbass.Services
             return await _context.Workers.Include(w => w.Skills).FirstOrDefaultAsync(w => w.ResidentEmail == email || w.Email == email);
         }
 
-        public async Task<IEnumerable<Worker>> SearchWorkersAsync(string? skill, string? location, double? maxDistanceKm, double? residentLat = null, double? residentLng = null)
+        public async Task<IEnumerable<Worker>> SearchWorkersAsync(string? skill, string? location, double? maxDistanceKm, double? residentLat = null, double? residentLng = null, decimal? maxHourlyRate = null, decimal? minHourlyRate = null)
         {
             var query = _context.Workers.Include(w => w.Skills).Include(w => w.Resident).AsQueryable();
 
@@ -45,6 +45,16 @@ namespace Superbass.Services
             if (!string.IsNullOrWhiteSpace(location))
             {
                 query = query.Where(w => w.PrimaryServiceArea != null && w.PrimaryServiceArea.ToLower().Contains(location.ToLower()));
+            }
+
+            if (maxHourlyRate.HasValue)
+            {
+                query = query.Where(w => w.HourlyRate != null && w.HourlyRate <= maxHourlyRate.Value);
+            }
+
+            if (minHourlyRate.HasValue)
+            {
+                query = query.Where(w => w.HourlyRate != null && w.HourlyRate >= minHourlyRate.Value);
             }
 
             var workers = await query.ToListAsync();
