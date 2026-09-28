@@ -42,6 +42,15 @@ export default function CreateCommunityPostCard({ data = {}, onAction }) {
   );
   const [location, setLocation] = useState(data.location || 'Colombo');
 
+  useEffect(() => {
+    if (data.communityId || data.category) {
+      setSelectedCategory(data.communityId || data.category);
+    }
+    if (data.title) setTitle(data.title);
+    if (data.content || data.description) setDescription(data.content || data.description);
+    if (data.location) setLocation(data.location);
+  }, [data.communityId, data.category, data.title, data.content, data.description, data.location]);
+
   // Initial photos start empty so user can attach real photos
   const [photos, setPhotos] = useState(
     Array.isArray(data.photos) ? data.photos : (Array.isArray(data.images) ? data.images.map((img, i) => ({ id: `init-${i}`, url: img })) : [])
@@ -83,8 +92,11 @@ export default function CreateCommunityPostCard({ data = {}, onAction }) {
   };
 
   const currentCategoryObj =
-    CATEGORY_OPTIONS.find((c) => c.id.toLowerCase() === selectedCategory.toLowerCase()) ||
-    CATEGORY_OPTIONS[0];
+    CATEGORY_OPTIONS.find(
+      (c) =>
+        c.id.toLowerCase() === (selectedCategory || '').toLowerCase() ||
+        c.label.toLowerCase() === (selectedCategory || '').toLowerCase()
+    ) || CATEGORY_OPTIONS[0];
 
   const handleContinue = () => {
     if (currentStep === 1) {
@@ -188,7 +200,7 @@ export default function CreateCommunityPostCard({ data = {}, onAction }) {
                   {CATEGORY_OPTIONS.map((cat) => (
                     <div
                       key={cat.id}
-                      className={`category-dropdown-option ${cat.id === selectedCategory ? 'selected' : ''}`}
+                      className={`category-dropdown-option ${cat.id === currentCategoryObj.id ? 'selected' : ''}`}
                       onClick={() => {
                         setSelectedCategory(cat.id);
                         setCategoryDropdownOpen(false);
@@ -198,7 +210,7 @@ export default function CreateCommunityPostCard({ data = {}, onAction }) {
                         <img src={cat.icon} alt={cat.label} />
                       </div>
                       <span>{cat.label}</span>
-                      {cat.id === selectedCategory && (
+                      {cat.id === currentCategoryObj.id && (
                         <i className="fa-solid fa-check option-check"></i>
                       )}
                     </div>

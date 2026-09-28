@@ -490,22 +490,6 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
         if not draft_location or draft_location.lower() in ["your location", "location", "n/a", "unknown", "none", "{location}"]:
             draft_location = user_loc_default
 
-        # Resolve clean category name if numeric ID or generic
-        if draft_category.isdigit() or draft_category.lower() in ["general", "none", "unknown", "community", "colombo-community"]:
-            lower_text = (draft_title + " " + draft_content).lower()
-            if any(k in lower_text for k in ["plumb", "leak", "pipe", "tap", "drain", "washroom", "toilet"]):
-                draft_category = "Plumbing"
-            elif any(k in lower_text for k in ["ac", "air condition", "cool", "filter", "compressor"]):
-                draft_category = "AC Repair & Air Conditioning"
-            elif any(k in lower_text for k in ["electr", "wiring", "switch", "light", "breaker", "power"]):
-                draft_category = "Electrical"
-            elif any(k in lower_text for k in ["carpent", "wood", "door", "furniture", "table"]):
-                draft_category = "Carpentry"
-            elif any(k in lower_text for k in ["clean", "maid", "sweep", "mop"]):
-                draft_category = "Cleaning"
-            elif any(k in lower_text for k in ["paint", "color", "wall"]):
-                draft_category = "Painting"
-
         card = PostConfirmationCard(
             action="create",
             title=draft_title,
