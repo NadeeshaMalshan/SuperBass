@@ -1,7 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import craftsmanAvatar from '../../assets/carftman.png';
-import acIndoorSample from '../../assets/ac-indoor-sample.jpg';
-import acOutdoorSample from '../../assets/ac-outdoor-sample.jpg';
 import {
   acImage,
   plumbingImage,
@@ -36,20 +34,19 @@ export default function CreateCommunityPostCard({ data = {}, onAction }) {
     data.communityId || data.category || 'AC Repair & Air Conditioning'
   );
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
-  const [title, setTitle] = useState(data.title || 'AC Repair Services Needed');
+  const [title, setTitle] = useState(data.title || 'Service Request');
   const [description, setDescription] = useState(
     data.content ||
       data.description ||
-      'I am looking for professional AC repair services in Colombo. If you have experience in repairing air conditioning units and can provide timely service, please reach out to me. Thank you!'
+      'I am looking for professional services in Colombo. Please reach out if you can assist.'
   );
   const [location, setLocation] = useState(data.location || 'Colombo');
   const [urgency, setUrgency] = useState(data.urgency || 'As soon as possible');
 
-  // Initial photos matching the user screenshot
-  const [photos, setPhotos] = useState([
-    { id: 'sample-1', url: acIndoorSample },
-    { id: 'sample-2', url: acOutdoorSample },
-  ]);
+  // Initial photos start empty so user can attach real photos
+  const [photos, setPhotos] = useState(
+    Array.isArray(data.photos) ? data.photos : (Array.isArray(data.images) ? data.images.map((img, i) => ({ id: `init-${i}`, url: img })) : [])
+  );
 
   const fileInputRef = useRef(null);
 
@@ -60,12 +57,26 @@ export default function CreateCommunityPostCard({ data = {}, onAction }) {
   const handlePhotoUpload = (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
-    const newItems = files.map((file, idx) => ({
-      id: `upload-${Date.now()}-${idx}`,
-      url: URL.createObjectURL(file),
-      file,
-    }));
-    setPhotos((prev) => [...prev, ...newItems].slice(0, 5));
+
+    files.forEach((file, idx) => {
+      const reader = new FileReader();
+      reader.onload = (uploadEvent) => {
+        const base64Url = uploadEvent.target.result;
+        setPhotos((prev) => {
+          if (prev.length >= 5) return prev;
+          return [
+            ...prev,
+            {
+              id: `upload-${Date.now()}-${idx}`,
+              url: base64Url,
+              name: file.name,
+              file,
+            },
+          ];
+        });
+      };
+      reader.readAsDataURL(file);
+    });
   };
 
   const removePhoto = (idToRemove) => {
@@ -81,9 +92,20 @@ export default function CreateCommunityPostCard({ data = {}, onAction }) {
       setCurrentStep(2);
     } else if (currentStep === 2) {
       setCurrentStep(3);
-      // Trigger confirmation action to Agent backend with current edited values
+      // Trigger confirmation action to Agent backend with current edited values and real attached images
       const promptToExecute = `CONFIRM_PUBLISH: Yes, please publish the community post '${title}' in ${selectedCategory} for ${location} with urgency '${urgency}'. Description: ${description}`;
-      onAction && onAction('confirm_post', promptToExecute);
+      const payloadObj = {
+        prompt: promptToExecute,
+        postData: {
+          title,
+          content: description,
+          communityId: selectedCategory,
+          location,
+          urgency,
+          images: photos.map((p) => p.url),
+        },
+      };
+      onAction && onAction('confirm_post', payloadObj);
     }
   };
 
