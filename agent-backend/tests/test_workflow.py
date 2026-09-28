@@ -163,10 +163,12 @@ async def test_supervisor_issue_description_clarification():
 
     # Verify card formatter builds a text_message card with suggestions, NOT a post_confirmation card
     state["messages"].append(result["messages"][0])
+    if result.get("metadata"):
+        state["metadata"] = result["metadata"]
     card_resp = _deterministic_card_builder(state)
     assert card_resp.response_type == "text_message"
-    assert any("electrician" in s.lower() for s in card_resp.card_data.get("suggestions", []))
-    assert any("community post" in s.lower() for s in card_resp.card_data.get("suggestions", []))
+    assert any("worker" in str(s).lower() or "electrician" in str(s).lower() for s in card_resp.card_data.get("suggestions", []))
+    assert any("community post" in str(s).lower() for s in card_resp.card_data.get("suggestions", []))
 
 
 def test_deterministic_card_builder_for_created_post():

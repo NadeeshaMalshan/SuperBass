@@ -437,26 +437,17 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
     ])
 
     if is_choice_turn:
-        trade = "worker"
-        if any(w in lower_content for w in ["electric", "wire", "wiring"]):
-            trade = "electrician"
-        elif any(w in lower_content for w in ["plumb", "leak", "tap", "pipe"]):
-            trade = "plumber"
-        elif any(w in lower_content for w in ["ac", "air condition"]):
-            trade = "AC technician"
-        elif any(w in lower_content for w in ["carpent", "wood"]):
-            trade = "carpenter"
-        elif any(w in lower_content for w in ["paint"]):
-            trade = "painter"
-        elif any(w in lower_content for w in ["clean"]):
-            trade = "cleaner"
+        # Use dynamic suggested actions provided by the LLM in metadata, or sensible clean defaults
+        dyn_suggestions = (metadata or {}).get("suggested_actions")
+        if not dyn_suggestions or not isinstance(dyn_suggestions, list):
+            dyn_suggestions = [
+                "Find a verified service worker",
+                "Create a community post"
+            ]
 
         card = TextMessageCard(
             text=last_ai_content,
-            suggestions=[
-                f"Find a verified {trade}",
-                "Create a community post"
-            ]
+            suggestions=dyn_suggestions
         )
         return AgentCardResponse(
             response_type="text_message",
