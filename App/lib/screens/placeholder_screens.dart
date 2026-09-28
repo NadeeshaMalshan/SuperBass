@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../models/auth_user.dart';
@@ -81,8 +82,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _phoneController,
-                decoration: const InputDecoration(labelText: 'Phone Number', border: OutlineInputBorder()),
+                decoration: const InputDecoration(labelText: 'Phone Number (10 digits)', hintText: '07XXXXXXXX', border: OutlineInputBorder()),
                 keyboardType: TextInputType.phone,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(10),
+                ],
+                validator: (val) {
+                  if (val != null && val.trim().isNotEmpty && !RegExp(r'^0\d{9}$').hasMatch(val.trim())) {
+                    return 'Phone number must be exactly 10 digits starting with 0';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 32),
               ElevatedButton(

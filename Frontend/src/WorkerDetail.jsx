@@ -347,6 +347,13 @@ export default function WorkerDetail() {
         return;
       }
 
+      const phoneRegex = /^0\d{9}$/;
+      if (!phoneRegex.test((bookingForm.contactPhone || '').trim())) {
+        setHireError('Phone number must be exactly 10 digits starting with 0 (e.g., 0771234567).');
+        setHireStep('form');
+        return;
+      }
+
       let finalAddress = bookingForm.locationAddress || worker?.primaryServiceArea || '';
       let updatedDesc = bookingForm.description;
 
@@ -946,10 +953,16 @@ export default function WorkerDetail() {
 
                   <md-outlined-text-field
                     type="tel"
-                    label="Contact Phone"
+                    label="Contact Phone (10 digits)"
                     required
+                    maxLength={10}
                     value={bookingForm.contactPhone}
-                    onInput={(e) => setBookingForm({ ...bookingForm, contactPhone: e.target.value })}
+                    error={bookingForm.contactPhone ? !/^0\d{9}$/.test(bookingForm.contactPhone) : false}
+                    error-text={bookingForm.contactPhone && !/^0\d{9}$/.test(bookingForm.contactPhone) ? "Must be 10 digits starting with 0" : ""}
+                    onInput={(e) => {
+                      const clean = e.target.value.replace(/\D/g, '').slice(0, 10);
+                      setBookingForm({ ...bookingForm, contactPhone: clean });
+                    }}
                     style={{ width: '100%' }}
                   >
                     <md-icon slot="leading-icon">phone</md-icon>

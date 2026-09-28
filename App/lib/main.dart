@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'models/app_notification_model.dart';
 import 'models/auth_user.dart';
@@ -9,6 +10,7 @@ import 'models/worker_model.dart';
 import 'screens/chat_screen.dart';
 import 'screens/community_screen.dart';
 import 'screens/join_screen.dart';
+import 'screens/onboarding_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/worker/worker_portal_screen.dart';
 import 'screens/worker/become_worker_sheet.dart';
@@ -67,6 +69,7 @@ class SuperBassApp extends StatelessWidget {
       routes: {
         '/': (context) => const MainNavigationShell(),
         '/join': (context) => const JoinScreen(),
+        '/onboarding': (context) => const OnboardingScreen(),
       },
     );
   }
@@ -591,14 +594,18 @@ class _FindTabScreenState extends State<FindTabScreen> {
                 ),
                 const SizedBox(height: 14),
                 Text(
-                  'Contact Phone',
+                  'Contact Phone (10 digits, e.g. 0771234567)',
                   style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 14),
                 ),
                 const SizedBox(height: 6),
                 TextField(
                   controller: phoneController,
                   keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(hintText: '07x xxx xxxx'),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(10),
+                  ],
+                  decoration: const InputDecoration(hintText: '07XXXXXXXX'),
                 ),
                 const SizedBox(height: 14),
                 Text(
@@ -665,6 +672,17 @@ class _FindTabScreenState extends State<FindTabScreen> {
                     onPressed: isSubmitting
                         ? null
                         : () async {
+                            final phone = phoneController.text.trim();
+                            if (!RegExp(r'^0\d{9}$').hasMatch(phone)) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Phone number must be exactly 10 digits starting with 0 (e.g. 0771234567).'),
+                                  backgroundColor: AppColors.error,
+                                ),
+                              );
+                              return;
+                            }
+
                             setModalState(() => isSubmitting = true);
                             
                             DateTime? finalDate;

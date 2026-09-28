@@ -962,6 +962,42 @@ class ApiService {
     }
   }
 
+  /// Complete Onboarding: POST /api/auth/onboarding
+  Future<Map<String, dynamic>> completeOnboarding({
+    required String phoneNo,
+    required String address,
+    double? locationLat,
+    double? locationLng,
+  }) async {
+    try {
+      final uri = Uri.parse(ApiConfig.onboardingUrl);
+      final body = jsonEncode({
+        'phoneNo': phoneNo,
+        'address': address,
+        'locationLat': locationLat,
+        'locationLng': locationLng,
+      });
+      debugPrint('Completing onboarding via: $uri');
+      final response = await http.post(uri, headers: _headers, body: body);
+      
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return {'success': true, 'message': 'Onboarding complete'};
+      }
+      
+      String errorMsg = 'Failed to complete onboarding (${response.statusCode})';
+      try {
+        final errJson = jsonDecode(response.body);
+        if (errJson['message'] != null) {
+          errorMsg = errJson['message'];
+        }
+      } catch (_) {}
+      return {'success': false, 'message': errorMsg};
+    } catch (e) {
+      debugPrint('Error completing onboarding: $e');
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
   /// Update Profile: PUT /api/residents/{email}
   Future<bool> updateProfile(String email, Map<String, dynamic> data) async {
     try {
@@ -994,3 +1030,4 @@ class ApiService {
     }
   }
 }
+
