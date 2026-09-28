@@ -682,12 +682,36 @@
    Worker List Card (Matching Modern Workio Card Reference)
    ========================================================================== */
 
+.worker-list-container.worker-count-1,
+.worker-list-container.worker-count-2 {
+  width: fit-content;
+  max-width: 100%;
+}
+
 .agent-worker-cards-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
   width: 100%;
   box-sizing: border-box;
+}
+
+.agent-worker-cards-grid.worker-count-1 {
+  grid-template-columns: minmax(280px, 350px);
+  width: fit-content;
+  max-width: 100%;
+}
+
+.agent-worker-cards-grid.worker-count-2 {
+  grid-template-columns: repeat(2, minmax(280px, 350px));
+  width: fit-content;
+  max-width: 100%;
+}
+
+.agent-worker-cards-grid.worker-count-1 .agent-worker-card-item,
+.agent-worker-cards-grid.worker-count-2 .agent-worker-card-item {
+  width: 350px;
+  max-width: 100%;
 }
 
 .agent-worker-card-item {
@@ -1081,14 +1105,26 @@
 }
 
 @media (max-width: 1100px) {
-  .agent-worker-cards-grid {
+  .agent-worker-cards-grid:not(.worker-count-1):not(.worker-count-2) {
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .agent-worker-cards-grid.worker-count-2 {
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+  .agent-worker-cards-grid.worker-count-1 .agent-worker-card-item,
+  .agent-worker-cards-grid.worker-count-2 .agent-worker-card-item {
+    width: 100%;
   }
 }
 
 @media (max-width: 600px) {
   .agent-worker-cards-grid {
     grid-template-columns: 1fr;
+    width: 100%;
   }
   .agent-worker-card-item {
     padding: 16px 14px;

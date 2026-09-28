@@ -24,21 +24,33 @@ export default function WorkerListCard({ data = {}, onAction }) {
     setFavorites(prev => ({ ...prev, [workerId]: !prev[workerId] }));
   };
 
+  const workerCount = workers.length;
+
   return (
-    <div className="agent-card-container">
+    <div className={`agent-card-container worker-list-container worker-count-${workerCount}`}>
       {/* Header bar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <div
+        className={`agent-worker-list-header worker-count-${workerCount}`}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '12px',
+          gap: '10px',
+          flexWrap: 'wrap'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <span className="agent-card-badge category">
             <i className="fa-solid fa-location-dot"></i> {category ? `Closest ${category} Pros` : 'Closest Recommended Pros'}
           </span>
-          <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 700 }}>
+          <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 700, whiteSpace: 'nowrap' }}>
             {totalCount || workers.length} available
           </span>
         </div>
         <button
           className="agent-card-btn secondary"
-          style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+          style={{ padding: '4px 10px', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
           onClick={() => onAction && onAction('navigate', `/find?query=${encodeURIComponent(category || query || '')}`)}
         >
           Explore All on Map
@@ -46,7 +58,7 @@ export default function WorkerListCard({ data = {}, onAction }) {
       </div>
 
       {/* Grid of Worker Cards */}
-      <div className="agent-worker-cards-grid">
+      <div className={`agent-worker-cards-grid worker-count-${workerCount}`}>
         {workers.map((worker) => {
           const isFav = !!favorites[worker.id];
           const initial = (worker.name || 'W')[0].toUpperCase();

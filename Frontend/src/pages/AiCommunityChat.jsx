@@ -533,9 +533,12 @@ export default function AiCommunityChat() {
                   );
 
                   const isWorkerList = !isUser && msg.cardResponse?.response_type === 'worker_list';
+                  const workerCount = isWorkerList ? (msg.cardResponse?.card_data?.workers?.length || 0) : 0;
+                  const isFullWidthWorkerList = isWorkerList && workerCount >= 3;
+                  const workerCountClass = isWorkerList ? `worker-count-${workerCount}` : '';
 
                 return (
-                  <div key={msg.id} className={`ai-bubble-row ${isUser ? 'resident' : 'assistant'} ${isWorkerList ? 'full-width' : ''}`}>
+                  <div key={msg.id} className={`ai-bubble-row ${isUser ? 'resident' : 'assistant'} ${isWorkerList ? 'worker-list-row' : ''} ${isFullWidthWorkerList ? 'full-width' : ''} ${workerCountClass}`}>
                     {!isUser && (
                       <div className="ai-msg-avatar bot-av">
                         <img
@@ -546,7 +549,7 @@ export default function AiCommunityChat() {
                       </div>
                     )}
 
-                    <div className={`ai-msg-wrapper ${isWorkerList ? 'full-width' : ''}`}>
+                    <div className={`ai-msg-wrapper ${isWorkerList ? 'worker-list-msg-wrapper' : ''} ${isFullWidthWorkerList ? 'full-width' : ''} ${workerCountClass}`}>
                       {isUser ? (
                         <div className="ai-bubble resident">
                           <div>{msg.text}</div>
@@ -558,7 +561,7 @@ export default function AiCommunityChat() {
                               <div>{msg.cardResponse.message}</div>
                             </div>
                           )}
-                          <div className={`ai-bubble assistant ai-card-bubble ${isWorkerList ? 'worker-list-bubble' : ''}`}>
+                          <div className={`ai-bubble assistant ai-card-bubble ${isWorkerList ? 'worker-list-bubble' : ''} ${workerCountClass}`}>
                             <AgentCardDispatcher
                               response={msg.cardResponse}
                               onAction={handleCardAction}
