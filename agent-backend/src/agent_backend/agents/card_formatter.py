@@ -426,15 +426,63 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
             metadata={"agent": "community_agent", "user_email": email}
         )
 
+    # Check if the assistant is asking for the trade or service type (e.g. user asked "find a worker")
+    is_asking_trade = any(kw in lower_content for kw in [
+        "specify the type of service",
+        "type of service you need",
+        "what type of service",
+        "what kind of service",
+        "which service do you need",
+        "service do you need help with",
+        "what service do you need",
+        "type of worker",
+        "kind of worker"
+    ])
+    if is_asking_trade:
+        card = TextMessageCard(
+            text=last_ai_content,
+            suggestions=[
+                "Plumbing & Pipe Repair",
+                "Electrical & Wiring",
+                "AC Repair & Air Conditioning",
+                "Cleaning & Housekeeping",
+                "Carpentry & Woodwork",
+                "Appliance Repair"
+            ]
+        )
+        card_data = card.model_dump()
+        card_data["is_choice"] = False
+        return AgentCardResponse(
+            response_type="text_message",
+            message=card.text,
+            card_data=card_data,
+            metadata={"agent": "booking_agent", "user_email": email}
+        )
+
+    # Check if the assistant is asking a question (clarifying questions must never trigger choice cards!)
+    is_asking_question = any(kw in lower_content for kw in [
+        "specify the type of service",
+        "type of service",
+        "what type of service",
+        "what kind of service",
+        "what specific service",
+        "what problem",
+        "what issue",
+        "tell me a few details",
+        "what is the problem",
+        "what date",
+        "preferred date",
+        "when would you like",
+        "registered address",
+        "registered phone"
+    ])
+
     # Check if the assistant is offering the choice between finding a worker and creating a community post
-    is_choice_turn = any(kw in lower_content for kw in [
+    is_choice_turn = not is_asking_question and any(kw in lower_content for kw in [
         "create a community post or find",
-        "find a verified",
-        "find an existing worker",
         "how would you like to proceed",
-        "would you like to:",
-        "or create a community post",
-        "publish your service request to the community board"
+        "would you like to proceed with finding a worker or creating a community post",
+        "would you like to find a worker or create a community post"
     ])
 
     if is_choice_turn:
@@ -599,14 +647,31 @@ async def card_formatter_node(state: AgentState) -> Dict[str, Any]:
                         clean_sugg.append(s)
 
                     lower_msg = (card_response.message or "").lower()
-                    is_choice = any(k in lower_msg for k in [
-                        "how would you like to proceed",
-                        "would you like to",
-                        "proceed with finding",
-                        "or creating a community post",
-                        "find a verified"
+                    is_question = any(q in lower_msg for q in [
+                        "specify the type of service",
+                        "type of service",
+                        "what type of service",
+                        "what kind of service",
+                        "what specific service",
+                        "what problem",
+                        "what issue",
+                        "tell me a few details",
+                        "what date",
+                        "preferred date",
+                        "when would you like",
+                        "registered address",
+                        "registered phone"
                     ])
-                    if is_choice or card_response.card_data.get("is_choice"):
+
+                    is_choice = not is_question and (
+                        any(k in lower_msg for k in [
+                            "how would you like to proceed",
+                            "proceed with finding a worker or creating a community post",
+                            "find a worker or create a community post"
+                        ]) or card_response.card_data.get("is_choice") is True
+                    )
+
+                    if is_choice:
                         card_response.card_data["is_choice"] = True
                         structured = []
                         for idx, s in enumerate(clean_sugg):
@@ -618,7 +683,16 @@ async def card_formatter_node(state: AgentState) -> Dict[str, Any]:
                                 structured.append({"text": s_str, "type": s_type})
                         card_response.card_data["suggestions"] = structured
                     else:
-                        card_response.card_data["suggestions"] = clean_sugg
+                        card_response.card_data["is_choice"] = False
+                        # If asking a question or not a choice turn, remove any generic choice buttons
+                        filtered = []
+                        for s in clean_sugg:
+                            s_text = str(s.get("text") if isinstance(s, dict) else s)
+                            s_lower = s_text.lower()
+                            if any(b in s_lower for b in ["find a worker", "find a service worker", "create a community post", "find trusted workers"]):
+                                continue
+                            filtered.append(s)
+                        card_response.card_data["suggestions"] = filtered
 
                 return {"structured_response": card_response}
         except Exception as e:

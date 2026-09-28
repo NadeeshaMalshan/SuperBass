@@ -62,7 +62,8 @@ Routing & Intent Understanding Instructions:
    - Route to "community_agent" whenever the user explicitly asks to create a post, publish to community, browse the feed, view their posts, or manage community notices.
 
 3. EXPLICIT WORKER SEARCH OR BOOKING REQUEST:
-   - Route to "booking_agent" whenever the user asks to find, search, hire, or book a worker or service technician.
+   - Route to "booking_agent" whenever the user asks to find, search, hire, or book a worker or service technician (e.g. "i need find a worker", "find me a plumber", "i want to hire a worker").
+   - Even if the user hasn't specified the trade yet (e.g. "i need find a worker"), route directly to "booking_agent". Do NOT offer "Create a community post" or ask "How would you like to proceed?" because the user has already decided to find a worker.
 
 4. CONTEXT CONTINUITY:
    - If the previous turn was discussing, drafting, or confirming a community post, continue routing to "community_agent".

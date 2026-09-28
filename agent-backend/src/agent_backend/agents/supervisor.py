@@ -89,7 +89,7 @@ async def supervisor_node(state: AgentState) -> Dict[str, Any]:
     raw_text = messages[-1].content if messages[-1].content else ""
     lower_text = raw_text.lower()
 
-    if any(w in lower_text for w in ["book", "appointment", "schedule", "hire"]):
+    if any(w in lower_text for w in ["worker", "find a worker", "find worker", "book", "appointment", "schedule", "hire", "technician", "craftsman"]):
         return {"next": "booking_agent", "metadata": metadata}
     if any(w in lower_text for w in ["post", "community", "feed"]):
         return {"next": "community_agent", "metadata": metadata}
