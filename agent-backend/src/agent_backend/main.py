@@ -73,7 +73,7 @@ async def health():
         "status": "healthy",
         "service": "agent-backend",
         "model": settings.openai_model,
-        "database": "Neon PostgreSQL",
+        "database": "Local PostgreSQL" if ("localhost" in settings.database_url or "127.0.0.1" in settings.database_url) else "Neon PostgreSQL",
         "environment": settings.environment
     }
 
