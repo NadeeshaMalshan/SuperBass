@@ -12,6 +12,7 @@ from langchain_core.messages import HumanMessage, AIMessage
 from pydantic import BaseModel, Field
 import uuid
 import logging
+from pathlib import Path
 
 from agent_backend.config import settings
 from agent_backend.schemas.api_models import ChatRequest, ChatResponse
@@ -23,12 +24,18 @@ from agent_backend.db.chat_repository import chat_repository
 from agent_backend.tools.community_tools import current_post_images
 from agent_backend.utils.sanitizer import sanitize_text
 
-# Configure logging
+# Configure logging to both console and dedicated ai_chat.log file
+log_file_path = Path(__file__).resolve().parent.parent.parent / "ai_chat.log"
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler(str(log_file_path), encoding="utf-8", mode="a")
+    ]
 )
 logger = logging.getLogger("agent_backend.api")
+logger.info(f"AI Chat logging active. Writing logs to console and {log_file_path}")
 
 
 @asynccontextmanager
@@ -140,6 +147,29 @@ async def delete_user_conversation(conversation_id: str, email: Optional[str] = 
 # -------------------------------------------------------------
 
 @app.post("/api/chat", response_model=ChatResponse)
+@app.get("/api/chat/logs")
+async def get_chat_logs(limit: int = Query(default=100, ge=1, le=1000)):
+    """
+    Retrieve the latest AI chat logs directly from ai_chat.log.
+    """
+    if not log_file_path.exists():
+        return {
+            "status": "success",
+            "log_file": str(log_file_path),
+            "total_lines": 0,
+            "logs": []
+        }
+    with open(log_file_path, "r", encoding="utf-8", errors="ignore") as f:
+        lines = f.readlines()
+    return {
+        "status": "success",
+        "log_file": str(log_file_path),
+        "total_lines": len(lines),
+        "logs": [l.rstrip() for l in lines[-limit:]]
+    }
+
+
+@app.post("/api/chat", response_model=ChatResponse)
 async def chat_endpoint(request: ChatRequest):
     """
     Main chat endpoint for Frontend UI.
@@ -147,9 +177,13 @@ async def chat_endpoint(request: ChatRequest):
     and returns a typed UI card response.
     """
     conv_id = request.conversation_id or str(uuid.uuid4())
-    logger.info(
-        f"Incoming chat request for thread '{conv_id}' from '{request.email}' ({request.user_type}): {request.message}"
-    )
+    logger.info("=" * 64)
+    logger.info(f"📥 [AI CHAT REQUEST] Thread: '{conv_id}'")
+    logger.info(f"   User: {request.email} (Role: {request.user_type})")
+    logger.info(f"   Message: \"{request.message}\"")
+    if request.metadata:
+        logger.info(f"   Metadata: {request.metadata}")
+    logger.info("-" * 64)
 
     try:
         # Pre-extract attached images to ContextVar out-of-band so LLM never sees base64 data
@@ -237,6 +271,13 @@ async def chat_endpoint(request: ChatRequest):
             )
         except Exception as db_err:
             logger.error(f"Failed to persist chat turn to DB: {db_err}")
+
+        logger.info(f"📤 [AI CHAT RESPONSE] Thread: '{conv_id}'")
+        logger.info(f"   Response Type: '{card_response.response_type}'")
+        logger.info(f"   Message: \"{card_response.message}\"")
+        if isinstance(card_response.card_data, dict):
+            logger.info(f"   Card Data keys: {list(card_response.card_data.keys())}")
+        logger.info("=" * 64)
 
         return ChatResponse(
             conversation_id=conv_id,

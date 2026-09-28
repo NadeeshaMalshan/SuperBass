@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from typing import Dict, Any
 from langchain_core.messages import SystemMessage, AIMessage
@@ -7,6 +8,8 @@ from agent_backend.state.state import AgentState
 from agent_backend.tools.booking_tools import BOOKING_TOOLS, get_live_service_categories
 from agent_backend.prompts.booking_prompts import BOOKING_AGENT_SYSTEM_PROMPT
 from agent_backend.utils.sanitizer import sanitize_messages_for_llm
+
+logger = logging.getLogger("agent_backend.booking_agent")
 
 async def booking_agent_node(state: AgentState) -> Dict[str, Any]:
     messages = list(state.get("messages", []))
@@ -58,6 +61,7 @@ async def booking_agent_node(state: AgentState) -> Dict[str, Any]:
     ] + clean_messages
 
     if settings.openai_api_key and settings.openai_api_key !="your_openai_api_key_here":
+        logger.info(f"🛠️ [Booking Agent] Executing LLM with tools for '{email}' (location: {location_info})")
         llm = ChatOpenAI(
             model=settings.openai_model,
             temperature=0.2, # Low temperature for accurate slot filling

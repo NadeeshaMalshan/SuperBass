@@ -70,6 +70,9 @@ async def supervisor_node(state: AgentState) -> Dict[str, Any]:
             ] + clean_messages
 
             decision: SupervisorDecision = await structured_router.ainvoke(prompt_messages)
+            logger.info(
+                f"🧭 [Supervisor Routing] Agent: '{decision.next_agent}' | Inferred Category: '{decision.inferred_category}' | Reason: {decision.reasoning}"
+            )
 
             updates: Dict[str, Any] = {"next": decision.next_agent}
             if decision.next_agent == "FINISH" and decision.direct_response:
