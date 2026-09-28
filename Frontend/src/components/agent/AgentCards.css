@@ -473,6 +473,25 @@
   width: 100%;
 }
 
+/* Seamless single dialog card integration inside chat dialog bubble */
+.ai-bubble.assistant .landing-service-chat-card,
+.ai-bubble.assistant .agent-base-card,
+.ai-bubble.assistant .create-post-card-root {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.ai-bubble.assistant .agent-card-container {
+  width: 100%;
+  padding: 0;
+  margin: 0;
+}
+
 .landing-service-chat-card:hover {
   border-color: #cbd5e1;
   box-shadow: 0 8px 26px -4px rgba(15, 23, 42, 0.08), 0 4px 10px -2px rgba(15, 23, 42, 0.04);

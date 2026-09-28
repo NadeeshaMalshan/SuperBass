@@ -525,6 +525,13 @@ export default function AiCommunityChat() {
               ) : (
                 messages.map((msg) => {
                   const isUser = msg.sender === 'user';
+                  const hasPlainTextMessage = Boolean(
+                    !isUser &&
+                    msg.cardResponse?.message &&
+                    msg.cardResponse.response_type !== 'text_message' &&
+                    msg.cardResponse.response_type !== 'initial_welcome'
+                  );
+
                 return (
                   <div key={msg.id} className={`ai-bubble-row ${isUser ? 'resident' : 'assistant'}`}>
                     {!isUser && (
@@ -538,16 +545,25 @@ export default function AiCommunityChat() {
                     )}
 
                     <div className="ai-msg-wrapper">
-                      <div className={`ai-bubble ${isUser ? 'resident' : 'assistant'}`}>
-                        {isUser ? (
+                      {isUser ? (
+                        <div className="ai-bubble resident">
                           <div>{msg.text}</div>
-                        ) : (
-                          <AgentCardDispatcher
-                            response={msg.cardResponse}
-                            onAction={handleCardAction}
-                          />
-                        )}
-                      </div>
+                        </div>
+                      ) : (
+                        <>
+                          {hasPlainTextMessage && (
+                            <div className="ai-bubble assistant text-bubble">
+                              <div>{msg.cardResponse.message}</div>
+                            </div>
+                          )}
+                          <div className="ai-bubble assistant ai-card-bubble">
+                            <AgentCardDispatcher
+                              response={msg.cardResponse}
+                              onAction={handleCardAction}
+                            />
+                          </div>
+                        </>
+                      )}
                       <span className="ai-msg-time">
                         {msg.time}
                         {isUser && (

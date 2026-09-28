@@ -649,6 +649,7 @@
   display: flex;
   flex-direction: column;
   max-width: 80%;
+  gap: 8px;
 }
 
 .ai-bubble-row.resident .ai-msg-wrapper {
@@ -683,6 +684,17 @@
   line-height: 1.55;
   word-break: break-word;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.ai-bubble.assistant.text-bubble {
+  width: fit-content;
+  max-width: 100%;
+}
+
+.ai-bubble.assistant.ai-card-bubble {
+  padding: 18px 22px;
   width: 100%;
 }
 
