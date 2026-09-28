@@ -479,27 +479,39 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
     if is_draft:
         # Extract title, category, location, urgency, content
         draft_title = "Community Service Request"
-        draft_category = "General"
+        draft_category = metadata.get("inferred_category") or "General"
         draft_location = "Colombo"
         draft_urgency = "As soon as possible"
         draft_content = ""
 
         for line in last_ai_content.splitlines():
-            line_str = line.strip()
-            line_clean = line_str.replace("•", "").strip()
-            if line_clean.lower().startswith("title:"):
-                draft_title = line_clean.split(":", 1)[1].strip().strip("*").strip()
-            elif line_clean.lower().startswith("category:"):
-                draft_category = line_clean.split(":", 1)[1].strip().strip("*").strip()
-            elif line_clean.lower().startswith("location:"):
-                draft_location = line_clean.split(":", 1)[1].strip().strip("*").strip()
-            elif line_clean.lower().startswith("urgency:"):
-                draft_urgency = line_clean.split(":", 1)[1].strip().strip("*").strip()
-            elif line_clean.lower().startswith("content:") or line_clean.lower().startswith("description:"):
-                draft_content = line_clean.split(":", 1)[1].strip().strip("*").strip()
+            line_str = line.strip().lstrip("•-* \t").strip()
+            line_lower = line_str.lower()
+            if line_lower.startswith("title:") or "title:" in line_lower:
+                parts = line_str.split(":", 1)
+                if len(parts) > 1:
+                    draft_title = parts[1].strip().strip("*").strip()
+            elif "category:" in line_lower:
+                parts = line_str.split(":", 1)
+                if len(parts) > 1:
+                    cat_val = parts[1].strip().strip("*").strip()
+                    if cat_val and cat_val.lower() != "general":
+                        draft_category = cat_val
+            elif line_lower.startswith("location:") or "location:" in line_lower:
+                parts = line_str.split(":", 1)
+                if len(parts) > 1:
+                    draft_location = parts[1].strip().strip("*").strip()
+            elif line_lower.startswith("content:") or line_lower.startswith("description:"):
+                parts = line_str.split(":", 1)
+                if len(parts) > 1:
+                    draft_content = parts[1].strip().strip("*").strip()
 
         if not draft_content:
             draft_content = last_ai_content
+
+        if not draft_category or draft_category.lower() == "general":
+            if metadata.get("inferred_category"):
+                draft_category = metadata["inferred_category"]
 
         user_loc_default = metadata.get("location") or user_profile.get("address") or "Colombo"
         if not draft_location or draft_location.lower() in ["your location", "location", "n/a", "unknown", "none", "{location}"]:
