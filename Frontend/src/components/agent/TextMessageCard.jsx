@@ -24,7 +24,7 @@ export default function TextMessageCard({ data, onAction }) {
 
       {suggestions && suggestions.length > 0 && (
         showChoiceCards ? (
-          <div className="agent-choice-cards-container">
+          <div className="ai-choice-actions-list">
             {suggestions.map((suggestion, idx) => {
               const suggestionText =
                 typeof suggestion === 'object' && suggestion !== null
@@ -37,68 +37,36 @@ export default function TextMessageCard({ data, onAction }) {
                   : (/community|post/i.test(suggestionText) || idx === 1 ? 'community' : 'find');
 
               const isCommunity = optionType === 'community';
-              const isFind = !isCommunity;
-              const iconType = isCommunity ? 'community' : 'find';
+              const desc = isCommunity
+                ? 'Post your service needs to the community'
+                : 'Find trusted workers near you';
 
               return (
-                <button
+                <div
                   key={idx}
-                  type="button"
-                  className="agent-action-choice-card"
+                  className="ai-welcome-action-item"
                   onClick={() => onAction && onAction('send_prompt', suggestionText)}
+                  title={suggestionText}
                 >
-                  <div className={`agent-choice-icon-box ${iconType}`}>
-                    {isFind ? (
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="#2563eb"
-                        strokeWidth="2.4"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <circle cx="11" cy="11" r="7"></circle>
-                        <line x1="21" y1="21" x2="16.5" y2="16.5"></line>
-                      </svg>
-                    ) : isCommunity ? (
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="#e11d48">
-                        <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
-                      </svg>
-                    ) : (
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="#475569"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <polyline points="12 16 16 12 12 8"></polyline>
-                        <line x1="8" y1="12" x2="16" y2="12"></line>
-                      </svg>
-                    )}
+                  <div
+                    className="ai-welcome-icon-box"
+                    style={{
+                      backgroundColor: isCommunity ? '#fce7f3' : '#dbeafe',
+                      color: isCommunity ? '#e11d48' : '#1d68f0',
+                    }}
+                  >
+                    <md-icon style={{ fontSize: '19px', color: isCommunity ? '#e11d48' : '#1d68f0' }}>
+                      {isCommunity ? 'group' : 'search'}
+                    </md-icon>
                   </div>
-                  <span className="agent-choice-label">{suggestionText}</span>
-                  <div className="agent-choice-chevron">
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="#2563eb"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <polyline points="9 18 15 12 9 6"></polyline>
-                    </svg>
+                  <div className="ai-welcome-item-content">
+                    <div className="ai-welcome-item-title">{suggestionText}</div>
+                    <div className="ai-welcome-item-desc">{desc}</div>
                   </div>
-                </button>
+                  <md-icon className="ai-welcome-chevron" style={{ color: '#2563eb' }}>
+                    chevron_right
+                  </md-icon>
+                </div>
               );
             })}
           </div>

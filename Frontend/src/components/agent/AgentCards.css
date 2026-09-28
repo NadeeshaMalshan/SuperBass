@@ -348,13 +348,13 @@
   line-height: 1.45;
 }
 
-.agent-choice-cards-container {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 10px;
+.agent-choice-cards-container,
+.ai-choice-actions-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
   width: 100%;
-  margin-top: 4px;
+  margin-top: 6px;
 }
 
 .agent-action-choice-card {
