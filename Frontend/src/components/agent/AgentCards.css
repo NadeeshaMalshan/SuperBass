@@ -972,15 +972,15 @@
    Initial Welcome Card (Compact Standard Chat Dialog Box Size)
    ========================================================================== */
 .ai-welcome-card-root {
-  background: #ffffff;
-  border: 1px solid #edf2f7;
-  border-radius: 18px;
-  padding: 14px 16px;
-  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.04);
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
   display: flex;
   flex-direction: column;
-  gap: 11px;
-  max-width: 390px;
+  gap: 12px;
+  max-width: 440px;
   width: 100%;
   box-sizing: border-box;
   animation: fadeInCard 0.25s cubic-bezier(0.16, 1, 0.3, 1);
@@ -992,35 +992,23 @@
   gap: 10px;
 }
 
-.ai-welcome-avatar {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: #000000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
-}
-
 .ai-welcome-header-text {
   flex: 1;
   min-width: 0;
 }
 
 .ai-welcome-title {
-  font-size: 0.92rem;
+  font-size: 0.98rem;
   font-weight: 800;
   color: #0f172a;
-  margin: 0 0 2px 0;
+  margin: 0 0 4px 0;
   letter-spacing: -0.01em;
 }
 
 .ai-welcome-subtitle {
-  font-size: 0.77rem;
-  color: #475569;
-  line-height: 1.35;
+  font-size: 0.90rem;
+  color: #334155;
+  line-height: 1.5;
   margin: 0;
 }
 

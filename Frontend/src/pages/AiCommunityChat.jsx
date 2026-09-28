@@ -5,6 +5,7 @@ import UserMenu from '../components/UserMenu.jsx';
 import M3TopNavbar from '../components/M3TopNavbar.jsx';
 import AgentCardDispatcher from '../components/agent/AgentCardDispatcher.jsx';
 import craftsmanImg from '../assets/carftman.png';
+import workioLogoWhite from '../assets/Workio_Logo/Workio_Logo_White_WithOut_Text.png';
 import {
   sendAgentMessage,
   checkAgentHealth,
@@ -372,7 +373,11 @@ export default function AiCommunityChat() {
           {/* Brand / Identity */}
           <div className="ai-sidebar-brand">
             <div className="ai-sidebar-brand-icon">
-              <md-icon style={{ fontSize: '20px', color: '#ffffff' }}>auto_awesome</md-icon>
+              <img
+                src={workioLogoWhite}
+                alt="Workio AI"
+                style={{ width: '22px', height: '22px', objectFit: 'contain' }}
+              />
             </div>
             {!isSidebarCollapsed && (
               <div>
@@ -485,7 +490,11 @@ export default function AiCommunityChat() {
             <div className="ai-chat-card-header">
               <div className="ai-chat-title-group">
                 <div className="ai-chat-bot-avatar">
-                  <md-icon style={{ fontSize: '22px', color: '#ffffff' }}>auto_awesome</md-icon>
+                  <img
+                    src={workioLogoWhite}
+                    alt="Workio AI"
+                    style={{ width: '24px', height: '24px', objectFit: 'contain' }}
+                  />
                 </div>
                 <div className="ai-chat-title-text">
                   <h2>Workio AI Assistant</h2>
@@ -516,17 +525,20 @@ export default function AiCommunityChat() {
               ) : (
                 messages.map((msg) => {
                   const isUser = msg.sender === 'user';
-                  const isWelcome = msg.cardResponse?.response_type === 'initial_welcome';
                 return (
-                  <div key={msg.id} className={`ai-bubble-row ${isUser ? 'resident' : 'assistant'} ${isWelcome ? 'welcome-row' : ''}`}>
-                    {!isUser && !isWelcome && (
+                  <div key={msg.id} className={`ai-bubble-row ${isUser ? 'resident' : 'assistant'}`}>
+                    {!isUser && (
                       <div className="ai-msg-avatar bot-av">
-                        <md-icon style={{ fontSize: '18px', color: '#ffffff' }}>auto_awesome</md-icon>
+                        <img
+                          src={workioLogoWhite}
+                          alt="Workio AI"
+                          style={{ width: '18px', height: '18px', objectFit: 'contain' }}
+                        />
                       </div>
                     )}
 
                     <div className="ai-msg-wrapper">
-                      <div className={`ai-bubble ${isUser ? 'resident' : 'assistant'} ${isWelcome ? 'welcome-bubble' : ''}`}>
+                      <div className={`ai-bubble ${isUser ? 'resident' : 'assistant'}`}>
                         {isUser ? (
                           <div>{msg.text}</div>
                         ) : (
@@ -550,7 +562,11 @@ export default function AiCommunityChat() {
               {loading && (
                 <div className="ai-bubble-row assistant">
                   <div className="ai-msg-avatar bot-av">
-                    <md-icon style={{ fontSize: '18px', color: '#ffffff' }}>auto_awesome</md-icon>
+                    <img
+                      src={workioLogoWhite}
+                      alt="Workio AI"
+                      style={{ width: '18px', height: '18px', objectFit: 'contain' }}
+                    />
                   </div>
                   <div className="ai-msg-wrapper">
                     <div className="ai-typing-bubble">
