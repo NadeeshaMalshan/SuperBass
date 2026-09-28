@@ -54,8 +54,9 @@ export default function TextMessageCard({ data, onAction }) {
                 ? suggestion.type
                 : (idx === 1 ? 'community' : 'find');
 
+            const isCommunity = optionType === 'community';
             const isFind = optionType === 'find' || optionType === 'worker';
-            const iconType = optionType === 'community' ? 'community' : 'find';
+            const iconType = isCommunity ? 'community' : 'find';
 
             return (
               <button
