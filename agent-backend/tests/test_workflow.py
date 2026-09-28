@@ -342,30 +342,6 @@ def test_service_category_normalization():
     assert normalize_service_category("ac repair") == "AC & Air Conditioning"
 
 
-def test_choice_turn_card_formatting_and_normalization():
-    """Verify that 'Would you like to:' is normalized and choice cards are properly preserved."""
-    state = {
-        "messages": [
-            HumanMessage(content="yes tap leakinhg"),
-            AIMessage(content="Would you like to:")
-        ],
-        "email": "resident@workio.lk",
-        "user_type": "Resident",
-        "user_profile": None,
-        "next": None,
-        "structured_response": None,
-        "metadata": {"inferred_category": "Plumbing"}
-    }
-    card_resp = _deterministic_card_builder(state)
-    assert card_resp.response_type == "text_message"
-    assert card_resp.card_data.get("is_choice") is True
-    assert card_resp.card_data.get("text") == "Would you like to find a verified worker or create a community post?"
-    suggs = card_resp.card_data.get("suggestions", [])
-    assert len(suggs) == 2
-    assert any("plumbing" in str(s).lower() or "worker" in str(s).lower() for s in suggs)
-    assert any("community" in str(s).lower() for s in suggs)
-
-
 if __name__ == "__main__":
     test_card_schemas()
     test_langgraph_compilation()

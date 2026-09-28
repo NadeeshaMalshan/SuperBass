@@ -133,10 +133,6 @@ class TextMessageCard(BaseModel):
         default=None,
         description="Quick action suggestions/chips for user to click"
     )
-    is_choice: Optional[bool] = Field(
-        default=False,
-        description="Set to true if this message presents choices on how to proceed (e.g. Find a worker vs Create a community post)"
-    )
 
 
 class ErrorCard(BaseModel):

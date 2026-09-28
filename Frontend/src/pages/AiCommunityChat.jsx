@@ -537,8 +537,14 @@ export default function AiCommunityChat() {
                   const isFullWidthWorkerList = isWorkerList && workerCount >= 3;
                   const workerCountClass = isWorkerList ? `worker-count-${workerCount}` : '';
 
+                  const isCommunityPost = !isUser && (
+                    msg.cardResponse?.response_type === 'create_community_post' ||
+                    msg.cardResponse?.response_type === 'post_confirmation' ||
+                    msg.cardResponse?.response_type === 'post_created'
+                  );
+
                 return (
-                  <div key={msg.id} className={`ai-bubble-row ${isUser ? 'resident' : 'assistant'} ${isWorkerList ? 'worker-list-row' : ''} ${isFullWidthWorkerList ? 'full-width' : ''} ${workerCountClass}`}>
+                  <div key={msg.id} className={`ai-bubble-row ${isUser ? 'resident' : 'assistant'} ${isWorkerList ? 'worker-list-row' : ''} ${isFullWidthWorkerList ? 'full-width' : ''} ${workerCountClass} ${isCommunityPost ? 'community-post-row' : ''}`}>
                     {!isUser && (
                       <div className="ai-msg-avatar bot-av">
                         <img
@@ -549,7 +555,7 @@ export default function AiCommunityChat() {
                       </div>
                     )}
 
-                    <div className={`ai-msg-wrapper ${isWorkerList ? 'worker-list-msg-wrapper' : ''} ${isFullWidthWorkerList ? 'full-width' : ''} ${workerCountClass}`}>
+                    <div className={`ai-msg-wrapper ${isWorkerList ? 'worker-list-msg-wrapper' : ''} ${isFullWidthWorkerList ? 'full-width' : ''} ${workerCountClass} ${isCommunityPost ? 'community-post-msg-wrapper' : ''}`}>
                       {isUser ? (
                         <div className="ai-bubble resident">
                           <div>{msg.text}</div>
@@ -561,7 +567,7 @@ export default function AiCommunityChat() {
                               <div>{msg.cardResponse.message}</div>
                             </div>
                           )}
-                          <div className={`ai-bubble assistant ai-card-bubble ${isWorkerList ? 'worker-list-bubble' : ''} ${workerCountClass}`}>
+                          <div className={`ai-bubble assistant ai-card-bubble ${isWorkerList ? 'worker-list-bubble' : ''} ${workerCountClass} ${isCommunityPost ? 'community-post-bubble' : ''}`}>
                             <AgentCardDispatcher
                               response={msg.cardResponse}
                               onAction={handleCardAction}

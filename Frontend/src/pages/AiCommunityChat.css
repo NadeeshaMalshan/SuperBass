@@ -745,6 +745,26 @@
   width: 100% !important;
 }
 
+.ai-bubble-row.assistant.community-post-row,
+.ai-bubble-row.assistant.community-post-row .ai-msg-wrapper,
+.ai-bubble-row.assistant .ai-msg-wrapper.community-post-msg-wrapper {
+  max-width: fit-content !important;
+  width: fit-content !important;
+}
+
+.ai-bubble.assistant.ai-card-bubble.community-post-bubble {
+  width: 520px !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .ai-bubble.assistant.ai-card-bubble.community-post-bubble {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
 .ai-msg-time {
   font-size: 0.7rem;
   color: #9e9e9e;

@@ -475,8 +475,7 @@
 
 /* Seamless single dialog card integration inside chat dialog bubble */
 .ai-bubble.assistant .landing-service-chat-card,
-.ai-bubble.assistant .agent-base-card,
-.ai-bubble.assistant .create-post-card-root {
+.ai-bubble.assistant .agent-base-card {
   background: transparent !important;
   border: none !important;
   border-radius: 0 !important;
@@ -484,6 +483,16 @@
   box-shadow: none !important;
   width: 100% !important;
   max-width: 100% !important;
+}
+
+.ai-bubble.assistant .create-post-card-root {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  width: 100% !important;
+  max-width: 520px !important;
 }
 
 .ai-bubble.assistant .agent-card-container {
@@ -1265,7 +1274,7 @@
   border-radius: 24px;
   padding: 24px;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
-  max-width: 580px;
+  max-width: 520px;
   width: 100%;
   font-family: inherit;
   box-sizing: border-box;
@@ -1853,6 +1862,15 @@ select.icon-input-field.location-select-field {
   color: #0f172a;
 }
 
+/* Step Containers */
+.create-post-body,
+.create-post-review-body,
+.create-post-published-body {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 /* Step 2 Review styling */
 .review-summary-card {
   background: #f8fafc;
@@ -1860,6 +1878,9 @@ select.icon-input-field.location-select-field {
   border-radius: 16px;
   padding: 18px;
   margin-bottom: 16px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .review-category-badge {
@@ -1897,6 +1918,7 @@ select.icon-input-field.location-select-field {
   font-weight: 700;
   color: #0f172a;
   margin: 0 0 6px 0;
+  word-break: break-word;
 }
 
 .review-description {
@@ -1904,6 +1926,8 @@ select.icon-input-field.location-select-field {
   color: #475569;
   line-height: 1.5;
   margin: 0 0 12px 0;
+  word-break: break-word;
+  white-space: pre-wrap;
 }
 
 .review-meta-row {
