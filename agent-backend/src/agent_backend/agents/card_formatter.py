@@ -55,8 +55,13 @@ Available response_type values and their corresponding card_data schemas:
 8. "worker_list": Use whenever search_workers tool was called or when recommending/finding service workers or technicians.
    card_data fields: category, query, totalCount, workers (list of {id, name, profileImage, primaryRole, skills, primaryServiceArea, hourlyRate, dailyRate, pricingModel, overallRating, reviewCount, completedJobs, isAvailable}).
 9. "text_message": Use for conversational replies, greetings, booking updates, explanations, or questions.
-   card_data fields: text, suggestions (list of quick prompt suggestions).
-   CRITICAL: NEVER output suggestions for tips, gardening tips, advice, or DIY tutorials (e.g. NEVER output "Get gardening tips", "Get tips on fixing it myself", etc.). When asking how to proceed, suggestions MUST be strictly 2 choices: ["Find a <trade/worker>", "Create a community post"].
+   card_data fields: text, suggestions (list of quick prompt suggestions), is_choice (boolean).
+   - If asking how to proceed or offering options (e.g. finding a worker vs creating a community post):
+     * Set is_choice to True.
+     * text must be a complete question (e.g. "I understand you have an issue with tap leakage. Would you like to find a verified worker or create a community post?" or "How would you like to proceed?"). NEVER leave text as an incomplete snippet like "Would you like to:".
+     * suggestions must contain the 2 choices: ["Find a <trade/worker>", "Create a community post"].
+   - If asking a clarifying question (e.g. what date, what type of service), set is_choice to False and provide helpful option chips.
+   CRITICAL: NEVER output suggestions for tips, gardening tips, advice, or DIY tutorials (e.g. NEVER output "Get gardening tips", "Get tips on fixing it myself", etc.).
 10. "error": Use if a tool or operation failed with an error.
    card_data fields: errorCode, message, actionRequired.
 
@@ -402,21 +407,32 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
 
     # Check if this is a choice turn offering finding a worker vs community post
     is_choice_turn = any(kw in lower_content for kw in [
-        "create a community post or find",
+        "would you like to",
+        "would you like",
         "how would you like to proceed",
-        "would you like to proceed with finding a worker or creating a community post",
-        "would you like to find a worker or create a community post",
-        "proceed with finding a worker"
+        "how would you like",
+        "create a community post or find",
+        "proceed with finding a worker",
+        "find a worker or create a community post",
+        "find a verified worker",
+        "options:",
+        "choose:"
     ]) or (
         bool((metadata or {}).get("suggested_actions"))
-        and any(kw in lower_content for kw in ["how would you like", "proceed", "option", "recommendations and offers"])
+        and any(kw in lower_content for kw in ["how would you like", "would you like", "proceed", "option", "recommendations and offers"])
     )
 
     if is_choice_turn:
+        display_text = last_ai_content
+        if display_text.strip().lower() in ["would you like to:", "would you like to", "would you like:", "options:", "options", "choose:"]:
+            display_text = "Would you like to find a verified worker or create a community post?"
+
         dyn_suggestions = (metadata or {}).get("suggested_actions")
         if not dyn_suggestions or not isinstance(dyn_suggestions, list):
+            inferred = (metadata or {}).get("inferred_category") or ""
+            trade_name = inferred.split("&")[0].strip() if inferred else "worker"
             dyn_suggestions = [
-                "Find a verified service worker",
+                f"Find a {trade_name.lower()}",
                 "Create a community post"
             ]
 
@@ -438,8 +454,9 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
                 })
 
         card = TextMessageCard(
-            text=last_ai_content,
-            suggestions=structured_suggestions
+            text=display_text,
+            suggestions=structured_suggestions,
+            is_choice=True
         )
         card_data = card.model_dump()
         card_data["is_choice"] = True
@@ -743,6 +760,14 @@ async def card_formatter_node(state: AgentState) -> Dict[str, Any]:
                             continue
                         clean_sugg.append(s)
 
+                    # Fix incomplete/truncated text like "Would you like to:"
+                    clean_msg = (card_response.message or "").strip()
+                    if clean_msg.lower() in ["would you like to:", "would you like to", "would you like:", "options:", "options", "choose:"]:
+                        clean_msg = "Would you like to find a verified worker or create a community post?"
+                        card_response.message = clean_msg
+                        if isinstance(card_response.card_data, dict):
+                            card_response.card_data["text"] = clean_msg
+
                     lower_msg = (card_response.message or "").lower()
                     is_question = any(q in lower_msg for q in [
                         "specify the type of service",
@@ -760,16 +785,36 @@ async def card_formatter_node(state: AgentState) -> Dict[str, Any]:
                         "registered phone"
                     ])
 
+                    has_choice_actions = any(
+                        any(p in str(s).lower() for p in ["post", "community"]) for s in clean_sugg
+                    ) and any(
+                        any(w in str(s).lower() for w in ["worker", "find", "hire", "plumber", "electrician", "technician", "mechanic", "carpenter", "cleaner"]) for s in clean_sugg
+                    )
+
                     is_choice = not is_question and (
+                        has_choice_actions or
                         any(k in lower_msg for k in [
+                            "would you like to",
+                            "would you like",
+                            "how would you like",
                             "how would you like to proceed",
-                            "proceed with finding a worker or creating a community post",
-                            "find a worker or create a community post"
-                        ]) or card_response.card_data.get("is_choice") is True
+                            "proceed with finding a worker",
+                            "find a worker or create a community post",
+                            "create a community post or find",
+                            "find a verified worker",
+                            "options:",
+                            "choose:"
+                        ]) or
+                        card_response.card_data.get("is_choice") is True
                     )
 
                     if is_choice:
                         card_response.card_data["is_choice"] = True
+                        if not clean_sugg or len(clean_sugg) < 2:
+                            inferred = (state.get("metadata") or {}).get("inferred_category") or ""
+                            trade_name = inferred.split("&")[0].strip() if inferred else "worker"
+                            clean_sugg = [f"Find a {trade_name.lower()}", "Create a community post"]
+
                         structured = []
                         for idx, s in enumerate(clean_sugg):
                             if isinstance(s, dict):
@@ -781,7 +826,7 @@ async def card_formatter_node(state: AgentState) -> Dict[str, Any]:
                         card_response.card_data["suggestions"] = structured
                     else:
                         card_response.card_data["is_choice"] = False
-                        # If asking a question or not a choice turn, remove any generic choice buttons
+                        # If asking a clarifying question, remove any generic choice buttons
                         filtered = []
                         for s in clean_sugg:
                             s_text = str(s.get("text") if isinstance(s, dict) else s)

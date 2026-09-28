@@ -5,8 +5,25 @@ export default function TextMessageCard({ data, onAction }) {
   if (!data) return null;
 
   const { text, suggestions = [], is_choice } = data;
-  // Choice cards should ONLY be shown when explicitly set by the backend for a choice turn
-  const showChoiceCards = Boolean(is_choice || data?.is_choice);
+
+  const textLower = (text || '').toLowerCase();
+  const hasChoicePrompt =
+    textLower.includes('would you like to') ||
+    textLower.includes('how would you like');
+
+  const hasChoiceSuggestions =
+    Array.isArray(suggestions) &&
+    suggestions.some((s) => {
+      const str = String(typeof s === 'object' && s !== null ? (s.text || s.label || '') : s).toLowerCase();
+      return str.includes('community') || str.includes('post');
+    }) &&
+    suggestions.some((s) => {
+      const str = String(typeof s === 'object' && s !== null ? (s.text || s.label || '') : s).toLowerCase();
+      return str.includes('worker') || str.includes('find') || str.includes('hire') || str.includes('plumber') || str.includes('electrician') || str.includes('technician');
+    });
+
+  // Choice cards should be shown when explicitly set by the backend, or when prompt & suggestions indicate choices
+  const showChoiceCards = Boolean(is_choice || data?.is_choice || (hasChoicePrompt && hasChoiceSuggestions));
 
   // If not a choice turn, filter out any generic choice buttons that may have lingered
   const filteredSuggestions = showChoiceCards
@@ -19,11 +36,16 @@ export default function TextMessageCard({ data, onAction }) {
           })
         : []);
 
+  const displayText =
+    text && text.trim().toLowerCase() === 'would you like to:'
+      ? 'Would you like to find a verified worker or create a community post?'
+      : text;
+
   return (
     <div className="agent-choice-wrap">
-      {text && (
+      {displayText && (
         <div className="agent-choice-intro">
-          {text}
+          {displayText}
         </div>
       )}
 
