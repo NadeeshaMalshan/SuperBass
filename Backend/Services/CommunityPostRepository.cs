@@ -38,37 +38,6 @@ namespace Superbass.Services
         public InMemoryCommunityPostRepository()
         {
             LoadCategories();
-            SeedInitialPosts();
-        }
-
-        private void SeedInitialPosts()
-        {
-            CreatePost(new CreatePostRequest
-            {
-                Title = "Need a Reliable Plumber for Kitchen Sink Leak",
-                Content = "Our kitchen pipe under the sink started leaking this morning in Colombo 03. Need someone with tools to replace the gasket or pipe fitting.",
-                ServiceCategoryId = "plumbing",
-                Location = "Colombo",
-                UserName = "Kamal Perera"
-            }, "kamal.perera@superbass.lk");
-
-            CreatePost(new CreatePostRequest
-            {
-                Title = "Circuit Breaker Tripping Constantly",
-                Content = "Main trip switch keeps turning off whenever the microwave and kettle are on. Looking for a certified electrician to inspect the board.",
-                ServiceCategoryId = "electrical",
-                Location = "Kandy",
-                UserName = "Dilani Silva"
-            }, "dilani.silva@superbass.lk");
-
-            CreatePost(new CreatePostRequest
-            {
-                Title = "AC Cleaning & Gas Refill Before Summer",
-                Content = "Looking for an experienced inverter AC technician to service two split units in Gampaha. Reasonable rates preferred.",
-                ServiceCategoryId = "ac-repair",
-                Location = "Gampaha",
-                UserName = "Ruwan Fernando"
-            }, "ruwan.fernando@superbass.lk");
         }
 
         private void LoadCategories()
