@@ -60,6 +60,7 @@ export default function AgentCardDispatcher({ response, onAction }) {
             return (
               <TextMessageCard
                 data={{
+                  ...card_data,
                   text: card_data.text || message,
                   suggestions: card_data.suggestions,
                 }}

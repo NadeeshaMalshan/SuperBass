@@ -404,18 +404,18 @@
 }
 
 .agent-choice-icon-box.find {
-  background: #eff6ff;
-  color: #2563eb;
+  background: #dbeafe !important;
+  color: #1d68f0 !important;
 }
 
 .agent-choice-icon-box.community {
-  background: #fdf2f8;
-  color: #e11d48;
+  background: #fce7f3 !important;
+  color: #e11d48 !important;
 }
 
 .agent-choice-icon-box.general {
-  background: #f1f5f9;
-  color: #475569;
+  background: #f1f5f9 !important;
+  color: #475569 !important;
 }
 
 .agent-choice-label {

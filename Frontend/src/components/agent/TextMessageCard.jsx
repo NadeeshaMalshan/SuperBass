@@ -5,7 +5,14 @@ export default function TextMessageCard({ data, onAction }) {
   if (!data) return null;
 
   const { text, suggestions = [], is_choice } = data;
-  const showChoiceCards = Boolean(is_choice || data?.is_choice);
+  const showChoiceCards = Boolean(
+    is_choice ||
+    data?.is_choice ||
+    (Array.isArray(suggestions) &&
+      suggestions.length > 0 &&
+      (suggestions.some((s) => typeof s === 'object' && (s.type === 'find' || s.type === 'community')) ||
+       suggestions.some((s) => /community|post/i.test(typeof s === 'object' ? s.text || '' : String(s)))))
+  );
 
   return (
     <div className="agent-choice-wrap">
@@ -27,10 +34,10 @@ export default function TextMessageCard({ data, onAction }) {
               const optionType =
                 typeof suggestion === 'object' && suggestion !== null && suggestion.type
                   ? suggestion.type
-                  : (idx === 1 ? 'community' : 'find');
+                  : (/community|post/i.test(suggestionText) || idx === 1 ? 'community' : 'find');
 
               const isCommunity = optionType === 'community';
-              const isFind = optionType === 'find' || optionType === 'worker';
+              const isFind = !isCommunity;
               const iconType = isCommunity ? 'community' : 'find';
 
               return (
