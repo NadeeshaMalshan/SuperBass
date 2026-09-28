@@ -23,6 +23,7 @@ from agent_backend.db.database import init_db
 from agent_backend.db.chat_repository import chat_repository
 from agent_backend.tools.community_tools import current_post_images
 from agent_backend.utils.sanitizer import sanitize_text
+from agent_backend.utils.turn_tracker import TurnUsageLogger
 
 # Configure logging to both console and dedicated ai_chat.log file
 log_file_path = Path(__file__).resolve().parent.parent.parent / "ai_chat.log"
@@ -234,12 +235,18 @@ async def chat_endpoint(request: ChatRequest):
             "metadata": request.metadata or {}
         }
 
-        # 3. Thread configuration for LangGraph (per-turn execution ID to prevent duplicate append)
+        # 3. Thread configuration and usage tracker for LangGraph
+        tracker = TurnUsageLogger()
         turn_thread_id = f"{conv_id}-{uuid.uuid4().hex[:6]}"
-        thread_config = {"configurable": {"thread_id": turn_thread_id}}
+        thread_config = {
+            "configurable": {"thread_id": turn_thread_id},
+            "recursion_limit": 15,
+            "callbacks": [tracker]
+        }
 
         # 4. Execute LangGraph workflow
         final_state = await graph.ainvoke(initial_state, config=thread_config)
+        telemetry = tracker.get_summary()
 
         # 5. Retrieve typed structured UI card
         card_response = final_state.get("structured_response")
@@ -253,6 +260,17 @@ async def chat_endpoint(request: ChatRequest):
                 card_data=TextMessageCard(text=last_text).model_dump(),
                 metadata={"agent": "system", "user_email": request.email}
             )
+
+        if card_response.metadata is None:
+            card_response.metadata = {}
+        card_response.metadata["token_usage"] = {
+            "prompt_tokens": telemetry["prompt_tokens"],
+            "completion_tokens": telemetry["completion_tokens"],
+            "total_tokens": telemetry["total_tokens"]
+        }
+        card_response.metadata["duration_sec"] = telemetry["duration_sec"]
+        card_response.metadata["agents"] = telemetry["agents_involved"]
+        card_response.metadata["steps"] = telemetry["steps"]
 
         # 6. Save turn to in-memory fallback cache
         _IN_MEMORY_CONV_CACHE.setdefault(conv_id, []).extend([
@@ -271,11 +289,25 @@ async def chat_endpoint(request: ChatRequest):
         except Exception as db_err:
             logger.error(f"Failed to persist chat turn to DB: {db_err}")
 
+        # 8. Detailed Telemetry Log: AI messages, agents, token usage, and latency
+        logger.info("🤖 [AI AGENT & TOKEN TELEMETRY]")
+        logger.info(f"   ⏱️  Total Duration: {telemetry['duration_sec']}s")
+        logger.info(f"   📊 Token Usage: {telemetry['total_tokens']} total (Prompt: {telemetry['prompt_tokens']} | Completion: {telemetry['completion_tokens']})")
+        logger.info(f"   🧩 Agents Invoked ({len(telemetry['agents_involved'])}): {', '.join(telemetry['agents_involved']) if telemetry['agents_involved'] else 'direct'}")
+        for idx, step in enumerate(telemetry["steps"], 1):
+            logger.info(
+                f"      [{idx}] Agent: {step['node']} | Time: {step['duration_sec']}s | "
+                f"Tokens: {step['total_tokens']} (Prompt: {step['prompt_tokens']} / Completion: {step['completion_tokens']})"
+            )
+            if step.get("output_summary"):
+                logger.info(f"          Output: {step['output_summary']}")
+
         logger.info(f"📤 [AI CHAT RESPONSE] Thread: '{conv_id}'")
-        logger.info(f"   Response Type: '{card_response.response_type}'")
-        logger.info(f"   Message: \"{card_response.message}\"")
+        logger.info(f"   Card Type: '{card_response.response_type}'")
+        logger.info(f"   AI Message: \"{card_response.message}\"")
         if isinstance(card_response.card_data, dict):
-            logger.info(f"   Card Data keys: {list(card_response.card_data.keys())}")
+            summary_keys = list(card_response.card_data.keys())
+            logger.info(f"   Card Data keys: {summary_keys}")
         logger.info("=" * 64)
 
         return ChatResponse(

@@ -283,8 +283,18 @@ async def search_workers(
         params["skill"] = skill
     if query:
         params["query"] = query
+    # Clean location to remove country suffix and resolve canonical city
     if location:
-        params["location"] = location
+        clean_loc = str(location)
+        for sfx in [", Sri Lanka", ", sri lanka", ", Sri lanka", " Sri Lanka", " sri lanka"]:
+            clean_loc = clean_loc.replace(sfx, "").strip()
+        matched_city = None
+        for city in SRI_LANKA_CITY_COORDS:
+            if city in clean_loc.lower():
+                matched_city = city.title()
+                break
+        params["location"] = matched_city if matched_city else clean_loc
+
     if residentLat is not None:
         params["residentLat"] = residentLat
     if residentLng is not None:
@@ -299,6 +309,11 @@ async def search_workers(
     try:
         raw_result = await mcp_client.call_tool("search_workers", params)
         data = sanitize_payload(raw_result)
+        # If no workers found with specific location, fallback to searching by skill and rank by proximity
+        if (not data or not isinstance(data, list)) and "location" in params:
+            fallback_params = {k: v for k, v in params.items() if k != "location"}
+            raw_fallback = await mcp_client.call_tool("search_workers", fallback_params)
+            data = sanitize_payload(raw_fallback)
     except Exception:
         data = []
 

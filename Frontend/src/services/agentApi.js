@@ -47,13 +47,21 @@ export async function sendAgentMessage({ message, email, user_type = 'Resident',
     const res = await agentClient.post('/api/chat', payload);
     const duration = Math.round(performance.now() - startTime);
 
+    const meta = res.data?.response?.metadata || {};
+    const tokens = meta.token_usage;
+    const tokenStr = tokens ? ` | Tokens: ${tokens.total_tokens}` : '';
+    const agentsStr = meta.agents && meta.agents.length > 0 ? ` | Agents: ${meta.agents.join(' ➔ ')}` : '';
+
     console.groupCollapsed(
-      `%c✨ [AI Chat Response (${duration}ms)] %cType: ${res.data?.response?.response_type || 'unknown'}`,
+      `%c✨ [AI Chat Response (${duration}ms)] %cType: ${res.data?.response?.response_type || 'unknown'}${agentsStr}${tokenStr}`,
       'color: #10b981; font-weight: bold;',
       'color: #0f172a;'
     );
     console.log('Thread ID:', res.data?.conversation_id);
-    console.log('Response Message:', res.data?.response?.message);
+    console.log('AI Message:', res.data?.response?.message);
+    if (meta.agents) console.log('Agents Invoked:', meta.agents);
+    if (meta.token_usage) console.log('Token Usage:', meta.token_usage);
+    if (meta.steps) console.log('Execution Steps Breakdown:', meta.steps);
     console.log('Card Data:', res.data?.response?.card_data);
     console.log('Full Response Object:', res.data);
     console.groupEnd();
