@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'models/app_notification_model.dart';
 import 'models/auth_user.dart';
@@ -9,6 +10,7 @@ import 'models/worker_model.dart';
 import 'screens/chat_screen.dart';
 import 'screens/community_screen.dart';
 import 'screens/join_screen.dart';
+import 'screens/onboarding_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/worker/worker_portal_screen.dart';
 import 'screens/worker/become_worker_sheet.dart';
@@ -25,6 +27,7 @@ import 'widgets/app_components.dart';
 import 'widgets/notifications_sheet.dart';
 import 'widgets/m3_bottom_nav_bar.dart';
 import 'package:loading_indicator_m3e/loading_indicator_m3e.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -67,6 +70,7 @@ class SuperBassApp extends StatelessWidget {
       routes: {
         '/': (context) => const MainNavigationShell(),
         '/join': (context) => const JoinScreen(),
+        '/onboarding': (context) => const OnboardingScreen(),
       },
     );
   }
@@ -481,13 +485,62 @@ class _FindTabScreenState extends State<FindTabScreen> {
     );
   }
 
-  void _showBookingSheet(WorkerModel worker) {
+  void _showBookingSheet(WorkerModel worker) async {
+    final prefs = await SharedPreferences.getInstance();
+    final user = AuthService().currentUser;
+    final userEmail = user?.email ?? prefs.getString('email') ?? '';
+
+    String initialPhone = prefs.getString('phoneNo') ?? prefs.getString('userPhone') ?? '';
+    String initialAddress = prefs.getString('address') ?? prefs.getString('userAddress') ?? '';
+    double? initialLat = user?.locationLat ?? prefs.getDouble('locationLat') ?? (prefs.getString('locationLat') != null ? double.tryParse(prefs.getString('locationLat')!) : null);
+    double? initialLng = user?.locationLng ?? prefs.getDouble('locationLng') ?? (prefs.getString('locationLng') != null ? double.tryParse(prefs.getString('locationLng')!) : null);
+
+    if (userEmail.isNotEmpty) {
+      try {
+        final profile = await ApiService().getResidentProfile(userEmail);
+        if (profile != null) {
+          final pPhone = profile['phoneNo'] as String?;
+          if (pPhone != null && pPhone.isNotEmpty) {
+            initialPhone = pPhone;
+            await prefs.setString('phoneNo', initialPhone);
+          }
+          final pAddr = profile['address'] as String?;
+          if (pAddr != null && pAddr.isNotEmpty) {
+            initialAddress = pAddr;
+            await prefs.setString('address', initialAddress);
+          }
+          if (profile['locationLat'] != null) {
+            initialLat = (profile['locationLat'] as num).toDouble();
+            await prefs.setDouble('locationLat', initialLat);
+          }
+          if (profile['locationLng'] != null) {
+            initialLng = (profile['locationLng'] as num).toDouble();
+            await prefs.setDouble('locationLng', initialLng);
+          }
+        }
+      } catch (e) {
+        debugPrint('Error loading user profile for booking sheet: $e');
+      }
+    }
+
     final titleController = TextEditingController(text: 'Need help with ${worker.skills.isNotEmpty ? worker.skills.first : "home service"}');
     final descController = TextEditingController();
-    final phoneController = TextEditingController(text: '0771234567');
+    final phoneController = TextEditingController(text: initialPhone);
+    final addressController = TextEditingController(text: initialAddress);
+    
     DateTime? selectedDate = DateTime.now().add(const Duration(days: 1));
     TimeOfDay? selectedTime = TimeOfDay.now();
     bool isSubmitting = false;
+
+    // GPS location state
+    bool hasSavedCoordinates = initialLat != null && initialLng != null;
+    double locationLat = initialLat ?? 6.9271;
+    double locationLng = initialLng ?? 79.8612;
+
+    bool shareGps = hasSavedCoordinates;
+    bool showMapPicker = false;
+
+    if (!mounted) return;
 
     showModalBottomSheet(
       context: context,
@@ -591,14 +644,18 @@ class _FindTabScreenState extends State<FindTabScreen> {
                 ),
                 const SizedBox(height: 14),
                 Text(
-                  'Contact Phone',
+                  'Contact Phone (10 digits, e.g. 0771234567)',
                   style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 14),
                 ),
                 const SizedBox(height: 6),
                 TextField(
                   controller: phoneController,
                   keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(hintText: '07x xxx xxxx'),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(10),
+                  ],
+                  decoration: const InputDecoration(hintText: '07XXXXXXXX'),
                 ),
                 const SizedBox(height: 14),
                 Text(
@@ -657,6 +714,320 @@ class _FindTabScreenState extends State<FindTabScreen> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 14),
+                Text(
+                  'Location Address',
+                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 14),
+                ),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: addressController,
+                  decoration: const InputDecoration(
+                    hintText: 'e.g. 123 Galle Road, Colombo',
+                    prefixIcon: Icon(Icons.location_on_outlined, size: 20),
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // GPS Location Share & Map Picker (Faithfully replicating web booking form)
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Checkbox(
+                            value: shareGps,
+                            activeColor: Colors.black,
+                            checkColor: Colors.white,
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            visualDensity: VisualDensity.compact,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                            side: const BorderSide(color: Color(0xFF94A3B8), width: 1.5),
+                            onChanged: (val) {
+                              setModalState(() {
+                                shareGps = val ?? false;
+                              });
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                setModalState(() {
+                                  shareGps = !shareGps;
+                                });
+                              },
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.my_location, size: 18, color: Colors.black),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Share saved GPS location',
+                                        style: GoogleFonts.dmSans(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 14,
+                                          color: const Color(0xFF0F172A),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 2),
+                                  if (hasSavedCoordinates)
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.pin_drop, size: 14, color: Colors.black),
+                                        const SizedBox(width: 4),
+                                        RichText(
+                                          text: TextSpan(
+                                            style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF64748B)),
+                                            children: [
+                                              const TextSpan(text: 'Saved Pin: '),
+                                              TextSpan(
+                                                text: '${locationLat.toStringAsFixed(5)}, ${locationLng.toStringAsFixed(5)}',
+                                                style: GoogleFonts.dmSans(
+                                                  fontWeight: FontWeight.w700,
+                                                  color: const Color(0xFF0F172A),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  else
+                                    Text(
+                                      'No GPS coordinates saved. Pick on map to attach.',
+                                      style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF64748B)),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          TextButton.icon(
+                            onPressed: () {
+                              setModalState(() {
+                                showMapPicker = !showMapPicker;
+                              });
+                            },
+                            icon: Icon(
+                              showMapPicker ? Icons.expand_less : Icons.map_outlined,
+                              size: 16,
+                              color: Colors.black,
+                            ),
+                            label: Text(
+                              showMapPicker ? 'Hide Map' : (hasSavedCoordinates ? 'View / Change Pin' : 'Pick on Map'),
+                              style: GoogleFonts.dmSans(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                                color: Colors.black,
+                              ),
+                            ),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // Expandable Interactive Map & Geolocation
+                      if (showMapPicker) ...[
+                        const SizedBox(height: 12),
+                        Container(height: 1, color: const Color(0xFFE2E8F0)),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.touch_app, size: 15, color: Colors.black),
+                                  const SizedBox(width: 4),
+                                  Flexible(
+                                    child: Text(
+                                      'Tap anywhere on map to pin',
+                                      style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF64748B)),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            InkWell(
+                              onTap: () {
+                                setModalState(() {
+                                  locationLat = 6.9271;
+                                  locationLng = 79.8612;
+                                  hasSavedCoordinates = true;
+                                  shareGps = true;
+                                });
+                              },
+                              borderRadius: BorderRadius.circular(8),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF1F5F9),
+                                  border: Border.all(color: const Color(0xFFCBD5E1)),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.gps_fixed, size: 13, color: Colors.black),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Use Device GPS',
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Container(
+                          height: 180,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFCBD5E1)),
+                            color: const Color(0xFFE5E7EB),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: GestureDetector(
+                            onTapDown: (details) {
+                              final normX = (details.localPosition.dx / 280.0) - 0.5;
+                              final normY = (details.localPosition.dy / 180.0) - 0.5;
+                              setModalState(() {
+                                locationLat = locationLat + (normY * 0.02);
+                                locationLng = locationLng + (normX * 0.02);
+                                hasSavedCoordinates = true;
+                                shareGps = true;
+                              });
+                            },
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Container(
+                                  decoration: const BoxDecoration(
+                                    image: DecorationImage(
+                                      image: NetworkImage('https://tile.openstreetmap.org/13/4688/3187.png'),
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                ),
+                                Container(color: Colors.black.withValues(alpha: 0.03)),
+                                Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: const BoxDecoration(
+                                        color: Colors.black,
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 3)),
+                                        ],
+                                      ),
+                                      child: const Icon(Icons.location_on, color: Colors.white, size: 18),
+                                    ),
+                                    Container(
+                                      width: 6,
+                                      height: 3,
+                                      decoration: const BoxDecoration(color: Colors.black38, shape: BoxShape.circle),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.location_on, size: 15, color: Colors.black),
+                              const SizedBox(width: 4),
+                              RichText(
+                                text: TextSpan(
+                                  style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFF0F172A)),
+                                  children: [
+                                    const TextSpan(text: 'Selected: '),
+                                    TextSpan(
+                                      text: '${locationLat.toStringAsFixed(6)}, ${locationLng.toStringAsFixed(6)}',
+                                      style: const TextStyle(fontWeight: FontWeight.w700),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // Pricing Info (Read-only)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.payments_outlined, size: 18, color: Colors.black),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Pricing Model',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        '${worker.pricingModel ?? "Hourly"} ${worker.hourlyRate > 0 ? "(Rs. ${worker.hourlyRate.round()}/hr)" : ""}',
+                        style: GoogleFonts.dmSans(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: const Color(0xFF111827),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
@@ -665,6 +1036,17 @@ class _FindTabScreenState extends State<FindTabScreen> {
                     onPressed: isSubmitting
                         ? null
                         : () async {
+                            final phone = phoneController.text.trim();
+                            if (!RegExp(r'^0\d{9}$').hasMatch(phone)) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Phone number must be exactly 10 digits starting with 0 (e.g. 0771234567).'),
+                                  backgroundColor: AppColors.error,
+                                ),
+                              );
+                              return;
+                            }
+
                             setModalState(() => isSubmitting = true);
                             
                             DateTime? finalDate;
@@ -686,10 +1068,14 @@ class _FindTabScreenState extends State<FindTabScreen> {
                               workerId: worker.id,
                               jobTitle: titleController.text.trim(),
                               description: descController.text.trim(),
-                              urgency: 'Medium', // Default to medium backend requirement
+                              urgency: 'Medium',
                               scheduledDate: finalDate,
+                              locationAddress: addressController.text.trim().isNotEmpty ? addressController.text.trim() : 'Colombo',
                               contactPhone: phoneController.text.trim(),
                               estimatedPrice: worker.hourlyRate > 0 ? worker.hourlyRate : 2500.0,
+                              pricingModel: worker.pricingModel ?? 'Hourly',
+                              locationLat: shareGps ? locationLat : null,
+                              locationLng: shareGps ? locationLng : null,
                             );
 
                             if (sheetContext.mounted) {

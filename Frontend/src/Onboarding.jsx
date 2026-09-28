@@ -297,10 +297,13 @@ export default function Onboarding() {
               What is your phone number?
             </h2>
             <md-filled-text-field
-              label="Phone Number"
+              label="Phone Number (10 digits)"
               type="tel"
+              maxLength={10}
               value={phoneNo}
-              onInput={(e) => setPhoneNo(e.target.value)}
+              error={phoneNo.length > 0 ? !/^0\d{9}$/.test(phoneNo) : false}
+              error-text={phoneNo.length > 0 && !/^0\d{9}$/.test(phoneNo) ? "Phone number must be 10 digits starting with 0" : ""}
+              onInput={(e) => setPhoneNo(e.target.value.replace(/\D/g, '').slice(0, 10))}
             ></md-filled-text-field>
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
                <md-outlined-button 
@@ -313,7 +316,7 @@ export default function Onboarding() {
                <md-filled-button 
                  type="button" 
                  onClick={() => setStep(3)} 
-                 disabled={!phoneNo.trim()}
+                 disabled={!/^0\d{9}$/.test(phoneNo.trim())}
                  style={{
                    flex: 1,
                    '--md-filled-button-container-shape': '50px',
@@ -321,7 +324,7 @@ export default function Onboarding() {
                    '--md-sys-color-on-primary': '#000000',
                    height: '56px',
                    fontSize: '18px',
-                   opacity: !phoneNo.trim() ? 0.5 : 1
+                   opacity: !/^0\d{9}$/.test(phoneNo.trim()) ? 0.5 : 1
                  }}
                >
                  Next

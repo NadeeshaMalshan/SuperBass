@@ -5,6 +5,7 @@ import '../services/api_config.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
 import '../main.dart';
+import 'onboarding_screen.dart';
 import 'package:loading_indicator_m3e/loading_indicator_m3e.dart';
 
 /// Pixel-perfect Google 4-color "G" Logo
@@ -195,11 +196,16 @@ class _JoinScreenState extends State<JoinScreen> {
       ),
     );
 
-    // Redirect: MainNavigationShell automatically displays WorkerPortalScreen if activeRole == 'Worker',
-    // or the Resident navigation tabs if activeRole == 'Resident'.
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const MainNavigationShell()),
-    );
+    // Redirect: New users go to OnboardingScreen (matching Frontend Join.jsx -> /onboarding)
+    if (user.activeRole != 'Worker' && user.isNewUser) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+      );
+    } else {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const MainNavigationShell()),
+      );
+    }
   }
 
   void _showDevLoginDialog() {
@@ -245,6 +251,8 @@ class _JoinScreenState extends State<JoinScreen> {
                     backgroundColor: AppColors.primaryContainer,
                     child: Icon(Icons.person, color: AppColors.onPrimaryContainer),
                   ),
+                  title: const Text('Sign in as Resident'),
+                  subtitle: const Text('Access community, find workers, post jobs'),
                   tileColor: AppColors.surfaceVariant,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -269,6 +277,25 @@ class _JoinScreenState extends State<JoinScreen> {
                   onTap: () {
                     Navigator.pop(ctx);
                     _handleDevLogin(role: 'Worker');
+                  },
+                ),
+                const SizedBox(height: 12),
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: AppColors.brandYellow,
+                    child: Icon(Icons.person_add_alt_1, color: Colors.black),
+                  ),
+                  title: const Text('Test New User Onboarding'),
+                  subtitle: const Text('Experience the animated 4-step onboarding flow'),
+                  tileColor: AppColors.surfaceVariant,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+                    );
                   },
                 ),
                 const SizedBox(height: 12),
