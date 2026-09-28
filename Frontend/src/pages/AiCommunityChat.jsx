@@ -5,6 +5,7 @@ import UserMenu from '../components/UserMenu.jsx';
 import M3TopNavbar from '../components/M3TopNavbar.jsx';
 import AgentCardDispatcher from '../components/agent/AgentCardDispatcher.jsx';
 import craftsmanImg from '../assets/carftman.png';
+import workioLogoWhite from '../assets/Workio_Logo/Workio_Logo_White_WithOut_Text.png';
 import {
   sendAgentMessage,
   checkAgentHealth,
@@ -220,7 +221,21 @@ export default function AiCommunityChat() {
   }, [messages, loading]);
 
   const handleSendMessage = async (textToSend) => {
-    const prompt = (textToSend || inputText).trim();
+    let prompt = '';
+    let extraMeta = {};
+
+    if (typeof textToSend === 'object' && textToSend !== null) {
+      prompt = (textToSend.prompt || textToSend.text || textToSend.message || '').trim();
+      if (textToSend.postData) {
+        extraMeta.post_data = textToSend.postData;
+        if (Array.isArray(textToSend.postData.images) && textToSend.postData.images.length > 0) {
+          extraMeta.post_images = textToSend.postData.images;
+        }
+      }
+    } else {
+      prompt = (textToSend || inputText).trim();
+    }
+
     if (!prompt || loading) return;
 
     const userMessage = {
@@ -247,6 +262,7 @@ export default function AiCommunityChat() {
           user_lng: userLocation.lng,
           location: userLocation.city || 'Colombo',
           user_location_name: userLocation.city || 'Colombo',
+          ...extraMeta,
         },
       });
 
@@ -357,7 +373,11 @@ export default function AiCommunityChat() {
           {/* Brand / Identity */}
           <div className="ai-sidebar-brand">
             <div className="ai-sidebar-brand-icon">
-              <md-icon style={{ fontSize: '20px', color: '#ffffff' }}>auto_awesome</md-icon>
+              <img
+                src={workioLogoWhite}
+                alt="Workio AI"
+                style={{ width: '22px', height: '22px', objectFit: 'contain' }}
+              />
             </div>
             {!isSidebarCollapsed && (
               <div>
@@ -383,7 +403,7 @@ export default function AiCommunityChat() {
           <nav className="m3-drawer-nav">
             {[
               { label: 'Recent Posts', icon: 'campaign', msg: 'Show recent community posts in Colombo' },
-              { label: 'Find Craftsmen', icon: 'handyman', msg: 'Find available verified craftsmen near me' },
+              { label: 'Find Craftsmen', icon: 'handyman', msg: 'I want to find a worker' },
               { label: 'My Posts', icon: 'badge', msg: 'Show all my community posts' },
               { label: 'My Profile', icon: 'person', msg: 'What is my user role and profile details?' },
             ].map(({ label, icon, msg }) => (
@@ -470,7 +490,11 @@ export default function AiCommunityChat() {
             <div className="ai-chat-card-header">
               <div className="ai-chat-title-group">
                 <div className="ai-chat-bot-avatar">
-                  <md-icon style={{ fontSize: '22px', color: '#ffffff' }}>auto_awesome</md-icon>
+                  <img
+                    src={workioLogoWhite}
+                    alt="Workio AI"
+                    style={{ width: '24px', height: '24px', objectFit: 'contain' }}
+                  />
                 </div>
                 <div className="ai-chat-title-text">
                   <h2>Workio AI Assistant</h2>
@@ -501,26 +525,56 @@ export default function AiCommunityChat() {
               ) : (
                 messages.map((msg) => {
                   const isUser = msg.sender === 'user';
-                  const isWelcome = msg.cardResponse?.response_type === 'initial_welcome';
+                  const hasPlainTextMessage = Boolean(
+                    !isUser &&
+                    msg.cardResponse?.message &&
+                    msg.cardResponse.response_type !== 'text_message' &&
+                    msg.cardResponse.response_type !== 'initial_welcome'
+                  );
+
+                  const isWorkerList = !isUser && msg.cardResponse?.response_type === 'worker_list';
+                  const workerCount = isWorkerList ? (msg.cardResponse?.card_data?.workers?.length || 0) : 0;
+                  const isFullWidthWorkerList = isWorkerList && workerCount >= 3;
+                  const workerCountClass = isWorkerList ? `worker-count-${workerCount}` : '';
+
+                  const isCommunityPost = !isUser && (
+                    msg.cardResponse?.response_type === 'create_community_post' ||
+                    msg.cardResponse?.response_type === 'post_confirmation' ||
+                    msg.cardResponse?.response_type === 'post_created'
+                  );
+
                 return (
-                  <div key={msg.id} className={`ai-bubble-row ${isUser ? 'resident' : 'assistant'} ${isWelcome ? 'welcome-row' : ''}`}>
-                    {!isUser && !isWelcome && (
+                  <div key={msg.id} className={`ai-bubble-row ${isUser ? 'resident' : 'assistant'} ${isWorkerList ? 'worker-list-row' : ''} ${isFullWidthWorkerList ? 'full-width' : ''} ${workerCountClass} ${isCommunityPost ? 'community-post-row' : ''}`}>
+                    {!isUser && (
                       <div className="ai-msg-avatar bot-av">
-                        <md-icon style={{ fontSize: '18px', color: '#ffffff' }}>auto_awesome</md-icon>
+                        <img
+                          src={workioLogoWhite}
+                          alt="Workio AI"
+                          style={{ width: '18px', height: '18px', objectFit: 'contain' }}
+                        />
                       </div>
                     )}
 
-                    <div className="ai-msg-wrapper">
-                      <div className={`ai-bubble ${isUser ? 'resident' : 'assistant'} ${isWelcome ? 'welcome-bubble' : ''}`}>
-                        {isUser ? (
+                    <div className={`ai-msg-wrapper ${isWorkerList ? 'worker-list-msg-wrapper' : ''} ${isFullWidthWorkerList ? 'full-width' : ''} ${workerCountClass} ${isCommunityPost ? 'community-post-msg-wrapper' : ''}`}>
+                      {isUser ? (
+                        <div className="ai-bubble resident">
                           <div>{msg.text}</div>
-                        ) : (
-                          <AgentCardDispatcher
-                            response={msg.cardResponse}
-                            onAction={handleCardAction}
-                          />
-                        )}
-                      </div>
+                        </div>
+                      ) : (
+                        <>
+                          {hasPlainTextMessage && (
+                            <div className="ai-bubble assistant text-bubble">
+                              <div>{msg.cardResponse.message}</div>
+                            </div>
+                          )}
+                          <div className={`ai-bubble assistant ai-card-bubble ${isWorkerList ? 'worker-list-bubble' : ''} ${workerCountClass} ${isCommunityPost ? 'community-post-bubble' : ''}`}>
+                            <AgentCardDispatcher
+                              response={msg.cardResponse}
+                              onAction={handleCardAction}
+                            />
+                          </div>
+                        </>
+                      )}
                       <span className="ai-msg-time">
                         {msg.time}
                         {isUser && (
@@ -535,7 +589,11 @@ export default function AiCommunityChat() {
               {loading && (
                 <div className="ai-bubble-row assistant">
                   <div className="ai-msg-avatar bot-av">
-                    <md-icon style={{ fontSize: '18px', color: '#ffffff' }}>auto_awesome</md-icon>
+                    <img
+                      src={workioLogoWhite}
+                      alt="Workio AI"
+                      style={{ width: '18px', height: '18px', objectFit: 'contain' }}
+                    />
                   </div>
                   <div className="ai-msg-wrapper">
                     <div className="ai-typing-bubble">

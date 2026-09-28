@@ -4,8 +4,9 @@ from langchain_core.messages import SystemMessage, AIMessage
 from langchain_openai import ChatOpenAI
 from agent_backend.config import settings
 from agent_backend.state.state import AgentState
-from agent_backend.tools.booking_tools import BOOKING_TOOLS
+from agent_backend.tools.booking_tools import BOOKING_TOOLS, get_live_service_categories
 from agent_backend.prompts.booking_prompts import BOOKING_AGENT_SYSTEM_PROMPT
+from agent_backend.utils.sanitizer import sanitize_messages_for_llm
 
 async def booking_agent_node(state: AgentState) -> Dict[str, Any]:
     messages = list(state.get("messages", []))
@@ -38,6 +39,11 @@ async def booking_agent_node(state: AgentState) -> Dict[str, Any]:
     user_phone = user_profile.get("phoneNo") or "on file"
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M (%A)")
 
+    # Fetch dynamic live service categories via MCP
+    live_cats = await get_live_service_categories()
+    categories_list = "\n".join(f"{idx+1}. {c}" for idx, c in enumerate(live_cats))
+
+    clean_messages = sanitize_messages_for_llm(messages)
     prompt = [
         SystemMessage(
             content=BOOKING_AGENT_SYSTEM_PROMPT.format(
@@ -45,10 +51,11 @@ async def booking_agent_node(state: AgentState) -> Dict[str, Any]:
                 user_address=user_address,
                 user_phone=user_phone,
                 location_info=location_info,
-                current_time=current_time
+                current_time=current_time,
+                categories_list=categories_list
             )
         )
-    ] + messages
+    ] + clean_messages
 
     if settings.openai_api_key and settings.openai_api_key !="your_openai_api_key_here":
         llm = ChatOpenAI(

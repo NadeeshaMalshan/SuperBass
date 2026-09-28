@@ -1,37 +1,33 @@
 import React, { useState, useRef, useEffect } from 'react';
 import craftsmanAvatar from '../../assets/carftman.png';
-import {
-  acImage,
-  plumbingImage,
-  electricalImage,
-  carpentryImage,
-  paintingImage,
-  cleaningImage,
-  applianceRepairImage,
-  roofingImage,
-  gardeningImage,
-  handymanImage,
-} from '../../assets/Icons';
+import { SERVICE_CATEGORIES } from '../ServiceCategories.jsx';
+import sriLankaDistrictsData from '../../data/sriLankaDistricts.json';
 import './AgentCards.css';
 
-const CATEGORY_OPTIONS = [
-  { id: 'AC Repair & Air Conditioning', label: 'AC Repair & Air Conditioning', icon: acImage },
-  { id: 'Plumbing', label: 'Plumbing & Pipe Repair', icon: plumbingImage },
-  { id: 'Electrical', label: 'Electrical & Wiring', icon: electricalImage },
-  { id: 'Carpentry', label: 'Carpentry & Woodwork', icon: carpentryImage },
-  { id: 'Painting', label: 'Painting & Deco', icon: paintingImage },
-  { id: 'Cleaning', label: 'Home & Office Cleaning', icon: cleaningImage },
-  { id: 'Appliance Repair', label: 'Appliance Repair', icon: applianceRepairImage },
-  { id: 'Roofing', label: 'Roofing Services', icon: roofingImage },
-  { id: 'Gardening & Landscaping', label: 'Gardening & Landscaping', icon: gardeningImage },
-  { id: 'Handyman Services', label: 'Handyman Services', icon: handymanImage },
-];
+const ALL_DISTRICTS = Object.values(sriLankaDistrictsData).flat();
+
+const resolveDistrict = (loc) => {
+  if (!loc) return 'Colombo';
+  const clean = String(loc).trim().toLowerCase();
+  const exact = ALL_DISTRICTS.find((d) => d.toLowerCase() === clean);
+  if (exact) return exact;
+  const partial = ALL_DISTRICTS.find((d) => clean.includes(d.toLowerCase()) || d.toLowerCase().includes(clean));
+  if (partial) return partial;
+  return 'Colombo';
+};
+
+const CATEGORY_OPTIONS = SERVICE_CATEGORIES.map((cat) => ({
+  id: cat.name,
+  code: cat.id,
+  label: cat.name,
+  icon: cat.illustration,
+}));
 
 export default function CreateCommunityPostCard({ data = {}, onAction }) {
   const cardRef = useRef(null);
   const [currentStep, setCurrentStep] = useState(1); // 1: Details, 2: Review, 3: Publish
   const [selectedCategory, setSelectedCategory] = useState(
-    data.communityId || data.category || 'AC Repair & Air Conditioning'
+    data.communityId || data.category || (CATEGORY_OPTIONS[0]?.label || 'General')
   );
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const [title, setTitle] = useState(data.title || 'Service Request');
@@ -40,8 +36,16 @@ export default function CreateCommunityPostCard({ data = {}, onAction }) {
       data.description ||
       'I am looking for professional services in Colombo. Please reach out if you can assist.'
   );
-  const [location, setLocation] = useState(data.location || 'Colombo');
-  const [urgency, setUrgency] = useState(data.urgency || 'As soon as possible');
+  const [location, setLocation] = useState(resolveDistrict(data.location));
+
+  useEffect(() => {
+    if (data.communityId || data.category) {
+      setSelectedCategory(data.communityId || data.category);
+    }
+    if (data.title) setTitle(data.title);
+    if (data.content || data.description) setDescription(data.content || data.description);
+    if (data.location) setLocation(resolveDistrict(data.location));
+  }, [data.communityId, data.category, data.title, data.content, data.description, data.location]);
 
   // Initial photos start empty so user can attach real photos
   const [photos, setPhotos] = useState(
@@ -84,8 +88,20 @@ export default function CreateCommunityPostCard({ data = {}, onAction }) {
   };
 
   const currentCategoryObj =
-    CATEGORY_OPTIONS.find((c) => c.id.toLowerCase() === selectedCategory.toLowerCase()) ||
-    CATEGORY_OPTIONS[0];
+    CATEGORY_OPTIONS.find((c) => {
+      const target = (selectedCategory || '').toLowerCase().trim();
+      if (!target) return false;
+      const cId = (c.id || '').toLowerCase();
+      const cCode = (c.code || '').toLowerCase();
+      const cLabel = (c.label || '').toLowerCase();
+      return (
+        cId === target ||
+        cCode === target ||
+        cLabel === target ||
+        (target.length > 2 && (cId.includes(target) || target.includes(cId))) ||
+        (target.length > 2 && (cCode.includes(target) || target.includes(cCode)))
+      );
+    }) || (selectedCategory ? { id: selectedCategory, label: selectedCategory, icon: null } : CATEGORY_OPTIONS[0]);
 
   const handleContinue = () => {
     if (currentStep === 1) {
@@ -93,7 +109,7 @@ export default function CreateCommunityPostCard({ data = {}, onAction }) {
     } else if (currentStep === 2) {
       setCurrentStep(3);
       // Trigger confirmation action to Agent backend with current edited values and real attached images
-      const promptToExecute = `CONFIRM_PUBLISH: Yes, please publish the community post '${title}' in ${selectedCategory} for ${location} with urgency '${urgency}'. Description: ${description}`;
+      const promptToExecute = `CONFIRM_PUBLISH: Yes, please publish the community post '${title}' in ${selectedCategory} for ${location}. Description: ${description}`;
       const payloadObj = {
         prompt: promptToExecute,
         postData: {
@@ -101,7 +117,6 @@ export default function CreateCommunityPostCard({ data = {}, onAction }) {
           content: description,
           communityId: selectedCategory,
           location,
-          urgency,
           images: photos.map((p) => p.url),
         },
       };
@@ -190,7 +205,7 @@ export default function CreateCommunityPostCard({ data = {}, onAction }) {
                   {CATEGORY_OPTIONS.map((cat) => (
                     <div
                       key={cat.id}
-                      className={`category-dropdown-option ${cat.id === selectedCategory ? 'selected' : ''}`}
+                      className={`category-dropdown-option ${cat.id === currentCategoryObj.id ? 'selected' : ''}`}
                       onClick={() => {
                         setSelectedCategory(cat.id);
                         setCategoryDropdownOpen(false);
@@ -200,7 +215,7 @@ export default function CreateCommunityPostCard({ data = {}, onAction }) {
                         <img src={cat.icon} alt={cat.label} />
                       </div>
                       <span>{cat.label}</span>
-                      {cat.id === selectedCategory && (
+                      {cat.id === currentCategoryObj.id && (
                         <i className="fa-solid fa-check option-check"></i>
                       )}
                     </div>
@@ -234,40 +249,27 @@ export default function CreateCommunityPostCard({ data = {}, onAction }) {
             />
           </div>
 
-          {/* Location & Urgency Row */}
-          <div className="create-post-grid-row">
-            {/* Location */}
-            <div className="create-post-field-group">
-              <label className="create-post-label">Location</label>
-              <div className="create-post-icon-input">
-                <i className="fa-solid fa-location-dot input-left-icon"></i>
-                <input
-                  type="text"
-                  className="icon-input-field"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  placeholder="e.g. Colombo"
-                />
-              </div>
-            </div>
-
-            {/* Urgency */}
-            <div className="create-post-field-group">
-              <label className="create-post-label">Urgency</label>
-              <div className="create-post-icon-input select-container">
-                <i className="fa-regular fa-clock input-left-icon"></i>
-                <select
-                  className="icon-select-field"
-                  value={urgency}
-                  onChange={(e) => setUrgency(e.target.value)}
-                >
-                  <option value="As soon as possible">As soon as possible</option>
-                  <option value="Within 24 hours">Within 24 hours</option>
-                  <option value="This week">This week</option>
-                  <option value="Flexible">Flexible</option>
-                </select>
-                <i className="fa-solid fa-chevron-down select-chevron"></i>
-              </div>
+          {/* Location */}
+          <div className="create-post-field-group">
+            <label className="create-post-label">Location (District)</label>
+            <div className="create-post-icon-input">
+              <i className="fa-solid fa-location-dot input-left-icon"></i>
+              <select
+                className="icon-input-field location-select-field"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+              >
+                {Object.entries(sriLankaDistrictsData).map(([province, districts]) => (
+                  <optgroup key={province} label={province}>
+                    {districts.map((district) => (
+                      <option key={district} value={district}>
+                        {district}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+              <i className="fa-solid fa-chevron-down location-select-chevron"></i>
             </div>
           </div>
 
@@ -342,9 +344,6 @@ export default function CreateCommunityPostCard({ data = {}, onAction }) {
             <div className="review-category-badge">
               <img src={currentCategoryObj.icon} alt={currentCategoryObj.label} />
               <span>{selectedCategory}</span>
-              <span className="review-urgency-pill">
-                <i className="fa-regular fa-clock"></i> {urgency}
-              </span>
             </div>
 
             <h3 className="review-title">{title}</h3>

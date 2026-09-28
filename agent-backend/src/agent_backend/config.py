@@ -11,10 +11,7 @@ import json
 
 def normalize_database_url(raw: str) -> str:
     """Converts ADO.NET connection strings or standard postgres URLs to asyncpg format."""
-    default_url = (
-        "postgresql+asyncpg://neondb_owner:npg_XHrA2OFlP1vg@"
-        "ep-bitter-surf-b4ey6xhv-pooler.c-6.us-east-2.aws.neon.tech/neondb?ssl=require"
-    )
+    default_url = "postgresql+asyncpg://postgres:123456@localhost:5432/workio"
     if not raw or not raw.strip():
         return default_url
 
@@ -28,10 +25,12 @@ def normalize_database_url(raw: str) -> str:
                 k, v = item.split("=", 1)
                 parts[k.strip().lower()] = v.strip()
         host = parts.get("host", "localhost")
-        db = parts.get("database", "neondb")
-        user = parts.get("username", parts.get("user id", "neondb_owner"))
-        pwd = parts.get("password", "")
-        return f"postgresql+asyncpg://{user}:{pwd}@{host}/{db}?ssl=require"
+        port = parts.get("port", "5432")
+        db = parts.get("database", "workio")
+        user = parts.get("username", parts.get("user id", "postgres"))
+        pwd = parts.get("password", "123456")
+        ssl_part = "?ssl=require" if "localhost" not in host and "127.0.0.1" not in host else ""
+        return f"postgresql+asyncpg://{user}:{pwd}@{host}:{port}/{db}{ssl_part}"
 
     if clean_raw.startswith("postgresql://"):
         return clean_raw.replace("postgresql://", "postgresql+asyncpg://", 1)
@@ -74,12 +73,9 @@ class Settings(BaseSettings):
     )
     mcp_timeout: float = Field(default=30.0, description="MCP client timeout in seconds")
 
-    # Neon PostgreSQL Database configuration
+    # Local PostgreSQL Database configuration
     database_url: str = Field(
-        default=(
-            "postgresql+asyncpg://neondb_owner:npg_XHrA2OFlP1vg@"
-            "ep-bitter-surf-b4ey6xhv-pooler.c-6.us-east-2.aws.neon.tech/neondb?ssl=require"
-        ),
+        default="postgresql+asyncpg://postgres:123456@localhost:5432/workio",
         description="Async SQLAlchemy database connection URL"
     )
 

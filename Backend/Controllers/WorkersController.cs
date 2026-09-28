@@ -47,9 +47,15 @@ namespace Superbass.Controllers
 
         // GET: /api/workers/search?skill=Plumbing&location=Colombo&residentLat=6.9&residentLng=79.8
         [HttpGet("search")]
-        public async Task<IActionResult> Search([FromQuery] string? skill, [FromQuery] string? location, [FromQuery] double? residentLat, [FromQuery] double? residentLng)
+        public async Task<IActionResult> Search(
+            [FromQuery] string? skill,
+            [FromQuery] string? location,
+            [FromQuery] double? residentLat,
+            [FromQuery] double? residentLng,
+            [FromQuery] decimal? maxHourlyRate = null,
+            [FromQuery] decimal? minHourlyRate = null)
         {
-            var results = await _workerRepository.SearchWorkersAsync(skill, location, null, residentLat, residentLng);
+            var results = await _workerRepository.SearchWorkersAsync(skill, location, null, residentLat, residentLng, maxHourlyRate, minHourlyRate);
             return Ok(results);
         }
 

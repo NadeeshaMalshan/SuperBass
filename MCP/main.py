@@ -107,6 +107,8 @@ tools = [
                 "residentLat": {"type": "number", "description": "Resident latitude coordinate for distance proximity search"},
                 "residentLng": {"type": "number", "description": "Resident longitude coordinate for distance proximity search"},
                 "maxDistanceKm": {"type": "number", "description": "Maximum distance radius in kilometers (optional)"},
+                "maxHourlyRate": {"type": "number", "description": "Maximum hourly rate budget in LKR (e.g. 2000)"},
+                "minHourlyRate": {"type": "number", "description": "Minimum hourly rate in LKR"},
                 "availability": {"type": "string", "description": "Filter by availability"},
                 "page": {"type": "integer", "description": "Page number"},
                 "pageSize": {"type": "integer", "description": "Page size"}
@@ -224,7 +226,8 @@ tools = [
                 "content": {"type": "string", "description": "Post content"},
                 "communityId": {"type": "string", "description": "Community ID"},
                 "location": {"type": "string", "description": "Service location"},
-                "userName": {"type": "string", "description": "Author display name"}
+                "userName": {"type": "string", "description": "Author display name"},
+                "images": {"type": "array", "items": {"type": "string"}, "description": "List of attached image URLs or base64 data URLs"}
             },
             "required": ["authorId", "title", "content", "communityId"]
         }
@@ -364,9 +367,123 @@ def get_city_coords(location: Optional[str]):
             return coords
     return None
 
+OFFICIAL_WORKIO_CATEGORIES = [
+    "Vehicle Repair & Mechanic",
+    "Plumbing",
+    "Electrical",
+    "AC & Air Conditioning",
+    "Carpentry",
+    "Painting",
+    "Masonry & Construction",
+    "Welding",
+    "Cleaning",
+    "Gardening & Landscaping",
+    "Handyman Services",
+    "Roofing",
+    "Glass & Window Services",
+    "Locksmith",
+    "Appliance Repair",
+    "Computer & IT Services",
+    "Phone Repair",
+    "Moving & Transport",
+    "Furniture Repair & Assembly",
+    "Pest Control",
+    "CCTV Installation & Repair",
+    "Others"
+]
+
+CATEGORY_SYNONYMS = {
+    "Vehicle Repair & Mechanic": [
+        "car", "vehicle", "mechanic", "auto", "automobile", "motor", "engine",
+        "mcanin", "vechil", "repir my car", "car repair", "bike", "van", "lorry repair",
+        "tyre", "tire", "battery", "suspension", "brake", "oil change", "auto repair"
+    ],
+    "Plumbing": [
+        "plumb", "pipe", "tap", "leak", "drain", "toilet", "cistern", "sink", "faucet", "water leak", "commode"
+    ],
+    "Electrical": [
+        "electric", "wiring", "wire", "light", "fuse", "socket", "switch", "short circuit", "fan", "bulb"
+    ],
+    "AC & Air Conditioning": [
+        "ac", "air condition", "air conditioning", "hvac", "cool", "inverter ac"
+    ],
+    "Carpentry": [
+        "carpent", "wood", "door", "timber"
+    ],
+    "Furniture Repair & Assembly": [
+        "furniture", "sofa", "bed", "chair", "table", "cupboard", "wardrobe"
+    ],
+    "Painting": [
+        "paint", "color", "colour", "whitewash", "emulsion"
+    ],
+    "Masonry & Construction": [
+        "mason", "tile", "tiling", "brick", "cement", "concrete", "plaster"
+    ],
+    "Welding": [
+        "weld", "iron", "grill", "gate", "metal"
+    ],
+    "Cleaning": [
+        "clean", "maid", "housekeeping", "deep clean", "mop"
+    ],
+    "Gardening & Landscaping": [
+        "garden", "grass", "lawn", "tree", "landscap", "trim"
+    ],
+    "Appliance Repair": [
+        "appliance", "fridge", "refrigerator", "washing machine", "microwave", "oven", "tv"
+    ],
+    "Locksmith": [
+        "lock", "key", "padlock", "door lock"
+    ],
+    "Roofing": [
+        "roof", "gutter", "asbestos", "tile leak"
+    ],
+    "Glass & Window Services": [
+        "glass", "window", "mirror"
+    ],
+    "Phone Repair": [
+        "phone", "mobile", "smartphone", "iphone", "android"
+    ],
+    "Computer & IT Services": [
+        "computer", "laptop", "pc", "printer", "wifi", "network"
+    ],
+    "Moving & Transport": [
+        "moving", "transport", "lorry", "relocat"
+    ],
+    "Pest Control": [
+        "pest", "termite", "cockroach", "bedbug", "fumigat"
+    ],
+    "CCTV Installation & Repair": [
+        "cctv", "camera", "security camera"
+    ],
+    "Handyman Services": [
+        "handyman", "general maintenance", "shelf", "picture hanging"
+    ]
+}
+
+def normalize_service_category(term: Optional[str]) -> Optional[str]:
+    if not term or not str(term).strip():
+        return None
+    raw = str(term).strip().lower()
+    for cat in OFFICIAL_WORKIO_CATEGORIES:
+        if raw == cat.lower():
+            return cat
+    for cat in OFFICIAL_WORKIO_CATEGORIES:
+        if raw in cat.lower() or cat.lower() in raw:
+            return cat
+    for cat, synonyms in CATEGORY_SYNONYMS.items():
+        if any(syn in raw for syn in synonyms):
+            return cat
+    return term.strip()
+
 # Tool implementation functions
 async def call_search_workers(args: Dict[str, Any]):
     params = {k: v for k, v in args.items() if v is not None}
+    
+    # Normalize skill category if provided
+    raw_skill = args.get("skill") or args.get("query")
+    norm_cat = normalize_service_category(raw_skill)
+    if norm_cat:
+        params["skill"] = norm_cat
     
     # If location is provided but not coordinates, resolve coordinates
     res_lat = args.get("residentLat")
@@ -409,6 +526,21 @@ async def call_search_workers(args: Dict[str, Any]):
             workers.sort(key=lambda x: (x.get("distance") is None, float('inf') if x.get("distance") is None else x.get("distance")))
         except Exception as e:
             logging.getLogger("uvicorn").warning(f"Distance calculation in MCP failed: {e}")
+
+    # Enforce budget / rate filtering if requested
+    if args.get("maxHourlyRate") is not None:
+        try:
+            max_r = float(args["maxHourlyRate"])
+            workers = [w for w in workers if w.get("hourlyRate") is not None and float(w["hourlyRate"]) <= max_r]
+        except (ValueError, TypeError):
+            pass
+
+    if args.get("minHourlyRate") is not None:
+        try:
+            min_r = float(args["minHourlyRate"])
+            workers = [w for w in workers if w.get("hourlyRate") is not None and float(w["hourlyRate"]) >= min_r]
+        except (ValueError, TypeError):
+            pass
 
     return workers
 
@@ -579,7 +711,8 @@ async def call_create_community_post(args: Dict[str, Any]):
         "userName": user_name,
         "userAvatar": user_avatar,
         "serviceCategoryId": args.get("communityId", "General"),
-        "location": args.get("location", "Colombo")
+        "location": args.get("location", "Colombo"),
+        "images": args.get("images") or []
     }
     response = await backend_client.post("/api/community-posts", json=payload)
     if response.status_code >= 400:

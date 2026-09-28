@@ -22,7 +22,7 @@ export default function InitialWelcomeCard({ data = {}, onAction }) {
       icon: 'search',
       color: '#f59e0b',
       actionType: 'send_prompt',
-      payload: 'Find available verified craftsmen near me',
+      payload: 'I want to find a worker',
     },
     {
       id: 'create_post',
@@ -57,11 +57,8 @@ export default function InitialWelcomeCard({ data = {}, onAction }) {
 
   return (
     <div className="ai-welcome-card-root">
-      {/* Top Header Row with Bot Sparkle Avatar */}
+      {/* Top Header Row */}
       <div className="ai-welcome-card-header">
-        <div className="ai-welcome-avatar">
-          <md-icon style={{ fontSize: '18px', color: '#ffffff' }}>auto_awesome</md-icon>
-        </div>
         <div className="ai-welcome-header-text">
           <h3 className="ai-welcome-title">{title}</h3>
           <p className="ai-welcome-subtitle">{text}</p>

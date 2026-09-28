@@ -1,8 +1,11 @@
 import math
-from typing import Dict, Any, Optional
+import logging
+from typing import Dict, Any, Optional, List
 from langchain_core.tools import tool
 from agent_backend.tools.mcp_client import mcp_client
-from agent_backend.tools.community_tools import sanitize_payload
+from agent_backend.tools.community_tools import sanitize_payload, get_service_categories
+
+logger = logging.getLogger("agent_backend.booking_tools")
 
 SRI_LANKA_CITY_COORDS = {
     "colombo": (6.9271, 79.8612),
@@ -127,103 +130,125 @@ async def create_booking(
     )
     return sanitize_payload(result)
 
-DEFAULT_VERIFIED_WORKERS = [
-    {
-        "id": 1,
-        "name": "Kamal Perera",
-        "email": "kamal.plumber@workio.lk",
-        "phoneNo": "0771234567",
-        "primaryRole": "Plumber",
-        "skills": "Tap repair, Pipe leakage, Bathroom plumbing, Drainage, Water heater installation",
-        "primaryServiceArea": "Colombo",
-        "locationLat": 6.9271,
-        "locationLng": 79.8612,
-        "hourlyRate": 2500,
-        "dailyRate": 15000,
-        "pricingModel": "Hourly",
-        "overallRating": 4.9,
-        "reviewCount": 42,
-        "completedJobs": 78,
-        "isAvailable": True,
-        "profileImage": "https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=150"
-    },
-    {
-        "id": 2,
-        "name": "Nimal Silva",
-        "email": "nimal.electrician@workio.lk",
-        "phoneNo": "0719876543",
-        "primaryRole": "Electrician",
-        "skills": "Electrical wiring, Circuit breaker, Lighting, Fan installation, Short circuit repair",
-        "primaryServiceArea": "Colombo",
-        "locationLat": 6.9150,
-        "locationLng": 79.8650,
-        "hourlyRate": 2800,
-        "dailyRate": 16000,
-        "pricingModel": "Hourly",
-        "overallRating": 4.85,
-        "reviewCount": 38,
-        "completedJobs": 64,
-        "isAvailable": True,
-        "profileImage": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150"
-    },
-    {
-        "id": 3,
-        "name": "Sunil Jayawardena",
-        "email": "sunil.ac@workio.lk",
-        "phoneNo": "0755551234",
-        "primaryRole": "AC Technician",
-        "skills": "AC repair, Gas refill, Compressor repair, Inverter AC, Filter cleaning",
-        "primaryServiceArea": "Colombo",
-        "locationLat": 6.9300,
-        "locationLng": 79.8700,
-        "hourlyRate": 3000,
-        "dailyRate": 18000,
-        "pricingModel": "Hourly",
-        "overallRating": 4.92,
-        "reviewCount": 51,
-        "completedJobs": 92,
-        "isAvailable": True,
-        "profileImage": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150"
-    },
-    {
-        "id": 4,
-        "name": "Roshan Fernando",
-        "email": "roshan.plumber@workio.lk",
-        "phoneNo": "0764448899",
-        "primaryRole": "Plumber",
-        "skills": "Bathroom fixtures, Pipe burst, Toilet repair, Pressure pump installation",
-        "primaryServiceArea": "Dehiwala",
-        "locationLat": 6.8511,
-        "locationLng": 79.8659,
-        "hourlyRate": 2200,
-        "dailyRate": 14000,
-        "pricingModel": "Hourly",
-        "overallRating": 4.78,
-        "reviewCount": 29,
-        "completedJobs": 45,
-        "isAvailable": True,
-        "profileImage": "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150"
-    },
-    {
-        "id": 5,
-        "name": "Anura Kumara",
-        "email": "anura.carpenter@workio.lk",
-        "phoneNo": "0723334455",
-        "primaryRole": "Carpenter",
-        "skills": "Door repair, Furniture assembly, Cupboard repair, Wood polish",
-        "primaryServiceArea": "Colombo",
-        "locationLat": 6.9200,
-        "locationLng": 79.8600,
-        "hourlyRate": 2400,
-        "dailyRate": 14500,
-        "pricingModel": "Hourly",
-        "overallRating": 4.88,
-        "reviewCount": 35,
-        "completedJobs": 58,
-        "isAvailable": True,
-        "profileImage": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150"
-    }
+OFFICIAL_WORKIO_CATEGORIES = [
+    "Vehicle Repair & Mechanic",
+    "Plumbing",
+    "Electrical",
+    "AC & Air Conditioning",
+    "Carpentry",
+    "Painting",
+    "Masonry & Construction",
+    "Welding",
+    "Cleaning",
+    "Gardening & Landscaping",
+    "Handyman Services",
+    "Roofing",
+    "Glass & Window Services",
+    "Locksmith",
+    "Appliance Repair",
+    "Computer & IT Services",
+    "Phone Repair",
+    "Moving & Transport",
+    "Furniture Repair & Assembly",
+    "Pest Control",
+    "CCTV Installation & Repair",
+    "Others"
 ]
+
+CATEGORY_SYNONYMS = {
+    "Vehicle Repair & Mechanic": [
+        "car", "vehicle", "mechanic", "auto", "automobile", "motor", "engine",
+        "mcanin", "vechil", "repir my car", "car repair", "bike", "van", "lorry repair",
+        "tyre", "tire", "battery", "suspension", "brake", "oil change", "auto repair"
+    ],
+    "Plumbing": [
+        "plumb", "pipe", "tap", "leak", "drain", "toilet", "cistern", "sink", "faucet", "water leak", "commode"
+    ],
+    "Electrical": [
+        "electric", "wiring", "wire", "light", "fuse", "socket", "switch", "short circuit", "fan", "bulb"
+    ],
+    "AC & Air Conditioning": [
+        "ac", "air condition", "air conditioning", "hvac", "cool", "inverter ac"
+    ],
+    "Carpentry": [
+        "carpent", "wood", "door", "timber"
+    ],
+    "Furniture Repair & Assembly": [
+        "furniture", "sofa", "bed", "chair", "table", "cupboard", "wardrobe"
+    ],
+    "Painting": [
+        "paint", "color", "colour", "whitewash", "emulsion"
+    ],
+    "Masonry & Construction": [
+        "mason", "tile", "tiling", "brick", "cement", "concrete", "plaster"
+    ],
+    "Welding": [
+        "weld", "iron", "grill", "gate", "metal"
+    ],
+    "Cleaning": [
+        "clean", "maid", "housekeeping", "deep clean", "mop"
+    ],
+    "Gardening & Landscaping": [
+        "garden", "grass", "lawn", "tree", "landscap", "trim"
+    ],
+    "Appliance Repair": [
+        "appliance", "fridge", "refrigerator", "washing machine", "microwave", "oven", "tv"
+    ],
+    "Locksmith": [
+        "lock", "key", "padlock", "door lock"
+    ],
+    "Roofing": [
+        "roof", "gutter", "asbestos", "tile leak"
+    ],
+    "Glass & Window Services": [
+        "glass", "window", "mirror"
+    ],
+    "Phone Repair": [
+        "phone", "mobile", "smartphone", "iphone", "android"
+    ],
+    "Computer & IT Services": [
+        "computer", "laptop", "pc", "printer", "wifi", "network"
+    ],
+    "Moving & Transport": [
+        "moving", "transport", "lorry", "relocat"
+    ],
+    "Pest Control": [
+        "pest", "termite", "cockroach", "bedbug", "fumigat"
+    ],
+    "CCTV Installation & Repair": [
+        "cctv", "camera", "security camera"
+    ],
+    "Handyman Services": [
+        "handyman", "general maintenance", "shelf", "picture hanging"
+    ]
+}
+
+def normalize_service_category(term: Optional[str]) -> Optional[str]:
+    """
+    Normalizes any service term, synonym, informal phrasing, or typo
+    to the matching official Workio Service Category.
+    """
+    if not term or not str(term).strip():
+        return None
+    raw = str(term).strip().lower()
+    
+    # 1. Exact match against official names
+    for cat in OFFICIAL_WORKIO_CATEGORIES:
+        if raw == cat.lower():
+            return cat
+            
+    # 2. Check substring in official names
+    for cat in OFFICIAL_WORKIO_CATEGORIES:
+        if raw in cat.lower() or cat.lower() in raw:
+            return cat
+            
+    # 3. Check synonym mapping
+    for cat, synonyms in CATEGORY_SYNONYMS.items():
+        if any(syn in raw for syn in synonyms):
+            return cat
+            
+    return term.strip()
+
 
 @tool
 async def search_workers(
@@ -232,19 +257,29 @@ async def search_workers(
     location: Optional[str] = None,
     residentLat: Optional[float] = None,
     residentLng: Optional[float] = None,
-    maxDistanceKm: Optional[float] = None
+    maxDistanceKm: Optional[float] = None,
+    maxHourlyRate: Optional[float] = None,
+    minHourlyRate: Optional[float] = None
 ) -> Dict[str, Any]:
     """
     Search for verified home service workers and technicians, ranking closest workers near the resident first.
-    - skill: Service skill category (e.g. Plumbing, Electrical, AC Repair, Carpentry, Masonry, Cleaning, Painting)
+    - skill: Service skill category (e.g. Vehicle Repair & Mechanic, Plumbing, Electrical, AC & Air Conditioning, Carpentry, Masonry, Cleaning, Painting)
     - query: Worker name or keyword search
-    - location: City, town or district name (e.g. Colombo, Kandy, Galle, Matara)
+    - location: City, town or district name (e.g. Colombo, Kandy, Galle, Matara, Ratnapura)
     - residentLat: Resident's latitude coordinate for proximity ranking and distance calculation
     - residentLng: Resident's longitude coordinate for proximity ranking and distance calculation
     - maxDistanceKm: Maximum distance in kilometers to search within (optional)
+    - maxHourlyRate: Maximum hourly rate in LKR (e.g. 2000, 2500) if the user specifies a budget or rate limit
+    - minHourlyRate: Minimum hourly rate in LKR (optional)
     """
+    normalized_skill = normalize_service_category(skill) if skill else None
+    if not normalized_skill and query:
+        normalized_skill = normalize_service_category(query)
+
     params: Dict[str, Any] = {}
-    if skill:
+    if normalized_skill:
+        params["skill"] = normalized_skill
+    elif skill:
         params["skill"] = skill
     if query:
         params["query"] = query
@@ -256,6 +291,10 @@ async def search_workers(
         params["residentLng"] = residentLng
     if maxDistanceKm is not None:
         params["maxDistanceKm"] = maxDistanceKm
+    if maxHourlyRate is not None:
+        params["maxHourlyRate"] = maxHourlyRate
+    if minHourlyRate is not None:
+        params["minHourlyRate"] = minHourlyRate
 
     try:
         raw_result = await mcp_client.call_tool("search_workers", params)
@@ -263,15 +302,29 @@ async def search_workers(
     except Exception:
         data = []
 
-    # If MCP returned error or empty, fallback to verified seed workers
-    if not isinstance(data, list) or len(data) == 0:
-        candidates = list(DEFAULT_VERIFIED_WORKERS)
-        filter_term = (skill or query or "").lower()
-        if filter_term:
-            filtered = [w for w in candidates if filter_term in w.get("primaryRole", "").lower() or filter_term in w.get("skills", "").lower()]
-            data = filtered if filtered else candidates
-        else:
-            data = candidates
+    if not isinstance(data, list):
+        data = []
+
+    # Enforce strict budget / rate filtering if requested
+    if maxHourlyRate is not None:
+        try:
+            max_limit = float(maxHourlyRate)
+            data = [
+                w for w in data
+                if isinstance(w, dict) and w.get("hourlyRate") is not None and float(w["hourlyRate"]) <= max_limit
+            ]
+        except (ValueError, TypeError):
+            pass
+
+    if minHourlyRate is not None:
+        try:
+            min_limit = float(minHourlyRate)
+            data = [
+                w for w in data
+                if isinstance(w, dict) and w.get("hourlyRate") is not None and float(w["hourlyRate"]) >= min_limit
+            ]
+        except (ValueError, TypeError):
+            pass
 
     # Determine reference resident coordinates for proximity ranking
     r_lat = residentLat
@@ -302,4 +355,37 @@ async def search_workers(
 
     return data
 
-BOOKING_TOOLS = [search_workers, check_worker_availability, create_booking]
+
+_cached_mcp_categories: List[str] = []
+
+async def get_live_service_categories() -> List[str]:
+    """
+    Fetch live official service categories dynamically from the backend database via MCP get_service_categories tool.
+    Caches the list in memory for fast performance.
+    """
+    global _cached_mcp_categories
+    if _cached_mcp_categories:
+        return _cached_mcp_categories
+
+    try:
+        raw = await mcp_client.call_tool("get_service_categories", {"includeDetails": True})
+        items = raw if isinstance(raw, list) else (raw.get("categories") or raw.get("items") if isinstance(raw, dict) else [])
+        names = []
+        if isinstance(items, list):
+            for it in items:
+                if isinstance(it, dict):
+                    n = it.get("name") or it.get("categoryName") or it.get("title") or it.get("id")
+                    if n:
+                        names.append(str(n))
+                elif isinstance(it, str):
+                    names.append(it)
+        if names:
+            _cached_mcp_categories = names
+            return _cached_mcp_categories
+    except Exception as e:
+        logger.warning(f"Could not fetch categories from MCP: {e}")
+
+    return OFFICIAL_WORKIO_CATEGORIES
+
+
+BOOKING_TOOLS = [search_workers, check_worker_availability, create_booking, get_service_categories]

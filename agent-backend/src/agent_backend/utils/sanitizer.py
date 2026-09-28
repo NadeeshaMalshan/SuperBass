@@ -1,0 +1,93 @@
+"""
+Message and Payload Sanitizer for Workio Multi-Agent System.
+Prevents base64 image data URLs and overly large payloads from entering LLM context,
+avoiding OpenAI 400 ContextLengthExceeded errors while preserving metadata out-of-band.
+"""
+
+import copy
+import re
+from typing import Any, List
+from langchain_core.messages import BaseMessage
+
+# Regex to detect base64 image data URLs (e.g. data:image/png;base64,iVBORw0KGgo...)
+BASE64_IMAGE_REGEX = re.compile(r"data:image\/[a-zA-Z0-9.+_-]+;base64,[A-Za-z0-9+/=]+", re.IGNORECASE)
+
+
+def sanitize_text(text: str, max_chars: int = 4000) -> str:
+    """Strip base64 data URLs from text and truncate if excessively long."""
+    if not isinstance(text, str):
+        return str(text)
+    if "data:image" in text:
+        text = BASE64_IMAGE_REGEX.sub("[attached_image]", text)
+    if len(text) > max_chars:
+        text = text[:max_chars] + "... [truncated]"
+    return text
+
+
+def sanitize_dict_or_list(obj: Any, depth: int = 0) -> Any:
+    """Recursively strip base64 data URLs and giant string values from dicts/lists."""
+    if depth > 10:
+        return obj
+    if isinstance(obj, list):
+        return [sanitize_dict_or_list(item, depth + 1) for item in obj]
+    elif isinstance(obj, dict):
+        sanitized = {}
+        for k, v in obj.items():
+            if k in ("images", "imageUrls", "photos") and isinstance(v, list):
+                sanitized[k] = [
+                    f"[attached_image_{i+1}]" if (isinstance(img, str) and (img.startswith("data:") or len(img) > 300)) else img
+                    for i, img in enumerate(v)
+                ]
+            elif isinstance(v, str):
+                if v.startswith("data:image/") or ("base64," in v and len(v) > 200):
+                    sanitized[k] = "[attached_image]"
+                elif len(v) > 3000:
+                    sanitized[k] = v[:3000] + "... [truncated]"
+                else:
+                    sanitized[k] = v
+            else:
+                sanitized[k] = sanitize_dict_or_list(v, depth + 1)
+        return sanitized
+    return obj
+
+
+def sanitize_messages_for_llm(messages: List[BaseMessage]) -> List[BaseMessage]:
+    """
+    Returns a copy of messages safe to send to ChatOpenAI without context length overflow.
+    - Strips all base64 data URLs from message content.
+    - Strips base64 data URLs from tool_calls args.
+    - Sanitizes ToolMessage content.
+    """
+    clean_messages: List[BaseMessage] = []
+    for msg in messages:
+        msg_copy = copy.deepcopy(msg)
+
+        # Sanitize message content
+        if isinstance(msg_copy.content, str):
+            msg_copy.content = sanitize_text(msg_copy.content)
+        elif isinstance(msg_copy.content, list):
+            # For multimodal content blocks
+            sanitized_blocks = []
+            for block in msg_copy.content:
+                if isinstance(block, dict):
+                    if block.get("type") == "image_url":
+                        url_obj = block.get("image_url", {})
+                        if isinstance(url_obj, dict) and str(url_obj.get("url", "")).startswith("data:"):
+                            sanitized_blocks.append({"type": "text", "text": "[attached_image]"})
+                            continue
+                    sanitized_blocks.append(sanitize_dict_or_list(block))
+                elif isinstance(block, str):
+                    sanitized_blocks.append(sanitize_text(block))
+                else:
+                    sanitized_blocks.append(block)
+            msg_copy.content = sanitized_blocks
+
+        # Sanitize tool_calls arguments if AIMessage
+        if hasattr(msg_copy, "tool_calls") and msg_copy.tool_calls:
+            for tc in msg_copy.tool_calls:
+                if isinstance(tc, dict) and "args" in tc and isinstance(tc["args"], dict):
+                    tc["args"] = sanitize_dict_or_list(tc["args"])
+
+        clean_messages.append(msg_copy)
+
+    return clean_messages

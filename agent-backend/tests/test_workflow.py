@@ -3,6 +3,7 @@ Verification test suite for Workio Agent Backend.
 Tests graph compilation, MCP tools, card schema validation, and routing.
 """
 
+import json
 import pytest
 import asyncio
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
@@ -142,6 +143,37 @@ async def test_supervisor_booking_routing():
     assert result.get("next") == "booking_agent"
 
 
+@pytest.mark.asyncio
+async def test_supervisor_issue_description_clarification():
+    """Verify that when a user simply describes a problem, supervisor asks whether to find worker or post on community."""
+    state = {
+        "messages": [HumanMessage(content="my room electrict wiring is not good it is messy")],
+        "email": "resident@workio.lk",
+        "user_type": "Resident",
+        "user_profile": {"address": "Colombo"},
+        "next": None,
+        "structured_response": None,
+        "metadata": {}
+    }
+    result = await supervisor_node(state)
+    # When using heuristic fallback or structured router, intent is clarified
+    assert result.get("next") == "FINISH"
+    asst_msg = result.get("messages", [])[0].content.lower()
+    assert "how would you like to proceed" in asst_msg or "proceed" in asst_msg or "worker" in asst_msg
+    suggested_actions = [str(s).lower() for s in result.get("metadata", {}).get("suggested_actions", [])]
+    assert any("worker" in s or "electrician" in s or "find" in s for s in suggested_actions)
+    assert any("community post" in s or "post" in s for s in suggested_actions)
+
+    # Verify card formatter builds a text_message card with suggestions, NOT a post_confirmation card
+    state["messages"].append(result["messages"][0])
+    if result.get("metadata"):
+        state["metadata"] = result["metadata"]
+    card_resp = _deterministic_card_builder(state)
+    assert card_resp.response_type == "text_message"
+    assert any("worker" in str(s).lower() or "electrician" in str(s).lower() for s in card_resp.card_data.get("suggestions", []))
+    assert any("community post" in str(s).lower() for s in card_resp.card_data.get("suggestions", []))
+
+
 def test_deterministic_card_builder_for_created_post():
     """Verify card formatter correctly constructs a PostCreatedCard from tool output."""
     tool_content = '{"id": 42, "title": "Electrical socket issue", "content": "Living room socket spark", "serviceCategoryId": "Electrical", "userId": "kpjmp28@gmail.com", "location": "Kandy"}'
@@ -204,6 +236,110 @@ def test_community_tools_count():
     ]
     for exp in expected:
         assert exp in names
+
+
+def test_sanitizer_and_post_image_contextvar():
+    """Verify that huge base64 images are kept out of LLM messages and correctly passed via contextvar."""
+    from agent_backend.utils.sanitizer import sanitize_messages_for_llm, sanitize_text
+    from agent_backend.tools.community_tools import current_post_images
+
+    # 1. Test massive base64 payload sanitization
+    huge_base64 = "data:image/png;base64," + "A" * 100000
+    user_prompt = f"Please post this image: {huge_base64}"
+    clean_text = sanitize_text(user_prompt)
+    assert "data:image" not in clean_text
+    assert "[attached_image]" in clean_text
+
+    # 2. Test AIMessage tool call args sanitization
+    ai_msg = AIMessage(
+        content="I will create the post",
+        tool_calls=[{
+            "id": "call_1",
+            "name": "create_community_post",
+            "args": {
+                "authorId": "resident@workio.lk",
+                "title": "Broken pipe",
+                "content": "Water leaking",
+                "images": [huge_base64, huge_base64]
+            }
+        }]
+    )
+    clean_msgs = sanitize_messages_for_llm([HumanMessage(content=clean_text), ai_msg])
+    tool_args = clean_msgs[1].tool_calls[0]["args"]
+    assert "data:image" not in tool_args["images"][0]
+    assert "[attached_image_1]" in tool_args["images"][0]
+
+    # 3. Test contextvar storage and retrieval
+    current_post_images.set([huge_base64])
+    assert current_post_images.get() == [huge_base64]
+
+
+def test_deterministic_card_builder_search_workers_budget_filtering():
+    """Verify that worker results strictly enforce user's hourly rate budget."""
+    raw_workers_json = json.dumps([
+        {"id": 1, "name": "Kamal Perera", "hourlyRate": 2400.0, "description": "Plumber", "skills": ["Plumbing"]},
+        {"id": 2, "name": "Malith Mendis", "hourlyRate": 2900.0, "description": "Plumber", "skills": ["Plumbing"]}
+    ])
+
+    # Case 1: Budget 2000 -> Neither qualifies -> TextMessageCard explaining lowest rate is 2400
+    state_below_2000 = {
+        "messages": [
+            HumanMessage(content="i want hourly rate below 2000"),
+            AIMessage(
+                content="Searching plumbers...",
+                tool_calls=[{"id": "call_w1", "name": "search_workers", "args": {"category": "Plumbing", "maxHourlyRate": 2000}}]
+            ),
+            ToolMessage(content=raw_workers_json, tool_call_id="call_w1", name="search_workers"),
+            AIMessage(content="Here are the available plumbers:")
+        ],
+        "email": "resident@workio.lk",
+        "user_type": "Resident",
+        "user_profile": None,
+        "next": None,
+        "structured_response": None,
+        "metadata": {}
+    }
+    card_resp1 = _deterministic_card_builder(state_below_2000)
+    assert card_resp1.response_type == "text_message"
+    assert "2000" in card_resp1.message
+    assert "2400" in card_resp1.message
+
+    # Case 2: Budget 2500 -> Only Kamal (2400) qualifies
+    state_below_2500 = {
+        "messages": [
+            HumanMessage(content="i want hourly rate below 2500"),
+            AIMessage(
+                content="Searching plumbers...",
+                tool_calls=[{"id": "call_w2", "name": "search_workers", "args": {"category": "Plumbing", "maxHourlyRate": 2500}}]
+            ),
+            ToolMessage(content=raw_workers_json, tool_call_id="call_w2", name="search_workers"),
+            AIMessage(content="Here are the available plumbers:")
+        ],
+        "email": "resident@workio.lk",
+        "user_type": "Resident",
+        "user_profile": None,
+        "next": None,
+        "structured_response": None,
+        "metadata": {}
+    }
+    card_resp2 = _deterministic_card_builder(state_below_2500)
+    assert card_resp2.response_type == "worker_list"
+    assert card_resp2.card_data["totalCount"] == 1
+    assert card_resp2.card_data["workers"][0]["name"] == "Kamal Perera"
+
+
+def test_service_category_normalization():
+    """Verify that informal phrases, typos, and synonyms correctly map to official categories."""
+    from agent_backend.tools.booking_tools import normalize_service_category
+
+    assert normalize_service_category("for repir my car") == "Vehicle Repair & Mechanic"
+    assert normalize_service_category("mcanins") == "Vehicle Repair & Mechanic"
+    assert normalize_service_category("vechila repiring") == "Vehicle Repair & Mechanic"
+    assert normalize_service_category("car repair") == "Vehicle Repair & Mechanic"
+    assert normalize_service_category("mechanic") == "Vehicle Repair & Mechanic"
+    assert normalize_service_category("tap leakage") == "Plumbing"
+    assert normalize_service_category("electrician") == "Electrical"
+    assert normalize_service_category("ac repair") == "AC & Air Conditioning"
 
 
 if __name__ == "__main__":
