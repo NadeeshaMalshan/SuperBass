@@ -349,7 +349,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
                       'assets/icons/AI.png',
                       width: 40,
                       height: 40,
-                      errorBuilder: (_, __, ___) => const Icon(Icons.auto_awesome, size: 30),
+                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.auto_awesome, size: 30),
                     ),
                     const SizedBox(width: 12),
                     Column(
@@ -1017,7 +1017,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
                         ],
                       ),
                       Text(
-                        '${worker.pricingModel ?? "Hourly"} ${worker.hourlyRate > 0 ? "(Rs. ${worker.hourlyRate.round()}/hr)" : ""}',
+                        '${worker.pricingModel} ${worker.hourlyRate > 0 ? "(Rs. ${worker.hourlyRate.round()}/hr)" : ""}',
                         style: GoogleFonts.dmSans(
                           fontWeight: FontWeight.w700,
                           fontSize: 13,
@@ -1073,7 +1073,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
                               locationAddress: addressController.text.trim().isNotEmpty ? addressController.text.trim() : 'Colombo',
                               contactPhone: phoneController.text.trim(),
                               estimatedPrice: worker.hourlyRate > 0 ? worker.hourlyRate : 2500.0,
-                              pricingModel: worker.pricingModel ?? 'Hourly',
+                              pricingModel: worker.pricingModel,
                               locationLat: shareGps ? locationLat : null,
                               locationLng: shareGps ? locationLng : null,
                             );
@@ -1162,7 +1162,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
                           ? Image.network(
                               worker.profileImage!,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Center(
+                              errorBuilder: (context, error, stackTrace) => Center(
                                 child: Text(
                                   worker.name.isNotEmpty ? worker.name[0].toUpperCase() : 'W',
                                   style: GoogleFonts.dmSans(fontWeight: FontWeight.w800, fontSize: 24),

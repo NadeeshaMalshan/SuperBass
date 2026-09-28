@@ -31,7 +31,7 @@ class BrandBadge extends StatelessWidget {
               'assets/images/icon.png',
               width: 20,
               height: 20,
-              errorBuilder: (_, __, ___) => const Icon(
+              errorBuilder: (context, error, stackTrace) => const Icon(
                 Icons.bolt_rounded,
                 size: 18,
                 color: AppColors.onPrimary,
@@ -293,7 +293,7 @@ class CategoryCard extends StatelessWidget {
                         width: 38,
                         height: 38,
                         fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => Icon(
+                        errorBuilder: (context, error, stackTrace) => Icon(
                           icon ?? Icons.category_rounded,
                           color: AppColors.onSurface,
                           size: 28,
@@ -622,7 +622,7 @@ class UberPromoBanner extends StatelessWidget {
                 child: Image.asset(
                   imageAsset,
                   fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const Icon(
+                  errorBuilder: (context, error, stackTrace) => const Icon(
                     Icons.auto_awesome,
                     size: 48,
                     color: AppColors.onSurface,

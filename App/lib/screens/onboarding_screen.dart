@@ -1,10 +1,7 @@
-import 'dart:convert';
 import 'dart:math' as math;
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/auth_user.dart';
 import '../services/api_service.dart';
@@ -331,6 +328,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
           );
         }
 
+        if (!mounted) return;
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Onboarding complete! Welcome to Workio.'),
@@ -342,6 +341,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
           MaterialPageRoute(builder: (_) => const MainNavigationShell()),
         );
       } else {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(res['message'] ?? 'Failed to save onboarding details.'),
@@ -911,7 +911,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
 
         const SizedBox(height: 12),
         Text(
-          _selectedLat != null && _selectedLng != null
+          _hasCustomPin && _selectedLat != null && _selectedLng != null
               ? 'Selected: ${_selectedLat!.toStringAsFixed(4)}, ${_selectedLng!.toStringAsFixed(4)}'
               : 'Tap on the map to pin your location',
           textAlign: TextAlign.center,

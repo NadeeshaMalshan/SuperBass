@@ -341,7 +341,7 @@ class _JoinScreenState extends State<JoinScreen> {
                                   'assets/images/icon.png',
                                   width: 38,
                                   height: 38,
-                                  errorBuilder: (_, __, ___) => const Icon(
+                                  errorBuilder: (context, error, stackTrace) => const Icon(
                                     Icons.bolt_rounded,
                                     size: 36,
                                     color: AppColors.brandBlack,
