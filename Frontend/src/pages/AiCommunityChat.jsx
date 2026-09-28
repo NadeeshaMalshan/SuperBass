@@ -4,6 +4,7 @@ import '../Community.css';
 import UserMenu from '../components/UserMenu.jsx';
 import M3TopNavbar from '../components/M3TopNavbar.jsx';
 import AgentCardDispatcher from '../components/agent/AgentCardDispatcher.jsx';
+import craftsmanImg from '../assets/carftman.png';
 import {
   sendAgentMessage,
   checkAgentHealth,
@@ -59,6 +60,7 @@ export default function AiCommunityChat() {
   };
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [activeSidebarItem, setActiveSidebarItem] = useState('AC Repair');
   const [conversationId, setConversationId] = useState(() => {
     const email = (localStorage.getItem('email') || '').trim().toLowerCase();
     const key = email ? `workio_ai_active_conv_${email}` : 'workio_ai_active_conv_guest';
@@ -71,16 +73,12 @@ export default function AiCommunityChat() {
     sender: 'assistant',
     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     cardResponse: {
-      response_type: 'text_message',
-      message: `Hello ${currentUserName}! I am your Workio AI Assistant. I can help you create community posts for home services, search active requests, check your posted notices, or inspect your profile details. How can I help you today?`,
+      response_type: 'initial_welcome',
+      message:
+        'Hi! I can help you find workers, create a community post, or answer any questions about home services. What would you like to do today?',
       card_data: {
-        suggestions: [
-          'Show recent community posts',
-          'Create a post for AC Repair in Colombo',
-          'View electrical service posts',
-          'Show my active posts',
-          'View my profile',
-        ],
+        title: 'Workio AI',
+        text: 'Hi! I can help you find workers, create a community post, or answer any questions about home services. What would you like to do today?',
       },
     },
   });
@@ -327,6 +325,7 @@ export default function AiCommunityChat() {
 
     setConversationId(newConvId);
     localStorage.setItem(storageKey, newConvId);
+    setActiveSidebarItem('');
     setMessages([getWelcomeMessage()]);
 
     // Reset in DB: delete the previous conversation thread so DB is also reset
@@ -352,7 +351,7 @@ export default function AiCommunityChat() {
       />
 
       <div className="find-layout ai-chat-uber-layout">
-        {/* Left Sidebar — Quick Actions Only */}
+        {/* Left Sidebar — Quick Actions, Emergency Services & Urgent Help */}
         <aside className={`find-sidebar m3-drawer ai-chat-uber-sidebar ${isSidebarCollapsed ? 'minimized' : ''}`}>
 
           {/* Brand / Identity */}
@@ -379,58 +378,24 @@ export default function AiCommunityChat() {
             <span>New Chat</span>
           </button>
 
-          {/* Divider */}
-          <div className="m3-drawer-divider"></div>
-
           {/* Quick Actions */}
-          {!isSidebarCollapsed && <div className="m3-drawer-section-title" style={{ padding: '0 6px 6px' }}>Quick Actions</div>}
-          <nav className="m3-drawer-nav">
-            <div className="m3-drawer-item" onClick={() => handleSendMessage('Show recent community posts in Colombo')} title="Recent Posts">
-              <div className="m3-drawer-item-left">
-                <md-icon className="m3-drawer-icon">campaign</md-icon>
-                <span className="m3-drawer-label">Recent Posts</span>
-              </div>
-            </div>
-            <div className="m3-drawer-item" onClick={() => handleSendMessage('Create a community post for home service')} title="Draft a Post">
-              <div className="m3-drawer-item-left">
-                <md-icon className="m3-drawer-icon">edit_note</md-icon>
-                <span className="m3-drawer-label">Draft a Post</span>
-              </div>
-            </div>
-            <div className="m3-drawer-item" onClick={() => handleSendMessage('Find available verified craftsmen near me')} title="Find Craftsmen">
-              <div className="m3-drawer-item-left">
-                <md-icon className="m3-drawer-icon">handyman</md-icon>
-                <span className="m3-drawer-label">Find Craftsmen</span>
-              </div>
-            </div>
-            <div className="m3-drawer-item" onClick={() => handleSendMessage('Show all my community posts')} title="My Posts">
-              <div className="m3-drawer-item-left">
-                <md-icon className="m3-drawer-icon">person_pin</md-icon>
-                <span className="m3-drawer-label">My Posts</span>
-              </div>
-            </div>
-            <div className="m3-drawer-item" onClick={() => handleSendMessage('What is my user role and profile details?')} title="My Profile">
-              <div className="m3-drawer-item-left">
-                <md-icon className="m3-drawer-icon">manage_accounts</md-icon>
-                <span className="m3-drawer-label">My Profile</span>
-              </div>
-            </div>
-          </nav>
-
-          {/* Divider */}
-          <div className="m3-drawer-divider"></div>
-
-          {/* Service Shortcuts */}
-          {!isSidebarCollapsed && <div className="m3-drawer-section-title" style={{ padding: '0 6px 6px' }}>Emergency Services</div>}
+          {!isSidebarCollapsed && <div className="m3-drawer-section-title">QUICK ACTIONS</div>}
           <nav className="m3-drawer-nav">
             {[
-              { label: 'Plumber', icon: 'plumbing', msg: 'Create a community post: Need emergency plumber for leaky pipe in Colombo' },
-              { label: 'Electrician', icon: 'electrical_services', msg: 'Create a community post: Need licensed electrician urgently' },
-              { label: 'AC Repair', icon: 'air', msg: 'Create a community post: Looking for AC repair technician in Colombo' },
-              { label: 'Carpenter', icon: 'carpenter', msg: 'Create a community post: Need experienced carpenter for furniture repair' },
-              { label: 'Cleaner', icon: 'cleaning_services', msg: 'Create a community post: Looking for professional home cleaning service' },
+              { label: 'Recent Posts', icon: 'campaign', msg: 'Show recent community posts in Colombo' },
+              { label: 'Find Craftsmen', icon: 'handyman', msg: 'Find available verified craftsmen near me' },
+              { label: 'My Posts', icon: 'badge', msg: 'Show all my community posts' },
+              { label: 'My Profile', icon: 'person', msg: 'What is my user role and profile details?' },
             ].map(({ label, icon, msg }) => (
-              <div key={label} className="m3-drawer-item" onClick={() => handleSendMessage(msg)} title={label}>
+              <div
+                key={label}
+                className={`m3-drawer-item ${activeSidebarItem === label ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveSidebarItem(label);
+                  handleSendMessage(msg);
+                }}
+                title={label}
+              >
                 <div className="m3-drawer-item-left">
                   <md-icon className="m3-drawer-icon">{icon}</md-icon>
                   <span className="m3-drawer-label">{label}</span>
@@ -438,6 +403,63 @@ export default function AiCommunityChat() {
               </div>
             ))}
           </nav>
+
+          {/* Divider */}
+          <div className="m3-drawer-divider"></div>
+
+          {/* Emergency Services */}
+          {!isSidebarCollapsed && <div className="m3-drawer-section-title">EMERGENCY SERVICES</div>}
+          <nav className="m3-drawer-nav">
+            {[
+              { label: 'Plumber', icon: 'plumbing', msg: 'Create a community post: Need emergency plumber for leaky pipe in Colombo' },
+              { label: 'Electrician', icon: 'electrical_services', msg: 'Create a community post: Need licensed electrician urgently' },
+              { label: 'AC Repair', icon: 'air', msg: 'Create a community post: Looking for AC repair technician in Colombo' },
+              { label: 'Cleaner', icon: 'cleaning_services', msg: 'Create a community post: Looking for professional home cleaning service' },
+            ].map(({ label, icon, msg }) => (
+              <div
+                key={label}
+                className={`m3-drawer-item ${activeSidebarItem === label ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveSidebarItem(label);
+                  handleSendMessage(msg);
+                }}
+                title={label}
+              >
+                <div className="m3-drawer-item-left">
+                  <md-icon className="m3-drawer-icon">{icon}</md-icon>
+                  <span className="m3-drawer-label">{label}</span>
+                </div>
+              </div>
+            ))}
+          </nav>
+
+          {/* Flexible Spacer */}
+          <div className="ai-sidebar-spacer" />
+
+          {/* Urgent Help Card with Craftsman Cartoon */}
+          {!isSidebarCollapsed && (
+            <div className="ai-sidebar-urgent-card">
+              <div className="ai-urgent-card-img-wrap">
+                <img src={craftsmanImg} alt="Workio Craftsman" className="ai-urgent-card-img" />
+              </div>
+              <div className="ai-urgent-card-content">
+                <div className="ai-urgent-card-title">Need urgent help?</div>
+                <div className="ai-urgent-card-desc">Get verified professionals in your area.</div>
+                <button
+                  type="button"
+                  className="ai-urgent-card-btn"
+                  onClick={() => {
+                    setActiveSidebarItem('Find Craftsmen');
+                    handleSendMessage('Find available verified emergency workers in my area');
+                  }}
+                  title="Find emergency workers now"
+                >
+                  <span>Find Workers</span>
+                  <span className="ai-urgent-arrow">→</span>
+                </button>
+              </div>
+            </div>
+          )}
 
         </aside>
 
@@ -479,16 +501,17 @@ export default function AiCommunityChat() {
               ) : (
                 messages.map((msg) => {
                   const isUser = msg.sender === 'user';
+                  const isWelcome = msg.cardResponse?.response_type === 'initial_welcome';
                 return (
-                  <div key={msg.id} className={`ai-bubble-row ${isUser ? 'resident' : 'assistant'}`}>
-                    {!isUser && (
+                  <div key={msg.id} className={`ai-bubble-row ${isUser ? 'resident' : 'assistant'} ${isWelcome ? 'welcome-row' : ''}`}>
+                    {!isUser && !isWelcome && (
                       <div className="ai-msg-avatar bot-av">
                         <md-icon style={{ fontSize: '18px', color: '#ffffff' }}>auto_awesome</md-icon>
                       </div>
                     )}
 
                     <div className="ai-msg-wrapper">
-                      <div className={`ai-bubble ${isUser ? 'resident' : 'assistant'}`}>
+                      <div className={`ai-bubble ${isUser ? 'resident' : 'assistant'} ${isWelcome ? 'welcome-bubble' : ''}`}>
                         {isUser ? (
                           <div>{msg.text}</div>
                         ) : (

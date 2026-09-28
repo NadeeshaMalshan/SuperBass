@@ -844,4 +844,130 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
 
+/* ==========================================================================
+   Initial Welcome Card (Compact Standard Chat Dialog Box Size)
+   ========================================================================== */
+.ai-welcome-card-root {
+  background: #ffffff;
+  border: 1px solid #edf2f7;
+  border-radius: 18px;
+  padding: 14px 16px;
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  max-width: 390px;
+  width: 100%;
+  box-sizing: border-box;
+  animation: fadeInCard 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ai-welcome-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.ai-welcome-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #000000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.ai-welcome-header-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.ai-welcome-title {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 2px 0;
+  letter-spacing: -0.01em;
+}
+
+.ai-welcome-subtitle {
+  font-size: 0.77rem;
+  color: #475569;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.ai-welcome-actions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  width: 100%;
+}
+
+.ai-welcome-action-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #ffffff;
+  border: 1px solid #f1f5f9;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02);
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  box-sizing: border-box;
+}
+
+.ai-welcome-action-item:hover {
+  transform: translateY(-1px);
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+  background-color: #fafbfc;
+}
+
+.ai-welcome-icon-box {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+}
+
+.ai-welcome-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.ai-welcome-item-title {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 1px;
+}
+
+.ai-welcome-item-desc {
+  font-size: 0.71rem;
+  color: #64748b;
+  line-height: 1.25;
+}
+
+.ai-welcome-chevron {
+  font-size: 18px !important;
+  color: #94a3b8 !important;
+  flex-shrink: 0;
+  transition: transform 0.18s ease, color 0.18s ease;
+}
+
+.ai-welcome-action-item:hover .ai-welcome-chevron {
+  transform: translateX(2px);
+  color: #0f172a !important;
+}
+
+
 

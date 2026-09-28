@@ -102,3 +102,8 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Automatically sync OPENAI_API_KEY into os.environ for LangChain and OpenAI clients
+import os
+if settings.openai_api_key and not os.environ.get("OPENAI_API_KEY"):
+    os.environ["OPENAI_API_KEY"] = settings.openai_api_key

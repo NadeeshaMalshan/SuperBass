@@ -9,6 +9,7 @@ import TextMessageCard from './TextMessageCard.jsx';
 import ErrorCard from './ErrorCard.jsx';
 import ServiceCategoriesCard from './ServiceCategoriesCard.jsx';
 import WorkerListCard from './WorkerListCard.jsx';
+import InitialWelcomeCard from './InitialWelcomeCard.jsx';
 
 /**
  * Dispatcher component that examines `response_type` and renders the matching UI card.
@@ -21,7 +22,7 @@ export default function AgentCardDispatcher({ response, onAction }) {
   // Render message bubble if present alongside card
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
-      {message && response_type !== 'text_message' && (
+      {message && response_type !== 'text_message' && response_type !== 'initial_welcome' && (
         <div style={{ fontSize: '0.935rem', lineHeight: '1.5', color: '#1e293b' }}>
           {message}
         </div>
@@ -29,6 +30,8 @@ export default function AgentCardDispatcher({ response, onAction }) {
 
       {(() => {
         switch (response_type) {
+          case 'initial_welcome':
+            return <InitialWelcomeCard data={card_data} onAction={onAction} />;
           case 'post_confirmation':
             return <PostConfirmationCard data={card_data} onAction={onAction} />;
           case 'post_created':
