@@ -87,10 +87,12 @@ export default function M3TopNavbar({
           type="button"
           className={`m3-nav-btn m3-nav-btn-ai ${activePage === 'ai' ? 'active' : ''}`}
           onClick={() => navigate('/ai/chat')}
-          title="AI Home Assistant"
+          title="Workio AI Assistant"
         >
-          <md-icon style={{ fontSize: '18px' }}>auto_awesome</md-icon>
-          <span>AI</span>
+          <span className="m3-ai-icon-box">
+            <md-icon>auto_awesome</md-icon>
+          </span>
+          <span>Ask AI</span>
         </button>
 
         {/* 4. Messages Button */}
