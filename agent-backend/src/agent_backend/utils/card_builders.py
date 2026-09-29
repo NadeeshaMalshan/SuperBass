@@ -58,6 +58,9 @@ def _clean_card_intro_message(raw_msg: str, default_intro: str, card_type: str =
     if not raw_msg or not isinstance(raw_msg, str):
         return default_intro
 
+    if card_type in ("post_updated", "post_created"):
+        return default_intro
+
     if card_type == "post_confirmation":
         if "update" in default_intro.lower() or "edit" in default_intro.lower():
             return default_intro
@@ -455,16 +458,23 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
 
         # 3. update_community_post
         if tool_name == "update_community_post":
+            raw_c = data.get("content", "")
+            if "here is your draft" in raw_c.lower() and ":" in raw_c:
+                raw_c = raw_c.split(":", 1)[1].strip()
+
             card = PostUpdatedCard(
                 id=data.get("id") or data.get("postId") or 0,
                 title=data.get("title", "Updated Post"),
-                content=data.get("content", ""),
-                communityId=data.get("communityId"),
-                location=data.get("location")
+                content=raw_c,
+                communityId=data.get("communityId") or data.get("serviceCategoryId") or "General",
+                location=data.get("location") or "Colombo",
+                authorName=data.get("authorName") or data.get("userName") or user_name,
+                authorId=data.get("authorId") or data.get("userEmail") or email,
+                status="Active"
             )
             clean_msg = _clean_card_intro_message(
                 last_ai_content,
-                f"Community post #{card.id} has been updated successfully!",
+                f"Your community post #{card.id} ('{card.title}') has been updated successfully on the community board!",
                 "post_updated"
             )
             return AgentCardResponse(
