@@ -701,3 +701,60 @@
   align-items: center;
 }
 
+/* ==========================================================================
+   Find Page Community Theme Adaptations
+   ========================================================================== */
+.find-layout-container {
+  max-width: 1360px !important;
+  margin: 0 auto;
+}
+
+/* Collapsed rail adjustments on desktop */
+@media (min-width: 993px) {
+  .community-sidebar.collapsed {
+    width: 68px;
+    padding: 14px 6px;
+    align-items: center;
+  }
+
+  .community-sidebar.collapsed .uber-sidebar-item {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 22px;
+    margin: 0 auto;
+  }
+
+  .community-sidebar.collapsed .uber-sidebar-item-left {
+    justify-content: center;
+    gap: 0;
+  }
+
+  .community-sidebar.collapsed .uber-sidebar-item span,
+  .community-sidebar.collapsed .uber-sidebar-badge,
+  .community-sidebar.collapsed .uber-sidebar-section-title,
+  .community-sidebar.collapsed .uber-sidebar-clear-btn,
+  .community-sidebar.collapsed .m3-segmented-control,
+  .community-sidebar.collapsed .histogram-container,
+  .community-sidebar.collapsed .price-inputs-row,
+  .community-sidebar.collapsed .location-selector-wrap,
+  .community-sidebar.collapsed .uber-btn-outline span {
+    display: none !important;
+  }
+
+  .community-sidebar.collapsed .uber-cat-item {
+    justify-content: center;
+    padding: 8px 0;
+    width: 44px;
+    height: 44px;
+    margin: 0 auto;
+    border-radius: 22px;
+  }
+
+  .community-sidebar.collapsed .uber-cat-item span {
+    display: none !important;
+  }
+}
+
+

@@ -3,6 +3,7 @@ import axios from 'axios';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './App.css';
+import './Community.css';
 import './Find.css';
 
 // Google Material 3 Web Components
@@ -14,10 +15,12 @@ import '@material/web/progress/circular-progress.js';
 import Loader from './components/Loader.jsx';
 import UserMenu from './components/UserMenu.jsx';
 import M3TopNavbar from './components/M3TopNavbar.jsx';
+import LocationSelector from './components/LocationSelector.jsx';
 import './components/M3Navbar.css';
 import { API_BASE_URL } from './config.js';
 import categoriesData from './data/categories.json';
 import workioLogoWhite from './assets/Workio_Logo/Workio_Logo_White_With_Text.png';
+import craftsmanHeroImg from './assets/carftman.png';
 
 export default function Find() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -49,10 +52,11 @@ export default function Find() {
 
   const [locationQuery, setLocationQuery] = useState(() => {
     try {
-      const raw = new URLSearchParams(window.location.search).get('location') || '';
-      return sanitizeLocationParam(raw);
+      const raw = new URLSearchParams(window.location.search).get('location');
+      if (raw) return sanitizeLocationParam(raw);
+      return localStorage.getItem('community_selected_district') || 'Colombo';
     } catch {
-      return '';
+      return 'Colombo';
     }
   });
   const [appliedLocationQuery, setAppliedLocationQuery] = useState(locationQuery);
@@ -69,6 +73,7 @@ export default function Find() {
   const [maxPrice, setMaxPrice] = useState('');
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [minRating, setMinRating] = useState('Any');
+  const [selectedBadge, setSelectedBadge] = useState('all'); // 'all' | 'verified' | 'top_craftsman'
   const [sortBy, setSortBy] = useState('recommended');
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -197,7 +202,17 @@ export default function Find() {
     window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
-  const hasActiveFilters = rateType !== 'Any' || availableNowOnly || favoritesOnly || minPrice !== '' || maxPrice !== '' || selectedCategories.length > 0 || minRating !== 'Any' || appliedSearchQuery !== '' || appliedLocationQuery !== '';
+  const hasActiveFilters = 
+    rateType !== 'Any' || 
+    availableNowOnly || 
+    favoritesOnly || 
+    minPrice !== '' || 
+    maxPrice !== '' || 
+    selectedCategories.length > 0 || 
+    minRating !== 'Any' || 
+    selectedBadge !== 'all' || 
+    appliedSearchQuery !== '' || 
+    appliedLocationQuery !== '';
 
   const handleResetFilters = () => {
     setRateType('Any');
@@ -207,6 +222,7 @@ export default function Find() {
     setMaxPrice('');
     setSelectedCategories([]);
     setMinRating('Any');
+    setSelectedBadge('all');
     setSearchQuery('');
     setAppliedSearchQuery('');
     setLocationQuery('');
@@ -214,6 +230,12 @@ export default function Find() {
     setSortBy('recommended');
     navigate('/find');
   };
+
+  const starredCount = Object.values(favorites).filter(Boolean).length;
+  const availableCount = workers.filter(w => w.isAvailable).length;
+  const topRatedCount = workers.filter(w => (w.overallRating ?? 0) >= 4.5).length;
+  const verifiedCount = workers.filter(w => w.isVerified || w.verified).length;
+  const topCraftsmanCount = workers.filter(w => (w.overallRating ?? 0) >= 4.8).length;
 
   const toggleCategory = (catId) => {
     if (selectedCategories.includes(catId)) {
@@ -315,6 +337,13 @@ export default function Find() {
     // 3.5 Favorites / Starred Only
     if (favoritesOnly && !favorites[w.id]) {
       return false;
+    }
+
+    // 3.6 Badges Filter
+    if (selectedBadge === 'verified') {
+      if (!w.isVerified && !w.verified) return false;
+    } else if (selectedBadge === 'top_craftsman') {
+      if ((w.overallRating ?? 0) < 4.8) return false;
     }
 
     // 4. Rate Range Filter
@@ -761,111 +790,249 @@ export default function Find() {
   };
 
   return (
-    <div className="find-page-container">
-      {/* Google Workspace / Material 3 Top Navbar */}
+    <div className="community-page-wrapper">
+      {/* Sleek Dark Top Navbar (Uber Pitch Black Aesthetic) */}
       <M3TopNavbar
+        theme="dark"
         activePage="find"
-        searchValue={searchQuery}
-        onSearchChange={(val) => {
-          setSearchQuery(val);
-          setIsWorkerDropdownOpen(true);
-        }}
-        onSearchFocus={() => setIsWorkerDropdownOpen(true)}
-        onSearchSubmit={(val) => {
-          setAppliedSearchQuery(val);
-          setIsWorkerDropdownOpen(false);
-          navigate(`/find?q=${encodeURIComponent(val)}`);
-        }}
-        searchPlaceholder="Search workers, skills, location..."
-        showSearch={true}
+        showSearch={false}
         showSidebarToggle={true}
         isSidebarCollapsed={isSidebarCollapsed}
         onToggleSidebar={() => setIsSidebarCollapsed(prev => !prev)}
-        searchDropdown={renderWorkerSearchDropdown()}
       />
 
-      {/* Main Layout Container */}
-      <div className="find-layout">
-        {/* Left Sidebar Filters - Google Material Design 3 Navigation Drawer (Gmail Style) */}
-        <aside className={`find-sidebar m3-drawer ${isSidebarCollapsed ? 'minimized' : ''}`}>
-          {/* Extended Action FAB (Gmail Compose style - Warm SuperBass Yellow) */}
-
-          {/* Primary Navigation List (Inbox / Starred / Available / Top Rated) */}
-          <nav className="m3-drawer-nav">
-            {/* All Workers (Inbox style) */}
-            <div
-              className={`m3-drawer-item ${!availableNowOnly && !favoritesOnly && selectedCategories.length === 0 && minRating === 'Any' ? 'active' : ''}`}
-              onClick={() => {
-                setAvailableNowOnly(false);
-                setFavoritesOnly(false);
-                setSelectedCategories([]);
-                setMinRating('Any');
-              }}
-              title="View all verified home service workers"
-            >
-              <div className="m3-drawer-item-left">
-                <md-icon className="m3-drawer-icon">handyman</md-icon>
-                <span className="m3-drawer-label">All Baas</span>
-              </div>
-              <span className="m3-drawer-badge">{workers.length}</span>
+      {/* 1. Craftsmen Hero Showcase Banner (Uber Pitch Black Aesthetic) */}
+      <section className="community-hero-banner">
+        <div className="community-hero-container">
+          <div className="community-hero-left">
+            <span className="community-hero-overline">SuperBass Verified Craftsmen Directory</span>
+            <h1 className="community-hero-title">
+              Find Trusted Local Baas & Service Specialists
+            </h1>
+            <p className="community-hero-desc">
+              Browse verified technicians, read neighborhood reviews, compare hourly & daily rates, check real-time availability, and hire top-rated craftsmen across Sri Lanka.
+            </p>
+            <div className="community-hero-actions">
+              <button
+                type="button"
+                className="community-hero-primary-btn"
+                onClick={() => {
+                  const el = document.getElementById('find-search-main');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+              >
+                <i className="fa-solid fa-magnifying-glass"></i>
+                <span>Explore All Baas</span>
+              </button>
+              <button
+                type="button"
+                className="community-hero-secondary-btn"
+                onClick={() => navigate('/ai/chat')}
+              >
+                <i className="fa-solid fa-wand-magic-sparkles"></i>
+                <span>Ask Workio AI</span>
+              </button>
             </div>
+          </div>
 
-            {/* Starred / Saved Baas */}
-            <div
-              className={`m3-drawer-item ${favoritesOnly ? 'active' : ''}`}
-              onClick={() => setFavoritesOnly(!favoritesOnly)}
-              title="Filter by favorited workers"
-            >
-              <div className="m3-drawer-item-left">
-                <md-icon className="m3-drawer-icon">{favoritesOnly ? 'star' : 'star_outline'}</md-icon>
-                <span className="m3-drawer-label">Starred</span>
-              </div>
-              {Object.values(favorites).filter(Boolean).length > 0 && (
-                <span className="m3-drawer-badge">{Object.values(favorites).filter(Boolean).length}</span>
+          <div className="community-hero-right">
+            <div className="community-hero-artwork-card">
+              <img
+                src={craftsmanHeroImg}
+                alt="Workio Verified Craftsmen"
+                className="community-hero-artwork-img"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 2. Main Content Layout Container */}
+      <div className="community-layout-container find-layout-container">
+        {/* Left Sidebar Navigation (Uber Style matching Community) */}
+        <aside className={`community-sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+
+          {/* Location Filter Section: Landing Page Style */}
+          <div className="uber-sidebar-section">
+            <div className="uber-sidebar-section-title">
+              <span>Location</span>
+              {appliedLocationQuery && (
+                <button
+                  type="button"
+                  className="uber-sidebar-clear-btn"
+                  onClick={() => {
+                    setLocationQuery('');
+                    setAppliedLocationQuery('');
+                    const params = new URLSearchParams(window.location.search);
+                    params.delete('location');
+                    const qs = params.toString();
+                    navigate(qs ? `/find?${qs}` : '/find');
+                  }}
+                  title="Clear location filter"
+                >
+                  Clear
+                </button>
               )}
             </div>
 
-            {/* Available Now */}
-            <div
-              className={`m3-drawer-item ${availableNowOnly ? 'active' : ''}`}
-              onClick={() => setAvailableNowOnly(!availableNowOnly)}
-              title="Filter by workers currently on call"
-            >
-              <div className="m3-drawer-item-left">
-                <md-icon className="m3-drawer-icon">{availableNowOnly ? 'bolt' : 'offline_bolt'}</md-icon>
-                <span className="m3-drawer-label">Available Now</span>
-              </div>
-              <span className="m3-drawer-badge">
-                {workers.filter(w => w.isAvailable).length}
-              </span>
+            <div className="location-selector-wrap" style={{ padding: '6px 8px 8px' }}>
+              <LocationSelector
+                location={appliedLocationQuery || 'Colombo'}
+                onChange={(newLoc) => {
+                  setLocationQuery(newLoc);
+                  setAppliedLocationQuery(newLoc);
+                  localStorage.setItem('community_selected_district', newLoc);
+                  const params = new URLSearchParams(window.location.search);
+                  if (newLoc) {
+                    params.set('location', newLoc);
+                  } else {
+                    params.delete('location');
+                  }
+                  const newQs = params.toString();
+                  navigate(newQs ? `/find?${newQs}` : '/find');
+                }}
+              />
+            </div>
+          </div>
+
+          <hr className="uber-sidebar-divider" />
+
+          {/* Worker Status Section */}
+          <div className="uber-sidebar-section">
+            <div className="uber-sidebar-section-title">
+              <span>Worker Status</span>
             </div>
 
-            {/* Top Rated (4.5+ ★) */}
-            <div
-              className={`m3-drawer-item ${minRating === '4.5' ? 'active' : ''}`}
-              onClick={() => setMinRating(minRating === '4.5' ? 'Any' : '4.5')}
-              title="Filter workers with 4.5+ star rating"
-            >
-              <div className="m3-drawer-item-left">
-                <md-icon className="m3-drawer-icon">{minRating === '4.5' ? 'workspace_premium' : 'hotel_class'}</md-icon>
-                <span className="m3-drawer-label">Top Rated (4.5★)</span>
+            <div className="uber-cat-list">
+              {/* All Baas */}
+              <div
+                className={`uber-sidebar-item ${!availableNowOnly && !favoritesOnly && minRating === 'Any' && selectedBadge === 'all' ? 'active' : ''}`}
+                onClick={() => {
+                  setAvailableNowOnly(false);
+                  setFavoritesOnly(false);
+                  setMinRating('Any');
+                  setSelectedBadge('all');
+                }}
+                title="View all verified home service workers"
+              >
+                <div className="uber-sidebar-item-left">
+                  <md-icon>engineering</md-icon>
+                  <span>All Baas</span>
+                </div>
+                <span className="uber-sidebar-badge">{workers.length}</span>
               </div>
-              <span className="m3-drawer-badge">
-                {workers.filter(w => (w.overallRating ?? 0) >= 4.5).length}
-              </span>
+
+              {/* Starred / Saved Baas */}
+              <div
+                className={`uber-sidebar-item ${favoritesOnly ? 'active' : ''}`}
+                onClick={() => setFavoritesOnly(!favoritesOnly)}
+                title="Filter by favorited workers"
+              >
+                <div className="uber-sidebar-item-left">
+                  <md-icon>{favoritesOnly ? 'star' : 'star_outline'}</md-icon>
+                  <span>Starred</span>
+                </div>
+                <span className="uber-sidebar-badge">{starredCount}</span>
+              </div>
+
+              {/* Available Now */}
+              <div
+                className={`uber-sidebar-item ${availableNowOnly ? 'active' : ''}`}
+                onClick={() => setAvailableNowOnly(!availableNowOnly)}
+                title="Filter by workers currently on call"
+              >
+                <div className="uber-sidebar-item-left">
+                  <md-icon>bolt</md-icon>
+                  <span>Available Now</span>
+                </div>
+                <span className="uber-sidebar-badge">{availableCount}</span>
+              </div>
+
+              {/* Top Rated (4.5+ ★) */}
+              <div
+                className={`uber-sidebar-item ${minRating === '4.5' ? 'active' : ''}`}
+                onClick={() => setMinRating(minRating === '4.5' ? 'Any' : '4.5')}
+                title="Filter workers with 4.5+ star rating"
+              >
+                <div className="uber-sidebar-item-left">
+                  <md-icon>{minRating === '4.5' ? 'workspace_premium' : 'hotel_class'}</md-icon>
+                  <span>Top Rated (4.5★)</span>
+                </div>
+                <span className="uber-sidebar-badge">{topRatedCount}</span>
+              </div>
             </div>
-          </nav>
+          </div>
 
-          <hr className="m3-drawer-divider" />
+          <hr className="uber-sidebar-divider" />
 
-          {/* Categories Section ("Labels" in Gmail) */}
-          <div className="m3-drawer-section">
-            <div className="m3-drawer-section-header">
-              <span className="m3-drawer-section-title">CATEGORIES</span>
+          {/* Badges Section */}
+          <div className="uber-sidebar-section">
+            <div className="uber-sidebar-section-title">
+              <span>Badges</span>
+              {selectedBadge !== 'all' && (
+                <button
+                  type="button"
+                  className="uber-sidebar-clear-btn"
+                  onClick={() => setSelectedBadge('all')}
+                  title="Clear badge filter"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            <div className="uber-cat-list">
+              <div
+                className={`uber-cat-item ${selectedBadge === 'all' ? 'active' : ''}`}
+                onClick={() => setSelectedBadge('all')}
+                title="All badges"
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <md-icon>verified_user</md-icon>
+                  <span>All Badges</span>
+                </div>
+                <span className="uber-sidebar-badge">{workers.length}</span>
+              </div>
+
+              <div
+                className={`uber-cat-item ${selectedBadge === 'verified' ? 'active' : ''}`}
+                onClick={() => setSelectedBadge(selectedBadge === 'verified' ? 'all' : 'verified')}
+                title="Verified Pro Workers"
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <md-icon>verified</md-icon>
+                  <span>Verified Pro</span>
+                </div>
+                <span className="uber-sidebar-badge">{verifiedCount}</span>
+              </div>
+
+              <div
+                className={`uber-cat-item ${selectedBadge === 'top_craftsman' ? 'active' : ''}`}
+                onClick={() => setSelectedBadge(selectedBadge === 'top_craftsman' ? 'all' : 'top_craftsman')}
+                title="Top Craftsman (Rating 4.8+)"
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <md-icon>military_tech</md-icon>
+                  <span>Top Craftsman</span>
+                </div>
+                <span className="uber-sidebar-badge">{topCraftsmanCount}</span>
+              </div>
+            </div>
+          </div>
+
+          <hr className="uber-sidebar-divider" />
+
+          {/* Categories Section */}
+          <div className="uber-sidebar-section">
+            <div className="uber-sidebar-section-title">
+              <span>Categories</span>
               {selectedCategories.length > 0 && (
                 <button
                   type="button"
-                  className="m3-drawer-section-action"
+                  className="uber-sidebar-clear-btn"
                   onClick={() => setSelectedCategories([])}
                   title="Clear category selection"
                 >
@@ -874,93 +1041,51 @@ export default function Find() {
               )}
             </div>
 
-            <div className="m3-drawer-labels-list">
+            <div className="uber-cat-list">
+              <div
+                className={`uber-cat-item ${selectedCategories.length === 0 ? 'active' : ''}`}
+                onClick={() => setSelectedCategories([])}
+                title="All Categories"
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <md-icon>grid_view</md-icon>
+                  <span>All Categories</span>
+                </div>
+                <span className="uber-sidebar-badge">{workers.length}</span>
+              </div>
+
               {categories.map((cat) => {
                 const count = getCategoryCount(cat.id);
                 const isSelected = selectedCategories.includes(cat.id);
                 return (
                   <div
                     key={cat.id}
-                    className={`m3-drawer-item ${isSelected ? 'active' : ''}`}
+                    className={`uber-cat-item ${isSelected ? 'active' : ''}`}
                     onClick={() => toggleCategory(cat.id)}
                     title={`Filter by ${cat.label}`}
+                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                   >
-                    <div className="m3-drawer-item-left">
-                      <md-icon className="m3-drawer-icon">
-                        {cat.icon || 'handyman'}
-                      </md-icon>
-                      <span className="m3-drawer-label">{cat.label}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <md-icon>{cat.icon || 'handyman'}</md-icon>
+                      <span>{cat.label}</span>
                     </div>
-                    <span className="m3-drawer-badge">{count}</span>
+                    <span className="uber-sidebar-badge">{count}</span>
                   </div>
                 );
               })}
             </div>
           </div>
 
-          <hr className="m3-drawer-divider" />
-
-          {/* Location Filter Section */}
-          <div className="m3-drawer-section">
-            <div className="m3-drawer-section-header">
-              <span className="m3-drawer-section-title">City / Area</span>
-            </div>
-            <div style={{ position: 'relative', padding: '0 8px' }}>
-              <input
-                type="text"
-                placeholder="e.g. Ratnapura, Colombo..."
-                value={locationQuery}
-                onChange={(e) => {
-                  setLocationQuery(e.target.value);
-                  setAppliedLocationQuery(e.target.value);
-                }}
-                style={{
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  background: '#ffffff',
-                  border: '1px solid #cbd5e1',
-                  borderRadius: '8px',
-                  padding: '8px 12px',
-                  fontSize: '0.85rem',
-                  outline: 'none',
-                  color: '#0f172a'
-                }}
-              />
-              {locationQuery && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLocationQuery('');
-                    setAppliedLocationQuery('');
-                  }}
-                  style={{
-                    position: 'absolute',
-                    right: '16px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    color: '#94a3b8',
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}
-                >
-                  <md-icon style={{ fontSize: '16px' }}>close</md-icon>
-                </button>
-              )}
-            </div>
-          </div>
-
-          <hr className="m3-drawer-divider" />
+          <hr className="uber-sidebar-divider" />
 
           {/* Budget & Rate Filter Section */}
-          <div className="m3-drawer-section m3-rates-section">
-            <div className="m3-drawer-section-header">
-              <span className="m3-drawer-section-title">Rate Type</span>
+          <div className="uber-sidebar-section m3-rates-section">
+            <div className="uber-sidebar-section-title">
+              <span>Rate Type</span>
             </div>
 
-            {/* M3 Segmented Control */}
+            {/* Segmented Control */}
             <div className="m3-segmented-control">
               {['Any', 'Per day', 'Per hour'].map((type) => (
                 <button
@@ -1027,66 +1152,110 @@ export default function Find() {
           {hasActiveFilters && (
             <button
               type="button"
-              className="m3-drawer-reset-btn"
+              className="uber-btn-outline"
               onClick={handleResetFilters}
+              style={{ width: '100%', marginTop: '4px' }}
             >
-              <md-icon>restart_alt</md-icon>
+              <md-icon style={{ fontSize: '18px' }}>restart_alt</md-icon>
               <span>Reset All Filters</span>
             </button>
           )}
         </aside>
 
-        {/* Right Main Content Area (Spans full width above cards/map) */}
-        <main className="find-main" style={{ flex: 1, minWidth: 0 }}>
-          {/* Main Controls Header - ALWAYS at top right spanning full width */}
-          <div className="find-main-header">
-            <h1 className="find-results-title">
-              {loading ? 'Searching workers...' : `${filteredWorkers.length} workers available`}
-            </h1>
+        {/* Right Main Content Area */}
+        <main className="community-feed-column find-main" id="find-feed">
+          {/* Main Controls Search & Filter Bar */}
+          <div className="uber-search-card" id="find-search-main">
+            <div className="uber-search-input-wrap">
+              <i className="fa-solid fa-magnifying-glass uber-search-icon"></i>
+              <input
+                type="text"
+                className="uber-search-input"
+                placeholder="Search craftsmen by name, skill, service (e.g. Electrician)..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setAppliedSearchQuery(e.target.value);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    setAppliedSearchQuery(searchQuery);
+                    const params = new URLSearchParams(window.location.search);
+                    if (searchQuery) params.set('q', searchQuery);
+                    else params.delete('q');
+                    const qs = params.toString();
+                    navigate(qs ? `/find?${qs}` : '/find');
+                  }
+                }}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setAppliedSearchQuery('');
+                    const params = new URLSearchParams(window.location.search);
+                    params.delete('q');
+                    const qs = params.toString();
+                    navigate(qs ? `/find?${qs}` : '/find');
+                  }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#757575', padding: '4px' }}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
 
-            <div className="find-header-actions">
+            <div className="uber-toolbar-actions">
               <select
-                className="find-sort-select"
+                className="uber-sort-select"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
               >
-                <option value="recommended">Sort by: Recommended</option>
-                <option value="rating">Highest Rated</option>
-                <option value="price_asc">Price: Low to High</option>
-                <option value="price_desc">Price: High to Low</option>
+                <option value="recommended">Sort: Recommended</option>
+                <option value="rating">Sort: Highest Rated</option>
+                <option value="price_asc">Sort: Price (Low to High)</option>
+                <option value="price_desc">Sort: Price (High to Low)</option>
               </select>
 
               <button
-                className="find-map-toggle-btn"
+                type="button"
+                className="uber-btn-outline"
                 onClick={() => {
                   setShowMap(!showMap);
                   setSelectedMapWorker(null);
                 }}
+                title={showMap ? "Switch to Cards Grid View" : "View Workers on Map"}
               >
+                <md-icon style={{ fontSize: '18px' }}>{showMap ? 'grid_view' : 'map'}</md-icon>
                 <span>{showMap ? 'Hide map' : 'Show map'}</span>
-                <md-icon style={{ fontSize: '18px' }}>{showMap ? 'map' : 'explore'}</md-icon>
               </button>
             </div>
           </div>
 
-          {/* Active Search & Location Filter Chips Bar */}
-          {(appliedSearchQuery || appliedLocationQuery) && (
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
+          {/* Results Count & Active Filter Chips Bar */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', margin: '4px 0 4px 0' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#000000', margin: 0, letterSpacing: '-0.02em' }}>
+              {loading ? 'Searching workers...' : `${filteredWorkers.length} verified worker${filteredWorkers.length === 1 ? '' : 's'} available`}
+            </h2>
+          </div>
+
+          {(appliedSearchQuery || (appliedLocationQuery && appliedLocationQuery.trim() !== '') || selectedCategories.length > 0 || availableNowOnly || favoritesOnly || minRating !== 'Any' || selectedBadge !== 'all') && (
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
               {appliedSearchQuery && (
                 <div style={{
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '6px',
-                  background: '#f1f5f9',
-                  border: '1px solid #cbd5e1',
-                  padding: '4px 12px',
+                  background: '#000000',
+                  color: '#ffffff',
+                  padding: '5px 12px',
                   borderRadius: '9999px',
-                  fontSize: '0.85rem',
-                  fontWeight: 600,
-                  color: '#0f172a'
+                  fontSize: '0.82rem',
+                  fontWeight: 600
                 }}>
                   <md-icon style={{ fontSize: '16px' }}>search</md-icon>
-                  <span>Service: {appliedSearchQuery}</span>
+                  <span>"{appliedSearchQuery}"</span>
                   <md-icon
                     style={{ fontSize: '16px', cursor: 'pointer', marginLeft: '4px' }}
                     onClick={() => {
@@ -1108,16 +1277,16 @@ export default function Find() {
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '6px',
-                  background: '#eff6ff',
-                  border: '1px solid #bfdbfe',
-                  padding: '4px 12px',
+                  background: '#f4f4f5',
+                  border: '1px solid #000000',
+                  padding: '5px 12px',
                   borderRadius: '9999px',
-                  fontSize: '0.85rem',
+                  fontSize: '0.82rem',
                   fontWeight: 600,
-                  color: '#1e40af'
+                  color: '#000000'
                 }}>
-                  <md-icon style={{ fontSize: '16px', color: '#2563eb' }}>location_on</md-icon>
-                  <span>Location: {appliedLocationQuery}</span>
+                  <md-icon style={{ fontSize: '16px', color: '#000000' }}>location_on</md-icon>
+                  <span>{appliedLocationQuery}</span>
                   <md-icon
                     style={{ fontSize: '16px', cursor: 'pointer', marginLeft: '4px' }}
                     onClick={() => {
@@ -1133,6 +1302,124 @@ export default function Find() {
                   </md-icon>
                 </div>
               )}
+
+              {favoritesOnly && (
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#fef3c7',
+                  border: '1px solid #f59e0b',
+                  padding: '5px 12px',
+                  borderRadius: '9999px',
+                  fontSize: '0.82rem',
+                  fontWeight: 600,
+                  color: '#92400e'
+                }}>
+                  <md-icon style={{ fontSize: '16px', color: '#d97706' }}>star</md-icon>
+                  <span>Starred Only</span>
+                  <md-icon
+                    style={{ fontSize: '16px', cursor: 'pointer', marginLeft: '4px' }}
+                    onClick={() => setFavoritesOnly(false)}
+                  >
+                    close
+                  </md-icon>
+                </div>
+              )}
+
+              {availableNowOnly && (
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#ecfdf5',
+                  border: '1px solid #10b981',
+                  padding: '5px 12px',
+                  borderRadius: '9999px',
+                  fontSize: '0.82rem',
+                  fontWeight: 600,
+                  color: '#065f46'
+                }}>
+                  <md-icon style={{ fontSize: '16px', color: '#059669' }}>bolt</md-icon>
+                  <span>Available Now</span>
+                  <md-icon
+                    style={{ fontSize: '16px', cursor: 'pointer', marginLeft: '4px' }}
+                    onClick={() => setAvailableNowOnly(false)}
+                  >
+                    close
+                  </md-icon>
+                </div>
+              )}
+
+              {minRating !== 'Any' && (
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#f4f4f5',
+                  border: '1px solid #d4d4d8',
+                  padding: '5px 12px',
+                  borderRadius: '9999px',
+                  fontSize: '0.82rem',
+                  fontWeight: 600,
+                  color: '#000000'
+                }}>
+                  <md-icon style={{ fontSize: '16px' }}>hotel_class</md-icon>
+                  <span>{minRating}+ Stars</span>
+                  <md-icon
+                    style={{ fontSize: '16px', cursor: 'pointer', marginLeft: '4px' }}
+                    onClick={() => setMinRating('Any')}
+                  >
+                    close
+                  </md-icon>
+                </div>
+              )}
+
+              {selectedBadge !== 'all' && (
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#000000',
+                  color: '#ffffff',
+                  padding: '5px 12px',
+                  borderRadius: '9999px',
+                  fontSize: '0.82rem',
+                  fontWeight: 600
+                }}>
+                  <md-icon style={{ fontSize: '16px' }}>verified</md-icon>
+                  <span>Badge: {selectedBadge === 'verified' ? 'Verified Pro' : 'Top Craftsman'}</span>
+                  <md-icon
+                    style={{ fontSize: '16px', cursor: 'pointer', marginLeft: '4px' }}
+                    onClick={() => setSelectedBadge('all')}
+                  >
+                    close
+                  </md-icon>
+                </div>
+              )}
+
+              {selectedCategories.map(cat => (
+                <div key={cat} style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#f4f4f5',
+                  border: '1px solid #e4e4e7',
+                  padding: '5px 12px',
+                  borderRadius: '9999px',
+                  fontSize: '0.82rem',
+                  fontWeight: 600,
+                  color: '#000000'
+                }}>
+                  <span>{cat}</span>
+                  <md-icon
+                    style={{ fontSize: '16px', cursor: 'pointer', marginLeft: '4px' }}
+                    onClick={() => toggleCategory(cat)}
+                  >
+                    close
+                  </md-icon>
+                </div>
+              ))}
             </div>
           )}
 
