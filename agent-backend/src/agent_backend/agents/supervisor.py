@@ -35,7 +35,7 @@ class SupervisorDecision(BaseModel):
         default=None,
         description="The matching Workio service category from the official categories if a problem or service was described"
     )
-    direct_response: str = Field(
+    direct_response: Optional[str] = Field(
         default="",
         description="Direct conversational response when choosing FINISH (e.g. greeting, problem summary with options, or explanation)"
     )

@@ -12,7 +12,10 @@ from agent_backend.state.state import AgentState
 from agent_backend.tools.community_tools import COMMUNITY_TOOLS
 from agent_backend.prompts.community_prompts import COMMUNITY_AGENT_SYSTEM_PROMPT
 from agent_backend.utils.sanitizer import sanitize_messages_for_llm
-from agent_backend.utils.card_builders import build_community_card
+from agent_backend.utils.card_builders import (
+    build_community_card,
+    format_specialist_structured_message
+)
 
 logger = logging.getLogger("agent_backend.community_agent")
 
@@ -52,9 +55,11 @@ async def community_agent_node(state: AgentState) -> Dict[str, Any]:
             response = await llm_with_tools.ainvoke(prompt_messages)
             result: Dict[str, Any] = {"messages": [response]}
             if not getattr(response, "tool_calls", None):
-                # Final agent turn: directly produce structured AgentCardResponse (Architecture A)
+                # Final agent turn: enforce Pydantic Structured Output on conversational message
+                response = await format_specialist_structured_message(prompt_messages, response, llm=llm)
                 sim_state = dict(state)
                 sim_state["messages"] = messages + [response]
+                result["messages"] = [response]
                 result["structured_response"] = build_community_card(sim_state, ai_message=response)
             return result
         except Exception as e:
