@@ -1459,19 +1459,6 @@ export default function Find() {
                   <i className="fa-solid fa-list-ul"></i>
                 </button>
               </div>
-
-              <button
-                type="button"
-                className={`uber-btn-outline ${showMap ? 'active' : ''}`}
-                onClick={() => {
-                  setShowMap(!showMap);
-                  setSelectedMapWorker(null);
-                }}
-                title={showMap ? "Hide Sidebar Map" : "Show Map in Sidebar"}
-              >
-                <md-icon style={{ fontSize: '18px' }}>{showMap ? 'visibility_off' : 'map'}</md-icon>
-                <span>{showMap ? 'Hide map' : 'Show map'}</span>
-              </button>
             </div>
           </div>
 
