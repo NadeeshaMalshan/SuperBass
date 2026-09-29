@@ -12,6 +12,7 @@ from agent_backend.state.state import AgentState
 from agent_backend.tools.community_tools import COMMUNITY_TOOLS
 from agent_backend.prompts.community_prompts import COMMUNITY_AGENT_SYSTEM_PROMPT
 from agent_backend.utils.sanitizer import sanitize_messages_for_llm
+from agent_backend.utils.card_builders import build_community_card
 
 logger = logging.getLogger("agent_backend.community_agent")
 
@@ -49,19 +50,34 @@ async def community_agent_node(state: AgentState) -> Dict[str, Any]:
             )
             llm_with_tools = llm.bind_tools(COMMUNITY_TOOLS)
             response = await llm_with_tools.ainvoke(prompt_messages)
-            return {"messages": [response]}
+            result: Dict[str, Any] = {"messages": [response]}
+            if not getattr(response, "tool_calls", None):
+                # Final agent turn: directly produce structured AgentCardResponse (Architecture A)
+                sim_state = dict(state)
+                sim_state["messages"] = messages + [response]
+                result["structured_response"] = build_community_card(sim_state, ai_message=response)
+            return result
         except Exception as e:
             error_msg = f"Error in Community Agent: {str(e)}"
-            return {"messages": [AIMessage(content=error_msg)]}
+            err_ai = AIMessage(content=error_msg)
+            sim_state = dict(state)
+            sim_state["messages"] = messages + [err_ai]
+            return {
+                "messages": [err_ai],
+                "structured_response": build_community_card(sim_state, ai_message=err_ai)
+            }
 
     # Offline / Test fallback when API key is not yet set
     last_text = messages[-1].content if messages else ""
+    offline_msg = AIMessage(
+        content=f"[Offline Mode] Received request for community posts: '{last_text}'. "
+                f"Active user: {email} ({user_type}). "
+                f"Please configure OPENAI_API_KEY to enable live MCP tool execution."
+    )
+    sim_state = dict(state)
+    sim_state["messages"] = messages + [offline_msg]
     return {
-        "messages": [
-            AIMessage(
-                content=f"[Offline Mode] Received request for community posts: '{last_text}'. "
-                        f"Active user: {email} ({user_type}). "
-                        f"Please configure OPENAI_API_KEY to enable live MCP tool execution."
-            )
-        ]
+        "messages": [offline_msg],
+        "structured_response": build_community_card(sim_state, ai_message=offline_msg)
     }
+

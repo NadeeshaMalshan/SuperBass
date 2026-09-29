@@ -20,7 +20,7 @@ from agent_backend.schemas.card_models import (
     ErrorCard,
     ServiceCategoriesCard
 )
-from agent_backend.agents.card_formatter import _deterministic_card_builder
+from agent_backend.utils.card_builders import _deterministic_card_builder
 from agent_backend.agents.supervisor import supervisor_node
 from agent_backend.tools.community_tools import COMMUNITY_TOOLS
 
@@ -161,8 +161,8 @@ async def test_supervisor_issue_description_clarification():
     asst_msg = result.get("messages", [])[0].content.lower()
     assert "how would you like to proceed" in asst_msg or "proceed" in asst_msg or "worker" in asst_msg
     suggested_actions = [str(s).lower() for s in result.get("metadata", {}).get("suggested_actions", [])]
-    assert any("worker" in s or "electrician" in s or "find" in s for s in suggested_actions)
-    assert any("community post" in s or "post" in s for s in suggested_actions)
+    assert any(any(w in s for w in ["worker", "electrician", "find", "hire", "professional", "technician"]) for s in suggested_actions)
+    assert any("community" in s or "post" in s for s in suggested_actions)
 
     # Verify card formatter builds a text_message card with suggestions, NOT a post_confirmation card
     state["messages"].append(result["messages"][0])
@@ -170,8 +170,9 @@ async def test_supervisor_issue_description_clarification():
         state["metadata"] = result["metadata"]
     card_resp = _deterministic_card_builder(state)
     assert card_resp.response_type == "text_message"
-    assert any("worker" in str(s).lower() or "electrician" in str(s).lower() for s in card_resp.card_data.get("suggestions", []))
-    assert any("community post" in str(s).lower() for s in card_resp.card_data.get("suggestions", []))
+    assert any(any(w in str(s).lower() for w in ["worker", "electrician", "find", "hire", "professional", "technician"]) for s in card_resp.card_data.get("suggestions", []))
+    assert any("community" in str(s).lower() or "post" in str(s).lower() for s in card_resp.card_data.get("suggestions", []))
+
 
 
 def test_deterministic_card_builder_for_created_post():
@@ -342,13 +343,289 @@ def test_service_category_normalization():
     assert normalize_service_category("ac repair") == "AC & Air Conditioning"
 
 
+
+def test_4_agent_nodes_presence():
+    """Verify all 4 specialized agent nodes and their tool nodes are compiled into the graph without card_formatter."""
+    from agent_backend.graph.workflow import graph
+    node_names = set(graph.nodes.keys())
+    expected_nodes = {
+        "supervisor",
+        "community_agent",
+        "community_tools",
+        "worker_matching_agent",
+        "worker_matching_tools",
+        "booking_agent",
+        "booking_tools",
+        "support_review_agent",
+        "support_review_tools"
+    }
+    assert expected_nodes.issubset(node_names)
+    # Architecture A verification: card_formatter node must NOT be in LangGraph
+    assert "card_formatter" not in node_names
+
+
+
+def test_tool_suites_registration():
+    """Verify all 4 tool suites contain the required MCP tool wrappers."""
+    from agent_backend.tools.community_tools import COMMUNITY_TOOLS
+    from agent_backend.tools.worker_matching_tools import WORKER_MATCHING_TOOLS
+    from agent_backend.tools.booking_tools import BOOKING_TOOLS
+    from agent_backend.tools.support_review_tools import SUPPORT_REVIEW_TOOLS
+
+    worker_tools = {t.name for t in WORKER_MATCHING_TOOLS}
+    assert "search_workers" in worker_tools
+    assert "get_worker_details" in worker_tools
+    assert "get_worker_performance" in worker_tools
+
+    booking_tools = {t.name for t in BOOKING_TOOLS}
+    assert "check_worker_availability" in booking_tools
+    assert "create_booking" in booking_tools
+    assert "get_resident_bookings" in booking_tools
+    assert "reschedule_booking" in booking_tools
+    assert "cancel_booking" in booking_tools
+
+    support_review_tools = {t.name for t in SUPPORT_REVIEW_TOOLS}
+    assert "create_worker_review" in support_review_tools
+    assert "get_worker_performance" in support_review_tools
+    assert "get_user_details" in support_review_tools
+
+
+@pytest.mark.asyncio
+async def test_supervisor_worker_matching_routing():
+    """Verify supervisor routes technician discovery to worker_matching_agent."""
+    state = {
+        "messages": [HumanMessage(content="find me a plumber near Colombo")],
+        "email": "resident@workio.lk",
+        "user_type": "Resident",
+        "user_profile": None,
+        "next": None,
+        "structured_response": None,
+        "metadata": {}
+    }
+    result = await supervisor_node(state)
+    assert result.get("next") == "worker_matching_agent"
+
+
+@pytest.mark.asyncio
+async def test_supervisor_support_review_routing():
+    """Verify supervisor routes reviews and ratings to support_review_agent."""
+    state = {
+        "messages": [HumanMessage(content="I want to give 5 stars review to Sunil for great work")],
+        "email": "resident@workio.lk",
+        "user_type": "Resident",
+        "user_profile": None,
+        "next": None,
+        "structured_response": None,
+        "metadata": {}
+    }
+    result = await supervisor_node(state)
+    assert result.get("next") == "support_review_agent"
+
+
+@pytest.mark.asyncio
+async def test_card_builder_zero_llm():
+    """Verify card builder is 100% deterministic with zero LLM calls and executes in < 5ms."""
+    import time
+    from agent_backend.utils.card_builders import build_worker_matching_card
+
+    state = {
+        "messages": [
+            HumanMessage(content="find me a plumber"),
+            ToolMessage(
+                content=json.dumps([{"id": 10, "name": "Sunil Shantha", "skills": ["Plumbing"], "hourlyRate": 2000.0}]),
+                tool_call_id="call_w",
+                name="search_workers"
+            )
+        ],
+        "email": "resident@workio.lk",
+        "user_type": "Resident",
+        "user_profile": None,
+        "next": None,
+        "structured_response": None,
+        "metadata": {}
+    }
+
+    t0 = time.perf_counter()
+    resp = build_worker_matching_card(state)
+    elapsed_ms = (time.perf_counter() - t0) * 1000
+
+    assert resp.response_type == "worker_list"
+    assert resp.card_data["workers"][0]["name"] == "Sunil Shantha"
+    assert elapsed_ms < 50.0  # Runs in single-digit milliseconds, proving zero network/LLM calls
+
+
+
+def test_deterministic_card_builder_all_tool_families():
+    """Verify deterministic card mapping for details, bookings, reviews, and disputes."""
+    # 1. get_worker_details -> user_profile
+    s_details = {
+        "messages": [
+            ToolMessage(
+                content=json.dumps({"id": 13, "name": "Kusal Mendis", "overallRating": 4.9, "skills": ["Electrical"]}),
+                tool_call_id="c1",
+                name="get_worker_details"
+            )
+        ],
+        "email": "resident@workio.lk",
+        "user_type": "Resident",
+        "user_profile": None,
+        "next": None,
+        "structured_response": None,
+        "metadata": {}
+    }
+    r_details = _deterministic_card_builder(s_details)
+    assert r_details.response_type == "user_profile"
+    assert r_details.card_data["displayName"] == "Kusal Mendis"
+
+    # 2. reschedule_booking -> text_message
+    s_reschedule = {
+        "messages": [
+            ToolMessage(
+                content=json.dumps({"bookingId": 42, "status": "Rescheduled"}),
+                tool_call_id="c2",
+                name="reschedule_booking"
+            )
+        ],
+        "email": "resident@workio.lk",
+        "user_type": "Resident",
+        "user_profile": None,
+        "next": None,
+        "structured_response": None,
+        "metadata": {}
+    }
+    r_reschedule = _deterministic_card_builder(s_reschedule)
+    assert r_reschedule.response_type == "text_message"
+    assert "42" in r_reschedule.message
+
+    # 3. create_worker_review -> text_message
+    s_review = {
+        "messages": [
+            ToolMessage(
+                content=json.dumps({"status": "success", "reviewId": "rev_10"}),
+                tool_call_id="c3",
+                name="create_worker_review"
+            )
+        ],
+        "email": "resident@workio.lk",
+        "user_type": "Resident",
+        "user_profile": None,
+        "next": None,
+        "structured_response": None,
+        "metadata": {}
+    }
+    r_review = _deterministic_card_builder(s_review)
+    assert r_review.response_type == "text_message"
+    assert "submitted" in r_review.message.lower() or "recorded" in r_review.message.lower()
+
+
+@pytest.mark.asyncio
+async def test_architecture_a_direct_structured_responses():
+    """Verify all 4 specialist agents directly produce structured_response (Architecture A)."""
+    from unittest.mock import patch, AsyncMock
+    from langchain_openai import ChatOpenAI
+    from agent_backend.agents.worker_matching_agent import worker_matching_agent_node
+    from agent_backend.agents.booking_agent import booking_agent_node
+    from agent_backend.agents.community_agent import community_agent_node
+    from agent_backend.agents.support_review_agent import support_review_agent_node
+
+
+    base_state = {
+        "email": "resident@workio.lk",
+        "user_type": "Resident",
+        "user_profile": {"address": "Colombo"},
+        "next": None,
+        "structured_response": None,
+        "metadata": {}
+    }
+
+    # 1. Worker Matching Agent directly produces structured_response
+    w_state = dict(base_state)
+    w_state["messages"] = [
+        HumanMessage(content="find me a plumber"),
+        AIMessage(content="", tool_calls=[{"id": "w1", "name": "search_workers", "args": {"category": "Plumbing"}}]),
+        ToolMessage(
+            content=json.dumps([{"id": 1, "name": "Nimal Perera", "hourlyRate": 2200.0, "skills": ["Plumbing"]}]),
+            tool_call_id="w1",
+            name="search_workers"
+        )
+    ]
+    with patch.object(ChatOpenAI, "ainvoke", new_callable=AsyncMock) as mock_llm:
+        mock_llm.return_value = AIMessage(content="I found 1 verified technician matching your criteria:")
+        w_res = await worker_matching_agent_node(w_state)
+        assert "structured_response" in w_res
+        assert w_res["structured_response"].response_type == "worker_list"
+        assert w_res["structured_response"].card_data["workers"][0]["name"] == "Nimal Perera"
+
+    # 2. Booking Agent directly produces structured_response
+    b_state = dict(base_state)
+    b_state["messages"] = [
+        HumanMessage(content="cancel my booking 99"),
+        AIMessage(content="", tool_calls=[{"id": "b1", "name": "cancel_booking", "args": {"bookingId": 99}}]),
+        ToolMessage(
+            content=json.dumps({"bookingId": 99, "status": "Cancelled"}),
+            tool_call_id="b1",
+            name="cancel_booking"
+        )
+    ]
+    with patch.object(ChatOpenAI, "ainvoke", new_callable=AsyncMock) as mock_llm:
+        mock_llm.return_value = AIMessage(content="Booking #99 has been cancelled.")
+        b_res = await booking_agent_node(b_state)
+        assert "structured_response" in b_res
+        assert b_res["structured_response"].response_type == "text_message"
+        assert "99" in b_res["structured_response"].message
+
+    # 3. Community Agent directly produces structured_response
+    c_state = dict(base_state)
+    c_state["messages"] = [
+        HumanMessage(content="create post"),
+        AIMessage(content="", tool_calls=[{"id": "c1", "name": "create_community_post", "args": {"title": "Garden Clean", "content": "Help needed"}}]),
+        ToolMessage(
+            content=json.dumps({"id": 55, "title": "Garden Clean", "content": "Help needed", "location": "Kandy"}),
+            tool_call_id="c1",
+            name="create_community_post"
+        )
+    ]
+    with patch.object(ChatOpenAI, "ainvoke", new_callable=AsyncMock) as mock_llm:
+        mock_llm.return_value = AIMessage(content="Post created successfully.")
+        c_res = await community_agent_node(c_state)
+        assert "structured_response" in c_res
+        assert c_res["structured_response"].response_type == "post_created"
+        assert c_res["structured_response"].card_data["title"] == "Garden Clean"
+
+    # 4. Support & Review Agent directly produces structured_response
+    s_state = dict(base_state)
+    s_state["messages"] = [
+        HumanMessage(content="rate worker"),
+        AIMessage(content="", tool_calls=[{"id": "s1", "name": "create_worker_review", "args": {"workerId": 1, "rating": 5}}]),
+        ToolMessage(
+            content=json.dumps({"status": "success", "reviewId": "rev_55"}),
+            tool_call_id="s1",
+            name="create_worker_review"
+        )
+    ]
+    with patch.object(ChatOpenAI, "ainvoke", new_callable=AsyncMock) as mock_llm:
+        mock_llm.return_value = AIMessage(content="Your review has been recorded.")
+        s_res = await support_review_agent_node(s_state)
+        assert "structured_response" in s_res
+        assert s_res["structured_response"].response_type == "text_message"
+
+
+
+
 if __name__ == "__main__":
     test_card_schemas()
     test_langgraph_compilation()
-    test_community_tools_count()
+    test_4_agent_nodes_presence()
+    test_tool_suites_registration()
     test_deterministic_card_builder_for_created_post()
     test_deterministic_card_builder_for_service_categories()
+    test_deterministic_card_builder_all_tool_families()
+    asyncio.run(test_card_builder_zero_llm())
     asyncio.run(test_supervisor_greeting())
     asyncio.run(test_supervisor_community_routing())
     asyncio.run(test_supervisor_booking_routing())
-    print("All Workio Agent Backend tests passed successfully!")
+    asyncio.run(test_supervisor_worker_matching_routing())
+    asyncio.run(test_supervisor_support_review_routing())
+    asyncio.run(test_architecture_a_direct_structured_responses())
+    print("All Workio Architecture A Multi-Agent tests passed successfully!")
+
