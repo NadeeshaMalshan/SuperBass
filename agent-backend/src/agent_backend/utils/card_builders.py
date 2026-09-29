@@ -82,8 +82,68 @@ def _normalize_skills(raw: Any) -> List[str]:
     return result
 
 
-def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = None) -> AgentCardResponse:
+def _clean_card_intro_message(raw_msg: str, default_intro: str, card_type: str = "card") -> str:
+    """
+    Ensures that when a rich interactive UI card is rendered below the chat bubble,
+    the chat bubble message does not duplicate card fields, markdown image tags,
+    bulleted worker/post dumps, or telephone links.
+    Preserves clean introductory text and any natural closing call-to-action question.
+    """
+    if not raw_msg or not isinstance(raw_msg, str):
+        return default_intro
 
+    text = raw_msg.strip()
+
+    # Detect if the text contains repetitive itemized card details (numbers/bullets followed by bold names, markdown images, tel links, etc.)
+    has_dump = bool(
+        re.search(
+            r'(?:(?:\n|\s+)(?:1\.\s*\*\*|\d+\.\s*\*\*|[-*]\s*\*\*)|!\[.*?\]\(.*?\)|\(tel:\d+\)|###\s+[A-Z])',
+            text
+        )
+    )
+
+    if not has_dump:
+        return text
+
+    # Extract the introductory text before the first worker/post item (e.g. before "1. **" or "- **" or "![")
+    intro_match = re.search(
+        r'^(.*?)(?=(?:\s*\n\s*|\s+)(?:1\.\s*\*\*|\d+\.\s*\*\*|[-*]\s*\*\*|!\[.*?\]\(.*?\)|###\s+))',
+        text,
+        re.DOTALL
+    )
+    intro = intro_match.group(1).strip() if intro_match else ""
+
+    # Extract any concluding question or call to action at the end of the text
+    closing_match = re.search(
+        r'(?:(?:\n|\.\s+|:\s+))([A-Z][^\n]*\?)\s*$',
+        text
+    )
+    closing = closing_match.group(1).strip() if closing_match else ""
+
+    parts = []
+    if intro and len(intro) > 8 and not intro.startswith(("1.", "-", "*")):
+        # Ensure proper punctuation at the end of intro
+        if not intro.endswith((".", "!", ":", "?")):
+            intro += ":"
+        parts.append(intro)
+    else:
+        parts.append(default_intro)
+
+    if closing and closing not in (parts[0] if parts else ""):
+        parts.append(closing)
+    elif card_type == "worker_list" and not any("book" in p.lower() for p in parts):
+        parts.append("Would you like to book one of these technicians, or inspect more details?")
+
+    cleaned = " ".join(parts).strip()
+    # Strip any stray markdown image embeds or tel links if any remained
+    cleaned = re.sub(r'!\[.*?\]\(.*?\)', '', cleaned).strip()
+    cleaned = re.sub(r'\[(.*?)\]\(tel:.*?\)', r'\1', cleaned).strip()
+    # Normalize multiple spaces
+    cleaned = re.sub(r'\s{2,}', ' ', cleaned)
+    return cleaned if cleaned else default_intro
+
+
+def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = None) -> AgentCardResponse:
     """Deterministic response builder based on tool execution logs and agent message."""
     messages = list(state.get("messages", []))
     email = state.get("email", "resident@workio.lk")
@@ -145,9 +205,14 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                 authorId=data.get("userId") or email,
                 authorName=data.get("userName") or email.split("@")[0]
             )
+            clean_msg = _clean_card_intro_message(
+                last_ai_content,
+                f"Your community post '{card.title}' has been published successfully!",
+                "post_created"
+            )
             return AgentCardResponse(
                 response_type="post_created",
-                message=last_ai_content or f"Your community post '{card.title}' has been published successfully!",
+                message=clean_msg,
                 card_data=card.model_dump(),
                 metadata={"agent": "community_agent", "user_email": email}
             )
@@ -169,9 +234,14 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                     likesCount=data.get("likesCount", 0),
                     commentsCount=data.get("commentsCount", 0)
                 )
+                clean_msg = _clean_card_intro_message(
+                    last_ai_content,
+                    f"Here are the details for post #{card.id}:",
+                    "post_detail"
+                )
                 return AgentCardResponse(
                     response_type="post_detail",
-                    message=last_ai_content or f"Here are the details for post #{card.id}.",
+                    message=clean_msg,
                     card_data=card.model_dump(),
                     metadata={"agent": "community_agent", "user_email": email}
                 )
@@ -199,9 +269,14 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                 totalCount=len(post_summaries),
                 posts=post_summaries
             )
+            clean_msg = _clean_card_intro_message(
+                last_ai_content,
+                f"Found {len(post_summaries)} community posts in your area:",
+                "post_list"
+            )
             return AgentCardResponse(
                 response_type="post_list",
-                message=last_ai_content or f"Found {len(post_summaries)} community posts.",
+                message=clean_msg,
                 card_data=card.model_dump(),
                 metadata={"agent": "community_agent", "user_email": email}
             )
@@ -215,9 +290,14 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                 communityId=data.get("serviceCategoryId") or data.get("communityId"),
                 location=data.get("location")
             )
+            clean_msg = _clean_card_intro_message(
+                last_ai_content,
+                f"Post #{card.id} has been updated.",
+                "post_updated"
+            )
             return AgentCardResponse(
                 response_type="post_updated",
-                message=last_ai_content or f"Post #{card.id} has been updated.",
+                message=clean_msg,
                 card_data=card.model_dump(),
                 metadata={"agent": "community_agent", "user_email": email}
             )
@@ -228,9 +308,14 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                 id=data.get("id") or data.get("postId") or "",
                 message="Community post marked as removed."
             )
+            clean_msg = _clean_card_intro_message(
+                last_ai_content,
+                "Community post marked as removed.",
+                "post_deleted"
+            )
             return AgentCardResponse(
                 response_type="post_deleted",
-                message=last_ai_content or "Post successfully removed.",
+                message=clean_msg,
                 card_data=card.model_dump(),
                 metadata={"agent": "community_agent", "user_email": email}
             )
@@ -246,9 +331,14 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                 address=data.get("address"),
                 skills=_normalize_skills(data.get("workerProfile", {}).get("skills")) if isinstance(data.get("workerProfile"), dict) else None
             )
+            clean_msg = _clean_card_intro_message(
+                last_ai_content,
+                f"Profile details for {card.displayName or card.email}:",
+                "user_profile"
+            )
             return AgentCardResponse(
                 response_type="user_profile",
-                message=last_ai_content or f"Profile details for {card.email}",
+                message=clean_msg,
                 card_data=card.model_dump(),
                 metadata={"agent": "community_agent", "user_email": email}
             )
@@ -265,9 +355,14 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                 categories=categories_raw,
                 totalCount=len(categories_raw)
             )
+            clean_msg = _clean_card_intro_message(
+                last_ai_content,
+                f"Here are {len(categories_raw)} official service categories available on Workio:",
+                "service_categories"
+            )
             return AgentCardResponse(
                 response_type="service_categories",
-                message=last_ai_content or f"Here are {len(categories_raw)} official service categories available on Workio.",
+                message=clean_msg,
                 card_data=card.model_dump(),
                 metadata={"agent": "community_agent", "user_email": email}
             )
@@ -384,11 +479,16 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                     totalCount=len(worker_summaries),
                     workers=worker_summaries
                 )
+                clean_msg = _clean_card_intro_message(
+                    last_ai_content,
+                    f"I found {len(worker_summaries)} verified professionals matching your request:",
+                    "worker_list"
+                )
                 return AgentCardResponse(
                     response_type="worker_list",
-                    message=last_ai_content or f"I found {len(worker_summaries)} verified professionals matching your budget:",
+                    message=clean_msg,
                     card_data=card.model_dump(),
-                    metadata={"agent": "booking_agent", "user_email": email}
+                    metadata={"agent": "worker_matching_agent", "user_email": email}
                 )
 
             rates = [float(w.get("hourlyRate")) for w in raw_workers if isinstance(w, dict) and w.get("hourlyRate") is not None]
@@ -422,9 +522,14 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                 skills=_normalize_skills(w_data.get("skills")) or ["General Handyman"],
                 pricingModel=w_data.get("pricingModel") or ("Hourly" if w_data.get("hourlyRate") else "Standard")
             )
+            clean_msg = _clean_card_intro_message(
+                last_ai_content,
+                f"Profile details for {card.displayName}:",
+                "user_profile"
+            )
             return AgentCardResponse(
                 response_type="user_profile",
-                message=last_ai_content or f"Profile details for {card.displayName}.",
+                message=clean_msg,
                 card_data=card.model_dump(),
                 metadata={"agent": "worker_matching_agent", "user_email": email}
             )
@@ -806,9 +911,14 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
             validationNotes=f"Please review your draft details above and confirm to publish under your account ({user_name}).",
             confirmPrompt=f"CONFIRM_PUBLISH: Yes, please publish the post '{draft_title}' in {draft_category} for {draft_location}."
         )
+        clean_msg = _clean_card_intro_message(
+            last_ai_content,
+            "Please review your draft community post below and confirm to publish:",
+            "post_confirmation"
+        )
         return AgentCardResponse(
             response_type="post_confirmation",
-            message=last_ai_content,
+            message=clean_msg,
             card_data=card.model_dump(),
             metadata={"agent": "community_agent", "user_email": email}
         )

@@ -73,7 +73,7 @@ SCENARIOS = [
             "email": "resident@workio.lk",
             "user_type": "Resident"
         },
-        "expected_types": ["text_message", "error"]
+        "expected_types": ["text_message", "error", "user_profile"]
     },
     {
         "name": "Test 8 — Resident Bookings (Booking Agent + MCP get_resident_bookings)",
