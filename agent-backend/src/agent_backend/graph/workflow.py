@@ -44,24 +44,11 @@ async def community_tools_node(state: AgentState):
         if hasattr(last_msg, "tool_calls") and last_msg.tool_calls:
             post_data = metadata.get("post_data") or {}
             for tc in last_msg.tool_calls:
-                t_name = tc.get("name")
-                if t_name == "create_community_post":
+                if tc.get("name") == "create_community_post":
                     args = tc.setdefault("args", {})
                     # Never put raw base64 data into tool_calls args
                     if post_images:
                         args["images"] = [f"[attached_image_{i+1}]" for i in range(len(post_images))]
-                    if post_data.get("title"):
-                        args["title"] = post_data["title"]
-                    if post_data.get("content"):
-                        args["content"] = post_data["content"]
-                    if post_data.get("communityId"):
-                        args["communityId"] = post_data["communityId"]
-                    if post_data.get("location"):
-                        args["location"] = post_data["location"]
-                elif t_name == "update_community_post":
-                    args = tc.setdefault("args", {})
-                    if post_data.get("postId") and not args.get("postId"):
-                        args["postId"] = post_data["postId"]
                     if post_data.get("title"):
                         args["title"] = post_data["title"]
                     if post_data.get("content"):

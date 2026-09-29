@@ -34,18 +34,12 @@ export default function PostListCard({ data, onAction }) {
           </div>
         ) : (
           <div className="agent-post-list">
-            {posts.map((post, idx) => {
-              const postId = post.id || post.postId || post.post_id;
-              const promptText = postId
-                ? `Show details for post #${postId}`
-                : `Show details for post "${post.title || ''}"`;
-
-              return (
-                <div
-                  key={postId || idx}
-                  className="agent-post-item"
-                  onClick={() => onAction && onAction('send_prompt', promptText)}
-                >
+            {posts.map((post, idx) => (
+              <div
+                key={post.id || idx}
+                className="agent-post-item"
+                onClick={() => onAction && onAction('send_prompt', `Show details for post #${post.id}`)}
+              >
                 <div className="agent-post-item-top">
                   <span className="agent-post-item-title">{post.title}</span>
                   <span className="agent-post-item-cat">{post.communityId || 'General'}</span>
@@ -58,8 +52,7 @@ export default function PostListCard({ data, onAction }) {
                   <span><i className="fa-regular fa-comment"></i> {post.commentsCount || 0}</span>
                 </div>
               </div>
-            );
-          })}
+            ))}
           </div>
         )}
       </div>

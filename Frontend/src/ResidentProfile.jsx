@@ -11,39 +11,12 @@ import '@material/web/progress/circular-progress.js';
 import '@material/web/textfield/filled-text-field.js';
 import Loader from './components/Loader.jsx';
 import { API_BASE_URL } from './config.js';
-import { validateAndParseNIC } from './utils/nic-validation.js';
 
 export default function ResidentProfile({ defaultTab = 'overview' }) {
   const urlParams = new URLSearchParams(window.location.search);
   const tabParam = urlParams.get('tab');
   const [activeTab, setActiveTab] = useState(tabParam || defaultTab || 'overview');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-
-  const [isVerified, setIsVerified] = useState(false);
-  const [verifyForm, setVerifyForm] = useState({
-    nic: '',
-    dob: '',
-    gender: 'Male'
-  });
-  const [verifyError, setVerifyError] = useState('');
-  
-  const handleVerifySubmit = (e) => {
-    e.preventDefault();
-    setVerifyError('');
-    const result = validateAndParseNIC(verifyForm.nic);
-    if (!result.isValid) {
-      setVerifyError('Verification failed: The entered details do not match the official NIC records.');
-      return;
-    }
-    
-    if (result.data.dateOfBirth !== verifyForm.dob || result.data.gender.toLowerCase() !== verifyForm.gender.toLowerCase()) {
-      setVerifyError('Verification failed: The entered details do not match the official NIC records.');
-      return;
-    }
-
-    setIsVerified(true);
-  };
-
 
   const [profile, setProfile] = useState({
     name: '',
@@ -618,9 +591,8 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
             )}
             {!isSidebarCollapsed && (
               <div style={{ overflow: 'hidden', minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#111827', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#111827', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
                   {profile.name || 'User'}
-                  {isVerified && <md-icon style={{ color: '#3b82f6', fontSize: '16px', width: '16px', height: '16px' }}>verified</md-icon>}
                 </div>
                 <div style={{ fontSize: '0.75rem', color: '#64748b', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
                   {userEmail}
@@ -642,16 +614,6 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
               <div className="m3-drawer-item-left">
                 <md-icon className="m3-drawer-icon">person</md-icon>
                 <span className="m3-drawer-label">Profile Overview</span>
-              </div>
-            </div>
-
-            <div
-              className={`m3-drawer-item ${activeTab === 'verify' ? 'active' : ''}`}
-              onClick={() => setActiveTab('verify')}
-            >
-              <div className="m3-drawer-item-left">
-                <md-icon className="m3-drawer-icon">verified_user</md-icon>
-                <span className="m3-drawer-label">Verify Account</span>
               </div>
             </div>
 
@@ -707,94 +669,6 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
         {/* Main Content Area */}
         <main className="find-main" style={{ flex: 1, minWidth: 0, padding: '24px 32px' }}>
           <div style={{ maxWidth: '900px', backgroundColor: '#ffffff', borderRadius: '16px', padding: '2rem', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-
-                    {/* TAB: Verify Account */}
-          {activeTab === 'verify' && (
-            <div>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: '800', marginTop: 0, marginBottom: '1.5rem', color: '#111827' }}>Verify Account</h2>
-              
-              {isVerified ? (
-                <div style={{ padding: '2rem', backgroundColor: '#f0fdf4', borderRadius: '12px', border: '1px solid #bbf7d0', textAlign: 'center' }}>
-                  <md-icon style={{ fontSize: '48px', width: '48px', height: '48px', color: '#16a34a', marginBottom: '1rem' }}>check_circle</md-icon>
-                  <h3 style={{ margin: '0 0 0.5rem 0', color: '#166534', fontSize: '1.25rem' }}>Account Verified</h3>
-                  <p style={{ margin: 0, color: '#15803d' }}>Your official identity has been successfully verified.</p>
-                </div>
-              ) : (
-                <form onSubmit={handleVerifySubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                  <div style={{ padding: '1.5rem', backgroundColor: '#f9fafb', borderRadius: '12px', border: '1px solid #f3f4f6' }}>
-                    <p style={{ margin: '0 0 1.5rem 0', color: '#4b5563' }}>Please enter your official NIC details to verify your account.</p>
-                    
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      <md-filled-text-field
-                        label="National Identity Card (NIC)"
-                        type="text"
-                        value={verifyForm.nic}
-                        onInput={(e) => setVerifyForm({...verifyForm, nic: e.target.value})}
-                        required
-                      ></md-filled-text-field>
-                      
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <label style={{ fontSize: '0.85rem', color: '#4b5563', paddingLeft: '16px' }}>Date of Birth</label>
-                        <input 
-                          type="date"
-                          style={{
-                            padding: '16px',
-                            border: 'none',
-                            borderBottom: '1px solid #111827',
-                            backgroundColor: '#f3f4f6',
-                            borderRadius: '4px 4px 0 0',
-                            fontFamily: 'inherit',
-                            fontSize: '1rem',
-                            outline: 'none'
-                          }}
-                          value={verifyForm.dob}
-                          onChange={(e) => setVerifyForm({...verifyForm, dob: e.target.value})}
-                          required
-                        />
-                      </div>
-                      
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <label style={{ fontSize: '0.85rem', color: '#4b5563', paddingLeft: '16px' }}>Gender</label>
-                        <select 
-                          style={{
-                            padding: '16px',
-                            border: 'none',
-                            borderBottom: '1px solid #111827',
-                            backgroundColor: '#f3f4f6',
-                            borderRadius: '4px 4px 0 0',
-                            fontFamily: 'inherit',
-                            fontSize: '1rem',
-                            outline: 'none'
-                          }}
-                          value={verifyForm.gender}
-                          onChange={(e) => setVerifyForm({...verifyForm, gender: e.target.value})}
-                          required
-                        >
-                          <option value="Male">Male</option>
-                          <option value="Female">Female</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {verifyError && (
-                      <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#fef2f2', color: '#991b1b', borderRadius: '8px', fontSize: '0.9rem' }}>
-                        {verifyError}
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <md-filled-button
-                      type="submit"
-                      style={{ '--md-sys-color-primary': '#2563eb', '--md-sys-color-on-primary': '#ffffff', '--md-filled-button-container-shape': '8px' }}
-                    >
-                      Verify Now
-                    </md-filled-button>
-                  </div>
-                </form>
-              )}
-            </div>
-          )}
 
           {/* TAB: Overview */}
           {activeTab === 'overview' && (

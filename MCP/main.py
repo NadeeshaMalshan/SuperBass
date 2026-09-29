@@ -720,17 +720,15 @@ async def call_create_community_post(args: Dict[str, Any]):
     return response.json() if response.text else {"success": True}
 
 async def call_get_community_posts(args: Dict[str, Any]):
-    raw_target = str(args.get("postId") or args.get("id") or args.get("communityId", "")).strip()
-    clean_target = raw_target.lstrip("#").strip()
+    community_id = str(args.get("communityId", "")).strip()
     params = {}
     if args.get("limit") is not None:
         params["limit"] = args["limit"]
     if args.get("offset") is not None:
         params["offset"] = args["offset"]
-    if clean_target.isdigit():
-        response = await backend_client.get(f"/api/community-posts/{clean_target}", params=params)
+    if community_id.isdigit():
+        response = await backend_client.get(f"/api/community-posts/{community_id}", params=params)
     else:
-        community_id = str(args.get("communityId", "")).strip()
         if community_id and community_id.lower() != "all":
             params["category"] = community_id
         response = await backend_client.get("/api/community-posts", params=params)
