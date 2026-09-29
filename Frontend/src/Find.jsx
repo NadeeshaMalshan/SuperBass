@@ -1635,7 +1635,7 @@ export default function Find() {
                 style={{
                   background: '#0f172a',
                   color: '#ffffff',
-                  border: 'none'
+                  border: 'none',
                   borderRadius: '12px',
                   padding: '10px 20px',
                   fontWeight: 600,
