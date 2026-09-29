@@ -158,8 +158,32 @@ def _extract_draft_card(
         title = f"{category} Service Request"
     content_text = " ".join(body_parts).strip() or content
 
+    post_id = metadata.get("postId") or metadata.get("post_id") or (metadata.get("post_data", {}).get("postId") if isinstance(metadata.get("post_data"), dict) else None)
+    is_update = bool(post_id)
+    if not post_id:
+        for line in chunks:
+            if "post #" in line.lower() or "post id:" in line.lower():
+                parts_p = line.lower().replace("post #", "post_id_token:").replace("post id:", "post_id_token:").split("post_id_token:")
+                if len(parts_p) > 1:
+                    candidate = parts_p[1].strip().split()[0].strip(",.:;")
+                    if candidate.isdigit():
+                        post_id = candidate
+                        is_update = True
+                        break
+
+    if not is_update and any(kw in content.lower() for kw in ["update post", "edit post", "updated draft"]):
+        is_update = True
+
+    action_type = "update" if is_update else "create"
+    confirm_prompt = (
+        f"CONFIRM_UPDATE: Yes, please update post #{post_id} with title='{title}' in {category} for {location}."
+        if is_update and post_id
+        else f"CONFIRM_PUBLISH: Yes, please publish the post '{title}' in {category} for {location}."
+    )
+
     card = PostConfirmationCard(
-        action="create",
+        action=action_type,
+        postId=post_id,
         title=title,
         content=content_text,
         communityId=category,
@@ -168,12 +192,16 @@ def _extract_draft_card(
         authorId=email,
         authorName=user_name,
         validationStatus="valid",
-        validationNotes=f"Please review your draft details above and confirm to publish under your account ({user_name}).",
-        confirmPrompt=f"CONFIRM_PUBLISH: Yes, please publish the post '{title}' in {category} for {location}."
+        validationNotes=(
+            f"Please review your updated details above and confirm to save changes to post #{post_id}."
+            if is_update
+            else f"Please review your draft details above and confirm to publish under your account ({user_name})."
+        ),
+        confirmPrompt=confirm_prompt
     )
     clean_msg = _clean_card_intro_message(
         content,
-        "Here is your draft community post. Please review the details below and confirm to publish:",
+        "Here are your updated post details. Please review and confirm to save changes:" if is_update else "Here is your draft community post. Please review the details below and confirm to publish:",
         "post_confirmation"
     )
     return AgentCardResponse(
