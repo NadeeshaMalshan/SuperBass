@@ -14,7 +14,10 @@ from agent_backend.tools.worker_matching_tools import WORKER_MATCHING_TOOLS
 from agent_backend.tools.booking_tools import get_live_service_categories
 from agent_backend.prompts.worker_matching_prompts import WORKER_MATCHING_SYSTEM_PROMPT
 from agent_backend.utils.sanitizer import sanitize_messages_for_llm
-from agent_backend.utils.card_builders import build_worker_matching_card
+from agent_backend.utils.card_builders import (
+    build_worker_matching_card,
+    format_specialist_structured_message
+)
 
 
 logger = logging.getLogger("agent_backend.worker_matching_agent")
@@ -83,9 +86,11 @@ async def worker_matching_agent_node(state: AgentState) -> Dict[str, Any]:
         response = await llm.ainvoke(prompt)
         result: Dict[str, Any] = {"messages": [response]}
         if not getattr(response, "tool_calls", None):
-            # Final agent turn: directly produce structured AgentCardResponse (Architecture A)
+            # Final agent turn: enforce Pydantic Structured Output on conversational message
+            response = await format_specialist_structured_message(prompt, response, llm=llm)
             sim_state = dict(state)
             sim_state["messages"] = messages + [response]
+            result["messages"] = [response]
             result["structured_response"] = build_worker_matching_card(sim_state, ai_message=response)
         return result
 

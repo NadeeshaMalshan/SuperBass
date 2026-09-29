@@ -222,3 +222,28 @@ class AgentCardResponse(BaseModel):
         default_factory=dict,
         description="Additional context (active agent, user email, timestamp, etc.)"
     )
+
+
+class SpecialistConversationalOutput(BaseModel):
+    """
+    Structured Pydantic response format for specialist agents.
+    Enforces clean, conversational messages without dumping repetitive
+    raw data, markdown image embeds, phone numbers, or bullet lists that
+    are already rendered visually by frontend UI cards.
+    """
+    message: str = Field(
+        ...,
+        description=(
+            "A concise, friendly 1-2 sentence conversational introduction to the resident "
+            "(e.g., 'Here are verified AC repair technicians available near Colombo. "
+            "Would you like to book one of them or view more details?'). "
+            "CRITICAL: Do NOT list individual workers, bullet points, telephone numbers, "
+            "ratings, or markdown image tags in this message, because the frontend interactive "
+            "UI card displays all worker photos, ratings, rates, and action buttons directly below."
+        )
+    )
+    suggested_actions: Optional[List[str]] = Field(
+        default_factory=list,
+        description="Optional list of 2-3 quick suggestion chips for the user"
+    )
+

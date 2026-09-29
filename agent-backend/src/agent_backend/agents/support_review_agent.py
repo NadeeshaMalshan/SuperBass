@@ -12,7 +12,10 @@ from agent_backend.state.state import AgentState
 from agent_backend.tools.support_review_tools import SUPPORT_REVIEW_TOOLS
 from agent_backend.prompts.support_review_prompts import SUPPORT_REVIEW_SYSTEM_PROMPT
 from agent_backend.utils.sanitizer import sanitize_messages_for_llm
-from agent_backend.utils.card_builders import build_support_review_card
+from agent_backend.utils.card_builders import (
+    build_support_review_card,
+    format_specialist_structured_message
+)
 
 logger = logging.getLogger("agent_backend.support_review_agent")
 
@@ -47,9 +50,11 @@ async def support_review_agent_node(state: AgentState) -> Dict[str, Any]:
         response = await llm.ainvoke(prompt)
         result: Dict[str, Any] = {"messages": [response]}
         if not getattr(response, "tool_calls", None):
-            # Final agent turn: directly produce structured AgentCardResponse (Architecture A)
+            # Final agent turn: enforce Pydantic Structured Output on conversational message
+            response = await format_specialist_structured_message(prompt, response, llm=llm)
             sim_state = dict(state)
             sim_state["messages"] = messages + [response]
+            result["messages"] = [response]
             result["structured_response"] = build_support_review_card(sim_state, ai_message=response)
         return result
 

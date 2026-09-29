@@ -8,7 +8,8 @@ from typing import Dict, Any, List, Optional
 import json
 import logging
 import re
-from langchain_core.messages import SystemMessage, ToolMessage, HumanMessage
+from langchain_core.messages import SystemMessage, ToolMessage, HumanMessage, AIMessage
+from langchain_openai import ChatOpenAI
 from agent_backend.config import settings
 from agent_backend.state.state import AgentState
 from agent_backend.schemas.card_models import (
@@ -25,7 +26,8 @@ from agent_backend.schemas.card_models import (
     ErrorCard,
     CommunityPostSummary,
     WorkerListCard,
-    WorkerSummary
+    WorkerSummary,
+    SpecialistConversationalOutput
 )
 
 logger = logging.getLogger("agent_backend.card_builders")
@@ -141,6 +143,53 @@ def _clean_card_intro_message(raw_msg: str, default_intro: str, card_type: str =
     # Normalize multiple spaces
     cleaned = re.sub(r'\s{2,}', ' ', cleaned)
     return cleaned if cleaned else default_intro
+
+
+async def format_specialist_structured_message(
+    prompt: list,
+    response: AIMessage,
+    llm: Optional[ChatOpenAI] = None
+) -> AIMessage:
+    """
+    Validates and formats the specialist agent's conversational output using
+    Pydantic Structured Output (response_format / with_structured_output).
+    If the response contains repetitive bullet lists, card dumps, or markdown images,
+    enforces a clean, friendly 1-2 sentence message via SpecialistConversationalOutput.
+    """
+    raw_content = getattr(response, "content", "")
+    if not isinstance(raw_content, str) or not raw_content:
+        return response
+
+    # Check if the message contains repetitive card-like dumps
+    has_card_dump = bool(
+        re.search(
+            r'(?:(?:\n|\s+)(?:1\.\s*\*\*|\d+\.\s*\*\*|[-*]\s*\*\*)|!\[.*?\]\(.*?\)|\(tel:\d+\)|###\s+[A-Z])',
+            raw_content
+        )
+    )
+    if not has_card_dump:
+        return response
+
+    if settings.openai_api_key and settings.openai_api_key != "your_openai_api_key_here":
+        try:
+            active_llm = llm
+            if not active_llm:
+                active_llm = ChatOpenAI(
+                    model=settings.openai_model,
+                    temperature=0.2,
+                    api_key=settings.openai_api_key
+                )
+            structured_llm = active_llm.with_structured_output(SpecialistConversationalOutput)
+            structured_res: SpecialistConversationalOutput = await structured_llm.ainvoke(prompt)
+            if structured_res and structured_res.message:
+                logger.info(f"✨ [Structured Output] Enforced schema message: '{structured_res.message[:80]}...'")
+                return AIMessage(content=structured_res.message)
+        except Exception as e:
+            logger.warning(f"Structured output formatting notice: {e}")
+
+    # Fallback to local cleaner if offline or network error
+    cleaned = _clean_card_intro_message(raw_content, "Here are the recommended service options:")
+    return AIMessage(content=cleaned)
 
 
 def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = None) -> AgentCardResponse:
