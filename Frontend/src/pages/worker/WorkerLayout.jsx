@@ -73,8 +73,6 @@ export default function WorkerLayout({ children, activeTab = 'dashboard' }) {
       {/* Google Workspace / Material 3 Top Navbar */}
       <M3TopNavbar
         activePage="worker-dashboard"
-        showSearch={true}
-        searchPlaceholder="Search jobs, requests, or tools..."
         showSidebarToggle={true}
         isSidebarCollapsed={isSidebarCollapsed}
         onToggleSidebar={() => setIsSidebarCollapsed(prev => !prev)}

@@ -473,3 +473,74 @@ async def test_scenario_16_multi_tool_workflow():
         assert isinstance(card, AgentCardResponse)
         assert card.response_type == "text_message"
         assert "777" in card.message
+
+
+# -----------------------------------------------------------------------------
+# Scenario 17: Interactive Edit Card on Community Post Update Request
+# -----------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_community_post_edit_interactive_card():
+    """
+    Verifies that when a user asks to update/edit a community post (e.g. 'Update post #17 with new information'),
+    the Community Agent immediately outputs an interactive edit card (response_type='post_confirmation' with action='update'),
+    pre-filled with the post's details, instead of a plain-text questionnaire.
+    """
+    state = dict(BASE_STATE)
+    state["messages"] = [
+        HumanMessage(content="Update post #17 with new information"),
+        AIMessage(content="", tool_calls=[{"id": "call_17", "name": "get_community_posts", "args": {"communityId": "17"}}]),
+        ToolMessage(
+            content=json.dumps({
+                "id": 17,
+                "title": "Broken Door Lock Repair",
+                "content": "Door lock is jammed and won't turn properly.",
+                "serviceCategoryId": "Locksmith",
+                "location": "Colombo"
+            }),
+            tool_call_id="call_17",
+            name="get_community_posts"
+        )
+    ]
+    with patch.object(ChatOpenAI, "ainvoke", new_callable=AsyncMock) as mock_llm:
+        mock_llm.return_value = AIMessage(
+            content='I can update post #17 — I won\'t make any changes until you confirm. Quick summary of the current post for reference:\n• Post #17 — Title: "Broken Door Lock Repair"\n• Category: Locksmith\n• Location: Colombo'
+        )
+        res = await community_agent_node(state)
+        assert "structured_response" in res
+        card = res["structured_response"]
+        assert isinstance(card, AgentCardResponse)
+        assert card.response_type == "post_confirmation"
+        assert card.card_data["action"] == "update"
+        assert str(card.card_data["postId"]) == "17"
+        assert card.card_data["title"] == "Broken Door Lock Repair"
+        assert card.card_data["communityId"] == "Locksmith"
+        assert card.card_data["location"] == "Colombo"
+        assert "CONFIRM_UPDATE:" in card.card_data["confirmPrompt"]
+
+
+@pytest.mark.asyncio
+async def test_community_post_edit_no_tool_card():
+    """
+    Verifies that even if no tool was executed in the current turn (e.g. post was in prior history),
+    the assistant's update acknowledgment immediately renders the interactive edit card.
+    """
+    state = dict(BASE_STATE)
+    state["messages"] = [
+        HumanMessage(content="Update post #17 with new information")
+    ]
+    with patch.object(ChatOpenAI, "ainvoke", new_callable=AsyncMock) as mock_llm:
+        mock_llm.return_value = AIMessage(
+            content='I can update post #17 — I won\'t make any changes until you confirm. Quick summary of the current post for reference:\n• Post #17 — Title: "Broken Door Lock Repair"\n• Category: Locksmith\n• Location: Colombo\n• Attachments: 1 image'
+        )
+        res = await community_agent_node(state)
+        assert "structured_response" in res
+        card = res["structured_response"]
+        assert isinstance(card, AgentCardResponse)
+        assert card.response_type == "post_confirmation"
+        assert card.card_data["action"] == "update"
+        assert str(card.card_data["postId"]) == "17"
+        assert card.card_data["title"] == "Broken Door Lock Repair"
+        assert card.card_data["communityId"] == "Locksmith"
+        assert card.card_data["location"] == "Colombo"
+
+

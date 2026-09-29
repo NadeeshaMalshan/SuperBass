@@ -68,6 +68,9 @@ class PostUpdatedCard(BaseModel):
     content: str = Field(description="New or updated content")
     communityId: Optional[str] = Field(default=None, description="Updated category ID")
     location: Optional[str] = Field(default=None, description="Updated location")
+    authorName: Optional[str] = Field(default=None, description="Display name of author")
+    authorId: Optional[str] = Field(default=None, description="Author ID or email")
+    status: str = Field(default="Active", description="Post status")
     updatedAt: str = Field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat(),
         description="Timestamp of update"
