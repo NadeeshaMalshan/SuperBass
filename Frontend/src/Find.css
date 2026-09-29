@@ -1059,4 +1059,33 @@
   }
 }
 
+/* ==========================================================================
+   Worker Status Typography: Normal / Not Bold
+   ========================================================================== */
+.worker-status-section .uber-sidebar-item {
+  font-weight: 400 !important;
+}
+
+.worker-status-section .uber-sidebar-item span,
+.worker-status-section .uber-sidebar-item-left span {
+  font-weight: 400 !important;
+}
+
+.worker-status-section .uber-sidebar-badge {
+  font-weight: 400 !important;
+}
+
+.worker-status-section .uber-sidebar-item.active {
+  font-weight: 500 !important;
+}
+
+.worker-status-section .uber-sidebar-item.active span,
+.worker-status-section .uber-sidebar-item.active .uber-sidebar-item-left span {
+  font-weight: 500 !important;
+}
+
+.worker-status-section .uber-sidebar-item.active .uber-sidebar-badge {
+  font-weight: 500 !important;
+}
+
 

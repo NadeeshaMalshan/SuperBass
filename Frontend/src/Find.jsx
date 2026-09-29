@@ -1109,7 +1109,7 @@ export default function Find() {
           <hr className="uber-sidebar-divider" />
 
           {/* Worker Status Section */}
-          <div className="uber-sidebar-section">
+          <div className="uber-sidebar-section worker-status-section">
             <div className="uber-sidebar-section-title">
               <span>Worker Status</span>
             </div>
@@ -1131,6 +1131,19 @@ export default function Find() {
                   <span>All Baas</span>
                 </div>
                 <span className="uber-sidebar-badge">{workers.length}</span>
+              </div>
+
+              {/* Verified Workers */}
+              <div
+                className={`uber-sidebar-item ${selectedBadge === 'verified' ? 'active' : ''}`}
+                onClick={() => setSelectedBadge(selectedBadge === 'verified' ? 'all' : 'verified')}
+                title="Filter by verified workers"
+              >
+                <div className="uber-sidebar-item-left">
+                  <md-icon>verified</md-icon>
+                  <span>Verified</span>
+                </div>
+                <span className="uber-sidebar-badge">{verifiedCount}</span>
               </div>
 
               {/* Starred / Saved Baas */}
@@ -1170,66 +1183,6 @@ export default function Find() {
                   <span>Top Rated (4.5★)</span>
                 </div>
                 <span className="uber-sidebar-badge">{topRatedCount}</span>
-              </div>
-            </div>
-          </div>
-
-          <hr className="uber-sidebar-divider" />
-
-          {/* Badges Section */}
-          <div className="uber-sidebar-section">
-            <div className="uber-sidebar-section-title">
-              <span>Badges</span>
-              {selectedBadge !== 'all' && (
-                <button
-                  type="button"
-                  className="uber-sidebar-clear-btn"
-                  onClick={() => setSelectedBadge('all')}
-                  title="Clear badge filter"
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-
-            <div className="uber-cat-list">
-              <div
-                className={`uber-cat-item ${selectedBadge === 'all' ? 'active' : ''}`}
-                onClick={() => setSelectedBadge('all')}
-                title="All badges"
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <md-icon>verified_user</md-icon>
-                  <span>All Badges</span>
-                </div>
-                <span className="uber-sidebar-badge">{workers.length}</span>
-              </div>
-
-              <div
-                className={`uber-cat-item ${selectedBadge === 'verified' ? 'active' : ''}`}
-                onClick={() => setSelectedBadge(selectedBadge === 'verified' ? 'all' : 'verified')}
-                title="Verified Pro Workers"
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <md-icon>verified</md-icon>
-                  <span>Verified Pro</span>
-                </div>
-                <span className="uber-sidebar-badge">{verifiedCount}</span>
-              </div>
-
-              <div
-                className={`uber-cat-item ${selectedBadge === 'top_craftsman' ? 'active' : ''}`}
-                onClick={() => setSelectedBadge(selectedBadge === 'top_craftsman' ? 'all' : 'top_craftsman')}
-                title="Top Craftsman (Rating 4.8+)"
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <md-icon>military_tech</md-icon>
-                  <span>Top Craftsman</span>
-                </div>
-                <span className="uber-sidebar-badge">{topCraftsmanCount}</span>
               </div>
             </div>
           </div>
@@ -1622,7 +1575,7 @@ export default function Find() {
                   fontWeight: 600
                 }}>
                   <md-icon style={{ fontSize: '16px' }}>verified</md-icon>
-                  <span>Badge: {selectedBadge === 'verified' ? 'Verified Pro' : 'Top Craftsman'}</span>
+                  <span>Verified</span>
                   <md-icon
                     style={{ fontSize: '16px', cursor: 'pointer', marginLeft: '4px' }}
                     onClick={() => setSelectedBadge('all')}
