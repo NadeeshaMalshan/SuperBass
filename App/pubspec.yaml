@@ -44,6 +44,7 @@ dependencies:
   onesignal_flutter: ^5.2.8
   image_picker: ^1.1.2
   signalr_netcore: ^1.4.4
+  web: ^1.1.0
 
 
 dev_dependencies:

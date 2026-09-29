@@ -678,7 +678,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
             // Province Dropdown
             Expanded(
               child: DropdownButtonFormField<String>(
-                value: _selectedProvince,
+                initialValue: _selectedProvince,
                 decoration: InputDecoration(
                   labelText: 'Province',
                   filled: true,
@@ -707,7 +707,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
             // District Dropdown
             Expanded(
               child: DropdownButtonFormField<String>(
-                value: _selectedDistrict,
+                initialValue: _selectedDistrict,
                 decoration: InputDecoration(
                   labelText: 'District',
                   filled: true,
