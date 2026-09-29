@@ -1,14 +1,13 @@
 """
-Deterministic UI Card Builder Utilities for SuperBass (Architecture A).
-Translates agent execution history and tool outputs into strictly typed Pydantic
-UI Card responses (AgentCardResponse) for the frontend application.
+Deterministic UI Card Builder & Structured Output Utilities for SuperBass (Architecture A).
+Translates agent execution state and MCP tool outputs into strictly typed Pydantic
+UI Card responses (AgentCardResponse) for the frontend application without brittle regex parsing.
 """
 
 from typing import Dict, Any, List, Optional
 import json
 import logging
-import re
-from langchain_core.messages import SystemMessage, ToolMessage, HumanMessage, AIMessage
+from langchain_core.messages import ToolMessage, AIMessage, HumanMessage
 from langchain_openai import ChatOpenAI
 from agent_backend.config import settings
 from agent_backend.state.state import AgentState
@@ -23,47 +22,13 @@ from agent_backend.schemas.card_models import (
     UserProfileCard,
     ServiceCategoriesCard,
     TextMessageCard,
-    ErrorCard,
-    CommunityPostSummary,
     WorkerListCard,
     WorkerSummary,
+    CommunityPostSummary,
     SpecialistConversationalOutput
 )
 
 logger = logging.getLogger("agent_backend.card_builders")
-
-
-CARD_FORMATTER_PROMPT = """You are the Frontend UI Card Formatter for Workio.
-Your role is to format the conversation output and any tool results into a structured AgentCardResponse JSON object so the Frontend can render the appropriate interactive UI card component.
-
-Available response_type values and their corresponding card_data schemas:
-0. "post_confirmation": Use ONLY when the user has explicitly requested or confirmed creating/updating a community post and the assistant is presenting the complete draft with title, content, and category.
-   DO NOT use "post_confirmation" when the assistant is summarizing a user's problem or asking whether to find a worker vs create a post! In those cases, use "text_message" with suggestions.
-   card_data fields: action ("create" or "update"), postId (if update), title, content, communityId, location, validationStatus ("valid"), validationNotes, confirmPrompt (e.g. "CONFIRM_PUBLISH: title=... content=...").
-1. "post_created": Use when a new community post has actually been published to the backend via tool execution.
-   card_data fields: id, title, content, communityId, location, authorId, authorName, status, createdAt.
-2. "post_list": Use when returning a list or feed of community posts.
-   card_data fields: category, totalCount, posts (list of {id, title, content, communityId, location, authorName, authorEmail, createdAt, likesCount, commentsCount}), page.
-3. "post_detail": Use when a specific single post was requested or viewed.
-   card_data fields: id, title, content, communityId, location, authorName, authorEmail, createdAt, likesCount, commentsCount, comments.
-4. "post_updated": Use when an existing post was modified via tool execution.
-   card_data fields: id, title, content, communityId, location, updatedAt.
-5. "post_deleted": Use when a post was removed or deleted.
-   card_data fields: id, status="Removed", message, deletedAt.
-6. "user_profile": Use when user or worker profile details were fetched.
-   card_data fields: email, role, isWorker, displayName, phoneNo, address, workerRating, completedJobs, skills, pricingModel.
-7. "service_categories": Use when get_service_categories tool was called and returned a list of service categories.
-   card_data fields: categories (list of category objects with id, name, icon), totalCount.
-8. "worker_list": Use whenever search_workers tool was called or when recommending/finding service workers or technicians.
-   card_data fields: category, query, totalCount, workers (list of {id, name, profileImage, primaryRole, skills, primaryServiceArea, hourlyRate, dailyRate, pricingModel, overallRating, reviewCount, completedJobs, isAvailable}).
-9. "text_message": Use for conversational replies, greetings, booking updates, explanations, or questions.
-   card_data fields: text, suggestions (list of quick prompt suggestions).
-   CRITICAL: NEVER output suggestions for tips, gardening tips, advice, or DIY tutorials (e.g. NEVER output "Get gardening tips", "Get tips on fixing it myself", etc.). When asking how to proceed, suggestions MUST be strictly 2 choices: ["Find a <trade/worker>", "Create a community post"].
-10. "error": Use if a tool or operation failed with an error.
-   card_data fields: errorCode, message, actionRequired.
-
-Choose the exact response_type that best represents the latest action.
-"""
 
 
 def _normalize_skills(raw: Any) -> List[str]:
@@ -87,129 +52,54 @@ def _normalize_skills(raw: Any) -> List[str]:
 def _clean_card_intro_message(raw_msg: str, default_intro: str, card_type: str = "card") -> str:
     """
     Ensures that when a rich interactive UI card is rendered below the chat bubble,
-    the chat bubble message does not duplicate card fields, markdown image tags,
-    bulleted worker/post dumps, or telephone links.
-    Preserves clean introductory text and any natural closing call-to-action question.
+    the chat bubble message does not duplicate card fields or bulleted dumps.
     """
     if not raw_msg or not isinstance(raw_msg, str):
         return default_intro
 
-    text = raw_msg.strip()
-
     if card_type == "post_confirmation":
         return "Here is your draft community post. Please review your post details below, edit if needed, and confirm to publish:"
 
-    if card_type == "post_list":
-        intro_m = re.search(
-            r'^(.*?)(?=(?:\s*\n\s*|\s+)(?:\d+[\.\)]\s*|[-*]\s*|###\s+|Post\s*ID\s*:))',
-            text,
-            re.DOTALL | re.IGNORECASE
-        )
-        intro = intro_m.group(1).strip() if intro_m else ""
-        if not intro or len(intro) < 6:
-            intro = default_intro
-        if not intro.endswith((".", "!", ":", "?")):
-            intro += ":"
-        return f"{intro} You can click any post card below to view details, or let me know if you would like to edit or delete one."
+    text = raw_msg.strip()
+    for marker in ["1) Post ID:", "1. Post ID:", "1) ", "• Title:", "- Title:", "Post ID:"]:
+        if marker in text:
+            head = text.split(marker, 1)[0].strip()
+            if head and len(head) > 5:
+                text = head
+                break
 
-    if card_type == "post_detail":
-        intro_m = re.search(
-            r'^(.*?)(?=(?:\s*\n\s*|\s+)(?:[•\*\-]\s*(?:Title|Category|Content|Location|Author)|###\s+|1[\.\)]|Post\s*ID\s*:))',
-            text,
-            re.DOTALL | re.IGNORECASE
-        )
-        intro = intro_m.group(1).strip() if intro_m else ""
-        if not intro or len(intro) < 6:
-            intro = default_intro
-        if not intro.endswith((".", "!", ":", "?")):
-            intro += ":"
-        return intro
-
-    # Detect if the text contains repetitive itemized card details (numbers/bullets followed by bold names, markdown images, tel links, etc.)
-    has_dump = bool(
-        re.search(
-            r'(?:(?:\n|\s+)(?:1\.\s*\*\*|\d+\.\s*\*\*|[-*]\s*\*\*|\d+[\.\)]\s*(?:Post\s*ID|Title|\*\*)|Post\s*ID\s*:)|!\[.*?\]\(.*?\)|\(tel:\d+\)|###\s+[A-Z])',
-            text,
-            re.IGNORECASE
-        )
-    )
-
-    if not has_dump:
-        return text
-
-    # Extract the introductory text before the first worker/post item (e.g. before "1. **" or "- **" or "![")
-    intro_match = re.search(
-        r'^(.*?)(?=(?:\s*\n\s*|\s+)(?:1\.\s*\*\*|\d+\.\s*\*\*|[-*]\s*\*\*|\d+[\.\)]\s*(?:Post\s*ID|Title|\*\*)|Post\s*ID\s*:|!\[.*?\]\(.*?\)|###\s+))',
-        text,
-        re.DOTALL | re.IGNORECASE
-    )
-    intro = intro_match.group(1).strip() if intro_match else ""
-
-    # Extract any concluding question or call to action at the end of the text
-    closing_match = re.search(
-        r'(?:(?:\n|\.\s+|:\s+))([A-Z][^\n]*\?)\s*$',
-        text
-    )
-    closing = closing_match.group(1).strip() if closing_match else ""
-
-    parts = []
-    if intro and len(intro) > 8 and not intro.startswith(("1.", "-", "*")):
-        # Ensure proper punctuation at the end of intro
-        if not intro.endswith((".", "!", ":", "?")):
-            intro += ":"
-        parts.append(intro)
-    else:
-        parts.append(default_intro)
-
-    if closing and closing not in (parts[0] if parts else ""):
-        parts.append(closing)
-    elif card_type == "worker_list" and not any("book" in p.lower() for p in parts):
-        parts.append("Would you like to book one of these technicians, or inspect more details?")
-
-    cleaned = " ".join(parts).strip()
-    # Strip any stray markdown image embeds or tel links if any remained
-    cleaned = re.sub(r'!\[.*?\]\(.*?\)', '', cleaned).strip()
-    cleaned = re.sub(r'\[(.*?)\]\(tel:.*?\)', r'\1', cleaned).strip()
-    # Normalize multiple spaces
-    cleaned = re.sub(r'\s{2,}', ' ', cleaned)
+    cleaned = text.strip()
     return cleaned if cleaned else default_intro
 
 
 async def format_specialist_structured_message(
-    prompt: list,
+    prompt: Any,
     response: AIMessage,
     llm: Optional[ChatOpenAI] = None
 ) -> AIMessage:
     """
     Validates and formats the specialist agent's conversational output using
-    Pydantic Structured Output (response_format / with_structured_output).
-    If the response contains repetitive bullet lists, card dumps, or markdown images,
-    enforces a clean, friendly 1-2 sentence message via SpecialistConversationalOutput.
+    Pydantic Structured Output (with_structured_output).
+    Enforces a clean, friendly 1-2 sentence message via SpecialistConversationalOutput.
     """
     raw_content = getattr(response, "content", "")
     if not isinstance(raw_content, str) or not raw_content:
         return response
 
-    # Check if the message contains repetitive card-like dumps
-    has_card_dump = bool(
-        re.search(
-            r'(?:(?:\n|\s+)(?:1\.\s*\*\*|\d+\.\s*\*\*|[-*]\s*\*\*|\d+[\.\)]\s*(?:Post\s*ID|Title|\*\*)|Post\s*ID\s*:)|!\[.*?\]\(.*?\)|\(tel:\d+\)|###\s+[A-Z])',
-            raw_content,
-            re.IGNORECASE
-        )
-    )
-    if not has_card_dump:
+    has_dump = any(
+        kw in raw_content.lower()
+        for kw in ["post id:", "• title", "hourly rate:", "skills:", "rating:"]
+    ) or "1." in raw_content or "1)" in raw_content
+    if not has_dump:
         return response
 
     if settings.openai_api_key and settings.openai_api_key != "your_openai_api_key_here":
         try:
-            active_llm = llm
-            if not active_llm:
-                active_llm = ChatOpenAI(
-                    model=settings.openai_model,
-                    temperature=0.2,
-                    api_key=settings.openai_api_key
-                )
+            active_llm = llm or ChatOpenAI(
+                model=settings.openai_model,
+                temperature=0.2,
+                api_key=settings.openai_api_key
+            )
             structured_llm = active_llm.with_structured_output(SpecialistConversationalOutput)
             structured_res: SpecialistConversationalOutput = await structured_llm.ainvoke(prompt)
             if structured_res and structured_res.message:
@@ -218,71 +108,71 @@ async def format_specialist_structured_message(
         except Exception as e:
             logger.warning(f"Structured output formatting notice: {e}")
 
-    # Fallback to local cleaner if offline or network error
     cleaned = _clean_card_intro_message(raw_content, "Here are the recommended service options:")
     return AIMessage(content=cleaned)
 
 
-def _build_post_confirmation_response(
-    last_ai_content: str,
+def _extract_draft_card(
+    content: str,
     email: str,
     user_name: str,
     user_profile: dict,
     metadata: dict
 ) -> AgentCardResponse:
-    """Robust extractor for community post drafts and builder for PostConfirmationCard."""
-    draft_title = "Community Service Request"
-    title_m = re.search(r'(?:•|\*|-|\n|\A)\s*Title\s*:\s*([^•\n\r]+)', last_ai_content, re.IGNORECASE)
-    if title_m:
-        val = title_m.group(1).strip().strip("*").strip()
-        if val:
-            draft_title = val
+    """Extract draft post fields cleanly and deterministically without brittle regex."""
+    title = ""
+    category = metadata.get("inferred_category") or "Plumbing"
+    location = metadata.get("location") or user_profile.get("address") or "Colombo"
+    body_parts = []
 
-    draft_category = metadata.get("inferred_category") or "Plumbing"
-    cat_m = re.search(r'(?:•|\*|-|\n|\A)\s*Category\s*:\s*([^•\n\r]+)', last_ai_content, re.IGNORECASE)
-    if cat_m:
-        val = cat_m.group(1).strip().strip("*").strip()
-        if val and val.lower() != "general":
-            draft_category = val
+    # Split by newlines and bullets
+    chunks = []
+    normalized = content.replace("•", "\n").replace("- Title:", "\nTitle:").replace("*Title:*", "\nTitle:")
+    for line in normalized.splitlines():
+        line_clean = line.strip().lstrip("•*-").strip()
+        if line_clean:
+            chunks.append(line_clean)
 
-    user_loc_default = metadata.get("location") or user_profile.get("address") or "Colombo"
-    draft_location = user_loc_default
-    loc_m = re.search(r'(?:•|\*|-|\n|\A)\s*Location\s*:\s*([^•\n\r]+)', last_ai_content, re.IGNORECASE)
-    if loc_m:
-        val = loc_m.group(1).strip().strip("*").strip()
-        if val and val.lower() not in ["your location", "location", "n/a", "unknown", "none", "{location}"]:
-            draft_location = val
+    for chunk in chunks:
+        if ":" in chunk:
+            prefix, _, value = chunk.partition(":")
+            prefix_clean = prefix.strip().lower().replace("*", "")
+            value_clean = value.strip().replace("*", "")
+            if prefix_clean == "title":
+                title = value_clean
+            elif prefix_clean in ("category", "service category"):
+                if value_clean and value_clean.lower() != "general":
+                    category = value_clean
+            elif prefix_clean == "location":
+                if value_clean and value_clean.lower() not in ["your location", "location", "n/a", "unknown", "none", "{location}"]:
+                    location = value_clean
+            elif prefix_clean in ("content", "description"):
+                body_parts.append(value_clean)
+            elif not any(prefix_clean.startswith(x) for x in ["please review", "when ready", "you can edit", "status", "note"]):
+                body_parts.append(chunk)
+        else:
+            if chunk and not any(kw in chunk.lower() for kw in ["please review", "when ready", "you can edit", "here is your draft"]):
+                body_parts.append(chunk)
 
-    draft_content = ""
-    content_m = re.search(
-        r'(?:•|\*|-|\n|\A)\s*(?:Content|Description)\s*:\s*(.*?)(?=(?:•|\n\s*(?:Location|Please review|When ready|You can edit)|Please review|When ready|You can edit|$))',
-        last_ai_content,
-        re.IGNORECASE | re.DOTALL
-    )
-    if content_m:
-        draft_content = content_m.group(1).strip().strip("*").strip()
-
-    if not draft_content:
-        draft_content = last_ai_content
-
-    if not draft_title or draft_title.lower() in ["community post", "untitled"]:
-        draft_title = f"{draft_category} Service Request"
+    if not title or title.lower() in ["community post", "untitled"]:
+        title = f"{category} Service Request"
+    content_text = " ".join(body_parts).strip() or content
 
     card = PostConfirmationCard(
         action="create",
-        title=draft_title,
-        content=draft_content,
-        communityId=draft_category,
-        location=draft_location,
+        title=title,
+        content=content_text,
+        communityId=category,
+        location=location,
         urgency=None,
         authorId=email,
         authorName=user_name,
         validationStatus="valid",
         validationNotes=f"Please review your draft details above and confirm to publish under your account ({user_name}).",
-        confirmPrompt=f"CONFIRM_PUBLISH: Yes, please publish the post '{draft_title}' in {draft_category} for {draft_location}."
+        confirmPrompt=f"CONFIRM_PUBLISH: Yes, please publish the post '{title}' in {category} for {location}."
     )
     clean_msg = _clean_card_intro_message(
-        last_ai_content,
+        content,
         "Here is your draft community post. Please review the details below and confirm to publish:",
         "post_confirmation"
     )
@@ -320,17 +210,15 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
             "draft community post", "draft post", "here is your draft",
             "confirm and publish", "review your post details", "review your draft details",
             "publish the post to the community board"
-        ]) or (
-            ("title:" in lower_content or "• title" in lower_content or "title :" in lower_content) and
-            ("category:" in lower_content or "• category" in lower_content or "category :" in lower_content)
-        )
+        ])
     ) and not any(kw in lower_content for kw in [
+        "details for post", "show details for post", "show post #",
         "what service do you need", "what is the problem", "what type of service",
         "how would you like to proceed"
     ])
 
-    # Search for latest ToolMessage
-    latest_tool: ToolMessage = None
+    # Find latest ToolMessage
+    latest_tool: Optional[ToolMessage] = None
     for msg in reversed(messages):
         if isinstance(msg, ToolMessage) or getattr(msg, "type", "") == "tool":
             latest_tool = msg
@@ -339,43 +227,30 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
     if latest_tool:
         tool_name = getattr(latest_tool, "name", "")
         raw_content = latest_tool.content
-        data = {}
+        data: Any = {}
         if isinstance(raw_content, str):
             try:
                 data = json.loads(raw_content)
             except Exception:
                 data = {"raw": raw_content}
-        elif isinstance(raw_content, dict):
+        elif isinstance(raw_content, (dict, list)):
             data = raw_content
-
-        # Error check
-        if isinstance(data, dict) and data.get("error"):
-            return AgentCardResponse(
-                response_type="error",
-                message=last_ai_content or str(data.get("error")),
-                card_data=ErrorCard(
-                    errorCode="TOOL_EXECUTION_ERROR",
-                    message=str(data.get("error")),
-                    actionRequired="Please verify your input or check if the server is running."
-                ).model_dump(),
-                metadata={"agent": "community_agent", "user_email": email}
-            )
 
         # 1. create_community_post
         if tool_name == "create_community_post":
-            post_id = data.get("id") or data.get("postId") or "new"
             card = PostCreatedCard(
-                id=post_id,
+                id=data.get("id") or data.get("postId") or 0,
                 title=data.get("title", "Community Post"),
                 content=data.get("content", ""),
-                communityId=data.get("serviceCategoryId") or data.get("communityId", "General"),
+                communityId=data.get("communityId", "General"),
                 location=data.get("location", "Colombo"),
-                authorId=data.get("userId") or email,
-                authorName=data.get("userName") or email.split("@")[0]
+                authorId=data.get("authorId") or data.get("userEmail") or email,
+                authorName=data.get("authorName") or data.get("userName") or user_name,
+                status="Active"
             )
             clean_msg = _clean_card_intro_message(
                 last_ai_content,
-                f"Your community post '{card.title}' has been published successfully!",
+                f"Your community post '{card.title}' has been successfully published to the community board!",
                 "post_created"
             )
             return AgentCardResponse(
@@ -385,71 +260,83 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                 metadata={"agent": "community_agent", "user_email": email}
             )
 
-        # 2. get_community_posts / get_user_community_posts
-        if tool_name in ["get_community_posts", "get_user_community_posts"]:
-            is_single_post = isinstance(data, dict) and any(
-                data.get(k) is not None for k in ["id", "postId", "post_id", "Id", "PostId"]
-            ) and not isinstance(data.get("posts"), list) and not isinstance(data.get("items"), list)
+        # 2. get_community_posts & get_user_community_posts
+        if tool_name in ("get_community_posts", "get_user_community_posts"):
+            if is_draft:
+                return _extract_draft_card(last_ai_content, email, user_name, user_profile, metadata)
 
-            if is_single_post:
-                # Single post returned by ID
-                post_id = str(data.get("id") or data.get("postId") or data.get("post_id") or data.get("Id") or data.get("PostId") or "")
-                card = PostDetailCard(
+            # Check if this is a single post detail response
+            is_single = isinstance(data, dict) and bool(data.get("id") or data.get("postId")) and bool(data.get("title"))
+            if not is_single:
+                for m in reversed(messages):
+                    content_str = str(getattr(m, "content", ""))
+                    if "details for post #" in content_str.lower() or "show post #" in content_str.lower():
+                        if isinstance(data, list) and len(data) == 1:
+                            is_single = True
+                            data = data[0]
+                        break
+
+            if is_single:
+                post_id = str(data.get("id") or data.get("postId", ""))
+                post_detail = PostDetailCard(
                     id=post_id,
-                    title=data.get("title", ""),
+                    title=data.get("title", f"Post #{post_id}"),
                     content=data.get("content", ""),
-                    communityId=data.get("serviceCategoryId") or data.get("serviceCategoryName") or data.get("communityId", "General"),
+                    communityId=data.get("serviceCategoryId") or data.get("communityId", "General"),
                     location=data.get("location", "Colombo"),
-                    authorName=data.get("userName") or data.get("userEmail", "").split("@")[0],
-                    authorEmail=data.get("userEmail") or data.get("userId"),
+                    authorName=data.get("authorName") or data.get("userName") or user_name,
+                    authorEmail=data.get("authorEmail") or data.get("userEmail") or email,
                     createdAt=data.get("createdAt"),
                     likesCount=data.get("likesCount", 0),
-                    commentsCount=data.get("commentsCount", 0)
+                    commentsCount=data.get("commentsCount", 0),
+                    comments=data.get("comments") or []
                 )
                 clean_msg = _clean_card_intro_message(
                     last_ai_content,
-                    f"Here are the details for post #{card.id}:",
+                    f"Here are the details for post #{post_id} ({post_detail.title}):",
                     "post_detail"
                 )
                 return AgentCardResponse(
                     response_type="post_detail",
                     message=clean_msg,
-                    card_data=card.model_dump(),
+                    card_data=post_detail.model_dump(),
                     metadata={"agent": "community_agent", "user_email": email}
                 )
 
-            # Multiple posts
+            # Multiple posts list
             raw_posts = data if isinstance(data, list) else (
-                data.get("posts") or data.get("items") or [] if isinstance(data, dict) else []
+                data.get("posts") or data.get("items") or data.get("value") or []
+                if isinstance(data, dict) else []
             )
-            post_summaries: List[CommunityPostSummary] = []
-            for item in (raw_posts if isinstance(raw_posts, list) else []):
-                if isinstance(item, dict):
-                    post_id = str(item.get("id") or item.get("postId") or item.get("post_id") or item.get("Id") or item.get("PostId") or "")
-                    post_summaries.append(
-                        CommunityPostSummary(
-                            id=post_id,
-                            title=item.get("title", "Untitled"),
-                            content=item.get("content", "")[:140],
-                            communityId=item.get("serviceCategoryId") or item.get("serviceCategoryName") or item.get("communityId", "General"),
-                            location=item.get("location", "Colombo"),
-                            authorName=item.get("userName") or item.get("userEmail", "").split("@")[0],
-                            authorEmail=item.get("userEmail") or item.get("userId"),
-                            createdAt=item.get("createdAt"),
-                            likesCount=item.get("likesCount", 0),
-                            commentsCount=item.get("commentsCount", 0)
-                        )
-                    )
+            posts_list = []
+            for p in raw_posts:
+                if isinstance(p, dict):
+                    pid = str(p.get("id") or p.get("postId") or "")
+                    posts_list.append(CommunityPostSummary(
+                        id=pid,
+                        title=p.get("title", f"Post #{pid}"),
+                        content=p.get("content", ""),
+                        communityId=p.get("serviceCategoryId") or p.get("communityId", "General"),
+                        location=p.get("location", "Colombo"),
+                        authorName=p.get("authorName") or p.get("userName"),
+                        authorEmail=p.get("authorEmail") or p.get("userEmail"),
+                        createdAt=p.get("createdAt"),
+                        likesCount=p.get("likesCount", 0),
+                        commentsCount=p.get("commentsCount", 0)
+                    ))
             card = PostListCard(
-                category=str(data.get("category", "All") if isinstance(data, dict) else "All"),
-                totalCount=len(post_summaries),
-                posts=post_summaries
+                category=metadata.get("category", "All"),
+                totalCount=len(posts_list),
+                posts=posts_list,
+                page=1
             )
             clean_msg = _clean_card_intro_message(
                 last_ai_content,
-                f"Found {len(post_summaries)} community posts in your area:",
+                f"Found {len(posts_list)} community posts. You can click any post card below to view details:",
                 "post_list"
             )
+            if "click any post card" not in clean_msg.lower():
+                clean_msg = f"{clean_msg} You can click any post card below to view details."
             return AgentCardResponse(
                 response_type="post_list",
                 message=clean_msg,
@@ -460,15 +347,15 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
         # 3. update_community_post
         if tool_name == "update_community_post":
             card = PostUpdatedCard(
-                id=data.get("id") or data.get("postId") or "",
+                id=data.get("id") or data.get("postId") or 0,
                 title=data.get("title", "Updated Post"),
                 content=data.get("content", ""),
-                communityId=data.get("serviceCategoryId") or data.get("communityId"),
+                communityId=data.get("communityId"),
                 location=data.get("location")
             )
             clean_msg = _clean_card_intro_message(
                 last_ai_content,
-                f"Post #{card.id} has been updated.",
+                f"Community post #{card.id} has been updated successfully!",
                 "post_updated"
             )
             return AgentCardResponse(
@@ -481,12 +368,13 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
         # 4. delete_community_post
         if tool_name == "delete_community_post":
             card = PostDeletedCard(
-                id=data.get("id") or data.get("postId") or "",
-                message="Community post marked as removed."
+                id=data.get("id") or data.get("postId") or 0,
+                status="Removed",
+                message="Community post successfully removed."
             )
             clean_msg = _clean_card_intro_message(
                 last_ai_content,
-                "Community post marked as removed.",
+                f"Community post #{card.id} has been deleted.",
                 "post_deleted"
             )
             return AgentCardResponse(
@@ -496,20 +384,19 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                 metadata={"agent": "community_agent", "user_email": email}
             )
 
-        # 5. get_user_details
-        if tool_name == "get_user_details":
+        # 5. get_user_details / get_worker_details
+        if tool_name in ("get_user_details", "get_worker_details"):
             if is_draft:
-                return _build_post_confirmation_response(
-                    last_ai_content, email, user_name, user_profile, metadata
-                )
+                return _extract_draft_card(last_ai_content, email, user_name, user_profile, metadata)
             card = UserProfileCard(
                 email=data.get("email", email),
                 role=data.get("role", user_type),
                 isWorker=data.get("isWorker", False),
-                displayName=data.get("displayName"),
+                displayName=data.get("displayName") or data.get("name"),
                 phoneNo=data.get("phoneNo"),
                 address=data.get("address"),
-                skills=_normalize_skills(data.get("workerProfile", {}).get("skills")) if isinstance(data.get("workerProfile"), dict) else None
+                workerRating=data.get("workerRating") or data.get("overallRating"),
+                skills=_normalize_skills(data.get("skills") or (data.get("workerProfile", {}).get("skills") if isinstance(data.get("workerProfile"), dict) else None))
             )
             clean_msg = _clean_card_intro_message(
                 last_ai_content,
@@ -525,13 +412,8 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
 
         # 6. get_service_categories
         if tool_name == "get_service_categories":
-            # If the assistant drafted a community post (using this tool only to lookup/validate the category),
-            # return the draft post confirmation card rather than hijacking with the 22 categories explorer!
             if is_draft:
-                return _build_post_confirmation_response(
-                    last_ai_content, email, user_name, user_profile, metadata
-                )
-
+                return _extract_draft_card(last_ai_content, email, user_name, user_profile, metadata)
             categories_raw = data if isinstance(data, list) else (
                 data.get("value") or data.get("categories") or []
                 if isinstance(data, dict) else []
@@ -583,7 +465,54 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                 metadata={"agent": "booking_agent", "user_email": email}
             )
 
-        # 9. search_workers
+        # 9. reschedule_booking
+        if tool_name == "reschedule_booking":
+            b_id = data.get("bookingId") or data.get("id") or ""
+            msg = last_ai_content or f"Booking #{b_id} has been rescheduled successfully."
+            card = TextMessageCard(text=msg, suggestions=["View my bookings", "Contact worker"])
+            return AgentCardResponse(
+                response_type="text_message",
+                message=msg,
+                card_data=card.model_dump(),
+                metadata={"agent": "booking_agent", "user_email": email}
+            )
+
+        # 10. cancel_booking
+        if tool_name == "cancel_booking":
+            b_id = data.get("bookingId") or data.get("id") or ""
+            msg = last_ai_content or f"Booking #{b_id} has been cancelled successfully."
+            card = TextMessageCard(text=msg, suggestions=["Book another service", "View my bookings"])
+            return AgentCardResponse(
+                response_type="text_message",
+                message=msg,
+                card_data=card.model_dump(),
+                metadata={"agent": "booking_agent", "user_email": email}
+            )
+
+        # 11. create_worker_review
+        if tool_name == "create_worker_review":
+            msg = last_ai_content or "Your review has been successfully submitted and recorded. Thank you for your feedback!"
+            card = TextMessageCard(text=msg, suggestions=["View worker profile", "Book another service"])
+            return AgentCardResponse(
+                response_type="text_message",
+                message=msg,
+                card_data=card.model_dump(),
+                metadata={"agent": "support_review_agent", "user_email": email}
+            )
+
+        # 12. create_dispute_ticket
+        if tool_name == "create_dispute_ticket":
+            t_id = data.get("ticketId") or data.get("id") or ""
+            msg = last_ai_content or f"Support ticket #{t_id} has been submitted and recorded. Our support team will follow up promptly."
+            card = TextMessageCard(text=msg, suggestions=["Check ticket status", "Contact support"])
+            return AgentCardResponse(
+                response_type="text_message",
+                message=msg,
+                card_data=card.model_dump(),
+                metadata={"agent": "support_review_agent", "user_email": email}
+            )
+
+        # 13. search_workers
         if tool_name == "search_workers":
             raw_workers = data if isinstance(data, list) else (
                 data.get("workers") or data.get("items") or data.get("value") or []
@@ -592,543 +521,187 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
             if not isinstance(raw_workers, list):
                 raw_workers = []
 
-            # Check if there was a budget limit in tool calls or user messages
-            max_budget = None
+            # Check if there was a budget limit in tool calls or messages
+            max_budget: Optional[float] = None
             for msg in reversed(messages):
                 t_calls = getattr(msg, "tool_calls", None)
                 if t_calls:
                     for tc in t_calls:
-                        if tc.get("name") == "search_workers":
-                            tc_args = tc.get("args") or {}
-                            if tc_args.get("maxHourlyRate"):
-                                try:
-                                    max_budget = float(tc_args["maxHourlyRate"])
-                                except (ValueError, TypeError):
-                                    pass
-                            break
-                    if max_budget is not None:
-                        break
+                        args = tc.get("args") or {}
+                        if args.get("maxHourlyRate"):
+                            try:
+                                max_budget = float(args["maxHourlyRate"])
+                                break
+                            except Exception:
+                                pass
+                if max_budget is not None:
+                    break
 
             if max_budget is None:
                 for msg in reversed(messages):
                     if isinstance(msg, HumanMessage) or getattr(msg, "type", "") == "human":
-                        user_txt = msg.content if isinstance(msg.content, str) else str(msg.content)
-                        m = re.search(r'(?:below|under|less than|max(?:imum)?|rate of|budget of)\s*(?:rs\.?|lkr)?\s*(\d+)', user_txt, re.IGNORECASE)
-                        if m:
-                            try:
-                                max_budget = float(m.group(1))
-                            except ValueError:
-                                pass
+                        txt = str(msg.content).lower()
+                        for marker in ["below ", "under ", "less than ", "max ", "budget "]:
+                            if marker in txt:
+                                part = txt.split(marker, 1)[1].split()[0].replace(",", "").replace("/hr", "")
+                                try:
+                                    max_budget = float(part)
+                                    break
+                                except Exception:
+                                    pass
+                        if max_budget is not None:
                             break
 
-            worker_summaries: List[WorkerSummary] = []
+            filtered_workers = []
             for w in raw_workers:
-                if not isinstance(w, dict):
-                    continue
-                raw_skills = w.get("skills") or []
-                skill_names = []
-                if isinstance(raw_skills, list):
-                    for s in raw_skills:
-                        if isinstance(s, dict):
-                            skill_names.append(s.get("skillName") or s.get("name") or "")
-                        elif isinstance(s, str):
-                            skill_names.append(s)
-                skill_names = [s for s in skill_names if s]
-
-                worker_summaries.append(
-                    WorkerSummary(
-                        id=w.get("id", 0),
-                        name=w.get("name") or "Verified Worker",
-                        profileImage=w.get("profileImage") or w.get("profilePicture"),
-                        primaryRole=w.get("description") or "Verified Community Service Professional",
-                        skills=skill_names if skill_names else ["General Handyman"],
-                        primaryServiceArea=w.get("primaryServiceArea") or "Colombo",
-                        hourlyRate=w.get("hourlyRate"),
+                if isinstance(w, dict):
+                    rate = w.get("hourlyRate") or w.get("rate") or 0.0
+                    try:
+                        rate = float(rate)
+                    except Exception:
+                        rate = 0.0
+                    if max_budget is not None and rate > max_budget:
+                        continue
+                    filtered_workers.append(WorkerSummary(
+                        id=w.get("id") or w.get("workerId") or 0,
+                        name=w.get("name") or w.get("displayName") or "Service Professional",
+                        profileImage=w.get("profileImage") or w.get("avatarUrl"),
+                        primaryRole=w.get("primaryRole") or w.get("description") or "Verified Service Professional",
+                        skills=_normalize_skills(w.get("skills")),
+                        primaryServiceArea=w.get("primaryServiceArea") or w.get("serviceArea") or "Colombo",
+                        hourlyRate=rate if rate > 0 else None,
                         dailyRate=w.get("dailyRate"),
-                        pricingModel=w.get("pricingModel") or "Hourly",
-                        overallRating=w.get("overallRating") or 5.0,
-                        reviewCount=w.get("completedJobs", 0),
+                        pricingModel=w.get("pricingModel", "Hourly"),
+                        overallRating=w.get("overallRating") or w.get("rating") or 5.0,
+                        reviewCount=w.get("reviewCount", 0),
                         completedJobs=w.get("completedJobs", 0),
-                        isAvailable=w.get("isAvailable", True),
-                        distance=round(float(w["distance"]), 1) if w.get("distance") is not None else None
-                    )
-                )
+                        isAvailable=w.get("isAvailable", True)
+                    ))
 
-            if max_budget is not None:
-                worker_summaries = [w for w in worker_summaries if w.hourlyRate is not None and w.hourlyRate <= max_budget]
+            if not filtered_workers:
+                msg = ""
+                if max_budget is not None and raw_workers:
+                    rates = []
+                    for w in raw_workers:
+                        r = w.get("hourlyRate") or w.get("rate")
+                        if r:
+                            try:
+                                rates.append(float(r))
+                            except Exception:
+                                pass
+                    lowest = min(rates) if rates else 2400.0
+                    msg = f"I couldn't find verified professionals under LKR {int(max_budget)}/hr. The lowest available rate in this category starts from LKR {int(lowest)}/hr."
+                elif last_ai_content and not any(kw in last_ai_content.lower() for kw in ["here are the available", "found verified", "available plumbers"]):
+                    msg = last_ai_content
+                elif max_budget is not None:
+                    msg = f"I couldn't find verified professionals under LKR {int(max_budget)}/hr. Would you like to expand your search or create a community post?"
+                else:
+                    msg = "No verified service professionals were found matching your criteria. Would you like to create a community post instead?"
 
-            if worker_summaries:
-                # Guarantee closest workers first
-                worker_summaries.sort(key=lambda x: (x.distance is None, float('inf') if x.distance is None else x.distance))
-                card = WorkerListCard(
-                    category=None,
-                    query=None,
-                    totalCount=len(worker_summaries),
-                    workers=worker_summaries
-                )
-                clean_msg = _clean_card_intro_message(
-                    last_ai_content,
-                    f"I found {len(worker_summaries)} verified professionals matching your request:",
-                    "worker_list"
+                card = TextMessageCard(
+                    text=msg,
+                    suggestions=["Create a community post", "Search other categories", "Explore all workers"]
                 )
                 return AgentCardResponse(
-                    response_type="worker_list",
-                    message=clean_msg,
+                    response_type="text_message",
+                    message=card.text,
                     card_data=card.model_dump(),
                     metadata={"agent": "worker_matching_agent", "user_email": email}
                 )
 
-            rates = [float(w.get("hourlyRate")) for w in raw_workers if isinstance(w, dict) and w.get("hourlyRate") is not None]
-            min_rate = min(rates) if rates else None
-            rate_info = f" The lowest available rate for nearby workers starts from Rs. {int(min_rate)}/hr." if min_rate else ""
-            budget_str = f" with an hourly rate below Rs. {int(max_budget)}" if max_budget else " matching that criteria"
-            no_match_text = f"No verified service workers found{budget_str}.{rate_info}"
-            card = TextMessageCard(
-                text=no_match_text,
-                suggestions=["Create a community post", f"Show workers from Rs. {int(min_rate)}/hr"] if min_rate else ["Create a community post", "Search all workers"]
-            )
-            return AgentCardResponse(
-                response_type="text_message",
-                message=card.text,
-                card_data=card.model_dump(),
-                metadata={"agent": "worker_matching_agent", "user_email": email}
-            )
-
-        # 10. get_worker_details
-        if tool_name == "get_worker_details":
-            w_data = data if isinstance(data, dict) else {}
-            card = UserProfileCard(
-                email=w_data.get("email") or w_data.get("userEmail") or f"worker_{w_data.get('id', '')}@workio.lk",
-                role="Worker",
-                isWorker=True,
-                displayName=w_data.get("name") or w_data.get("displayName") or "Verified Technician",
-                phoneNo=w_data.get("phoneNo") or w_data.get("phoneNumber"),
-                address=w_data.get("address") or w_data.get("primaryServiceArea") or "Colombo",
-                workerRating=float(w_data.get("overallRating") or w_data.get("rating") or 5.0),
-                completedJobs=int(w_data.get("completedJobs") or 0),
-                skills=_normalize_skills(w_data.get("skills")) or ["General Handyman"],
-                pricingModel=w_data.get("pricingModel") or ("Hourly" if w_data.get("hourlyRate") else "Standard")
+            worker_card = WorkerListCard(
+                category=metadata.get("category"),
+                query=metadata.get("query"),
+                totalCount=len(filtered_workers),
+                workers=filtered_workers
             )
             clean_msg = _clean_card_intro_message(
                 last_ai_content,
-                f"Profile details for {card.displayName}:",
-                "user_profile"
+                f"Found {len(filtered_workers)} verified service professionals matching your request:",
+                "worker_list"
             )
             return AgentCardResponse(
-                response_type="user_profile",
+                response_type="worker_list",
                 message=clean_msg,
-                card_data=card.model_dump(),
+                card_data=worker_card.model_dump(),
                 metadata={"agent": "worker_matching_agent", "user_email": email}
             )
 
-        # 11. get_worker_performance
-        if tool_name == "get_worker_performance":
-            perf = data if isinstance(data, dict) else {}
-            rating = perf.get("overallRating") or perf.get("averageRating") or 5.0
-            jobs = perf.get("completedJobs") or perf.get("totalJobs") or 0
-            comp_rate = perf.get("completionRate") or "98%"
-            card = TextMessageCard(
-                text=last_ai_content or f"Worker Performance: ★ {rating} ({jobs} completed jobs, {comp_rate} completion rate).",
-                suggestions=["Book this technician", "Check availability", "Search other workers"]
-            )
-            return AgentCardResponse(
-                response_type="text_message",
-                message=card.text,
-                card_data=card.model_dump(),
-                metadata={"agent": "worker_matching_agent", "user_email": email}
-            )
-
-        # 12. get_resident_bookings
-        if tool_name == "get_resident_bookings":
-            raw_bookings = data if isinstance(data, list) else (
-                data.get("bookings") or data.get("items") or [] if isinstance(data, dict) else []
-            )
-            if isinstance(raw_bookings, list) and raw_bookings:
-                b_count = len(raw_bookings)
-                card = TextMessageCard(
-                    text=last_ai_content or f"You have {b_count} scheduled booking appointment(s):",
-                    suggestions=["Reschedule an appointment", "Cancel a booking", "Find another worker"]
-                )
-            else:
-                card = TextMessageCard(
-                    text=last_ai_content or "You do not have any upcoming bookings at the moment.",
-                    suggestions=["Find a technician", "Book a service", "View community posts"]
-                )
-            return AgentCardResponse(
-                response_type="text_message",
-                message=card.text,
-                card_data=card.model_dump(),
-                metadata={"agent": "booking_agent", "user_email": email}
-            )
-
-        # 13. reschedule_booking
-        if tool_name == "reschedule_booking":
-            b_id = data.get("bookingId") or data.get("id") or ""
-            card = TextMessageCard(
-                text=last_ai_content or f"Booking #{b_id} has been successfully rescheduled.",
-                suggestions=["View my bookings", "Contact worker", "Done"]
-            )
-            return AgentCardResponse(
-                response_type="text_message",
-                message=card.text,
-                card_data=card.model_dump(),
-                metadata={"agent": "booking_agent", "user_email": email}
-            )
-
-        # 14. cancel_booking
-        if tool_name == "cancel_booking":
-            b_id = data.get("bookingId") or data.get("id") or ""
-            card = TextMessageCard(
-                text=last_ai_content or f"Booking #{b_id} has been canceled.",
-                suggestions=["Find another worker", "View my bookings", "Create a community post"]
-            )
-            return AgentCardResponse(
-                response_type="text_message",
-                message=card.text,
-                card_data=card.model_dump(),
-                metadata={"agent": "booking_agent", "user_email": email}
-            )
-
-        # 15. get_booking / get_booking_details
-        if tool_name in ["get_booking", "get_booking_details"]:
-            b_id = data.get("id") or data.get("bookingId") or ""
-            status = data.get("status") or "Confirmed"
-            card = TextMessageCard(
-                text=last_ai_content or f"Booking #{b_id} Status: {status}.",
-                suggestions=["Reschedule", "Cancel booking", "View all bookings"]
-            )
-            return AgentCardResponse(
-                response_type="text_message",
-                message=card.text,
-                card_data=card.model_dump(),
-                metadata={"agent": "booking_agent", "user_email": email}
-            )
-
-        # 16. create_worker_review
-        if tool_name == "create_worker_review":
-            card = TextMessageCard(
-                text=last_ai_content or "Thank you! Your rating and review have been submitted successfully.",
-                suggestions=["Book another worker", "Browse community feed", "View profile"]
-            )
-            return AgentCardResponse(
-                response_type="text_message",
-                message=card.text,
-                card_data=card.model_dump(),
-                metadata={"agent": "support_review_agent", "user_email": email}
-            )
-
-        # 17. file_dispute_ticket
-        if tool_name == "file_dispute_ticket":
-            ticket_id = data.get("ticket_id") or data.get("id") or "D-101"
-            card = TextMessageCard(
-                text=last_ai_content or f"Dispute ticket #{ticket_id} has been filed. Our support team will follow up within 24 hours.",
-                suggestions=["Contact human support", "Return to home"]
-            )
-            return AgentCardResponse(
-                response_type="text_message",
-                message=card.text,
-                card_data=card.model_dump(),
-                metadata={"agent": "support_review_agent", "user_email": email}
-            )
-
-        # 18. escalate_to_human
-        if tool_name == "escalate_to_human":
-            card = TextMessageCard(
-                text=last_ai_content or "Your conversation has been escalated to a customer support specialist who will assist you shortly.",
-                suggestions=["Return to home", "View community feed"]
-            )
-            return AgentCardResponse(
-                response_type="text_message",
-                message=card.text,
-                card_data=card.model_dump(),
-                metadata={"agent": "support_review_agent", "user_email": email}
-            )
-
-        # 19. get_user_job_history
-        if tool_name == "get_user_job_history":
-            card = TextMessageCard(
-                text=last_ai_content or "Here is your recent service history:",
-                suggestions=["Leave a review", "Book technician again", "File dispute"]
-            )
-            return AgentCardResponse(
-                response_type="text_message",
-                message=card.text,
-                card_data=card.model_dump(),
-                metadata={"agent": "support_review_agent", "user_email": email}
-            )
-
-    # Check if this is a booking confirmation summary
-    lower_content = last_ai_content.lower()
-    is_booking_summary = any(kw in lower_content for kw in ["booking summary", "place this booking", "would you like me to place", "confirm this booking"])
-    if is_booking_summary:
-        card = TextMessageCard(
-            text=last_ai_content,
-            suggestions=["Yes, please place the booking", "Change date or time", "Cancel booking"]
-        )
+        # 14. Default tool fallback
+        msg_text = last_ai_content or f"Operation '{tool_name}' completed."
+        card = TextMessageCard(text=msg_text, suggestions=None)
         return AgentCardResponse(
             response_type="text_message",
-            message=card.text,
+            message=msg_text,
             card_data=card.model_dump(),
-            metadata={"agent": "booking_agent", "user_email": email}
+            metadata={"agent": "agent", "user_email": email}
         )
 
-    # Check if this is a choice turn offering finding a worker vs community post
-    is_choice_turn = not is_draft and (
-        any(kw in lower_content for kw in [
-            "create a community post or find",
-            "how would you like to proceed",
-            "would you like to proceed with finding a worker or creating a community post",
-            "would you like to find a worker or create a community post",
-            "proceed with finding a worker"
-        ]) or (
-            bool((metadata or {}).get("suggested_actions"))
-            and any(kw in lower_content for kw in ["how would you like to proceed", "choose an option", "select an option"])
-        )
-    )
-
-    if is_choice_turn:
-        dyn_suggestions = (metadata or {}).get("suggested_actions")
-        if not dyn_suggestions or not isinstance(dyn_suggestions, list):
-            dyn_suggestions = [
-                "Find a verified service worker",
-                "Create a community post"
-            ]
-
-        structured_suggestions = []
-        for idx, item in enumerate(dyn_suggestions):
-            if isinstance(item, dict):
-                text_val = str(item.get("text") or item.get("label") or "")
-                if any(t in text_val.lower() for t in ["tip", "diy", "myself", "advice", "tutorial", "guide"]):
-                    continue
-                structured_suggestions.append(item)
-            else:
-                item_str = str(item)
-                if any(t in item_str.lower() for t in ["tip", "diy", "myself", "advice", "tutorial", "guide"]):
-                    continue
-                item_type = "community" if "community" in item_str.lower() or "post" in item_str.lower() or idx == 1 else "find"
-                structured_suggestions.append({
-                    "text": item_str,
-                    "type": item_type
-                })
-
-        card = TextMessageCard(
-            text=last_ai_content,
-            suggestions=structured_suggestions
-        )
-        card_data = card.model_dump()
-        card_data["is_choice"] = True
-
-        return AgentCardResponse(
-            response_type="text_message",
-            message=card.text,
-            card_data=card_data,
-            metadata={"agent": "supervisor", "user_email": email}
-        )
-
-    # Check if booking agent is asking for the service issue / problem (Step 2)
-    if any(kw in lower_content for kw in ["what issue are you facing", "issue or service needed", "describe the issue", "describe the problem"]):
-        card = TextMessageCard(
-            text=last_ai_content,
-            suggestions=["Leaking pipe repair", "Tap replacement", "Pipe installation", "Bathroom plumbing fix"]
-        )
-        return AgentCardResponse(
-            response_type="text_message",
-            message=card.text,
-            card_data=card.model_dump(),
-            metadata={"agent": "booking_agent", "user_email": email}
-        )
-
-    # Check if booking agent is asking for preferred date and time (Step 3)
-    if any(kw in lower_content for kw in ["when would you like", "date and time", "what date", "preferred date"]):
-        card = TextMessageCard(
-            text=last_ai_content,
-            suggestions=["Tomorrow at 10:00 AM", "Tomorrow at 2:00 PM", "This Saturday at 11:00 AM", "Next Monday at 9:00 AM"]
-        )
-        return AgentCardResponse(
-            response_type="text_message",
-            message=card.text,
-            card_data=card.model_dump(),
-            metadata={"agent": "booking_agent", "user_email": email}
-        )
-
-    # Check if booking agent is confirming registered address and phone (Step 4)
-    if any(kw in lower_content for kw in ["registered address", "registered phone", "service location", "registered details"]):
-        card = TextMessageCard(
-            text=last_ai_content,
-            suggestions=["Yes, use my registered details", "I'd like to provide a different address"]
-        )
-        return AgentCardResponse(
-            response_type="text_message",
-            message=card.text,
-            card_data=card.model_dump(),
-            metadata={"agent": "booking_agent", "user_email": email}
-        )
-
-    # Check if the assistant is asking intake questions for creating a post (do NOT trigger draft card yet)
-    is_post_intake = any(kw in lower_content for kw in [
-        "what specific service", "what problem", "what issue", "tell me a few details",
-        "what is the problem", "tell me what problem", "what type of service",
-        "service or problem are you facing", "service or issue", "share a few details",
-        "what kind of service", "to get started"
-    ]) and not any(kw in lower_content for kw in ["• title:", "title:"])
-
-    if is_post_intake:
-        card = TextMessageCard(
-            text=last_ai_content,
-            suggestions=[
-                "AC repair needed in Colombo",
-                "Emergency plumber for water leak",
-                "Licensed electrician needed urgently",
-                "Carpentry work needed"
-            ]
-        )
-        return AgentCardResponse(
-            response_type="text_message",
-            message=card.text,
-            card_data=card.model_dump(),
-            metadata={"agent": "community_agent", "user_email": email}
-        )
-
-    # Check if the assistant is asking for the trade or service type (e.g. user asked "find a worker")
-    is_asking_trade = any(kw in lower_content for kw in [
-        "specify the type of service",
-        "type of service you need",
-        "what type of service",
-        "what kind of service",
-        "which service do you need",
-        "service do you need help with",
-        "what service do you need",
-        "type of worker",
-        "kind of worker"
-    ])
-    if is_asking_trade:
-        card = TextMessageCard(
-            text=last_ai_content,
-            suggestions=[
-                "Plumbing & Pipe Repair",
-                "Electrical & Wiring",
-                "AC Repair & Air Conditioning",
-                "Cleaning & Housekeeping",
-                "Carpentry & Woodwork",
-                "Appliance Repair"
-            ]
-        )
-        card_data = card.model_dump()
-        card_data["is_choice"] = False
-        return AgentCardResponse(
-            response_type="text_message",
-            message=card.text,
-            card_data=card_data,
-            metadata={"agent": "booking_agent", "user_email": email}
-        )
-
-    # Check if the assistant is asking a question (clarifying questions must never trigger choice cards!)
-    is_asking_question = any(kw in lower_content for kw in [
-        "specify the type of service",
-        "type of service",
-        "what type of service",
-        "what kind of service",
-        "what specific service",
-        "what problem",
-        "what issue",
-        "tell me a few details",
-        "what is the problem",
-        "what date",
-        "preferred date",
-        "when would you like",
-        "registered address",
-        "registered phone"
-    ])
-
-
-    # Check if the assistant has prepared a community post draft awaiting confirmation
+    # If no tool was executed but agent generated a draft post
     if is_draft:
-        return _build_post_confirmation_response(
-            last_ai_content, email, user_name, user_profile, metadata
-        )
+        return _extract_draft_card(last_ai_content, email, user_name, user_profile, metadata)
 
-    # General text message fallback
-    suggestions = metadata.get("suggested_actions") or [
-        "Book a service technician",
-        "View recent community posts",
-        "Create a post for AC repair",
-        "Check my profile"
-    ]
-    card = TextMessageCard(
-        text=last_ai_content or "How can I assist you with Workio home services and community posts?",
-        suggestions=suggestions
-    )
+    # Conversational fallback
+    fallback_text = last_ai_content or "How can I assist you with Workio home services and community posts?"
+    suggestions = None
+    if any(q in lower_content for q in ["how would you like to proceed", "would you like me to find a", "or create a community post"]):
+        suggestions = [
+            {"title": "Find a verified worker", "subtitle": "Connect with local technicians"},
+            {"title": "Create a community post", "subtitle": "Post your request to the community"}
+        ]
+
+    card = TextMessageCard(text=fallback_text, suggestions=suggestions)
     return AgentCardResponse(
         response_type="text_message",
-        message=card.text,
+        message=fallback_text,
         card_data=card.model_dump(),
-        metadata={"agent": "supervisor", "user_email": email}
+        metadata={"agent": "assistant", "user_email": email}
     )
-
-
-async def card_formatter_node(state: AgentState) -> Dict[str, Any]:
-    """
-    Deterministic UI Card Formatter Node for Workio (Legacy/Fallback).
-    Pure Python: Transforms agent execution history, structured tool outputs, and state into
-    strictly typed Pydantic UI Card responses (AgentCardResponse) for the React frontend.
-    ZERO LLM CALLS.
-    """
-    card_response = _deterministic_card_builder(state)
-    return {"structured_response": card_response}
-
-
-def build_community_card(state: AgentState, ai_message: Optional[Any] = None) -> AgentCardResponse:
-    """Build structured AgentCardResponse for community agent."""
-    res = _deterministic_card_builder(state, ai_message=ai_message)
-    if not res.metadata:
-        res.metadata = {}
-    res.metadata.setdefault("agent", "community_agent")
-    return res
 
 
 def build_worker_matching_card(state: AgentState, ai_message: Optional[Any] = None) -> AgentCardResponse:
-    """Build structured AgentCardResponse for worker matching agent."""
-    res = _deterministic_card_builder(state, ai_message=ai_message)
-    if not res.metadata:
-        res.metadata = {}
-    res.metadata.setdefault("agent", "worker_matching_agent")
-    return res
+    """Builds typed UI Card response for Worker Matching Agent."""
+    return _deterministic_card_builder(state, ai_message)
 
 
 def build_booking_card(state: AgentState, ai_message: Optional[Any] = None) -> AgentCardResponse:
-    """Build structured AgentCardResponse for booking agent."""
-    res = _deterministic_card_builder(state, ai_message=ai_message)
-    if not res.metadata:
-        res.metadata = {}
-    res.metadata.setdefault("agent", "booking_agent")
-    return res
+    """Builds typed UI Card response for Booking Agent."""
+    return _deterministic_card_builder(state, ai_message)
+
+
+def build_community_card(state: AgentState, ai_message: Optional[Any] = None) -> AgentCardResponse:
+    """Builds typed UI Card response for Community Agent."""
+    return _deterministic_card_builder(state, ai_message)
 
 
 def build_support_review_card(state: AgentState, ai_message: Optional[Any] = None) -> AgentCardResponse:
-    """Build structured AgentCardResponse for support & review agent."""
-    res = _deterministic_card_builder(state, ai_message=ai_message)
-    if not res.metadata:
-        res.metadata = {}
-    res.metadata.setdefault("agent", "support_review_agent")
-    return res
+    """Builds typed UI Card response for Support & Review Agent."""
+    return _deterministic_card_builder(state, ai_message)
 
 
-def build_supervisor_card(state: AgentState, text: str, suggestions: Optional[List[str]] = None) -> AgentCardResponse:
-    """Build structured AgentCardResponse directly for supervisor greeting/clarification turns."""
+def build_supervisor_card(
+    state: AgentState,
+    direct_text: str,
+    suggestions: Optional[List[str]] = None
+) -> AgentCardResponse:
+    """Builds typed UI Card response for Supervisor Agent direct response."""
     email = state.get("email", "resident@workio.lk")
-    card = TextMessageCard(
-        text=text,
-        suggestions=suggestions or [
-            "Find a plumber or electrician",
-            "View community posts",
-            "Book a service technician",
-            "Check my account profile"
+    card_suggestions: Optional[List[Any]] = None
+    if suggestions:
+        card_suggestions = [
+            {"title": s, "subtitle": "Action"} if isinstance(s, str) else s
+            for s in suggestions
         ]
-    )
+    else:
+        card_suggestions = [
+            {"title": "Find a verified worker", "subtitle": "Connect with local technicians"},
+            {"title": "Create a community post", "subtitle": "Post your request to the community"}
+        ]
+
+    card = TextMessageCard(text=direct_text, suggestions=card_suggestions)
     return AgentCardResponse(
         response_type="text_message",
-        message=text,
+        message=direct_text,
         card_data=card.model_dump(),
         metadata={"agent": "supervisor", "user_email": email}
     )
-
