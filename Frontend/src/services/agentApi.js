@@ -35,10 +35,46 @@ export async function sendAgentMessage({ message, email, user_type = 'Resident',
       metadata: metadata || {},
     };
 
+    console.groupCollapsed(
+      `%c🤖 [AI Chat Request] %c"${message?.slice(0, 50)}${message?.length > 50 ? '...' : ''}"`,
+      'color: #2563eb; font-weight: bold;',
+      'color: #1e293b;'
+    );
+    console.log('Payload:', payload);
+    console.groupEnd();
+
+    const startTime = performance.now();
     const res = await agentClient.post('/api/chat', payload);
+    const duration = Math.round(performance.now() - startTime);
+
+    const meta = res.data?.response?.metadata || {};
+    const tokens = meta.token_usage;
+    const tokenStr = tokens ? ` | Tokens: ${tokens.total_tokens}` : '';
+    const agentsStr = meta.agents && meta.agents.length > 0 ? ` | Agents: ${meta.agents.join(' ➔ ')}` : '';
+
+    console.groupCollapsed(
+      `%c✨ [AI Chat Response (${duration}ms)] %cType: ${res.data?.response?.response_type || 'unknown'}${agentsStr}${tokenStr}`,
+      'color: #10b981; font-weight: bold;',
+      'color: #0f172a;'
+    );
+    console.log('Thread ID:', res.data?.conversation_id);
+    console.log('AI Message:', res.data?.response?.message);
+    if (meta.agents) console.log('Agents Invoked:', meta.agents);
+    if (meta.token_usage) console.log('Token Usage:', meta.token_usage);
+    if (meta.steps) console.log('Execution Steps Breakdown:', meta.steps);
+    console.log('Card Data:', res.data?.response?.card_data);
+    console.log('Full Response Object:', res.data);
+    console.groupEnd();
+
     return res.data;
   } catch (error) {
-    console.error('Agent chat request failed:', error);
+    console.group('%c❌ [AI Chat Error]', 'color: #ef4444; font-weight: bold;');
+    console.error('Request failed:', error);
+    if (error.response?.data) {
+      console.log('Server Error Data:', error.response.data);
+    }
+    console.groupEnd();
+
     if (error.response?.data) {
       return error.response.data;
     }
@@ -55,6 +91,21 @@ export async function sendAgentMessage({ message, email, user_type = 'Resident',
         metadata: { error: true },
       },
     };
+  }
+}
+
+/**
+ * Retrieve recent backend logs from agent-backend
+ * @param {number} [limit=100]
+ * @returns {Promise<Object>}
+ */
+export async function getBackendLogs(limit = 100) {
+  try {
+    const res = await agentClient.get('/api/chat/logs', { params: { limit } });
+    return res.data;
+  } catch (e) {
+    console.error('Failed to get backend logs:', e);
+    return { logs: [], error: e.message };
   }
 }
 
