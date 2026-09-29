@@ -9,6 +9,7 @@ import AiAssistantWidget from './components/AiAssistantWidget.jsx';
 import M3TopNavbar from './components/M3TopNavbar.jsx';
 import hero2Img from './assets/community.png';
 import sriLankaDistricts from './data/sriLankaDistricts.json';
+import LocationSelector from './components/LocationSelector.jsx';
 import { BACKEND_URL } from './config.js';
 
 const API_BASE_URL = `${BACKEND_URL}/api/community-posts`;
@@ -26,7 +27,9 @@ export default function Community() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedProvince, setSelectedProvince] = useState('all');
-  const [selectedDistrict, setSelectedDistrict] = useState('all');
+  const [selectedDistrict, setSelectedDistrict] = useState(() => {
+    return localStorage.getItem('community_selected_district') || 'Colombo';
+  });
   const [sortBy, setSortBy] = useState('newest');
   const [currentPage, setCurrentPage] = useState(1);
   const CARDS_PER_PAGE = 9;
@@ -135,10 +138,8 @@ export default function Community() {
       const params = {};
       if (searchTerm) params.search = searchTerm;
       if (selectedCategory !== 'all') params.category = selectedCategory;
-      if (selectedDistrict !== 'all') {
+      if (selectedDistrict && selectedDistrict !== 'all') {
         params.location = selectedDistrict;
-      } else if (selectedProvince !== 'all') {
-        params.location = selectedProvince.replace(' Province', '');
       }
       if (sortBy) params.sort = sortBy;
 
@@ -557,59 +558,28 @@ export default function Community() {
         {/* Left Sidebar Navigation (Uber Style) */}
         <aside className={`community-sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
 
-          {/* Location Filter Section: Two Separate Fields (Province and District) */}
+          {/* Location Filter Section: Landing Page Style */}
           <div className="uber-sidebar-section">
             <div className="uber-sidebar-section-title">
               <span>Location</span>
-              {(selectedProvince !== 'all' || selectedDistrict !== 'all') && (
-                <button
-                  type="button"
-                  className="uber-sidebar-clear-btn"
-                  onClick={() => {
-                    setSelectedProvince('all');
-                    setSelectedDistrict('all');
-                  }}
-                  title="Clear location filter"
-                >
-                  Clear
-                </button>
-              )}
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {/* Province Select */}
-              <select
-                className="uber-sidebar-select"
-                value={selectedProvince}
-                onChange={(e) => {
-                  setSelectedProvince(e.target.value);
-                  setSelectedDistrict('all');
+            <div style={{ padding: '6px 8px 8px' }}>
+              <LocationSelector
+                location={selectedDistrict || 'Colombo'}
+                onChange={(newLoc) => {
+                  setSelectedDistrict(newLoc);
+                  localStorage.setItem('community_selected_district', newLoc);
+                  let matchedProv = 'all';
+                  for (const [prov, dists] of Object.entries(sriLankaDistricts)) {
+                    if (dists.some((d) => d.toLowerCase() === newLoc.toLowerCase())) {
+                      matchedProv = prov;
+                      break;
+                    }
+                  }
+                  setSelectedProvince(matchedProv);
                 }}
-                aria-label="Filter by Province"
-              >
-                <option value="all">All Provinces</option>
-                {Object.keys(sriLankaDistricts).map(prov => (
-                  <option key={prov} value={prov}>{prov}</option>
-                ))}
-              </select>
-
-              {/* District Select */}
-              <select
-                className="uber-sidebar-select"
-                value={selectedDistrict}
-                onChange={(e) => setSelectedDistrict(e.target.value)}
-                aria-label="Filter by District"
-              >
-                <option value="all">
-                  {selectedProvince === 'all' ? 'All Districts' : `All in ${selectedProvince.replace(' Province', '')}`}
-                </option>
-                {(selectedProvince === 'all'
-                  ? Object.values(sriLankaDistricts).flat()
-                  : (sriLankaDistricts[selectedProvince] || [])
-                ).map(d => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </select>
+              />
             </div>
           </div>
 
