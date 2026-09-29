@@ -89,9 +89,6 @@ export default function M3TopNavbar({
           onClick={() => navigate('/ai/chat')}
           title="Workio AI Assistant"
         >
-          <span className="m3-ai-icon-box">
-            <md-icon>auto_awesome</md-icon>
-          </span>
           <span>Ask AI</span>
         </button>
 
