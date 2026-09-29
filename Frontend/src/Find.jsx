@@ -20,7 +20,7 @@ import './components/M3Navbar.css';
 import { API_BASE_URL } from './config.js';
 import categoriesData from './data/categories.json';
 import workioLogoWhite from './assets/Workio_Logo/Workio_Logo_White_With_Text.png';
-import craftsmanHeroImg from './assets/carftman.png';
+import craftsmanHeroImg from './assets/workersBackgrond.png';
 
 export default function Find() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -91,6 +91,10 @@ export default function Find() {
     setViewMode(mode);
     localStorage.setItem('find_view_mode', mode);
   };
+
+  // Pagination State (9 cards per page)
+  const [currentPage, setCurrentPage] = useState(1);
+  const WORKERS_PER_PAGE = 9;
 
   const [isWorkerDropdownOpen, setIsWorkerDropdownOpen] = useState(false);
   const [failedWorkerAvatars, setFailedWorkerAvatars] = useState({});
@@ -239,6 +243,7 @@ export default function Find() {
     setLocationQuery('');
     setAppliedLocationQuery('');
     setSortBy('recommended');
+    setCurrentPage(1);
     navigate('/find');
   };
 
@@ -402,6 +407,95 @@ export default function Find() {
     }
     return 0;
   });
+
+  // Reset pagination to page 1 whenever any filter or sort option changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    appliedSearchQuery,
+    appliedLocationQuery,
+    rateType,
+    availableNowOnly,
+    favoritesOnly,
+    minPrice,
+    maxPrice,
+    selectedCategories,
+    minRating,
+    selectedBadge,
+    sortBy
+  ]);
+
+  // Pagination calculations (9 cards per page)
+  const totalWorkers = filteredWorkers.length;
+  const totalPages = Math.ceil(totalWorkers / WORKERS_PER_PAGE) || 1;
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (safeCurrentPage - 1) * WORKERS_PER_PAGE;
+  const paginatedWorkers = filteredWorkers.slice(startIndex, startIndex + WORKERS_PER_PAGE);
+
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages) return;
+    setCurrentPage(newPage);
+    const feedElement = document.getElementById('find-search-main') || document.querySelector('.worker-cards-grid');
+    if (feedElement) {
+      feedElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const renderPagination = () => {
+    if (totalPages <= 1) return null;
+    return (
+      <div className="uber-pagination-container">
+        <button
+          type="button"
+          className="uber-pagination-btn"
+          onClick={() => handlePageChange(safeCurrentPage - 1)}
+          disabled={safeCurrentPage === 1}
+          aria-label="Previous Page"
+        >
+          <i className="fa-solid fa-chevron-left"></i>
+          <span>Prev</span>
+        </button>
+
+        <div className="uber-pagination-pages">
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNum => {
+            if (
+              pageNum === 1 ||
+              pageNum === totalPages ||
+              (pageNum >= safeCurrentPage - 1 && pageNum <= safeCurrentPage + 1)
+            ) {
+              return (
+                <button
+                  key={pageNum}
+                  type="button"
+                  className={`uber-pagination-num ${safeCurrentPage === pageNum ? 'active' : ''}`}
+                  onClick={() => handlePageChange(pageNum)}
+                >
+                  {pageNum}
+                </button>
+              );
+            } else if (
+              pageNum === safeCurrentPage - 2 ||
+              pageNum === safeCurrentPage + 2
+            ) {
+              return <span key={pageNum} className="uber-pagination-ellipsis">...</span>;
+            }
+            return null;
+          })}
+        </div>
+
+        <button
+          type="button"
+          className="uber-pagination-btn"
+          onClick={() => handlePageChange(safeCurrentPage + 1)}
+          disabled={safeCurrentPage === totalPages}
+          aria-label="Next Page"
+        >
+          <span>Next</span>
+          <i className="fa-solid fa-chevron-right"></i>
+        </button>
+      </div>
+    );
+  };
 
   // Initialize & Update Leaflet Map when showMap is true
   useEffect(() => {
@@ -1287,6 +1381,11 @@ export default function Find() {
             <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#000000', margin: 0, letterSpacing: '-0.02em' }}>
               {loading ? 'Searching workers...' : `${filteredWorkers.length} verified worker${filteredWorkers.length === 1 ? '' : 's'} available`}
             </h2>
+            {!loading && totalWorkers > 0 && (
+              <div style={{ fontSize: '0.85rem', color: '#71717a', fontWeight: 600 }}>
+                Showing {startIndex + 1}–{Math.min(startIndex + WORKERS_PER_PAGE, totalWorkers)} of {totalWorkers}
+              </div>
+            )}
           </div>
 
           {(appliedSearchQuery || (appliedLocationQuery && appliedLocationQuery.trim() !== '') || selectedCategories.length > 0 || availableNowOnly || favoritesOnly || minRating !== 'Any' || selectedBadge !== 'all') && (
@@ -1514,8 +1613,9 @@ export default function Find() {
               {/* Middle Cards Column */}
               <div className="find-middle-cards-col">
                 <div style={{ display: 'grid', gap: '20px', gridTemplateColumns: '1fr' }}>
-                  {filteredWorkers.map(worker => renderWorkerCard(worker))}
+                  {paginatedWorkers.map(worker => renderWorkerCard(worker))}
                 </div>
+                {renderPagination()}
               </div>
 
               {/* Right Map Pane */}
@@ -1617,9 +1717,12 @@ export default function Find() {
             </div>
           ) : (
             /* Full Width Grid Mode */
-            <div className={`worker-cards-grid view-${viewMode}`}>
-              {filteredWorkers.map(worker => renderWorkerCard(worker))}
-            </div>
+            <>
+              <div className={`worker-cards-grid view-${viewMode}`}>
+                {paginatedWorkers.map(worker => renderWorkerCard(worker))}
+              </div>
+              {renderPagination()}
+            </>
           )}
         </main>
       </div>
