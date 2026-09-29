@@ -127,10 +127,117 @@
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 22px;
   width: 100%;
+  transition: all 0.2s ease;
+}
+
+/* 1. Large Cards View */
+.worker-cards-grid.view-large {
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 24px;
+}
+
+/* 2. Small Cards View */
+.worker-cards-grid.view-small {
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.worker-cards-grid.view-small .m3-worker-card {
+  padding: 14px 16px;
+  border-radius: 14px;
+  gap: 12px;
+}
+
+.worker-cards-grid.view-small .m3-card-avatar-wrap {
+  width: 46px;
+  height: 46px;
+}
+
+.worker-cards-grid.view-small .m3-card-worker-name {
+  font-size: 0.98rem;
+  max-width: 130px;
+}
+
+.worker-cards-grid.view-small .m3-card-worker-role {
+  font-size: 0.76rem;
+}
+
+.worker-cards-grid.view-small .m3-skill-pill {
+  font-size: 0.68rem;
+  padding: 1px 6px;
+}
+
+.worker-cards-grid.view-small .m3-card-chips-group {
+  gap: 4px;
+}
+
+.worker-cards-grid.view-small .m3-card-chip {
+  font-size: 0.68rem;
+  padding: 2px 6px;
+}
+
+.worker-cards-grid.view-small .m3-card-footer {
+  padding-top: 10px;
+}
+
+.worker-cards-grid.view-small .m3-card-price-val {
+  font-size: 1rem;
+}
+
+.worker-cards-grid.view-small .m3-card-profile-btn {
+  padding: 5px 12px;
+  font-size: 0.78rem;
+}
+
+/* 3. List View */
+.worker-cards-grid.view-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.worker-cards-grid.view-list .m3-worker-card {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  gap: 24px;
+}
+
+.worker-cards-grid.view-list .m3-card-horizontal-wrap {
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+}
+
+.worker-cards-grid.view-list .m3-card-footer {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+  flex-direction: row;
+  align-items: center;
+  gap: 20px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .worker-cards-grid.view-list .m3-worker-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .worker-cards-grid.view-list .m3-card-footer {
+    border-top: 1px solid #f4f4f5;
+    padding-top: 12px;
+    justify-content: space-between;
+  }
 }
 
 @media (max-width: 640px) {
-  .worker-cards-grid {
+
+  .worker-cards-grid,
+  .worker-cards-grid.view-large,
+  .worker-cards-grid.view-small {
     grid-template-columns: 1fr;
     gap: 16px;
   }
@@ -531,6 +638,203 @@
 }
 
 /* ==========================================================================
+   Interactive Map in Left Sidebar
+   ========================================================================== */
+.sidebar-map-wrapper {
+  margin: 12px 6px 6px 6px;
+}
+
+.sidebar-map-container {
+  height: 250px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid #e4e4e7;
+  position: relative;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  background: #f4f4f5;
+}
+
+.sidebar-map-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  letter-spacing: 0.01em;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.sidebar-map-badge .pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 6px #22c55e;
+}
+
+.sidebar-map-controls {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sidebar-map-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid #e4e4e7;
+  color: #000000;
+  font-size: 1rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  transition: all 0.15s ease;
+}
+
+.sidebar-map-btn:hover {
+  background: #000000;
+  color: #ffffff;
+  border-color: #000000;
+}
+
+.sidebar-map-popup-card {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  right: 8px;
+  z-index: 1001;
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 10px 12px;
+  border: 1px solid #000000;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+  animation: slideUpPopup 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUpPopup {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sidebar-map-popup-card .popup-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #71717a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+}
+
+.sidebar-map-popup-card .popup-worker-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding-right: 20px;
+}
+
+.sidebar-map-popup-card .popup-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #0f172a;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.sidebar-map-popup-card .popup-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar-map-popup-card .popup-name {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 2px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-map-popup-card .popup-skill {
+  font-size: 0.72rem;
+  color: #71717a;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-map-popup-card .popup-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.sidebar-map-popup-card .popup-view-btn {
+  background: #000000;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.sidebar-map-popup-card .popup-view-btn:hover {
+  opacity: 0.85;
+}
+
+.sidebar-map-popup-card .popup-price {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+/* ==========================================================================
    Search Dropdown in Top Navbar
    ========================================================================== */
 .m3-search-dropdown {
@@ -701,3 +1005,87 @@
   align-items: center;
 }
 
+/* ==========================================================================
+   Find Page Community Theme Adaptations
+   ========================================================================== */
+.find-layout-container {
+  max-width: 1360px !important;
+  margin: 0 auto;
+}
+
+/* Collapsed rail adjustments on desktop */
+@media (min-width: 993px) {
+  .community-sidebar.collapsed {
+    width: 68px;
+    padding: 14px 6px;
+    align-items: center;
+  }
+
+  .community-sidebar.collapsed .uber-sidebar-item {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 22px;
+    margin: 0 auto;
+  }
+
+  .community-sidebar.collapsed .uber-sidebar-item-left {
+    justify-content: center;
+    gap: 0;
+  }
+
+  .community-sidebar.collapsed .uber-sidebar-item span,
+  .community-sidebar.collapsed .uber-sidebar-badge,
+  .community-sidebar.collapsed .uber-sidebar-section-title,
+  .community-sidebar.collapsed .uber-sidebar-clear-btn,
+  .community-sidebar.collapsed .m3-segmented-control,
+  .community-sidebar.collapsed .histogram-container,
+  .community-sidebar.collapsed .price-inputs-row,
+  .community-sidebar.collapsed .location-selector-wrap,
+  .community-sidebar.collapsed .uber-btn-outline span {
+    display: none !important;
+  }
+
+  .community-sidebar.collapsed .uber-cat-item {
+    justify-content: center;
+    padding: 8px 0;
+    width: 44px;
+    height: 44px;
+    margin: 0 auto;
+    border-radius: 22px;
+  }
+
+  .community-sidebar.collapsed .uber-cat-item span {
+    display: none !important;
+  }
+}
+
+/* ==========================================================================
+   Worker Status Typography: Normal / Not Bold
+   ========================================================================== */
+.worker-status-section .uber-sidebar-item {
+  font-weight: 400 !important;
+}
+
+.worker-status-section .uber-sidebar-item span,
+.worker-status-section .uber-sidebar-item-left span {
+  font-weight: 400 !important;
+}
+
+.worker-status-section .uber-sidebar-badge {
+  font-weight: 400 !important;
+}
+
+.worker-status-section .uber-sidebar-item.active {
+  font-weight: 500 !important;
+}
+
+.worker-status-section .uber-sidebar-item.active span,
+.worker-status-section .uber-sidebar-item.active .uber-sidebar-item-left span {
+  font-weight: 500 !important;
+}
+
+.worker-status-section .uber-sidebar-item.active .uber-sidebar-badge {
+  font-weight: 500 !important;
+}
