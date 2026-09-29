@@ -222,6 +222,38 @@ def test_deterministic_card_builder_for_service_categories():
     assert len(card_resp.card_data["categories"]) == 4
 
 
+def test_deterministic_card_builder_for_post_draft_with_get_service_categories_tool():
+    """Verify that when a post is drafted, helper tool get_service_categories does NOT override post_confirmation card."""
+    tool_content = '{"categories": ["Plumbing", "Electrical", "Carpentry", "Masonry"]}'
+    draft_msg = (
+        "Here is your draft community post: • Title: Home Water Leak Repair • Category: Plumbing • Location: Colombo • "
+        "Content: There is a water leak at my home in Colombo that needs inspection and repair. "
+        "Please review your post details above. You can edit any details, attach photos, and when ready say \"confirm\", "
+        "\"publish it\", or \"proceed\" to publish the post to the community board."
+    )
+    state = {
+        "messages": [
+            HumanMessage(content="Create a community post"),
+            AIMessage(content="", tool_calls=[{"name": "get_service_categories", "args": {}, "id": "call_cat_1"}]),
+            ToolMessage(content=tool_content, tool_call_id="call_cat_1", name="get_service_categories"),
+            AIMessage(content=draft_msg)
+        ],
+        "email": "kpjmp28@gmail.com",
+        "user_type": "Resident",
+        "user_profile": {"displayName": "Jayashan Manodya", "address": "Colombo"},
+        "next": None,
+        "structured_response": None,
+        "metadata": {"inferred_category": "Plumbing", "location": "Colombo"}
+    }
+    card_resp = _deterministic_card_builder(state)
+    assert card_resp.response_type == "post_confirmation"
+    assert card_resp.card_data.get("title") == "Home Water Leak Repair"
+    assert card_resp.card_data.get("communityId") == "Plumbing"
+    assert card_resp.card_data.get("location") == "Colombo"
+    assert "water leak at my home in Colombo" in card_resp.card_data.get("content", "")
+    assert card_resp.response_type != "service_categories"
+
+
 def test_community_tools_count():
     """Verify all 7 community MCP tools are registered."""
     assert len(COMMUNITY_TOOLS) == 7

@@ -96,6 +96,9 @@ def _clean_card_intro_message(raw_msg: str, default_intro: str, card_type: str =
 
     text = raw_msg.strip()
 
+    if card_type == "post_confirmation":
+        return "Here is your draft community post. Please review your post details below, edit if needed, and confirm to publish:"
+
     # Detect if the text contains repetitive itemized card details (numbers/bullets followed by bold names, markdown images, tel links, etc.)
     has_dump = bool(
         re.search(
@@ -192,6 +195,77 @@ async def format_specialist_structured_message(
     return AIMessage(content=cleaned)
 
 
+def _build_post_confirmation_response(
+    last_ai_content: str,
+    email: str,
+    user_name: str,
+    user_profile: dict,
+    metadata: dict
+) -> AgentCardResponse:
+    """Robust extractor for community post drafts and builder for PostConfirmationCard."""
+    draft_title = "Community Service Request"
+    title_m = re.search(r'(?:•|\*|-|\n|\A)\s*Title\s*:\s*([^•\n\r]+)', last_ai_content, re.IGNORECASE)
+    if title_m:
+        val = title_m.group(1).strip().strip("*").strip()
+        if val:
+            draft_title = val
+
+    draft_category = metadata.get("inferred_category") or "Plumbing"
+    cat_m = re.search(r'(?:•|\*|-|\n|\A)\s*Category\s*:\s*([^•\n\r]+)', last_ai_content, re.IGNORECASE)
+    if cat_m:
+        val = cat_m.group(1).strip().strip("*").strip()
+        if val and val.lower() != "general":
+            draft_category = val
+
+    user_loc_default = metadata.get("location") or user_profile.get("address") or "Colombo"
+    draft_location = user_loc_default
+    loc_m = re.search(r'(?:•|\*|-|\n|\A)\s*Location\s*:\s*([^•\n\r]+)', last_ai_content, re.IGNORECASE)
+    if loc_m:
+        val = loc_m.group(1).strip().strip("*").strip()
+        if val and val.lower() not in ["your location", "location", "n/a", "unknown", "none", "{location}"]:
+            draft_location = val
+
+    draft_content = ""
+    content_m = re.search(
+        r'(?:•|\*|-|\n|\A)\s*(?:Content|Description)\s*:\s*(.*?)(?=(?:•|\n\s*(?:Location|Please review|When ready|You can edit)|Please review|When ready|You can edit|$))',
+        last_ai_content,
+        re.IGNORECASE | re.DOTALL
+    )
+    if content_m:
+        draft_content = content_m.group(1).strip().strip("*").strip()
+
+    if not draft_content:
+        draft_content = last_ai_content
+
+    if not draft_title or draft_title.lower() in ["community post", "untitled"]:
+        draft_title = f"{draft_category} Service Request"
+
+    card = PostConfirmationCard(
+        action="create",
+        title=draft_title,
+        content=draft_content,
+        communityId=draft_category,
+        location=draft_location,
+        urgency=None,
+        authorId=email,
+        authorName=user_name,
+        validationStatus="valid",
+        validationNotes=f"Please review your draft details above and confirm to publish under your account ({user_name}).",
+        confirmPrompt=f"CONFIRM_PUBLISH: Yes, please publish the post '{draft_title}' in {draft_category} for {draft_location}."
+    )
+    clean_msg = _clean_card_intro_message(
+        last_ai_content,
+        "Here is your draft community post. Please review the details below and confirm to publish:",
+        "post_confirmation"
+    )
+    return AgentCardResponse(
+        response_type="post_confirmation",
+        message=clean_msg,
+        card_data=card.model_dump(),
+        metadata={"agent": "community_agent", "user_email": email}
+    )
+
+
 def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = None) -> AgentCardResponse:
     """Deterministic response builder based on tool execution logs and agent message."""
     messages = list(state.get("messages", []))
@@ -209,6 +283,23 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
             if getattr(msg, "type", "") == "ai" and msg.content:
                 last_ai_content = msg.content
                 break
+
+    lower_content = last_ai_content.lower()
+
+    # Detect if the assistant has prepared a community post draft awaiting confirmation
+    is_draft = (
+        any(keyword in lower_content for keyword in [
+            "draft community post", "draft post", "here is your draft",
+            "confirm and publish", "review your post details", "review your draft details",
+            "publish the post to the community board"
+        ]) or (
+            ("title:" in lower_content or "• title" in lower_content or "title :" in lower_content) and
+            ("category:" in lower_content or "• category" in lower_content or "category :" in lower_content)
+        )
+    ) and not any(kw in lower_content for kw in [
+        "what service do you need", "what is the problem", "what type of service",
+        "how would you like to proceed"
+    ])
 
     # Search for latest ToolMessage
     latest_tool: ToolMessage = None
@@ -371,6 +462,10 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
 
         # 5. get_user_details
         if tool_name == "get_user_details":
+            if is_draft:
+                return _build_post_confirmation_response(
+                    last_ai_content, email, user_name, user_profile, metadata
+                )
             card = UserProfileCard(
                 email=data.get("email", email),
                 role=data.get("role", user_type),
@@ -394,6 +489,13 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
 
         # 6. get_service_categories
         if tool_name == "get_service_categories":
+            # If the assistant drafted a community post (using this tool only to lookup/validate the category),
+            # return the draft post confirmation card rather than hijacking with the 22 categories explorer!
+            if is_draft:
+                return _build_post_confirmation_response(
+                    last_ai_content, email, user_name, user_profile, metadata
+                )
+
             categories_raw = data if isinstance(data, list) else (
                 data.get("value") or data.get("categories") or []
                 if isinstance(data, dict) else []
@@ -735,15 +837,17 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
         )
 
     # Check if this is a choice turn offering finding a worker vs community post
-    is_choice_turn = any(kw in lower_content for kw in [
-        "create a community post or find",
-        "how would you like to proceed",
-        "would you like to proceed with finding a worker or creating a community post",
-        "would you like to find a worker or create a community post",
-        "proceed with finding a worker"
-    ]) or (
-        bool((metadata or {}).get("suggested_actions"))
-        and any(kw in lower_content for kw in ["how would you like", "proceed", "option", "recommendations and offers"])
+    is_choice_turn = not is_draft and (
+        any(kw in lower_content for kw in [
+            "create a community post or find",
+            "how would you like to proceed",
+            "would you like to proceed with finding a worker or creating a community post",
+            "would you like to find a worker or create a community post",
+            "proceed with finding a worker"
+        ]) or (
+            bool((metadata or {}).get("suggested_actions"))
+            and any(kw in lower_content for kw in ["how would you like to proceed", "choose an option", "select an option"])
+        )
     )
 
     if is_choice_turn:
@@ -902,74 +1006,9 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
 
 
     # Check if the assistant has prepared a community post draft awaiting confirmation
-    is_draft = not is_choice_turn and (any(keyword in lower_content for keyword in ["draft", "confirm and publish", "would you like me to confirm", "would you like me to publish"]) or (
-        ("title:" in lower_content or "• title" in lower_content) and ("category:" in lower_content or "• category" in lower_content)
-    ))
-
     if is_draft:
-        # Extract title, category, location, urgency, content
-        draft_title = "Community Service Request"
-        draft_category = metadata.get("inferred_category") or "General"
-        draft_location = "Colombo"
-        draft_urgency = "As soon as possible"
-        draft_content = ""
-
-        for line in last_ai_content.splitlines():
-            line_str = line.strip().lstrip("•-* \t").strip()
-            line_lower = line_str.lower()
-            if line_lower.startswith("title:") or "title:" in line_lower:
-                parts = line_str.split(":", 1)
-                if len(parts) > 1:
-                    draft_title = parts[1].strip().strip("*").strip()
-            elif "category:" in line_lower:
-                parts = line_str.split(":", 1)
-                if len(parts) > 1:
-                    cat_val = parts[1].strip().strip("*").strip()
-                    if cat_val and cat_val.lower() != "general":
-                        draft_category = cat_val
-            elif line_lower.startswith("location:") or "location:" in line_lower:
-                parts = line_str.split(":", 1)
-                if len(parts) > 1:
-                    draft_location = parts[1].strip().strip("*").strip()
-            elif line_lower.startswith("content:") or line_lower.startswith("description:"):
-                parts = line_str.split(":", 1)
-                if len(parts) > 1:
-                    draft_content = parts[1].strip().strip("*").strip()
-
-        if not draft_content:
-            draft_content = last_ai_content
-
-        if not draft_category or draft_category.lower() == "general":
-            if metadata.get("inferred_category"):
-                draft_category = metadata["inferred_category"]
-
-        user_loc_default = metadata.get("location") or user_profile.get("address") or "Colombo"
-        if not draft_location or draft_location.lower() in ["your location", "location", "n/a", "unknown", "none", "{location}"]:
-            draft_location = user_loc_default
-
-        card = PostConfirmationCard(
-            action="create",
-            title=draft_title,
-            content=draft_content,
-            communityId=draft_category,
-            location=draft_location,
-            urgency=None,
-            authorId=email,
-            authorName=user_name,
-            validationStatus="valid",
-            validationNotes=f"Please review your draft details above and confirm to publish under your account ({user_name}).",
-            confirmPrompt=f"CONFIRM_PUBLISH: Yes, please publish the post '{draft_title}' in {draft_category} for {draft_location}."
-        )
-        clean_msg = _clean_card_intro_message(
-            last_ai_content,
-            "Please review your draft community post below and confirm to publish:",
-            "post_confirmation"
-        )
-        return AgentCardResponse(
-            response_type="post_confirmation",
-            message=clean_msg,
-            card_data=card.model_dump(),
-            metadata={"agent": "community_agent", "user_email": email}
+        return _build_post_confirmation_response(
+            last_ai_content, email, user_name, user_profile, metadata
         )
 
     # General text message fallback
