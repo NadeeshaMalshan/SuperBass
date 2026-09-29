@@ -137,6 +137,62 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen> with SingleTickerPr
     }
   }
 
+  Future<void> _handleCancel(int id) async {
+    final reasonController = TextEditingController(text: 'Worker schedule unavailable');
+    final shouldCancel = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Cancel Booking', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Optionally provide a reason for cancelling:', style: GoogleFonts.dmSans(fontSize: 13)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                hintText: 'e.g. Busy on this date / emergency',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text('Keep Booking', style: GoogleFonts.dmSans(color: WorkerColors.onSurfaceVariant)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: WorkerColors.error,
+              foregroundColor: Colors.white,
+            ),
+            child: Text('Cancel Booking', style: GoogleFonts.dmSans()),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldCancel != true) return;
+
+    setState(() => _actionLoadingId = 'cancel_$id');
+    final success = await ApiService().cancelBooking(id, reason: reasonController.text.trim());
+    if (mounted) {
+      setState(() => _actionLoadingId = null);
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Booking cancelled.', style: GoogleFonts.dmSans()),
+            backgroundColor: WorkerColors.onSurface,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        _fetchBookings();
+      }
+    }
+  }
+
   Future<void> _handleStart(int id) async {
     setState(() => _actionLoadingId = 'start_$id');
     final updated = await ApiService().startBooking(id);
@@ -768,7 +824,11 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen> with SingleTickerPr
                         child: OutlinedButton.icon(
                           onPressed: () {
                             Navigator.of(ctx).pop();
-                            _handleDecline(b.id);
+                            if (status == 'requested') {
+                              _handleDecline(b.id);
+                            } else {
+                              _handleCancel(b.id);
+                            }
                           },
                           icon: const Icon(Icons.cancel_outlined, color: WorkerColors.error),
                           label: Text(
