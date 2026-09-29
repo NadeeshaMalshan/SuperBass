@@ -182,7 +182,7 @@ class _SavedAddressesScreenState extends State<SavedAddressesScreen> {
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   decoration: const InputDecoration(labelText: 'Province', border: OutlineInputBorder()),
-                  value: selectedProvince,
+                  initialValue: selectedProvince,
                   items: sriLankaGeoData.keys.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
                   onChanged: (val) {
                     setSheetState(() {
@@ -194,7 +194,7 @@ class _SavedAddressesScreenState extends State<SavedAddressesScreen> {
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   decoration: const InputDecoration(labelText: 'District', border: OutlineInputBorder()),
-                  value: selectedDistrict,
+                  initialValue: selectedDistrict,
                   items: (selectedProvince == null ? <String>[] : sriLankaGeoData[selectedProvince]!)
                       .map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
                   onChanged: selectedProvince == null ? null : (val) {

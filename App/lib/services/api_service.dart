@@ -434,8 +434,8 @@ class ApiService {
         'contactPhone': contactPhone ?? '0771234567',
         'pricingModel': pricingModel,
         'estimatedPrice': estimatedPrice ?? 2500.0,
-        if (locationLat != null) 'locationLat': locationLat,
-        if (locationLng != null) 'locationLng': locationLng,
+        if (locationLat != null) 'locationLat': locationLat, // ignore: use_null_aware_elements
+        if (locationLng != null) 'locationLng': locationLng, // ignore: use_null_aware_elements
       });
 
       debugPrint('Creating booking: $body');
