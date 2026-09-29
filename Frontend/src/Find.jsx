@@ -78,7 +78,7 @@ export default function Find() {
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [favorites, setFavorites] = useState({});
-  const [showMap, setShowMap] = useState(false);
+  const [showMap, setShowMap] = useState(true);
   const [selectedMapWorker, setSelectedMapWorker] = useState(null);
   const [isHeroBannerVisible, setIsHeroBannerVisible] = useState(true);
 
@@ -506,18 +506,21 @@ export default function Find() {
       const map = L.map(mapContainerRef.current, {
         zoomControl: false,
         attributionControl: false
-      }).setView(userLocation, 14);
+      }).setView(userLocation, 13);
 
-      // CartoDB Positron sleek light map tile layer
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      // Standard Leaflet OpenStreetMap tile layer
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
-        subdomains: 'abcd'
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
       }).addTo(map);
 
       mapInstanceRef.current = map;
     }
 
     const map = mapInstanceRef.current;
+    setTimeout(() => {
+      if (map) map.invalidateSize();
+    }, 150);
 
     // Clear old markers
     markersRef.current.forEach(m => map.removeLayer(m));
@@ -531,9 +534,9 @@ export default function Find() {
     // Add Real User Location Marker
     const userMarkerIcon = L.divIcon({
       className: 'custom-user-marker',
-      html: `<div style="background:#000000; color:white; width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow: 0 4px 14px rgba(0,0,0,0.45); border:3px solid white; position:relative;"><span class="material-symbols-outlined" style="font-size:20px; color:white; font-family:'Material Symbols Outlined', 'Material Icons', sans-serif;">my_location</span></div>`,
-      iconSize: [38, 38],
-      iconAnchor: [19, 19]
+      html: `<div style="background:#000000; color:white; width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow: 0 4px 14px rgba(0,0,0,0.45); border:3px solid white; position:relative;"><span class="material-symbols-outlined" style="font-size:18px; color:white; font-family:'Material Symbols Outlined', 'Material Icons', sans-serif;">my_location</span></div>`,
+      iconSize: [34, 34],
+      iconAnchor: [17, 17]
     });
     const userMarker = L.marker(userLocation, { icon: userMarkerIcon })
       .bindPopup(`<b>You (${locationName})</b>`)
@@ -547,9 +550,9 @@ export default function Find() {
 
       const customIcon = L.divIcon({
         className: 'custom-worker-marker-wrap',
-        html: `<div class="custom-worker-marker ${isSelected ? 'selected' : ''}" style="background:${isSelected ? '#2563eb' : '#0f172a'};">${idx + 1}</div>`,
-        iconSize: [32, 32],
-        iconAnchor: [16, 16]
+        html: `<div class="custom-worker-marker ${isSelected ? 'selected' : ''}" style="background:${isSelected ? '#2563eb' : '#000000'}; width:28px; height:28px; line-height:28px; font-size:0.75rem; border-radius:50%; color:white; display:flex; align-items:center; justify-content:center; font-weight:800; border:2px solid white; box-shadow:0 2px 6px rgba(0,0,0,0.3);">${idx + 1}</div>`,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14]
       });
 
       const marker = L.marker(pos, { icon: customIcon }).addTo(map);
@@ -565,7 +568,7 @@ export default function Find() {
     if (selectedMapWorker) {
       const workerPos = getWorkerMapPos(selectedMapWorker);
       const routePolyline = L.polyline([userLocation, workerPos], {
-        color: '#0f172a',
+        color: '#000000',
         weight: 3,
         dashArray: '6, 8',
         opacity: 0.85
@@ -574,6 +577,14 @@ export default function Find() {
       polylineRef.current = routePolyline;
     }
   }, [showMap, filteredWorkers, selectedMapWorker, userLocation]);
+
+  // Clean up map instance when showMap is toggled off
+  useEffect(() => {
+    if (!showMap && mapInstanceRef.current) {
+      mapInstanceRef.current.remove();
+      mapInstanceRef.current = null;
+    }
+  }, [showMap]);
 
   const handleZoomIn = () => {
     if (mapInstanceRef.current) mapInstanceRef.current.zoomIn();
@@ -964,30 +975,46 @@ export default function Find() {
         {/* Left Sidebar Navigation (Uber Style matching Community) */}
         <aside className={`community-sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
 
-          {/* Location Filter Section: Landing Page Style */}
+          {/* Location Filter Section: Landing Page Style with Sidebar Map */}
           <div className="uber-sidebar-section">
             <div className="uber-sidebar-section-title">
               <span>Location</span>
-              {appliedLocationQuery && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <button
                   type="button"
                   className="uber-sidebar-clear-btn"
                   onClick={() => {
-                    setLocationQuery('');
-                    setAppliedLocationQuery('');
-                    const params = new URLSearchParams(window.location.search);
-                    params.delete('location');
-                    const qs = params.toString();
-                    navigate(qs ? `/find?${qs}` : '/find');
+                    setShowMap(!showMap);
+                    setSelectedMapWorker(null);
                   }}
-                  title="Clear location filter"
+                  title={showMap ? "Hide Map in Sidebar" : "Show Map in Sidebar"}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                 >
-                  Clear
+                  <md-icon style={{ fontSize: '14px' }}>{showMap ? 'visibility_off' : 'map'}</md-icon>
+                  <span>{showMap ? 'Hide map' : 'Map'}</span>
                 </button>
-              )}
+
+                {appliedLocationQuery && (
+                  <button
+                    type="button"
+                    className="uber-sidebar-clear-btn"
+                    onClick={() => {
+                      setLocationQuery('');
+                      setAppliedLocationQuery('');
+                      const params = new URLSearchParams(window.location.search);
+                      params.delete('location');
+                      const qs = params.toString();
+                      navigate(qs ? `/find?${qs}` : '/find');
+                    }}
+                    title="Clear location filter"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
             </div>
 
-            <div className="location-selector-wrap" style={{ padding: '6px 8px 8px' }}>
+            <div className="location-selector-wrap" style={{ padding: '6px 8px 6px' }}>
               <LocationSelector
                 location={appliedLocationQuery || 'Colombo'}
                 onChange={(newLoc) => {
@@ -1005,12 +1032,84 @@ export default function Find() {
                 }}
               />
             </div>
+
+            {/* Interactive Map in Left Sidebar */}
+            {showMap && (
+              <div className="sidebar-map-wrapper">
+                <div className="sidebar-map-container">
+                  {/* Map Header Status Badge */}
+                  <div className="sidebar-map-badge">
+                    <span className="pulse-dot"></span>
+                    <span>{filteredWorkers.length} near {appliedLocationQuery || 'you'}</span>
+                  </div>
+
+                  {/* Leaflet Map Canvas */}
+                  <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }}></div>
+
+                  {/* Map Controls */}
+                  <div className="sidebar-map-controls">
+                    <button type="button" className="sidebar-map-btn" onClick={handleZoomIn} title="Zoom In">+</button>
+                    <button type="button" className="sidebar-map-btn" onClick={handleZoomOut} title="Zoom Out">–</button>
+                    <button type="button" className="sidebar-map-btn" onClick={handleRecenter} title="Find My Location">
+                      <md-icon style={{ fontSize: '16px', color: isLocating ? '#2563eb' : '#000000' }}>my_location</md-icon>
+                    </button>
+                  </div>
+
+                  {/* Floating Map Worker Card Popup when a pin is clicked */}
+                  {selectedMapWorker && (
+                    <div className="sidebar-map-popup-card">
+                      <button
+                        type="button"
+                        className="popup-close"
+                        onClick={() => setSelectedMapWorker(null)}
+                        aria-label="Close"
+                      >
+                        <md-icon style={{ fontSize: '15px' }}>close</md-icon>
+                      </button>
+
+                      <div className="popup-worker-info">
+                        {selectedMapWorker.profilePicture || selectedMapWorker.profileImage ? (
+                          <img
+                            src={selectedMapWorker.profilePicture || selectedMapWorker.profileImage}
+                            alt={selectedMapWorker.name}
+                            className="popup-avatar"
+                          />
+                        ) : (
+                          <div className="popup-avatar">
+                            {selectedMapWorker.name ? selectedMapWorker.name.charAt(0).toUpperCase() : 'W'}
+                          </div>
+                        )}
+                        <div className="popup-details">
+                          <h4 className="popup-name">{selectedMapWorker.name}</h4>
+                          <p className="popup-skill">
+                            ★ {selectedMapWorker.overallRating ? selectedMapWorker.overallRating.toFixed(1) : '5.0'} • {selectedMapWorker.skills && selectedMapWorker.skills.length > 0 ? selectedMapWorker.skills[0].skillName : 'Worker'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="popup-actions">
+                        <span className="popup-price">
+                          Rs. {getWorkerRate(selectedMapWorker, rateType)?.toLocaleString() || '0'}/h
+                        </span>
+                        <button
+                          type="button"
+                          className="popup-view-btn"
+                          onClick={() => navigate(`/worker-detail?id=${selectedMapWorker.id}`)}
+                        >
+                          View Profile
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           <hr className="uber-sidebar-divider" />
 
           {/* Worker Status Section */}
-          <div className="uber-sidebar-section">
+          <div className="uber-sidebar-section worker-status-section">
             <div className="uber-sidebar-section-title">
               <span>Worker Status</span>
             </div>
@@ -1032,6 +1131,19 @@ export default function Find() {
                   <span>All Baas</span>
                 </div>
                 <span className="uber-sidebar-badge">{workers.length}</span>
+              </div>
+
+              {/* Verified Workers */}
+              <div
+                className={`uber-sidebar-item ${selectedBadge === 'verified' ? 'active' : ''}`}
+                onClick={() => setSelectedBadge(selectedBadge === 'verified' ? 'all' : 'verified')}
+                title="Filter by verified workers"
+              >
+                <div className="uber-sidebar-item-left">
+                  <md-icon>verified</md-icon>
+                  <span>Verified</span>
+                </div>
+                <span className="uber-sidebar-badge">{verifiedCount}</span>
               </div>
 
               {/* Starred / Saved Baas */}
@@ -1071,66 +1183,6 @@ export default function Find() {
                   <span>Top Rated (4.5★)</span>
                 </div>
                 <span className="uber-sidebar-badge">{topRatedCount}</span>
-              </div>
-            </div>
-          </div>
-
-          <hr className="uber-sidebar-divider" />
-
-          {/* Badges Section */}
-          <div className="uber-sidebar-section">
-            <div className="uber-sidebar-section-title">
-              <span>Badges</span>
-              {selectedBadge !== 'all' && (
-                <button
-                  type="button"
-                  className="uber-sidebar-clear-btn"
-                  onClick={() => setSelectedBadge('all')}
-                  title="Clear badge filter"
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-
-            <div className="uber-cat-list">
-              <div
-                className={`uber-cat-item ${selectedBadge === 'all' ? 'active' : ''}`}
-                onClick={() => setSelectedBadge('all')}
-                title="All badges"
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <md-icon>verified_user</md-icon>
-                  <span>All Badges</span>
-                </div>
-                <span className="uber-sidebar-badge">{workers.length}</span>
-              </div>
-
-              <div
-                className={`uber-cat-item ${selectedBadge === 'verified' ? 'active' : ''}`}
-                onClick={() => setSelectedBadge(selectedBadge === 'verified' ? 'all' : 'verified')}
-                title="Verified Pro Workers"
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <md-icon>verified</md-icon>
-                  <span>Verified Pro</span>
-                </div>
-                <span className="uber-sidebar-badge">{verifiedCount}</span>
-              </div>
-
-              <div
-                className={`uber-cat-item ${selectedBadge === 'top_craftsman' ? 'active' : ''}`}
-                onClick={() => setSelectedBadge(selectedBadge === 'top_craftsman' ? 'all' : 'top_craftsman')}
-                title="Top Craftsman (Rating 4.8+)"
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <md-icon>military_tech</md-icon>
-                  <span>Top Craftsman</span>
-                </div>
-                <span className="uber-sidebar-badge">{topCraftsmanCount}</span>
               </div>
             </div>
           </div>
@@ -1360,19 +1412,6 @@ export default function Find() {
                   <i className="fa-solid fa-list-ul"></i>
                 </button>
               </div>
-
-              <button
-                type="button"
-                className="uber-btn-outline"
-                onClick={() => {
-                  setShowMap(!showMap);
-                  setSelectedMapWorker(null);
-                }}
-                title={showMap ? "Switch to Cards Grid View" : "View Workers on Map"}
-              >
-                <md-icon style={{ fontSize: '18px' }}>{showMap ? 'grid_view' : 'map'}</md-icon>
-                <span>{showMap ? 'Hide map' : 'Show map'}</span>
-              </button>
             </div>
           </div>
 
@@ -1536,7 +1575,7 @@ export default function Find() {
                   fontWeight: 600
                 }}>
                   <md-icon style={{ fontSize: '16px' }}>verified</md-icon>
-                  <span>Badge: {selectedBadge === 'verified' ? 'Verified Pro' : 'Top Craftsman'}</span>
+                  <span>Verified</span>
                   <md-icon
                     style={{ fontSize: '16px', cursor: 'pointer', marginLeft: '4px' }}
                     onClick={() => setSelectedBadge('all')}
@@ -1606,114 +1645,6 @@ export default function Find() {
               >
                 Reset All Filters
               </button>
-            </div>
-          ) : showMap ? (
-            /* Split View Mode: Middle Cards Column + Right Map Pane */
-            <div className="find-split-view-container">
-              {/* Middle Cards Column */}
-              <div className="find-middle-cards-col">
-                <div style={{ display: 'grid', gap: '20px', gridTemplateColumns: '1fr' }}>
-                  {paginatedWorkers.map(worker => renderWorkerCard(worker))}
-                </div>
-                {renderPagination()}
-              </div>
-
-              {/* Right Map Pane */}
-              <aside className="find-map-pane">
-                {/* Map Search Input */}
-                <div className="map-search-overlay">
-                  <md-icon style={{ fontSize: '18px', color: '#94a3b8' }}>search</md-icon>
-                  <input
-                    type="text"
-                    placeholder="Search address or workers..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    style={{ border: 'none', background: 'transparent', width: '100%', outline: 'none', fontSize: '0.875rem', color: '#0f172a' }}
-                  />
-                  {isLocating && (
-                    <md-circular-progress indeterminate style={{ '--md-circular-progress-size': '18px', width: '18px', height: '18px' }}></md-circular-progress>
-                  )}
-                </div>
-
-                {/* Floating Map Worker Card Popup */}
-                {selectedMapWorker && (
-                  <div className="map-floating-worker-card">
-                    <button
-                      className="map-floating-close-btn"
-                      onClick={() => setSelectedMapWorker(null)}
-                    >
-                      <md-icon style={{ fontSize: '16px' }}>close</md-icon>
-                    </button>
-
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#b45309', background: '#fffbeb', padding: '2px 8px', borderRadius: '12px' }}>
-                        ★ {selectedMapWorker.overallRating ? selectedMapWorker.overallRating.toFixed(1) : '5.0'} ({Math.round((selectedMapWorker.id * 37) % 150 + 20)})
-                      </div>
-                      <button
-                        onClick={(e) => toggleFavorite(e, selectedMapWorker.id)}
-                        style={{ background: 'none', border: 'none', color: favorites[selectedMapWorker.id] ? '#ef4444' : '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                      >
-                        <md-icon style={{ fontSize: '18px', color: favorites[selectedMapWorker.id] ? '#ef4444' : '#94a3b8' }}>{favorites[selectedMapWorker.id] ? 'favorite' : 'favorite_border'}</md-icon>
-                      </button>
-                    </div>
-
-                    <div style={{ width: '100%', height: '110px', borderRadius: '12px', background: '#f8fafc', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px' }}>
-                      {selectedMapWorker.profilePicture || selectedMapWorker.profileImage ? (
-                        <img
-                          src={selectedMapWorker.profilePicture || selectedMapWorker.profileImage}
-                          alt={selectedMapWorker.name}
-                          style={{ maxHeight: '95px', objectFit: 'contain' }}
-                        />
-                      ) : (
-                        <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: '#0f172a', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', fontWeight: 800 }}>
-                          {selectedMapWorker.name ? selectedMapWorker.name.charAt(0).toUpperCase() : 'W'}
-                        </div>
-                      )}
-                    </div>
-
-                    <h4 style={{ margin: '0 0 2px 0', fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>
-                      {selectedMapWorker.name}
-                    </h4>
-                    <p style={{ margin: '0 0 12px 0', fontSize: '0.78rem', color: '#64748b' }}>
-                      {selectedMapWorker.skills && selectedMapWorker.skills.length > 0 ? selectedMapWorker.skills[0].skillName : 'General Pro'}
-                    </p>
-
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                      <button
-                        onClick={() => navigate(`/worker-detail?id=${selectedMapWorker.id}`)}
-                        style={{
-                          flex: 1,
-                          background: '#0f172a',
-                          color: '#ffffff',
-                          border: 'none',
-                          borderRadius: '10px',
-                          padding: '8px 12px',
-                          fontWeight: 700,
-                          fontSize: '0.85rem',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Book
-                      </button>
-                      <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a', whiteSpace: 'nowrap' }}>
-                        Rs. {getWorkerRate(selectedMapWorker, rateType).toLocaleString()}/h
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Leaflet Map Canvas Div */}
-                <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }}></div>
-
-                {/* Map Controls */}
-                <div className="map-controls-group">
-                  <button className="map-control-btn" onClick={handleZoomIn} title="Zoom In">+</button>
-                  <button className="map-control-btn" onClick={handleZoomOut} title="Zoom Out">–</button>
-                  <button className="map-control-btn" onClick={handleRecenter} title="Find My Real Location">
-                    <md-icon style={{ fontSize: '18px', color: isLocating ? '#2563eb' : '#0f172a' }}>my_location</md-icon>
-                  </button>
-                </div>
-              </aside>
             </div>
           ) : (
             /* Full Width Grid Mode */
