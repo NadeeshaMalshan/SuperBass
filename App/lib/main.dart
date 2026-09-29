@@ -3,6 +3,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'models/app_notification_model.dart';
 import 'models/auth_user.dart';
 import 'models/booking_model.dart';
@@ -1915,90 +1916,98 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                     
                     // Map Preview Card
                     const SizedBox(height: 24),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      width: 38,
-                                      height: 38,
-                                      decoration: BoxDecoration(
-                                        color: Colors.black,
-                                        borderRadius: BorderRadius.circular(12),
+                    GestureDetector(
+                      onTap: () async {
+                        final url = Uri.parse('https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(b.locationAddress)}');
+                        if (await canLaunchUrl(url)) {
+                          await launchUrl(url);
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 38,
+                                        height: 38,
+                                        decoration: BoxDecoration(
+                                          color: Colors.black,
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: const Icon(Icons.map_outlined, color: Colors.white, size: 20),
                                       ),
-                                      child: const Icon(Icons.map_outlined, color: Colors.white, size: 20),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text('Service Location & Map Preview', style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w800, color: const Color(0xFF111827))),
-                                          Text(b.locationAddress, style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF71717A)), overflow: TextOverflow.ellipsis),
-                                        ],
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text('Service Location & Map Preview', style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w800, color: const Color(0xFF111827))),
+                                            Text(b.locationAddress, style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF71717A)), overflow: TextOverflow.ellipsis),
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.black,
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.open_in_new, color: Colors.white, size: 16),
-                                    const SizedBox(width: 6),
-                                    Text('View on Google Maps', style: GoogleFonts.dmSans(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          Container(
-                            height: 200,
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE4E4E7),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.location_on, color: Color(0xFFE11D48), size: 48),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(4),
-                                      boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
-                                    ),
-                                    child: Text(
-                                      'Service Location',
-                                      style: GoogleFonts.dmSans(fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFFE11D48)),
-                                    ),
+                                    ],
                                   ),
-                                ],
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black,
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.open_in_new, color: Colors.white, size: 16),
+                                      const SizedBox(width: 6),
+                                      Text('View on Google Maps', style: GoogleFonts.dmSans(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Container(
+                              height: 200,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE4E4E7),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.location_on, color: Color(0xFFE11D48), size: 48),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(4),
+                                        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                                      ),
+                                      child: Text(
+                                        'Service Location',
+                                        style: GoogleFonts.dmSans(fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFFE11D48)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                     
@@ -2703,7 +2712,16 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
                           itemCount: _conversations.length,
                           itemBuilder: (context, index) {
                             final c = _conversations[index];
-                            final name = c['workerName']?.toString() ?? c['otherPartyName']?.toString() ?? 'Worker';
+                            final user = AuthService().currentUser;
+                            final isWorkerMode = user?.activeRole == 'Worker';
+
+                            final name = isWorkerMode
+                                ? (c['residentName']?.toString() ?? c['otherPartyName']?.toString() ?? 'Resident')
+                                : (c['workerName']?.toString() ?? c['otherPartyName']?.toString() ?? 'Worker');
+                            
+                            final profileImageKey = isWorkerMode ? 'residentProfileImage' : 'workerProfileImage';
+                            final profileImage = c[profileImageKey]?.toString();
+
                             final lastMsg = c['lastMessage']?.toString() ?? 'Conversation started';
                             final unread = c['unreadCount'] is int ? c['unreadCount'] as int : 0;
                             final timeStr = _formatMessageTime(c['updatedAt']?.toString() ?? c['lastMessageAt']?.toString());
@@ -2713,12 +2731,12 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
                               leading: CircleAvatar(
                                 radius: 26,
                                 backgroundColor: AppColors.surfaceVariant,
-                                backgroundImage: (c['workerProfileImage'] != null && c['workerProfileImage'].toString().isNotEmpty && c['workerProfileImage'].toString() != 'null')
-                                    ? NetworkImage(c['workerProfileImage'].toString())
+                                backgroundImage: (profileImage != null && profileImage.isNotEmpty && profileImage != 'null')
+                                    ? NetworkImage(profileImage)
                                     : null,
-                                child: (c['workerProfileImage'] == null || c['workerProfileImage'].toString().isEmpty || c['workerProfileImage'].toString() == 'null')
+                                child: (profileImage == null || profileImage.isEmpty || profileImage == 'null')
                                     ? Text(
-                                        name.isNotEmpty ? name[0].toUpperCase() : 'W',
+                                        name.isNotEmpty ? name[0].toUpperCase() : (isWorkerMode ? 'R' : 'W'),
                                         style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 18, color: AppColors.onSurfaceVariant),
                                       )
                                     : null,
@@ -2792,7 +2810,7 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
                                     builder: (context) => ChatScreen(
                                       conversationId: convId,
                                       name: name,
-                                      profileImage: c['workerProfileImage']?.toString(),
+                                      profileImage: profileImage,
                                     ),
                                   ),
                                 );

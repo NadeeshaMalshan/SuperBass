@@ -873,6 +873,27 @@ class _ChatScreenState extends State<ChatScreen> {
                                 ),
                               ),
                             ],
+                            if (!isMe)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 8, bottom: 20),
+                                child: CircleAvatar(
+                                  radius: 14,
+                                  backgroundColor: AppColors.surfaceVariant,
+                                  backgroundImage: widget.profileImage != null && widget.profileImage!.isNotEmpty && widget.profileImage != 'null'
+                                      ? NetworkImage(widget.profileImage!)
+                                      : null,
+                                  child: widget.profileImage == null || widget.profileImage!.isEmpty || widget.profileImage == 'null'
+                                      ? Text(
+                                          widget.name.isNotEmpty ? widget.name[0].toUpperCase() : 'W',
+                                          style: GoogleFonts.dmSans(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 12,
+                                            color: AppColors.onSurfaceVariant,
+                                          ),
+                                        )
+                                      : null,
+                                ),
+                              ),
                             Flexible(
                               child: Column(
                                 crossAxisAlignment: isMe
