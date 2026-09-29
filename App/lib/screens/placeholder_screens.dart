@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../models/auth_user.dart';
@@ -81,8 +82,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _phoneController,
-                decoration: const InputDecoration(labelText: 'Phone Number', border: OutlineInputBorder()),
+                decoration: const InputDecoration(labelText: 'Phone Number (10 digits)', hintText: '07XXXXXXXX', border: OutlineInputBorder()),
                 keyboardType: TextInputType.phone,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(10),
+                ],
+                validator: (val) {
+                  if (val != null && val.trim().isNotEmpty && !RegExp(r'^0\d{9}$').hasMatch(val.trim())) {
+                    return 'Phone number must be exactly 10 digits starting with 0';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 32),
               ElevatedButton(
@@ -171,7 +182,7 @@ class _SavedAddressesScreenState extends State<SavedAddressesScreen> {
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   decoration: const InputDecoration(labelText: 'Province', border: OutlineInputBorder()),
-                  value: selectedProvince,
+                  initialValue: selectedProvince,
                   items: sriLankaGeoData.keys.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
                   onChanged: (val) {
                     setSheetState(() {
@@ -183,7 +194,7 @@ class _SavedAddressesScreenState extends State<SavedAddressesScreen> {
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   decoration: const InputDecoration(labelText: 'District', border: OutlineInputBorder()),
-                  value: selectedDistrict,
+                  initialValue: selectedDistrict,
                   items: (selectedProvince == null ? <String>[] : sriLankaGeoData[selectedProvince]!)
                       .map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
                   onChanged: selectedProvince == null ? null : (val) {

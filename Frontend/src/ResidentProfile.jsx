@@ -335,6 +335,13 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
+    if (profile.phoneNo && profile.phoneNo.trim()) {
+      const phoneRegex = /^0\d{9}$/;
+      if (!phoneRegex.test(profile.phoneNo.trim())) {
+        alert('Phone number must be exactly 10 digits starting with 0 (e.g., 0771234567).');
+        return;
+      }
+    }
     try {
       await axios.put(`${API_BASE_URL}/residents/${encodeURIComponent(userEmail)}`, profile, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
@@ -1002,9 +1009,16 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                 ></md-filled-text-field>
 
                 <md-filled-text-field
-                  label="Phone Number"
+                  label="Phone Number (10 digits)"
+                  type="tel"
+                  maxLength={10}
                   value={profile.phoneNo}
-                  onInput={(e) => setProfile({ ...profile, phoneNo: e.target.value })}
+                  error={profile.phoneNo ? !/^0\d{9}$/.test(profile.phoneNo) : false}
+                  error-text={profile.phoneNo && !/^0\d{9}$/.test(profile.phoneNo) ? "Must be 10 digits starting with 0" : ""}
+                  onInput={(e) => {
+                    const clean = e.target.value.replace(/\D/g, '').slice(0, 10);
+                    setProfile({ ...profile, phoneNo: clean });
+                  }}
                 ></md-filled-text-field>
 
                 <md-filled-text-field

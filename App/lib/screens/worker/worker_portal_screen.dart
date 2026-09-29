@@ -4,6 +4,7 @@ import '../../models/worker_model.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../theme/worker_colors.dart';
+import '../../widgets/m3_bottom_nav_bar.dart';
 import 'worker_dashboard_screen.dart';
 import 'worker_jobs_screen.dart';
 import 'worker_performance_screen.dart';
@@ -146,7 +147,7 @@ class _WorkerPortalScreenState extends State<WorkerPortalScreen> {
                 'assets/images/icon.png',
                 width: 22,
                 height: 22,
-                errorBuilder: (_, __, ___) => const Icon(Icons.bolt_rounded, size: 20, color: WorkerColors.onSurface),
+                errorBuilder: (context, error, stackTrace) => const Icon(Icons.bolt_rounded, size: 20, color: WorkerColors.onSurface),
               ),
             ),
             const SizedBox(width: 8),
@@ -285,155 +286,45 @@ class _WorkerPortalScreenState extends State<WorkerPortalScreen> {
           ),
         ),
       ),
-      body: Stack(
-        children: [
-          // Page Content
-          IndexedStack(
-            index: _currentIndex,
-            children: pages,
+      body: IndexedStack(
+        index: _currentIndex,
+        children: pages,
+      ),
+      bottomNavigationBar: M3BottomNavigationBar(
+        selectedIndex: _currentIndex,
+        onItemSelected: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+        items: const [
+          M3BottomNavItem(
+            label: 'Dashboard',
+            icon: Icons.space_dashboard_outlined,
+            selectedIcon: Icons.space_dashboard_rounded,
           ),
-
-          // Floating Pill Bottom Navigation Bar (Worker Palette)
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: _buildWorkerBottomNav(),
+          M3BottomNavItem(
+            label: 'My Jobs',
+            icon: Icons.work_outline_rounded,
+            selectedIcon: Icons.work_rounded,
+          ),
+          M3BottomNavItem(
+            label: 'Community',
+            icon: Icons.groups_outlined,
+            selectedIcon: Icons.groups_rounded,
+          ),
+          M3BottomNavItem(
+            label: 'Performance',
+            icon: Icons.star_outline_rounded,
+            selectedIcon: Icons.star_rounded,
+          ),
+          M3BottomNavItem(
+            label: 'Profile',
+            icon: Icons.manage_accounts_outlined,
+            selectedIcon: Icons.manage_accounts_rounded,
           ),
         ],
       ),
     );
   }
-
-  Widget _buildWorkerBottomNav() {
-    final bottomInset = MediaQuery.of(context).padding.bottom;
-
-    final navItems = [
-      _WorkerNavItem(
-        label: 'Dashboard',
-        icon: Icons.space_dashboard_outlined,
-        selectedIcon: Icons.space_dashboard_rounded,
-      ),
-      _WorkerNavItem(
-        label: 'My Jobs',
-        icon: Icons.work_outline_rounded,
-        selectedIcon: Icons.work_rounded,
-      ),
-      _WorkerNavItem(
-        label: 'Community',
-        icon: Icons.groups_outlined,
-        selectedIcon: Icons.groups_rounded,
-      ),
-      _WorkerNavItem(
-        label: 'Performance',
-        icon: Icons.star_outline_rounded,
-        selectedIcon: Icons.star_rounded,
-      ),
-      _WorkerNavItem(
-        label: 'Profile',
-        icon: Icons.manage_accounts_outlined,
-        selectedIcon: Icons.manage_accounts_rounded,
-      ),
-    ];
-
-    return Container(
-      color: Colors.transparent,
-      padding: EdgeInsets.fromLTRB(
-        16,
-        4,
-        16,
-        bottomInset > 0 ? bottomInset : 16,
-      ),
-      child: Container(
-        height: 66,
-        decoration: BoxDecoration(
-          color: WorkerColors.surface,
-          borderRadius: BorderRadius.circular(33),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF0F172A).withValues(alpha: 0.08),
-              blurRadius: 22,
-              offset: const Offset(0, 6),
-            ),
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: List.generate(navItems.length, (index) {
-            final item = navItems[index];
-            final bool isSelected = _currentIndex == index;
-
-            return Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
-                child: InkWell(
-                  onTap: () => setState(() => _currentIndex = index),
-                  splashColor: Colors.transparent,
-                  highlightColor: Colors.transparent,
-                  borderRadius: BorderRadius.circular(24),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeInOut,
-                    decoration: BoxDecoration(
-                      color: isSelected ? WorkerColors.primaryContainer : Colors.transparent,
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: isSelected
-                          ? [
-                              BoxShadow(
-                                color: WorkerColors.primary.withValues(alpha: 0.15),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ]
-                          : null,
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 5),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          isSelected ? item.selectedIcon : item.icon,
-                          size: 22,
-                          color: isSelected ? WorkerColors.primary : WorkerColors.onSurfaceVariant,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          item.label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.dmSans(
-                            fontSize: 11,
-                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                            color: isSelected ? WorkerColors.primary : WorkerColors.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }),
-        ),
-      ),
-    );
-  }
-}
-
-class _WorkerNavItem {
-  final String label;
-  final IconData icon;
-  final IconData selectedIcon;
-
-  const _WorkerNavItem({
-    required this.label,
-    required this.icon,
-    required this.selectedIcon,
-  });
 }

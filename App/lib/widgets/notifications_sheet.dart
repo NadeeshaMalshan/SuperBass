@@ -297,7 +297,7 @@ class _NotificationsSheetState extends State<NotificationsSheet> {
                 : ListView.separated(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     itemCount: notifications.length,
-                    separatorBuilder: (_, __) => const Divider(
+                    separatorBuilder: (context, index) => const Divider(
                       height: 1,
                       indent: 72,
                       endIndent: 20,

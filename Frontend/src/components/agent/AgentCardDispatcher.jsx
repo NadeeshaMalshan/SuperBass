@@ -24,7 +24,6 @@ export default function AgentCardDispatcher({ response, onAction }) {
     case 'initial_welcome':
       return <InitialWelcomeCard data={card_data} onAction={onAction} />;
           case 'create_community_post':
-          case 'edit_community_post':
           case 'post_confirmation':
             return <CreateCommunityPostCard data={card_data} onAction={onAction} />;
           case 'post_created':

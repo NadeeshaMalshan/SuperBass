@@ -325,8 +325,20 @@ export default function WorkerProfile() {
             </div>
 
             <div className="worker-input-group">
-              <label className="worker-label">Phone Number</label>
-              <input type="text" className="worker-input" value={bio.phone} onChange={(e) => setBio({ ...bio, phone: e.target.value })} />
+              <label className="worker-label">Phone Number (10 digits)</label>
+              <input 
+                type="tel" 
+                maxLength={10} 
+                className="worker-input" 
+                placeholder="07XXXXXXXX"
+                value={bio.phone} 
+                onChange={(e) => setBio({ ...bio, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })} 
+              />
+              {bio.phone && !/^0\d{9}$/.test(bio.phone) && (
+                <span style={{ fontSize: '0.8rem', color: '#dc2626', marginTop: '4px' }}>
+                  Must be exactly 10 digits starting with 0
+                </span>
+              )}
             </div>
 
             <div className="worker-input-group">
@@ -340,7 +352,16 @@ export default function WorkerProfile() {
             <textarea className="worker-textarea" rows="4" value={bio.description} onChange={(e) => setBio({ ...bio, description: e.target.value })}></textarea>
           </div>
 
-          <button className="worker-btn-primary" onClick={() => setSaveStatus('Bio details updated successfully!')}>
+          <button 
+            className="worker-btn-primary" 
+            onClick={() => {
+              if (bio.phone && !/^0\d{9}$/.test(bio.phone)) {
+                setSaveStatus('Phone number must be exactly 10 digits starting with 0.');
+                return;
+              }
+              setSaveStatus('Bio details updated successfully!');
+            }}
+          >
             Save Bio Changes
           </button>
         </div>

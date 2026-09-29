@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'models/app_notification_model.dart';
 import 'models/auth_user.dart';
@@ -9,6 +10,7 @@ import 'models/worker_model.dart';
 import 'screens/chat_screen.dart';
 import 'screens/community_screen.dart';
 import 'screens/join_screen.dart';
+import 'screens/onboarding_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/worker/worker_portal_screen.dart';
 import 'screens/worker/become_worker_sheet.dart';
@@ -25,6 +27,7 @@ import 'widgets/app_components.dart';
 import 'widgets/notifications_sheet.dart';
 import 'widgets/m3_bottom_nav_bar.dart';
 import 'package:loading_indicator_m3e/loading_indicator_m3e.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -67,6 +70,7 @@ class SuperBassApp extends StatelessWidget {
       routes: {
         '/': (context) => const MainNavigationShell(),
         '/join': (context) => const JoinScreen(),
+        '/onboarding': (context) => const OnboardingScreen(),
       },
     );
   }
@@ -345,7 +349,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
                       'assets/icons/AI.png',
                       width: 40,
                       height: 40,
-                      errorBuilder: (_, __, ___) => const Icon(Icons.auto_awesome, size: 30),
+                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.auto_awesome, size: 30),
                     ),
                     const SizedBox(width: 12),
                     Column(
@@ -481,13 +485,63 @@ class _FindTabScreenState extends State<FindTabScreen> {
     );
   }
 
-  void _showBookingSheet(WorkerModel worker) {
+  void _showBookingSheet(WorkerModel worker) async {
+    final prefs = await SharedPreferences.getInstance();
+    final user = AuthService().currentUser;
+    final userEmail = user?.email ?? prefs.getString('email') ?? '';
+
+    String initialPhone = prefs.getString('phoneNo') ?? prefs.getString('userPhone') ?? '';
+    String initialAddress = prefs.getString('address') ?? prefs.getString('userAddress') ?? '';
+    double? initialLat = user?.locationLat ?? prefs.getDouble('locationLat') ?? (prefs.getString('locationLat') != null ? double.tryParse(prefs.getString('locationLat')!) : null);
+    double? initialLng = user?.locationLng ?? prefs.getDouble('locationLng') ?? (prefs.getString('locationLng') != null ? double.tryParse(prefs.getString('locationLng')!) : null);
+
+    if (userEmail.isNotEmpty) {
+      try {
+        final profile = await ApiService().getResidentProfile(userEmail);
+        if (profile != null) {
+          final pPhone = profile['phoneNo'] as String?;
+          if (pPhone != null && pPhone.isNotEmpty) {
+            initialPhone = pPhone;
+            await prefs.setString('phoneNo', initialPhone);
+          }
+          final pAddr = profile['address'] as String?;
+          if (pAddr != null && pAddr.isNotEmpty) {
+            initialAddress = pAddr;
+            await prefs.setString('address', initialAddress);
+          }
+          if (profile['locationLat'] != null) {
+            initialLat = (profile['locationLat'] as num).toDouble();
+            await prefs.setDouble('locationLat', initialLat);
+          }
+          if (profile['locationLng'] != null) {
+            initialLng = (profile['locationLng'] as num).toDouble();
+            await prefs.setDouble('locationLng', initialLng);
+          }
+        }
+      } catch (e) {
+        debugPrint('Error loading user profile for booking sheet: $e');
+      }
+    }
+
     final titleController = TextEditingController(text: 'Need help with ${worker.skills.isNotEmpty ? worker.skills.first : "home service"}');
     final descController = TextEditingController();
-    final phoneController = TextEditingController(text: '0771234567');
+    final phoneController = TextEditingController(text: initialPhone);
+    final addressController = TextEditingController(text: initialAddress);
+    
     DateTime? selectedDate = DateTime.now().add(const Duration(days: 1));
     TimeOfDay? selectedTime = TimeOfDay.now();
     bool isSubmitting = false;
+    String selectedUrgency = 'Medium';
+
+    // GPS location state
+    bool hasSavedCoordinates = initialLat != null && initialLng != null;
+    double locationLat = initialLat ?? 6.9271;
+    double locationLng = initialLng ?? 79.8612;
+
+    bool shareGps = hasSavedCoordinates;
+    bool showMapPicker = false;
+
+    if (!mounted) return;
 
     showModalBottomSheet(
       context: context,
@@ -510,114 +564,104 @@ class _FindTabScreenState extends State<FindTabScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.outlineVariant,
-                      borderRadius: BorderRadius.circular(2),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Request Service from ${worker.name}',
+                        style: GoogleFonts.dmSans(fontWeight: FontWeight.w800, fontSize: 22, color: const Color(0xFF111827)),
+                      ),
                     ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(sheetContext),
+                    ),
+                  ],
+                ),
+                const Divider(color: Color(0xFFF1F5F9)),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: titleController,
+                  decoration: InputDecoration(
+                    labelText: 'Job Title',
+                    hintText: 'e.g. Pipe leakage repair',
+                    prefixIcon: const Icon(Icons.work_outline),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                   ),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: descController,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    labelText: 'Description / Scope of Work',
+                    hintText: 'Describe details or location within house',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  ),
+                ),
+                const SizedBox(height: 16),
                 Row(
                   children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.primaryContainer,
-                      ),
-                      child: ClipOval(
-                        child: (worker.profileImage != null && worker.profileImage!.isNotEmpty && worker.profileImage != 'null')
-                            ? Image.network(
-                                worker.profileImage!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, _, _) => Center(
-                                  child: Text(
-                                    worker.name.isNotEmpty ? worker.name[0].toUpperCase() : 'W',
-                                    style: GoogleFonts.dmSans(fontWeight: FontWeight.w800, fontSize: 18),
-                                  ),
-                                ),
-                              )
-                            : Center(
-                                child: Text(
-                                  worker.name.isNotEmpty ? worker.name[0].toUpperCase() : 'W',
-                                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w800, fontSize: 18),
-                                ),
-                              ),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: selectedUrgency,
+                        items: ['Low', 'Medium', 'High'].map((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setModalState(() => selectedUrgency = val);
+                          }
+                        },
+                        decoration: InputDecoration(
+                          labelText: 'Urgency',
+                          prefixIcon: const Icon(Icons.priority_high),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 12),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Book ${worker.name}',
-                            style: GoogleFonts.dmSans(fontWeight: FontWeight.w800, fontSize: 18),
-                          ),
-                          Text(
-                            worker.skills.isNotEmpty ? worker.skills.join(', ') : 'Professional',
-                            style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.onSurfaceVariant),
-                          ),
+                      child: TextField(
+                        controller: phoneController,
+                        keyboardType: TextInputType.phone,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(10),
                         ],
+                        decoration: InputDecoration(
+                          labelText: 'Contact Phone',
+                          hintText: '07XXXXXXXX',
+                          prefixIcon: const Icon(Icons.phone),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
-                Text(
-                  'Job Title',
-                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 14),
-                ),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: titleController,
-                  decoration: const InputDecoration(hintText: 'e.g. Pipe leakage repair'),
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  'Job Description',
-                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 14),
-                ),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: descController,
-                  maxLines: 2,
-                  decoration: const InputDecoration(hintText: 'Describe details or location within house'),
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  'Contact Phone',
-                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 14),
-                ),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: phoneController,
-                  keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(hintText: '07x xxx xxxx'),
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  'Schedule Date & Time',
-                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 14),
-                ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 16),
                 Row(
                   children: [
                     Expanded(
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.calendar_today, size: 18),
-                        label: Text(
-                          selectedDate == null 
-                            ? 'Select Date' 
-                            : '${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}',
-                          style: GoogleFonts.dmSans(),
+                      child: TextField(
+                        readOnly: true,
+                        controller: TextEditingController(text: selectedDate == null ? '' : '${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}'),
+                        decoration: InputDecoration(
+                          labelText: 'Preferred Date',
+                          prefixIcon: const Icon(Icons.calendar_today),
+                          suffixIcon: const Icon(Icons.edit_calendar),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                         ),
-                        onPressed: () async {
+                        onTap: () async {
                           final d = await showDatePicker(
                             context: context, 
                             initialDate: selectedDate ?? DateTime.now(), 
@@ -626,105 +670,452 @@ class _FindTabScreenState extends State<FindTabScreen> {
                           );
                           if (d != null) setModalState(() => selectedDate = d);
                         },
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          foregroundColor: AppColors.onSurface,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.access_time, size: 18),
-                        label: Text(
-                          selectedTime == null ? 'Select Time' : selectedTime!.format(context),
-                          style: GoogleFonts.dmSans(),
+                      child: TextField(
+                        readOnly: true,
+                        controller: TextEditingController(text: selectedTime == null ? '' : selectedTime!.format(context)),
+                        decoration: InputDecoration(
+                          labelText: 'Preferred Time',
+                          prefixIcon: const Icon(Icons.schedule),
+                          suffixIcon: const Icon(Icons.access_time),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                         ),
-                        onPressed: () async {
+                        onTap: () async {
                           final t = await showTimePicker(
                             context: context, 
                             initialTime: selectedTime ?? TimeOfDay.now()
                           );
                           if (t != null) setModalState(() => selectedTime = t);
                         },
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          foregroundColor: AppColors.onSurface,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: ElevatedButton(
-                    onPressed: isSubmitting
-                        ? null
-                        : () async {
-                            setModalState(() => isSubmitting = true);
-                            
-                            DateTime? finalDate;
-                            if (selectedDate != null) {
-                              final time = selectedTime ?? TimeOfDay.now();
-                              finalDate = DateTime(
-                                selectedDate!.year, 
-                                selectedDate!.month, 
-                                selectedDate!.day, 
-                                time.hour, 
-                                time.minute
-                              );
-                            }
-
-                            final scaffoldMessenger = ScaffoldMessenger.of(context);
-                            final navigator = Navigator.of(sheetContext);
-
-                            final booking = await ApiService().createBooking(
-                              workerId: worker.id,
-                              jobTitle: titleController.text.trim(),
-                              description: descController.text.trim(),
-                              urgency: 'Medium', // Default to medium backend requirement
-                              scheduledDate: finalDate,
-                              contactPhone: phoneController.text.trim(),
-                              estimatedPrice: worker.hourlyRate > 0 ? worker.hourlyRate : 2500.0,
-                            );
-
-                            if (sheetContext.mounted) {
-                              navigator.pop();
-                            }
-                            if (mounted) {
-                              if (booking != null) {
-                                scaffoldMessenger.showSnackBar(
-                                  SnackBar(
-                                    content: Text('Booking #${booking.id} created with ${worker.name}!'),
-                                    backgroundColor: AppColors.success,
-                                  ),
-                                );
-                              } else {
-                                scaffoldMessenger.showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Failed to create booking. Check backend connection.'),
-                                    backgroundColor: AppColors.error,
-                                  ),
-                                );
-                              }
-                            }
-                          },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.brandYellow,
-                      foregroundColor: AppColors.onPrimary,
-                      shape: const StadiumBorder(),
-                    ),
-                    child: isSubmitting
-                        ? const SizedBox(width: 22, height: 22, child: LoadingIndicatorM3E())
-                        : Text(
-                            'Confirm & Send Request',
-                            style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.onPrimary),
-                          ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: addressController,
+                  decoration: InputDecoration(
+                    labelText: 'Location Address',
+                    hintText: 'e.g. 123 Galle Road, Colombo',
+                    prefixIcon: const Icon(Icons.location_on),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                   ),
+                ),
+                const SizedBox(height: 14),
+
+                // GPS Location Share & Map Picker (Faithfully replicating web booking form)
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Checkbox(
+                            value: shareGps,
+                            activeColor: Colors.black,
+                            checkColor: Colors.white,
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            visualDensity: VisualDensity.compact,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                            side: const BorderSide(color: Color(0xFF94A3B8), width: 1.5),
+                            onChanged: (val) {
+                              setModalState(() {
+                                shareGps = val ?? false;
+                              });
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                setModalState(() {
+                                  shareGps = !shareGps;
+                                });
+                              },
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.my_location, size: 18, color: Colors.black),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Share saved GPS location',
+                                        style: GoogleFonts.dmSans(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 14,
+                                          color: const Color(0xFF0F172A),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 2),
+                                  if (hasSavedCoordinates)
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.pin_drop, size: 14, color: Colors.black),
+                                        const SizedBox(width: 4),
+                                        RichText(
+                                          text: TextSpan(
+                                            style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF64748B)),
+                                            children: [
+                                              const TextSpan(text: 'Saved Pin: '),
+                                              TextSpan(
+                                                text: '${locationLat.toStringAsFixed(5)}, ${locationLng.toStringAsFixed(5)}',
+                                                style: GoogleFonts.dmSans(
+                                                  fontWeight: FontWeight.w700,
+                                                  color: const Color(0xFF0F172A),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  else
+                                    Text(
+                                      'No GPS coordinates saved. Pick on map to attach.',
+                                      style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF64748B)),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          TextButton.icon(
+                            onPressed: () {
+                              setModalState(() {
+                                showMapPicker = !showMapPicker;
+                              });
+                            },
+                            icon: Icon(
+                              showMapPicker ? Icons.expand_less : Icons.map_outlined,
+                              size: 16,
+                              color: Colors.black,
+                            ),
+                            label: Text(
+                              showMapPicker ? 'Hide Map' : (hasSavedCoordinates ? 'View / Change Pin' : 'Pick on Map'),
+                              style: GoogleFonts.dmSans(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                                color: Colors.black,
+                              ),
+                            ),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // Expandable Interactive Map & Geolocation
+                      if (showMapPicker) ...[
+                        const SizedBox(height: 12),
+                        Container(height: 1, color: const Color(0xFFE2E8F0)),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.touch_app, size: 15, color: Colors.black),
+                                  const SizedBox(width: 4),
+                                  Flexible(
+                                    child: Text(
+                                      'Tap anywhere on map to pin',
+                                      style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF64748B)),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            InkWell(
+                              onTap: () {
+                                setModalState(() {
+                                  locationLat = 6.9271;
+                                  locationLng = 79.8612;
+                                  hasSavedCoordinates = true;
+                                  shareGps = true;
+                                });
+                              },
+                              borderRadius: BorderRadius.circular(8),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF1F5F9),
+                                  border: Border.all(color: const Color(0xFFCBD5E1)),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.gps_fixed, size: 13, color: Colors.black),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Use Device GPS',
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Container(
+                          height: 180,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFCBD5E1)),
+                            color: const Color(0xFFE5E7EB),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: GestureDetector(
+                            onTapDown: (details) {
+                              final normX = (details.localPosition.dx / 280.0) - 0.5;
+                              final normY = (details.localPosition.dy / 180.0) - 0.5;
+                              setModalState(() {
+                                locationLat = locationLat + (normY * 0.02);
+                                locationLng = locationLng + (normX * 0.02);
+                                hasSavedCoordinates = true;
+                                shareGps = true;
+                              });
+                            },
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Container(
+                                  decoration: const BoxDecoration(
+                                    image: DecorationImage(
+                                      image: NetworkImage('https://tile.openstreetmap.org/13/4688/3187.png'),
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                ),
+                                Container(color: Colors.black.withValues(alpha: 0.03)),
+                                Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: const BoxDecoration(
+                                        color: Colors.black,
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 3)),
+                                        ],
+                                      ),
+                                      child: const Icon(Icons.location_on, color: Colors.white, size: 18),
+                                    ),
+                                    Container(
+                                      width: 6,
+                                      height: 3,
+                                      decoration: const BoxDecoration(color: Colors.black38, shape: BoxShape.circle),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.location_on, size: 15, color: Colors.black),
+                              const SizedBox(width: 4),
+                              RichText(
+                                text: TextSpan(
+                                  style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFF0F172A)),
+                                  children: [
+                                    const TextSpan(text: 'Selected: '),
+                                    TextSpan(
+                                      text: '${locationLat.toStringAsFixed(6)}, ${locationLng.toStringAsFixed(6)}',
+                                      style: const TextStyle(fontWeight: FontWeight.w700),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // Pricing Info (Read-only)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.payments_outlined, size: 18, color: Colors.black),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Pricing Model',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        '${worker.pricingModel} ${worker.hourlyRate > 0 ? "(Rs. ${worker.hourlyRate.round()}/hr)" : ""}',
+                        style: GoogleFonts.dmSans(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: const Color(0xFF111827),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 1,
+                      child: SizedBox(
+                        height: 56,
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(sheetContext),
+                          style: TextButton.styleFrom(
+                            foregroundColor: const Color(0xFF475569),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                          ),
+                          child: Text(
+                            'Cancel',
+                            style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 16),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: SizedBox(
+                        height: 56,
+                        child: ElevatedButton.icon(
+                          onPressed: isSubmitting
+                              ? null
+                              : () async {
+                                  final phone = phoneController.text.trim();
+                                  if (!RegExp(r'^0\d{9}$').hasMatch(phone)) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Phone number must be exactly 10 digits starting with 0 (e.g. 0771234567).'),
+                                        backgroundColor: AppColors.error,
+                                      ),
+                                    );
+                                    return;
+                                  }
+
+                                  setModalState(() => isSubmitting = true);
+                                  
+                                  DateTime? finalDate;
+                                  if (selectedDate != null) {
+                                    final time = selectedTime ?? TimeOfDay.now();
+                                    finalDate = DateTime(
+                                      selectedDate!.year, 
+                                      selectedDate!.month, 
+                                      selectedDate!.day, 
+                                      time.hour, 
+                                      time.minute
+                                    );
+                                  }
+
+                                  final scaffoldMessenger = ScaffoldMessenger.of(context);
+                                  final navigator = Navigator.of(sheetContext);
+
+                                  final booking = await ApiService().createBooking(
+                                    workerId: worker.id,
+                                    jobTitle: titleController.text.trim(),
+                                    description: descController.text.trim(),
+                                    urgency: selectedUrgency,
+                                    scheduledDate: finalDate,
+                                    locationAddress: addressController.text.trim().isNotEmpty ? addressController.text.trim() : 'Colombo',
+                                    contactPhone: phoneController.text.trim(),
+                                    estimatedPrice: worker.hourlyRate > 0 ? worker.hourlyRate : 2500.0,
+                                    pricingModel: worker.pricingModel,
+                                    locationLat: shareGps ? locationLat : null,
+                                    locationLng: shareGps ? locationLng : null,
+                                  );
+
+                                  if (sheetContext.mounted) {
+                                    navigator.pop();
+                                  }
+                                  if (mounted) {
+                                    if (booking != null) {
+                                      scaffoldMessenger.showSnackBar(
+                                        SnackBar(
+                                          content: Text('Booking #${booking.id} created with ${worker.name}!'),
+                                          backgroundColor: AppColors.success,
+                                        ),
+                                      );
+                                    } else {
+                                      scaffoldMessenger.showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Failed to create booking. Check backend connection.'),
+                                          backgroundColor: AppColors.error,
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                          icon: isSubmitting ? const SizedBox.shrink() : const Icon(Icons.send, size: 20),
+                          label: isSubmitting
+                              ? const SizedBox(width: 22, height: 22, child: LoadingIndicatorM3E())
+                              : Text(
+                                  'Submit Hire Request',
+                                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w800, fontSize: 16, color: Colors.black),
+                                ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFFDC101),
+                            foregroundColor: Colors.black,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -776,7 +1167,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
                           ? Image.network(
                               worker.profileImage!,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Center(
+                              errorBuilder: (context, error, stackTrace) => Center(
                                 child: Text(
                                   worker.name.isNotEmpty ? worker.name[0].toUpperCase() : 'W',
                                   style: GoogleFonts.dmSans(fontWeight: FontWeight.w800, fontSize: 24),
@@ -1273,336 +1664,432 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
   }
 
   void _showBookingDetails(BookingModel b) {
-    final color = _getStatusColor(b.status);
     final scheduledDateStr = b.scheduledDate != null
-        ? '${b.scheduledDate!.day}/${b.scheduledDate!.month}/${b.scheduledDate!.year} at ${b.scheduledDate!.hour.toString().padLeft(2, '0')}:${b.scheduledDate!.minute.toString().padLeft(2, '0')}'
+        ? '${b.scheduledDate!.month}/${b.scheduledDate!.day}/${b.scheduledDate!.year}, ${b.scheduledDate!.hour > 12 ? b.scheduledDate!.hour - 12 : (b.scheduledDate!.hour == 0 ? 12 : b.scheduledDate!.hour)}:${b.scheduledDate!.minute.toString().padLeft(2, '0')}:00 ${b.scheduledDate!.hour >= 12 ? "PM" : "AM"}'
         : 'Flexible / ASAP';
-    final requestedDateStr = '${b.createdAt.day}/${b.createdAt.month}/${b.createdAt.year}';
+        
+    int currentStep = 1;
+    final status = b.status.toLowerCase();
+    if (status == 'accepted') currentStep = 2;
+    if (status == 'confirmed') currentStep = 3;
+    if (status == 'in progress') currentStep = 4;
+    if (status == 'completed') currentStep = 5;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
-        padding: const EdgeInsets.only(left: 24, right: 24, top: 20, bottom: 32),
+        height: MediaQuery.of(context).size.height * 0.9,
+        padding: const EdgeInsets.only(left: 20, right: 20, top: 16, bottom: 24),
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.outlineVariant,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Booking Details',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Booking #${b.id}',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      b.status,
-                      style: GoogleFonts.dmSans(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                        color: color,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-
-              // Worker Card
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceVariant.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Row(
+        child: Column(
+          children: [
+            // Header
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
                   children: [
                     Container(
-                      width: 44,
-                      height: 44,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.primaryContainer,
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.black,
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Center(
-                        child: Text(
-                          b.workerName.isNotEmpty ? b.workerName[0].toUpperCase() : 'W',
-                          style: GoogleFonts.dmSans(
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.onPrimaryContainer,
-                            fontSize: 18,
-                          ),
-                        ),
-                      ),
+                      child: const Icon(Icons.assignment, color: Colors.white, size: 20),
                     ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            b.workerName,
-                            style: GoogleFonts.dmSans(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
-                            ),
-                          ),
-                          if (b.workerPhone != null && b.workerPhone!.isNotEmpty) ...[
-                            const SizedBox(height: 2),
-                            Text(
-                              b.workerPhone!,
-                              style: GoogleFonts.dmSans(
-                                fontSize: 13,
-                                color: AppColors.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Booking Details',
+                          style: GoogleFonts.dmSans(fontSize: 20, fontWeight: FontWeight.w800, color: const Color(0xFF111827)),
+                        ),
+                        Text(
+                          'Reference ID: #${b.id}',
+                          style: GoogleFonts.dmSans(fontSize: 13, color: const Color(0xFF64748B)),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 18),
-
-              // Job Info
-              Text(
-                'Job Information',
-                style: GoogleFonts.dmSans(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.onSurfaceVariant,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                b.jobTitle,
-                style: GoogleFonts.dmSans(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.onSurface,
-                ),
-              ),
-              if (b.description.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text(
-                  b.description,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 14,
-                    color: AppColors.onSurfaceVariant,
-                    height: 1.4,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 16),
-
-              // Info items
-              _buildDetailItem(
-                Icons.calendar_today_outlined,
-                'Scheduled Date',
-                scheduledDateStr,
-              ),
-              const SizedBox(height: 12),
-              _buildDetailItem(
-                Icons.location_on_outlined,
-                'Location',
-                b.locationAddress,
-              ),
-              const SizedBox(height: 12),
-              _buildDetailItem(
-                Icons.speed_outlined,
-                'Urgency',
-                b.urgency,
-              ),
-              const SizedBox(height: 12),
-              _buildDetailItem(
-                Icons.history_outlined,
-                'Requested On',
-                requestedDateStr,
-              ),
-              const Divider(height: 28, color: AppColors.outlineVariant),
-
-              // Price Breakdown
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Estimated Price (${b.pricingModel})',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.onSurfaceVariant,
-                    ),
-                  ),
-                  Text(
-                    'Rs. ${b.estimatedPrice.toStringAsFixed(0)}',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.onSurface,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-
-              if (b.status.toLowerCase() == 'requested' || b.status.toLowerCase() == 'pending') ...[
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.of(ctx).pop();
-                      _confirmCancelBooking(b);
-                    },
-                    icon: const Icon(Icons.cancel_outlined, color: AppColors.error),
-                    label: Text(
-                      'Cancel Booking Request',
-                      style: GoogleFonts.dmSans(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                        color: AppColors.error,
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      elevation: 0,
-                      foregroundColor: AppColors.error,
-                      backgroundColor: const Color(0xFFFEE2E2),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-              ],
-              if (b.status.toLowerCase() == 'completed') ...[
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: FilledButton.icon(
-                    onPressed: () {
-                      Navigator.of(ctx).pop();
-                      _showReviewSheet(b);
-                    },
-                    icon: const Icon(Icons.star_rounded, color: Colors.black),
-                    label: Text(
-                      'Leave a Review',
-                      style: GoogleFonts.dmSans(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                        color: Colors.black,
-                      ),
-                    ),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.brandYellow,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-              ],
-
-              // Close Button
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: FilledButton(
+                IconButton(
+                  icon: const Icon(Icons.close, color: Color(0xFF64748B)),
                   onPressed: () => Navigator.of(ctx).pop(),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.onPrimary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                ),
+              ],
+            ),
+            const Divider(height: 32, color: Color(0xFFF1F5F9)),
+            
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Job Title
+                    Text('JOB TITLE', style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF94A3B8), letterSpacing: 0.5)),
+                    const SizedBox(height: 4),
+                    Text(b.jobTitle, style: GoogleFonts.dmSans(fontSize: 18, fontWeight: FontWeight.w800, color: const Color(0xFF111827))),
+                    const SizedBox(height: 16),
+                    
+                    // Status & Priority
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('STATUS', style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF94A3B8), letterSpacing: 0.5)),
+                              const SizedBox(height: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                decoration: BoxDecoration(color: const Color(0xFF1F2937), borderRadius: BorderRadius.circular(20)),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.thumb_up_alt_outlined, color: Colors.white, size: 16),
+                                    const SizedBox(width: 6),
+                                    Text(b.status, style: GoogleFonts.dmSans(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('PRIORITY', style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF94A3B8), letterSpacing: 0.5)),
+                              const SizedBox(height: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(20)),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.flag_outlined, color: Colors.white, size: 16),
+                                    const SizedBox(width: 6),
+                                    Text(b.urgency.toUpperCase(), style: GoogleFonts.dmSans(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  child: Text(
-                    'Close',
-                    style: GoogleFonts.dmSans(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
+                    const SizedBox(height: 24),
+                    
+                    // Date/Time & Location Card
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFF1F5F9)),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(Icons.calendar_today_outlined, size: 18, color: Color(0xFF111827)),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('DATE & TIME', style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF64748B))),
+                                    const SizedBox(height: 4),
+                                    Text(scheduledDateStr, style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFF111827))),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(Icons.location_on_outlined, size: 18, color: Color(0xFF111827)),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('LOCATION', style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF64748B))),
+                                    const SizedBox(height: 4),
+                                    Text(b.locationAddress, style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFF111827))),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 16),
+                    
+                    // Worker & Price Card
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFF1F5F9)),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('WORKER', style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF64748B))),
+                                const SizedBox(height: 4),
+                                Text(b.workerName, style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w800, color: const Color(0xFF111827))),
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('ESTIMATED PRICE', style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF64748B))),
+                                const SizedBox(height: 4),
+                                Text(b.estimatedPrice > 0 ? 'Rs. ${b.estimatedPrice.toStringAsFixed(0)}' : 'Negotiable', style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w800, color: const Color(0xFF111827))),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    // Lifecycle Status
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('SERVICE LIFECYCLE STATUS', style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w800, color: const Color(0xFF64748B), letterSpacing: 0.5)),
+                          const SizedBox(height: 20),
+                          _buildLifecycleStep('1', 'Booking Requested', 'Request submitted by resident', currentStep >= 1, isCompleted: currentStep > 1),
+                          const SizedBox(height: 16),
+                          _buildLifecycleStep('2', 'Worker Accepts / Rejects', 'Worker accepted the booking', currentStep >= 2, isCompleted: currentStep > 2),
+                          const SizedBox(height: 16),
+                          _buildLifecycleStep('3', 'Confirmed', 'Schedule locked in', currentStep >= 3, isCompleted: currentStep > 3),
+                          const SizedBox(height: 16),
+                          _buildLifecycleStep('4', 'In Progress', '', currentStep >= 4, isCompleted: currentStep > 4),
+                          const SizedBox(height: 16),
+                          _buildLifecycleStep('5', 'Completed', '', currentStep >= 5, isCompleted: currentStep > 5),
+                        ],
+                      ),
+                    ),
+                    
+                    if (b.description.isNotEmpty) ...[
+                      const SizedBox(height: 24),
+                      Text('NOTES / DESCRIPTION', style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF94A3B8), letterSpacing: 0.5)),
+                      const SizedBox(height: 6),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFF1F5F9)),
+                        ),
+                        child: Text(b.description, style: GoogleFonts.dmSans(fontSize: 14, color: const Color(0xFF334155))),
+                      ),
+                    ],
+                    
+                    // Map Preview Card
+                    const SizedBox(height: 24),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 38,
+                                      height: 38,
+                                      decoration: BoxDecoration(
+                                        color: Colors.black,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: const Icon(Icons.map_outlined, color: Colors.white, size: 20),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text('Service Location & Map Preview', style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w800, color: const Color(0xFF111827))),
+                                          Text(b.locationAddress, style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF71717A)), overflow: TextOverflow.ellipsis),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.black,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.open_in_new, color: Colors.white, size: 16),
+                                    const SizedBox(width: 6),
+                                    Text('View on Google Maps', style: GoogleFonts.dmSans(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Container(
+                            height: 200,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE4E4E7),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.location_on, color: Color(0xFFE11D48), size: 48),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(4),
+                                      boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                                    ),
+                                    child: Text(
+                                      'Service Location',
+                                      style: GoogleFonts.dmSans(fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFFE11D48)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    // Action Buttons (Cancel / Review)
+                    const SizedBox(height: 32),
+                    if (b.status.toLowerCase() == 'requested' || b.status.toLowerCase() == 'pending') ...[
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: OutlinedButton(
+                          onPressed: () {
+                            Navigator.of(ctx).pop();
+                            _confirmCancelBooking(b);
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.error,
+                            side: const BorderSide(color: AppColors.error),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+                          ),
+                          child: Text(
+                            'Cancel Booking Request',
+                            style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 15),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    if (b.status.toLowerCase() == 'completed') ...[
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: FilledButton.icon(
+                          onPressed: () {
+                            Navigator.of(ctx).pop();
+                            _showReviewSheet(b);
+                          },
+                          icon: const Icon(Icons.star_rounded, color: Colors.black),
+                          label: Text(
+                            'Leave a Review',
+                            style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 15, color: Colors.black),
+                          ),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.brandYellow,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildDetailItem(IconData icon, String title, String value) {
+  Widget _buildLifecycleStep(String number, String title, String subtitle, bool isActive, {bool isCompleted = false}) {
+    final color = isActive ? Colors.black : const Color(0xFFCBD5E1);
+    final textColor = isActive ? Colors.black : const Color(0xFF94A3B8);
+    
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 18, color: AppColors.onSurfaceVariant),
-        const SizedBox(width: 10),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: GoogleFonts.dmSans(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: AppColors.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 1),
-            Text(
-              value,
-              style: GoogleFonts.dmSans(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.onSurface,
-              ),
-            ),
-          ],
+        Container(
+          width: 24,
+          height: 24,
+          margin: const EdgeInsets.only(top: 2),
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+          child: Center(
+            child: isCompleted
+                ? const Icon(Icons.check, color: Colors.white, size: 14)
+                : Text(number, style: GoogleFonts.dmSans(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w700, color: textColor)),
+              if (subtitle.isNotEmpty && isActive)
+                Text(subtitle, style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF64748B))),
+            ],
+          ),
         ),
       ],
     );

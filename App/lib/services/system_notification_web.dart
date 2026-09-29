@@ -1,6 +1,6 @@
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
+import 'dart:js_interop';
 import 'package:flutter/foundation.dart';
+import 'package:web/web.dart' as web;
 
 class PlatformSystemNotification {
   static bool _initialized = false;
@@ -9,10 +9,8 @@ class PlatformSystemNotification {
     if (_initialized) return;
     _initialized = true;
     try {
-      if (html.Notification.supported) {
-        if (html.Notification.permission == 'granted') {
-          debugPrint('Web Notification permission already granted.');
-        }
+      if (web.Notification.permission == 'granted') {
+        debugPrint('Web Notification permission already granted.');
       }
     } catch (e) {
       debugPrint('Web notification init error: $e');
@@ -21,8 +19,7 @@ class PlatformSystemNotification {
 
   static Future<bool> requestPermission() async {
     try {
-      if (!html.Notification.supported) return false;
-      final perm = await html.Notification.requestPermission();
+      final perm = (await web.Notification.requestPermission().toDart).toDart;
       return perm == 'granted';
     } catch (e) {
       debugPrint('Error requesting web notification permission: $e');
@@ -37,21 +34,18 @@ class PlatformSystemNotification {
     String? payload,
   }) async {
     try {
-      if (!html.Notification.supported) return;
-
-      if (html.Notification.permission == 'granted') {
-        html.Notification(
+      final permission = web.Notification.permission;
+      if (permission == 'granted') {
+        web.Notification(
           title,
-          body: body,
-          icon: 'favicon.png',
+          web.NotificationOptions(body: body, icon: 'favicon.png'),
         );
-      } else if (html.Notification.permission != 'denied') {
-        final perm = await html.Notification.requestPermission();
+      } else if (permission != 'denied') {
+        final perm = (await web.Notification.requestPermission().toDart).toDart;
         if (perm == 'granted') {
-          html.Notification(
+          web.Notification(
             title,
-            body: body,
-            icon: 'favicon.png',
+            web.NotificationOptions(body: body, icon: 'favicon.png'),
           );
         }
       }

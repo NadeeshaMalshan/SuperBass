@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/worker_model.dart';
 import '../../models/worker_services_data.dart';
@@ -564,7 +565,15 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _phoneController,
-                decoration: const InputDecoration(labelText: 'Contact Phone Number'),
+                keyboardType: TextInputType.phone,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(10),
+                ],
+                decoration: const InputDecoration(
+                  labelText: 'Contact Phone Number (10 digits)',
+                  hintText: '07XXXXXXXX',
+                ),
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -579,6 +588,11 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
               _buildSaveButton(
                 label: 'Save Bio Details',
                 onPressed: () {
+                  final phone = _phoneController.text.trim();
+                  if (phone.isNotEmpty && !RegExp(r'^0\d{9}$').hasMatch(phone)) {
+                    _showFeedback('Phone number must be exactly 10 digits starting with 0.', isError: true);
+                    return;
+                  }
                   _showFeedback('Bio details saved!');
                   widget.onWorkerUpdated?.call();
                 },

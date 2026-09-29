@@ -416,6 +416,8 @@ class ApiService {
     String? contactPhone,
     double? estimatedPrice,
     String pricingModel = 'Hourly',
+    double? locationLat,
+    double? locationLng,
   }) async {
     try {
       final residentEmail = AuthService().currentUser?.email ?? 'resident@superbass.lk';
@@ -432,6 +434,8 @@ class ApiService {
         'contactPhone': contactPhone ?? '0771234567',
         'pricingModel': pricingModel,
         'estimatedPrice': estimatedPrice ?? 2500.0,
+        if (locationLat != null) 'locationLat': locationLat, // ignore: use_null_aware_elements
+        if (locationLng != null) 'locationLng': locationLng, // ignore: use_null_aware_elements
       });
 
       debugPrint('Creating booking: $body');
@@ -962,6 +966,58 @@ class ApiService {
     }
   }
 
+  /// Complete Onboarding: POST /api/auth/onboarding
+  Future<Map<String, dynamic>> completeOnboarding({
+    required String phoneNo,
+    required String address,
+    double? locationLat,
+    double? locationLng,
+  }) async {
+    try {
+      final uri = Uri.parse(ApiConfig.onboardingUrl);
+      final body = jsonEncode({
+        'phoneNo': phoneNo,
+        'address': address,
+        'locationLat': locationLat,
+        'locationLng': locationLng,
+      });
+      debugPrint('Completing onboarding via: $uri');
+      final response = await http.post(uri, headers: _headers, body: body);
+      
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return {'success': true, 'message': 'Onboarding complete'};
+      }
+      
+      String errorMsg = 'Failed to complete onboarding (${response.statusCode})';
+      try {
+        final errJson = jsonDecode(response.body);
+        if (errJson['message'] != null) {
+          errorMsg = errJson['message'];
+        }
+      } catch (_) {}
+      return {'success': false, 'message': errorMsg};
+    } catch (e) {
+      debugPrint('Error completing onboarding: $e');
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  /// Get Resident Profile: GET /api/residents/{email}
+  Future<Map<String, dynamic>?> getResidentProfile(String email) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/residents/${Uri.encodeComponent(email)}');
+      final response = await http.get(uri, headers: _headers);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+      debugPrint('Failed to get resident profile: ${response.statusCode} - ${response.body}');
+      return null;
+    } catch (e) {
+      debugPrint('Error getting resident profile: $e');
+      return null;
+    }
+  }
+
   /// Update Profile: PUT /api/residents/{email}
   Future<bool> updateProfile(String email, Map<String, dynamic> data) async {
     try {
@@ -994,3 +1050,4 @@ class ApiService {
     }
   }
 }
+
