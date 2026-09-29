@@ -9,6 +9,7 @@ import AiAssistantWidget from './components/AiAssistantWidget.jsx';
 import M3TopNavbar from './components/M3TopNavbar.jsx';
 import hero2Img from './assets/community.png';
 import sriLankaDistricts from './data/sriLankaDistricts.json';
+import LocationSelector from './components/LocationSelector.jsx';
 import { BACKEND_URL } from './config.js';
 
 const API_BASE_URL = `${BACKEND_URL}/api/community-posts`;
@@ -26,7 +27,9 @@ export default function Community() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedProvince, setSelectedProvince] = useState('all');
-  const [selectedDistrict, setSelectedDistrict] = useState('all');
+  const [selectedDistrict, setSelectedDistrict] = useState(() => {
+    return localStorage.getItem('community_selected_district') || 'Colombo';
+  });
   const [sortBy, setSortBy] = useState('newest');
   const [currentPage, setCurrentPage] = useState(1);
   const CARDS_PER_PAGE = 9;
@@ -35,6 +38,7 @@ export default function Community() {
   const [viewMode, setViewMode] = useState(() => {
     return localStorage.getItem('community_view_mode') || 'large';
   });
+  const [isHeroBannerVisible, setIsHeroBannerVisible] = useState(true);
 
   const handleViewModeChange = (mode) => {
     setViewMode(mode);
@@ -135,10 +139,8 @@ export default function Community() {
       const params = {};
       if (searchTerm) params.search = searchTerm;
       if (selectedCategory !== 'all') params.category = selectedCategory;
-      if (selectedDistrict !== 'all') {
+      if (selectedDistrict && selectedDistrict !== 'all') {
         params.location = selectedDistrict;
-      } else if (selectedProvince !== 'all') {
-        params.location = selectedProvince.replace(' Province', '');
       }
       if (sortBy) params.sort = sortBy;
 
@@ -510,106 +512,86 @@ export default function Community() {
       <M3TopNavbar theme="dark" activePage="community" />
 
       {/* 1. Community Hero Showcase Banner (Uber Pitch Black Aesthetic) */}
-      <section className="community-hero-banner">
-        <div className="community-hero-container">
-          <div className="community-hero-left">
-            <span className="community-hero-overline">Workio Community Network</span>
-            <h1 className="community-hero-title">
-              Community Classifieds, Repair Advice & Services
-            </h1>
-            <p className="community-hero-desc">
-              Share repair requests, ask for home improvement advice, post free classified ads for tools and leftover materials, and discover trusted workers recommended by other community members.
-            </p>
-            <div className="community-hero-actions">
-              <button
-                type="button"
-                className="community-hero-primary-btn"
-                onClick={handleOpenCreate}
-              >
-                <i className="fa-solid fa-plus"></i>
-                <span>Post Free Ad / Request</span>
-              </button>
-              <button
-                type="button"
-                className="community-hero-secondary-btn"
-                onClick={() => navigate('/ai/chat')}
-              >
-                <i className="fa-solid fa-wand-magic-sparkles"></i>
-                <span>Ask Workio AI</span>
-              </button>
+      {isHeroBannerVisible && (
+        <section className="community-hero-banner">
+          <button
+            type="button"
+            className="community-hero-close-btn"
+            onClick={() => setIsHeroBannerVisible(false)}
+            title="Close banner"
+            aria-label="Close banner"
+          >
+            <md-icon>close</md-icon>
+          </button>
+          <div className="community-hero-container">
+            <div className="community-hero-left">
+              <span className="community-hero-overline">Workio Community Network</span>
+              <h1 className="community-hero-title">
+                Community Classifieds, Repair Advice & Services
+              </h1>
+              <p className="community-hero-desc">
+                Share repair requests, ask for home improvement advice, post free classified ads for tools and leftover materials, and discover trusted workers recommended by other community members.
+              </p>
+              <div className="community-hero-actions">
+                <button
+                  type="button"
+                  className="community-hero-primary-btn"
+                  onClick={handleOpenCreate}
+                >
+                  <i className="fa-solid fa-plus"></i>
+                  <span>Post Free Ad / Request</span>
+                </button>
+                <button
+                  type="button"
+                  className="community-hero-secondary-btn"
+                  onClick={() => navigate('/ai/chat')}
+                >
+                  <i className="fa-solid fa-wand-magic-sparkles"></i>
+                  <span>Ask Workio AI</span>
+                </button>
+              </div>
             </div>
-          </div>
 
-          <div className="community-hero-right">
-            <div className="community-hero-artwork-card">
-              <img
-                src={hero2Img}
-                alt="Workio Neighborhood Community & Craftsmen"
-                className="community-hero-artwork-img"
-              />
+            <div className="community-hero-right">
+              <div className="community-hero-artwork-card">
+                <img
+                  src={hero2Img}
+                  alt="Workio Neighborhood Community & Craftsmen"
+                  className="community-hero-artwork-img"
+                />
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* 2. Main Content Layout (Sidebar + Feed) */}
       <div className="community-layout-container">
         {/* Left Sidebar Navigation (Uber Style) */}
         <aside className={`community-sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
 
-          {/* Location Filter Section: Two Separate Fields (Province and District) */}
+          {/* Location Filter Section: Landing Page Style */}
           <div className="uber-sidebar-section">
             <div className="uber-sidebar-section-title">
               <span>Location</span>
-              {(selectedProvince !== 'all' || selectedDistrict !== 'all') && (
-                <button
-                  type="button"
-                  className="uber-sidebar-clear-btn"
-                  onClick={() => {
-                    setSelectedProvince('all');
-                    setSelectedDistrict('all');
-                  }}
-                  title="Clear location filter"
-                >
-                  Clear
-                </button>
-              )}
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {/* Province Select */}
-              <select
-                className="uber-sidebar-select"
-                value={selectedProvince}
-                onChange={(e) => {
-                  setSelectedProvince(e.target.value);
-                  setSelectedDistrict('all');
+            <div style={{ padding: '6px 8px 8px' }}>
+              <LocationSelector
+                location={selectedDistrict || 'Colombo'}
+                onChange={(newLoc) => {
+                  setSelectedDistrict(newLoc);
+                  localStorage.setItem('community_selected_district', newLoc);
+                  let matchedProv = 'all';
+                  for (const [prov, dists] of Object.entries(sriLankaDistricts)) {
+                    if (dists.some((d) => d.toLowerCase() === newLoc.toLowerCase())) {
+                      matchedProv = prov;
+                      break;
+                    }
+                  }
+                  setSelectedProvince(matchedProv);
                 }}
-                aria-label="Filter by Province"
-              >
-                <option value="all">All Provinces</option>
-                {Object.keys(sriLankaDistricts).map(prov => (
-                  <option key={prov} value={prov}>{prov}</option>
-                ))}
-              </select>
-
-              {/* District Select */}
-              <select
-                className="uber-sidebar-select"
-                value={selectedDistrict}
-                onChange={(e) => setSelectedDistrict(e.target.value)}
-                aria-label="Filter by District"
-              >
-                <option value="all">
-                  {selectedProvince === 'all' ? 'All Districts' : `All in ${selectedProvince.replace(' Province', '')}`}
-                </option>
-                {(selectedProvince === 'all'
-                  ? Object.values(sriLankaDistricts).flat()
-                  : (sriLankaDistricts[selectedProvince] || [])
-                ).map(d => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </select>
+              />
             </div>
           </div>
 
