@@ -6,6 +6,7 @@ UI Card responses (AgentCardResponse) for the frontend application without britt
 
 from typing import Dict, Any, List, Optional
 import json
+import re
 import logging
 from langchain_core.messages import ToolMessage, AIMessage, HumanMessage
 from langchain_openai import ChatOpenAI
@@ -58,6 +59,8 @@ def _clean_card_intro_message(raw_msg: str, default_intro: str, card_type: str =
         return default_intro
 
     if card_type == "post_confirmation":
+        if "update" in default_intro.lower() or "edit" in default_intro.lower():
+            return default_intro
         return "Here is your draft community post. Please review your post details below, edit if needed, and confirm to publish:"
 
     text = raw_msg.strip()
@@ -117,9 +120,10 @@ def _extract_draft_card(
     email: str,
     user_name: str,
     user_profile: dict,
-    metadata: dict
+    metadata: dict,
+    user_latest_text: str = ""
 ) -> AgentCardResponse:
-    """Extract draft post fields cleanly and deterministically without brittle regex."""
+    """Extract draft or edit post fields cleanly and deterministically without brittle regex."""
     title = ""
     category = metadata.get("inferred_category") or "Plumbing"
     location = metadata.get("location") or user_profile.get("address") or "Colombo"
@@ -138,41 +142,43 @@ def _extract_draft_card(
             prefix, _, value = chunk.partition(":")
             prefix_clean = prefix.strip().lower().replace("*", "")
             value_clean = value.strip().replace("*", "")
-            if prefix_clean == "title":
-                title = value_clean
-            elif prefix_clean in ("category", "service category"):
+            if "title" in prefix_clean:
+                title = value_clean.strip('"\'')
+            elif "category" in prefix_clean or "service category" in prefix_clean:
                 if value_clean and value_clean.lower() != "general":
-                    category = value_clean
-            elif prefix_clean == "location":
+                    category = value_clean.strip('"\'')
+            elif "location" in prefix_clean:
                 if value_clean and value_clean.lower() not in ["your location", "location", "n/a", "unknown", "none", "{location}"]:
-                    location = value_clean
-            elif prefix_clean in ("content", "description"):
-                body_parts.append(value_clean)
-            elif not any(prefix_clean.startswith(x) for x in ["please review", "when ready", "you can edit", "status", "note"]):
+                    location = value_clean.strip('"\'')
+            elif "content" in prefix_clean or "description" in prefix_clean:
+                body_parts.append(value_clean.strip('"\''))
+            elif not any(prefix_clean.startswith(x) for x in ["please review", "when ready", "you can edit", "status", "note", "attachments", "please tell me"]):
                 body_parts.append(chunk)
         else:
-            if chunk and not any(kw in chunk.lower() for kw in ["please review", "when ready", "you can edit", "here is your draft"]):
+            if chunk and not any(kw in chunk.lower() for kw in [
+                "please review", "when ready", "you can edit", "here is your draft",
+                "please tell me exactly", "after you reply", "i won't make any changes", "quick summary"
+            ]):
                 body_parts.append(chunk)
 
-    if not title or title.lower() in ["community post", "untitled"]:
-        title = f"{category} Service Request"
-    content_text = " ".join(body_parts).strip() or content
-
     post_id = metadata.get("postId") or metadata.get("post_id") or (metadata.get("post_data", {}).get("postId") if isinstance(metadata.get("post_data"), dict) else None)
-    is_update = bool(post_id)
     if not post_id:
-        for line in chunks:
-            if "post #" in line.lower() or "post id:" in line.lower():
-                parts_p = line.lower().replace("post #", "post_id_token:").replace("post id:", "post_id_token:").split("post_id_token:")
-                if len(parts_p) > 1:
-                    candidate = parts_p[1].strip().split()[0].strip(",.:;")
-                    if candidate.isdigit():
-                        post_id = candidate
-                        is_update = True
-                        break
+        m_pid = re.search(r'post\s*#?(\d+)', f"{user_latest_text} {content}", re.IGNORECASE)
+        if m_pid:
+            post_id = m_pid.group(1)
 
-    if not is_update and any(kw in content.lower() for kw in ["update post", "edit post", "updated draft"]):
-        is_update = True
+    is_update = (
+        bool(post_id)
+        or any(kw in content.lower() for kw in ["update post", "edit post", "updated draft", "i can update post"])
+        or any(kw in user_latest_text.lower() for kw in ["update post", "edit post", "change post", "modify post"])
+    )
+
+    if not title or title.lower() in ["community post", "untitled"]:
+        title = f"Post #{post_id}" if (is_update and post_id) else f"{category} Service Request"
+
+    content_text = " ".join(body_parts).strip()
+    if not content_text:
+        content_text = f"Service request regarding {title} in {location}."
 
     action_type = "update" if is_update else "create"
     confirm_prompt = (
@@ -199,9 +205,18 @@ def _extract_draft_card(
         ),
         confirmPrompt=confirm_prompt
     )
+    intro = (
+        f"Here is the interactive edit card for post #{post_id}. You can modify any details directly below and click 'Update Post' to save your changes:"
+        if is_update and post_id
+        else (
+            "Here are your updated post details. Please review and confirm to save changes:"
+            if is_update
+            else "Here is your draft community post. Please review the details below and confirm to publish:"
+        )
+    )
     clean_msg = _clean_card_intro_message(
         content,
-        "Here are your updated post details. Please review and confirm to save changes:" if is_update else "Here is your draft community post. Please review the details below and confirm to publish:",
+        intro,
         "post_confirmation"
     )
     return AgentCardResponse(
@@ -232,15 +247,30 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
 
     lower_content = last_ai_content.lower()
 
+    user_latest_text = ""
+    for msg in reversed(messages):
+        if getattr(msg, "type", "") == "human" or isinstance(msg, HumanMessage):
+            user_latest_text = str(getattr(msg, "content", "")).lower()
+            break
+
+    is_update_intent = any(
+        kw in user_latest_text for kw in ["update post", "edit post", "change post", "modify post"]
+    ) or any(
+        kw in lower_content for kw in [
+            "i can update post", "update post #", "edit post #",
+            "interactive edit card", "edit community post", "summary of the current post"
+        ]
+    )
+
     # Detect if the assistant has prepared a community post draft awaiting confirmation
     is_draft = (
+        is_update_intent or
         any(keyword in lower_content for keyword in [
             "draft community post", "draft post", "here is your draft",
             "confirm and publish", "review your post details", "review your draft details",
             "publish the post to the community board"
         ])
     ) and not any(kw in lower_content for kw in [
-        "details for post", "show details for post", "show post #",
         "what service do you need", "what is the problem", "what type of service",
         "how would you like to proceed"
     ])
@@ -290,8 +320,59 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
 
         # 2. get_community_posts & get_user_community_posts
         if tool_name in ("get_community_posts", "get_user_community_posts"):
+            if is_update_intent:
+                target_post = None
+                if isinstance(data, dict) and (data.get("id") or data.get("postId")):
+                    target_post = data
+                elif isinstance(data, list) and len(data) == 1:
+                    target_post = data[0]
+                elif isinstance(data, list):
+                    target_pid = None
+                    m_pid = re.search(r'post\s*#?(\d+)', f"{user_latest_text} {lower_content}")
+                    if m_pid:
+                        target_pid = m_pid.group(1)
+                    if target_pid:
+                        for p in data:
+                            if str(p.get("id") or p.get("postId")) == target_pid:
+                                target_post = p
+                                break
+                    if not target_post and len(data) > 0:
+                        target_post = data[0]
+
+                if target_post:
+                    pid = str(target_post.get("id") or target_post.get("postId") or "")
+                    p_title = target_post.get("title") or f"Post #{pid}"
+                    p_content = target_post.get("content") or f"Service request regarding {p_title}."
+                    p_cat = target_post.get("serviceCategoryId") or target_post.get("communityId") or "General"
+                    p_loc = target_post.get("location") or "Colombo"
+                    p_images = target_post.get("images") or []
+
+                    card = PostConfirmationCard(
+                        action="update",
+                        postId=pid,
+                        title=p_title,
+                        content=p_content,
+                        communityId=p_cat,
+                        location=p_loc,
+                        urgency=None,
+                        authorId=email,
+                        authorName=user_name,
+                        images=p_images,
+                        validationStatus="valid",
+                        validationNotes=f"Please review your updated details above and confirm to save changes to post #{pid}.",
+                        confirmPrompt=f"CONFIRM_UPDATE: Yes, please update post #{pid} with title='{p_title}' in {p_cat} for {p_loc}."
+                    )
+                    intro = f"Here is the interactive edit card for post #{pid}. You can modify any details directly below and click 'Update Post' to save your changes:"
+                    return AgentCardResponse(
+                        response_type="post_confirmation",
+                        message=intro,
+                        card_data=card.model_dump(),
+                        metadata={"agent": "community_agent", "user_email": email}
+                    )
+                return _extract_draft_card(last_ai_content, email, user_name, user_profile, metadata, user_latest_text)
+
             if is_draft:
-                return _extract_draft_card(last_ai_content, email, user_name, user_profile, metadata)
+                return _extract_draft_card(last_ai_content, email, user_name, user_profile, metadata, user_latest_text)
 
             # Check if this is a single post detail response
             is_single = isinstance(data, dict) and bool(data.get("id") or data.get("postId")) and bool(data.get("title"))
@@ -665,9 +746,9 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
             metadata={"agent": "agent", "user_email": email}
         )
 
-    # If no tool was executed but agent generated a draft post
-    if is_draft:
-        return _extract_draft_card(last_ai_content, email, user_name, user_profile, metadata)
+    # If no tool was executed but agent generated a draft post or edit intent
+    if is_draft or is_update_intent:
+        return _extract_draft_card(last_ai_content, email, user_name, user_profile, metadata, user_latest_text)
 
     # Conversational fallback
     fallback_text = last_ai_content or "How can I assist you with Workio home services and community posts?"
