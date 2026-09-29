@@ -127,10 +127,116 @@
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 22px;
   width: 100%;
+  transition: all 0.2s ease;
+}
+
+/* 1. Large Cards View */
+.worker-cards-grid.view-large {
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 24px;
+}
+
+/* 2. Small Cards View */
+.worker-cards-grid.view-small {
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.worker-cards-grid.view-small .m3-worker-card {
+  padding: 14px 16px;
+  border-radius: 14px;
+  gap: 12px;
+}
+
+.worker-cards-grid.view-small .m3-card-avatar-wrap {
+  width: 46px;
+  height: 46px;
+}
+
+.worker-cards-grid.view-small .m3-card-worker-name {
+  font-size: 0.98rem;
+  max-width: 130px;
+}
+
+.worker-cards-grid.view-small .m3-card-worker-role {
+  font-size: 0.76rem;
+}
+
+.worker-cards-grid.view-small .m3-skill-pill {
+  font-size: 0.68rem;
+  padding: 1px 6px;
+}
+
+.worker-cards-grid.view-small .m3-card-chips-group {
+  gap: 4px;
+}
+
+.worker-cards-grid.view-small .m3-card-chip {
+  font-size: 0.68rem;
+  padding: 2px 6px;
+}
+
+.worker-cards-grid.view-small .m3-card-footer {
+  padding-top: 10px;
+}
+
+.worker-cards-grid.view-small .m3-card-price-val {
+  font-size: 1rem;
+}
+
+.worker-cards-grid.view-small .m3-card-profile-btn {
+  padding: 5px 12px;
+  font-size: 0.78rem;
+}
+
+/* 3. List View */
+.worker-cards-grid.view-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.worker-cards-grid.view-list .m3-worker-card {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  gap: 24px;
+}
+
+.worker-cards-grid.view-list .m3-card-horizontal-wrap {
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+}
+
+.worker-cards-grid.view-list .m3-card-footer {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+  flex-direction: row;
+  align-items: center;
+  gap: 20px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .worker-cards-grid.view-list .m3-worker-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .worker-cards-grid.view-list .m3-card-footer {
+    border-top: 1px solid #f4f4f5;
+    padding-top: 12px;
+    justify-content: space-between;
+  }
 }
 
 @media (max-width: 640px) {
-  .worker-cards-grid {
+  .worker-cards-grid,
+  .worker-cards-grid.view-large,
+  .worker-cards-grid.view-small {
     grid-template-columns: 1fr;
     gap: 16px;
   }

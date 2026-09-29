@@ -38,6 +38,7 @@ export default function Community() {
   const [viewMode, setViewMode] = useState(() => {
     return localStorage.getItem('community_view_mode') || 'large';
   });
+  const [isHeroBannerVisible, setIsHeroBannerVisible] = useState(true);
 
   const handleViewModeChange = (mode) => {
     setViewMode(mode);
@@ -511,47 +512,58 @@ export default function Community() {
       <M3TopNavbar theme="dark" activePage="community" />
 
       {/* 1. Community Hero Showcase Banner (Uber Pitch Black Aesthetic) */}
-      <section className="community-hero-banner">
-        <div className="community-hero-container">
-          <div className="community-hero-left">
-            <span className="community-hero-overline">Workio Community Network</span>
-            <h1 className="community-hero-title">
-              Community Classifieds, Repair Advice & Services
-            </h1>
-            <p className="community-hero-desc">
-              Share repair requests, ask for home improvement advice, post free classified ads for tools and leftover materials, and discover trusted workers recommended by other community members.
-            </p>
-            <div className="community-hero-actions">
-              <button
-                type="button"
-                className="community-hero-primary-btn"
-                onClick={handleOpenCreate}
-              >
-                <i className="fa-solid fa-plus"></i>
-                <span>Post Free Ad / Request</span>
-              </button>
-              <button
-                type="button"
-                className="community-hero-secondary-btn"
-                onClick={() => navigate('/ai/chat')}
-              >
-                <i className="fa-solid fa-wand-magic-sparkles"></i>
-                <span>Ask Workio AI</span>
-              </button>
+      {isHeroBannerVisible && (
+        <section className="community-hero-banner">
+          <button
+            type="button"
+            className="community-hero-close-btn"
+            onClick={() => setIsHeroBannerVisible(false)}
+            title="Close banner"
+            aria-label="Close banner"
+          >
+            <md-icon>close</md-icon>
+          </button>
+          <div className="community-hero-container">
+            <div className="community-hero-left">
+              <span className="community-hero-overline">Workio Community Network</span>
+              <h1 className="community-hero-title">
+                Community Classifieds, Repair Advice & Services
+              </h1>
+              <p className="community-hero-desc">
+                Share repair requests, ask for home improvement advice, post free classified ads for tools and leftover materials, and discover trusted workers recommended by other community members.
+              </p>
+              <div className="community-hero-actions">
+                <button
+                  type="button"
+                  className="community-hero-primary-btn"
+                  onClick={handleOpenCreate}
+                >
+                  <i className="fa-solid fa-plus"></i>
+                  <span>Post Free Ad / Request</span>
+                </button>
+                <button
+                  type="button"
+                  className="community-hero-secondary-btn"
+                  onClick={() => navigate('/ai/chat')}
+                >
+                  <i className="fa-solid fa-wand-magic-sparkles"></i>
+                  <span>Ask Workio AI</span>
+                </button>
+              </div>
             </div>
-          </div>
 
-          <div className="community-hero-right">
-            <div className="community-hero-artwork-card">
-              <img
-                src={hero2Img}
-                alt="Workio Neighborhood Community & Craftsmen"
-                className="community-hero-artwork-img"
-              />
+            <div className="community-hero-right">
+              <div className="community-hero-artwork-card">
+                <img
+                  src={hero2Img}
+                  alt="Workio Neighborhood Community & Craftsmen"
+                  className="community-hero-artwork-img"
+                />
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* 2. Main Content Layout (Sidebar + Feed) */}
       <div className="community-layout-container">

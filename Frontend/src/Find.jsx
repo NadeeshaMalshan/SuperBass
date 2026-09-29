@@ -80,6 +80,17 @@ export default function Find() {
   const [favorites, setFavorites] = useState({});
   const [showMap, setShowMap] = useState(false);
   const [selectedMapWorker, setSelectedMapWorker] = useState(null);
+  const [isHeroBannerVisible, setIsHeroBannerVisible] = useState(true);
+
+  // Worker Cards Grid View Mode: 'large' | 'small' | 'list'
+  const [viewMode, setViewMode] = useState(() => {
+    return localStorage.getItem('find_view_mode') || 'large';
+  });
+
+  const handleViewModeChange = (mode) => {
+    setViewMode(mode);
+    localStorage.setItem('find_view_mode', mode);
+  };
 
   const [isWorkerDropdownOpen, setIsWorkerDropdownOpen] = useState(false);
   const [failedWorkerAvatars, setFailedWorkerAvatars] = useState({});
@@ -798,50 +809,61 @@ export default function Find() {
       />
 
       {/* 1. Craftsmen Hero Showcase Banner (Uber Pitch Black Aesthetic) */}
-      <section className="community-hero-banner">
-        <div className="community-hero-container">
-          <div className="community-hero-left">
-            <span className="community-hero-overline">SuperBass Verified Craftsmen Directory</span>
-            <h1 className="community-hero-title">
-              Find Trusted Local Workers & Service Specialists
-            </h1>
-            <p className="community-hero-desc">
-              Browse verified technicians, read neighborhood reviews, compare hourly & daily rates, check real-time availability, and hire top-rated craftsmen across Sri Lanka.
-            </p>
-            <div className="community-hero-actions">
-              <button
-                type="button"
-                className="community-hero-primary-btn"
-                onClick={() => {
-                  const el = document.getElementById('find-search-main');
-                  if (el) el.scrollIntoView({ behavior: 'smooth' });
-                }}
-              >
-                <i className="fa-solid fa-magnifying-glass"></i>
-                <span>Explore All Baas</span>
-              </button>
-              <button
-                type="button"
-                className="community-hero-secondary-btn"
-                onClick={() => navigate('/ai/chat')}
-              >
-                <i className="fa-solid fa-wand-magic-sparkles"></i>
-                <span>Ask Workio AI</span>
-              </button>
+      {isHeroBannerVisible && (
+        <section className="community-hero-banner">
+          <button
+            type="button"
+            className="community-hero-close-btn"
+            onClick={() => setIsHeroBannerVisible(false)}
+            title="Close banner"
+            aria-label="Close banner"
+          >
+            <md-icon>close</md-icon>
+          </button>
+          <div className="community-hero-container">
+            <div className="community-hero-left">
+              <span className="community-hero-overline">Workio Verified Craftsmen Directory</span>
+              <h1 className="community-hero-title">
+                Find Trusted Local Workers & Service Specialists
+              </h1>
+              <p className="community-hero-desc">
+                Browse verified technicians, read neighborhood reviews, compare hourly & daily rates, check real-time availability, and hire top-rated craftsmen across Sri Lanka.
+              </p>
+              <div className="community-hero-actions">
+                <button
+                  type="button"
+                  className="community-hero-primary-btn"
+                  onClick={() => {
+                    const el = document.getElementById('find-search-main');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                >
+                  <i className="fa-solid fa-magnifying-glass"></i>
+                  <span>Explore All Workers</span>
+                </button>
+                <button
+                  type="button"
+                  className="community-hero-secondary-btn"
+                  onClick={() => navigate('/ai/chat')}
+                >
+                  <i className="fa-solid fa-wand-magic-sparkles"></i>
+                  <span>Ask Workio AI</span>
+                </button>
+              </div>
             </div>
-          </div>
 
-          <div className="community-hero-right">
-            <div className="community-hero-artwork-card">
-              <img
-                src={craftsmanHeroImg}
-                alt="Workio Verified Craftsmen"
-                className="community-hero-artwork-img"
-              />
+            <div className="community-hero-right">
+              <div className="community-hero-artwork-card">
+                <img
+                  src={craftsmanHeroImg}
+                  alt="Workio Verified Craftsmen"
+                  className="community-hero-artwork-img"
+                />
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* 2. Main Content Layout Container */}
       <div className="community-layout-container find-layout-container">
@@ -1214,6 +1236,37 @@ export default function Find() {
                 <option value="price_desc">Sort: Price (High to Low)</option>
               </select>
 
+              {/* Grid View Mode Switcher Button Group (Icon Only) */}
+              <div className="uber-view-mode-group" role="group" aria-label="Card grid view mode">
+                <button
+                  type="button"
+                  className={`uber-view-mode-btn ${viewMode === 'large' ? 'active' : ''}`}
+                  onClick={() => handleViewModeChange('large')}
+                  title="Large Cards View"
+                  aria-label="Large Cards View"
+                >
+                  <i className="fa-solid fa-table-cells-large"></i>
+                </button>
+                <button
+                  type="button"
+                  className={`uber-view-mode-btn ${viewMode === 'small' ? 'active' : ''}`}
+                  onClick={() => handleViewModeChange('small')}
+                  title="Small Cards View"
+                  aria-label="Small Cards View"
+                >
+                  <i className="fa-solid fa-grip"></i>
+                </button>
+                <button
+                  type="button"
+                  className={`uber-view-mode-btn ${viewMode === 'list' ? 'active' : ''}`}
+                  onClick={() => handleViewModeChange('list')}
+                  title="List View"
+                  aria-label="List View"
+                >
+                  <i className="fa-solid fa-list-ul"></i>
+                </button>
+              </div>
+
               <button
                 type="button"
                 className="uber-btn-outline"
@@ -1564,7 +1617,7 @@ export default function Find() {
             </div>
           ) : (
             /* Full Width Grid Mode */
-            <div className="worker-cards-grid">
+            <div className={`worker-cards-grid view-${viewMode}`}>
               {filteredWorkers.map(worker => renderWorkerCard(worker))}
             </div>
           )}
