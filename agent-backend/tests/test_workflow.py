@@ -308,6 +308,49 @@ def test_deterministic_card_builder_for_user_posts_with_post_id():
     assert "click any post card" in card_resp.message.lower()
 
 
+def test_deterministic_card_builder_for_single_post_detail():
+    """Verify that get_community_posts with single post dict creates PostDetailCard, not empty PostListCard."""
+    tool_content = json.dumps({
+        "postId": 15,
+        "title": "AC Not Cooling - Repair Needed",
+        "content": "My AC unit in Colombo needs repair",
+        "serviceCategoryId": "ac-air-conditioning",
+        "location": "Colombo",
+        "userName": "Jayashan Manodya",
+        "userEmail": "kpjmp28@gmail.com",
+        "likesCount": 3,
+        "commentsCount": 1
+    })
+    raw_ai_msg = (
+        "Here are the details for post #15: • Title: AC Not Cooling - Repair Needed • Category: AC & Air Conditioning "
+        "• Location: Colombo • Content: My AC unit in Colombo needs repair"
+    )
+    state = {
+        "messages": [
+            HumanMessage(content="Show details for post #15"),
+            AIMessage(content="", tool_calls=[{"name": "get_community_posts", "args": {"communityId": "15"}, "id": "call_det_1"}]),
+            ToolMessage(content=tool_content, tool_call_id="call_det_1", name="get_community_posts"),
+            AIMessage(content=raw_ai_msg)
+        ],
+        "email": "kpjmp28@gmail.com",
+        "user_type": "Resident",
+        "user_profile": {"displayName": "Jayashan Manodya", "address": "Colombo"},
+        "next": None,
+        "structured_response": None,
+        "metadata": {}
+    }
+    card_resp = _deterministic_card_builder(state)
+    assert card_resp.response_type == "post_detail"
+    assert card_resp.card_data["id"] == "15"
+    assert card_resp.card_data["title"] == "AC Not Cooling - Repair Needed"
+    assert card_resp.card_data["location"] == "Colombo"
+    assert card_resp.card_data["likesCount"] == 3
+    # Verify clean message without raw bullet dump
+    assert "• Title:" not in card_resp.message
+    assert "post #15" in card_resp.message.lower()
+
+
+
 
 def test_community_tools_count():
     """Verify all 7 community MCP tools are registered."""

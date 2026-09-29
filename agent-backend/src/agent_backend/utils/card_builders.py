@@ -112,6 +112,19 @@ def _clean_card_intro_message(raw_msg: str, default_intro: str, card_type: str =
             intro += ":"
         return f"{intro} You can click any post card below to view details, or let me know if you would like to edit or delete one."
 
+    if card_type == "post_detail":
+        intro_m = re.search(
+            r'^(.*?)(?=(?:\s*\n\s*|\s+)(?:[•\*\-]\s*(?:Title|Category|Content|Location|Author)|###\s+|1[\.\)]|Post\s*ID\s*:))',
+            text,
+            re.DOTALL | re.IGNORECASE
+        )
+        intro = intro_m.group(1).strip() if intro_m else ""
+        if not intro or len(intro) < 6:
+            intro = default_intro
+        if not intro.endswith((".", "!", ":", "?")):
+            intro += ":"
+        return intro
+
     # Detect if the text contains repetitive itemized card details (numbers/bullets followed by bold names, markdown images, tel links, etc.)
     has_dump = bool(
         re.search(
@@ -374,12 +387,11 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
 
         # 2. get_community_posts / get_user_community_posts
         if tool_name in ["get_community_posts", "get_user_community_posts"]:
-            # Could be list or single item or dict
-            raw_posts = data if isinstance(data, list) else data.get("posts", data.get("items", []))
-            has_single_id = isinstance(data, dict) and any(
+            is_single_post = isinstance(data, dict) and any(
                 data.get(k) is not None for k in ["id", "postId", "post_id", "Id", "PostId"]
-            )
-            if has_single_id and not isinstance(raw_posts, list):
+            ) and not isinstance(data.get("posts"), list) and not isinstance(data.get("items"), list)
+
+            if is_single_post:
                 # Single post returned by ID
                 post_id = str(data.get("id") or data.get("postId") or data.get("post_id") or data.get("Id") or data.get("PostId") or "")
                 card = PostDetailCard(
@@ -407,6 +419,9 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                 )
 
             # Multiple posts
+            raw_posts = data if isinstance(data, list) else (
+                data.get("posts") or data.get("items") or [] if isinstance(data, dict) else []
+            )
             post_summaries: List[CommunityPostSummary] = []
             for item in (raw_posts if isinstance(raw_posts, list) else []):
                 if isinstance(item, dict):
