@@ -3,6 +3,7 @@ import axios from 'axios';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './App.css';
+import './Community.css';
 import './Find.css';
 
 // Google Material 3 Web Components
@@ -14,10 +15,12 @@ import '@material/web/progress/circular-progress.js';
 import Loader from './components/Loader.jsx';
 import UserMenu from './components/UserMenu.jsx';
 import M3TopNavbar from './components/M3TopNavbar.jsx';
+import LocationSelector from './components/LocationSelector.jsx';
 import './components/M3Navbar.css';
 import { API_BASE_URL } from './config.js';
 import categoriesData from './data/categories.json';
 import workioLogoWhite from './assets/Workio_Logo/Workio_Logo_White_With_Text.png';
+import craftsmanHeroImg from './assets/workersBackgrond.png';
 
 export default function Find() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -49,10 +52,11 @@ export default function Find() {
 
   const [locationQuery, setLocationQuery] = useState(() => {
     try {
-      const raw = new URLSearchParams(window.location.search).get('location') || '';
-      return sanitizeLocationParam(raw);
+      const raw = new URLSearchParams(window.location.search).get('location');
+      if (raw) return sanitizeLocationParam(raw);
+      return localStorage.getItem('community_selected_district') || 'Colombo';
     } catch {
-      return '';
+      return 'Colombo';
     }
   });
   const [appliedLocationQuery, setAppliedLocationQuery] = useState(locationQuery);
@@ -69,17 +73,33 @@ export default function Find() {
   const [maxPrice, setMaxPrice] = useState('');
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [minRating, setMinRating] = useState('Any');
+  const [selectedBadge, setSelectedBadge] = useState('all'); // 'all' | 'verified' | 'top_craftsman'
   const [sortBy, setSortBy] = useState('recommended');
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [favorites, setFavorites] = useState({});
-  const [showMap, setShowMap] = useState(false);
+  const [showMap, setShowMap] = useState(true);
   const [selectedMapWorker, setSelectedMapWorker] = useState(null);
+  const [isHeroBannerVisible, setIsHeroBannerVisible] = useState(true);
+
+  // Worker Cards Grid View Mode: 'large' | 'small' | 'list'
+  const [viewMode, setViewMode] = useState(() => {
+    return localStorage.getItem('find_view_mode') || 'large';
+  });
+
+  const handleViewModeChange = (mode) => {
+    setViewMode(mode);
+    localStorage.setItem('find_view_mode', mode);
+  };
+
+  // Pagination State (9 cards per page)
+  const [currentPage, setCurrentPage] = useState(1);
+  const WORKERS_PER_PAGE = 9;
 
   const [isWorkerDropdownOpen, setIsWorkerDropdownOpen] = useState(false);
   const [failedWorkerAvatars, setFailedWorkerAvatars] = useState({});
   const workerDropdownRef = useRef(null);
-  
+
   const activeRole = localStorage.getItem('activeRole') || 'Resident';
   const isWorker = activeRole.toLowerCase() === 'worker' || localStorage.getItem('workerAuth') === 'true';
   const themePrimary = isWorker ? '#2563EB' : '#FDC101';
@@ -197,7 +217,17 @@ export default function Find() {
     window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
-  const hasActiveFilters = rateType !== 'Any' || availableNowOnly || favoritesOnly || minPrice !== '' || maxPrice !== '' || selectedCategories.length > 0 || minRating !== 'Any' || appliedSearchQuery !== '' || appliedLocationQuery !== '';
+  const hasActiveFilters =
+    rateType !== 'Any' ||
+    availableNowOnly ||
+    favoritesOnly ||
+    minPrice !== '' ||
+    maxPrice !== '' ||
+    selectedCategories.length > 0 ||
+    minRating !== 'Any' ||
+    selectedBadge !== 'all' ||
+    appliedSearchQuery !== '' ||
+    appliedLocationQuery !== '';
 
   const handleResetFilters = () => {
     setRateType('Any');
@@ -207,13 +237,21 @@ export default function Find() {
     setMaxPrice('');
     setSelectedCategories([]);
     setMinRating('Any');
+    setSelectedBadge('all');
     setSearchQuery('');
     setAppliedSearchQuery('');
     setLocationQuery('');
     setAppliedLocationQuery('');
     setSortBy('recommended');
+    setCurrentPage(1);
     navigate('/find');
   };
+
+  const starredCount = Object.values(favorites).filter(Boolean).length;
+  const availableCount = workers.filter(w => w.isAvailable).length;
+  const topRatedCount = workers.filter(w => (w.overallRating ?? 0) >= 4.5).length;
+  const verifiedCount = workers.filter(w => w.isVerified || w.verified).length;
+  const topCraftsmanCount = workers.filter(w => (w.overallRating ?? 0) >= 4.8).length;
 
   const toggleCategory = (catId) => {
     if (selectedCategories.includes(catId)) {
@@ -287,7 +325,7 @@ export default function Find() {
     if (appliedLocationQuery.trim() !== '') {
       const loc = appliedLocationQuery.toLowerCase().trim();
       if (loc !== 'current location' && loc !== 'my location') {
-        const locMatch = 
+        const locMatch =
           (w.primaryServiceArea && w.primaryServiceArea.toLowerCase().includes(loc)) ||
           (w.resident?.address && w.resident.address.toLowerCase().includes(loc)) ||
           (w.description && w.description.toLowerCase().includes(loc)) ||
@@ -315,6 +353,13 @@ export default function Find() {
     // 3.5 Favorites / Starred Only
     if (favoritesOnly && !favorites[w.id]) {
       return false;
+    }
+
+    // 3.6 Badges Filter
+    if (selectedBadge === 'verified') {
+      if (!w.isVerified && !w.verified) return false;
+    } else if (selectedBadge === 'top_craftsman') {
+      if ((w.overallRating ?? 0) < 4.8) return false;
     }
 
     // 4. Rate Range Filter
@@ -363,6 +408,95 @@ export default function Find() {
     return 0;
   });
 
+  // Reset pagination to page 1 whenever any filter or sort option changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    appliedSearchQuery,
+    appliedLocationQuery,
+    rateType,
+    availableNowOnly,
+    favoritesOnly,
+    minPrice,
+    maxPrice,
+    selectedCategories,
+    minRating,
+    selectedBadge,
+    sortBy
+  ]);
+
+  // Pagination calculations (9 cards per page)
+  const totalWorkers = filteredWorkers.length;
+  const totalPages = Math.ceil(totalWorkers / WORKERS_PER_PAGE) || 1;
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (safeCurrentPage - 1) * WORKERS_PER_PAGE;
+  const paginatedWorkers = filteredWorkers.slice(startIndex, startIndex + WORKERS_PER_PAGE);
+
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages) return;
+    setCurrentPage(newPage);
+    const feedElement = document.getElementById('find-search-main') || document.querySelector('.worker-cards-grid');
+    if (feedElement) {
+      feedElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const renderPagination = () => {
+    if (totalPages <= 1) return null;
+    return (
+      <div className="uber-pagination-container">
+        <button
+          type="button"
+          className="uber-pagination-btn"
+          onClick={() => handlePageChange(safeCurrentPage - 1)}
+          disabled={safeCurrentPage === 1}
+          aria-label="Previous Page"
+        >
+          <i className="fa-solid fa-chevron-left"></i>
+          <span>Prev</span>
+        </button>
+
+        <div className="uber-pagination-pages">
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNum => {
+            if (
+              pageNum === 1 ||
+              pageNum === totalPages ||
+              (pageNum >= safeCurrentPage - 1 && pageNum <= safeCurrentPage + 1)
+            ) {
+              return (
+                <button
+                  key={pageNum}
+                  type="button"
+                  className={`uber-pagination-num ${safeCurrentPage === pageNum ? 'active' : ''}`}
+                  onClick={() => handlePageChange(pageNum)}
+                >
+                  {pageNum}
+                </button>
+              );
+            } else if (
+              pageNum === safeCurrentPage - 2 ||
+              pageNum === safeCurrentPage + 2
+            ) {
+              return <span key={pageNum} className="uber-pagination-ellipsis">...</span>;
+            }
+            return null;
+          })}
+        </div>
+
+        <button
+          type="button"
+          className="uber-pagination-btn"
+          onClick={() => handlePageChange(safeCurrentPage + 1)}
+          disabled={safeCurrentPage === totalPages}
+          aria-label="Next Page"
+        >
+          <span>Next</span>
+          <i className="fa-solid fa-chevron-right"></i>
+        </button>
+      </div>
+    );
+  };
+
   // Initialize & Update Leaflet Map when showMap is true
   useEffect(() => {
     if (!showMap || !mapContainerRef.current) return;
@@ -372,18 +506,21 @@ export default function Find() {
       const map = L.map(mapContainerRef.current, {
         zoomControl: false,
         attributionControl: false
-      }).setView(userLocation, 14);
+      }).setView(userLocation, 13);
 
-      // CartoDB Positron sleek light map tile layer
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      // Standard Leaflet OpenStreetMap tile layer
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
-        subdomains: 'abcd'
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
       }).addTo(map);
 
       mapInstanceRef.current = map;
     }
 
     const map = mapInstanceRef.current;
+    setTimeout(() => {
+      if (map) map.invalidateSize();
+    }, 150);
 
     // Clear old markers
     markersRef.current.forEach(m => map.removeLayer(m));
@@ -397,9 +534,9 @@ export default function Find() {
     // Add Real User Location Marker
     const userMarkerIcon = L.divIcon({
       className: 'custom-user-marker',
-      html: `<div style="background:#000000; color:white; width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow: 0 4px 14px rgba(0,0,0,0.45); border:3px solid white; position:relative;"><span class="material-symbols-outlined" style="font-size:20px; color:white; font-family:'Material Symbols Outlined', 'Material Icons', sans-serif;">my_location</span></div>`,
-      iconSize: [38, 38],
-      iconAnchor: [19, 19]
+      html: `<div style="background:#000000; color:white; width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow: 0 4px 14px rgba(0,0,0,0.45); border:3px solid white; position:relative;"><span class="material-symbols-outlined" style="font-size:18px; color:white; font-family:'Material Symbols Outlined', 'Material Icons', sans-serif;">my_location</span></div>`,
+      iconSize: [34, 34],
+      iconAnchor: [17, 17]
     });
     const userMarker = L.marker(userLocation, { icon: userMarkerIcon })
       .bindPopup(`<b>You (${locationName})</b>`)
@@ -413,9 +550,9 @@ export default function Find() {
 
       const customIcon = L.divIcon({
         className: 'custom-worker-marker-wrap',
-        html: `<div class="custom-worker-marker ${isSelected ? 'selected' : ''}" style="background:${isSelected ? '#2563eb' : '#0f172a'};">${idx + 1}</div>`,
-        iconSize: [32, 32],
-        iconAnchor: [16, 16]
+        html: `<div class="custom-worker-marker ${isSelected ? 'selected' : ''}" style="background:${isSelected ? '#2563eb' : '#000000'}; width:28px; height:28px; line-height:28px; font-size:0.75rem; border-radius:50%; color:white; display:flex; align-items:center; justify-content:center; font-weight:800; border:2px solid white; box-shadow:0 2px 6px rgba(0,0,0,0.3);">${idx + 1}</div>`,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14]
       });
 
       const marker = L.marker(pos, { icon: customIcon }).addTo(map);
@@ -431,7 +568,7 @@ export default function Find() {
     if (selectedMapWorker) {
       const workerPos = getWorkerMapPos(selectedMapWorker);
       const routePolyline = L.polyline([userLocation, workerPos], {
-        color: '#0f172a',
+        color: '#000000',
         weight: 3,
         dashArray: '6, 8',
         opacity: 0.85
@@ -440,6 +577,14 @@ export default function Find() {
       polylineRef.current = routePolyline;
     }
   }, [showMap, filteredWorkers, selectedMapWorker, userLocation]);
+
+  // Clean up map instance when showMap is toggled off
+  useEffect(() => {
+    if (!showMap && mapInstanceRef.current) {
+      mapInstanceRef.current.remove();
+      mapInstanceRef.current = null;
+    }
+  }, [showMap]);
 
   const handleZoomIn = () => {
     if (mapInstanceRef.current) mapInstanceRef.current.zoomIn();
@@ -604,7 +749,7 @@ export default function Find() {
   // Render Worker Search Results Dropdown inside Top Navbar
   const renderWorkerSearchDropdown = () => {
     if (!isWorkerDropdownOpen || !searchQuery.trim()) return null;
-    
+
     // The dropdown uses the live searchQuery, not the appliedSearchQuery
     const dropdownWorkers = workers.filter(w => {
       const q = searchQuery.toLowerCase();
@@ -761,111 +906,297 @@ export default function Find() {
   };
 
   return (
-    <div className="find-page-container">
-      {/* Google Workspace / Material 3 Top Navbar */}
+    <div className="community-page-wrapper">
+      {/* Sleek Dark Top Navbar (Uber Pitch Black Aesthetic) */}
       <M3TopNavbar
+        theme="dark"
         activePage="find"
-        searchValue={searchQuery}
-        onSearchChange={(val) => {
-          setSearchQuery(val);
-          setIsWorkerDropdownOpen(true);
-        }}
-        onSearchFocus={() => setIsWorkerDropdownOpen(true)}
-        onSearchSubmit={(val) => {
-          setAppliedSearchQuery(val);
-          setIsWorkerDropdownOpen(false);
-          navigate(`/find?q=${encodeURIComponent(val)}`);
-        }}
-        searchPlaceholder="Search workers, skills, location..."
-        showSearch={true}
-        showSidebarToggle={true}
-        isSidebarCollapsed={isSidebarCollapsed}
-        onToggleSidebar={() => setIsSidebarCollapsed(prev => !prev)}
-        searchDropdown={renderWorkerSearchDropdown()}
       />
 
-      {/* Main Layout Container */}
-      <div className="find-layout">
-        {/* Left Sidebar Filters - Google Material Design 3 Navigation Drawer (Gmail Style) */}
-        <aside className={`find-sidebar m3-drawer ${isSidebarCollapsed ? 'minimized' : ''}`}>
-          {/* Extended Action FAB (Gmail Compose style - Warm SuperBass Yellow) */}
-
-          {/* Primary Navigation List (Inbox / Starred / Available / Top Rated) */}
-          <nav className="m3-drawer-nav">
-            {/* All Workers (Inbox style) */}
-            <div
-              className={`m3-drawer-item ${!availableNowOnly && !favoritesOnly && selectedCategories.length === 0 && minRating === 'Any' ? 'active' : ''}`}
-              onClick={() => {
-                setAvailableNowOnly(false);
-                setFavoritesOnly(false);
-                setSelectedCategories([]);
-                setMinRating('Any');
-              }}
-              title="View all verified home service workers"
-            >
-              <div className="m3-drawer-item-left">
-                <md-icon className="m3-drawer-icon">handyman</md-icon>
-                <span className="m3-drawer-label">All Baas</span>
+      {/* 1. Craftsmen Hero Showcase Banner (Uber Pitch Black Aesthetic) */}
+      {isHeroBannerVisible && (
+        <section className="community-hero-banner">
+          <button
+            type="button"
+            className="community-hero-close-btn"
+            onClick={() => setIsHeroBannerVisible(false)}
+            title="Close banner"
+            aria-label="Close banner"
+          >
+            <md-icon>close</md-icon>
+          </button>
+          <div className="community-hero-container">
+            <div className="community-hero-left">
+              <span className="community-hero-overline">Workio Verified Craftsmen Directory</span>
+              <h1 className="community-hero-title">
+                Find Trusted Local Workers & Service Specialists
+              </h1>
+              <p className="community-hero-desc">
+                Browse verified technicians, read neighborhood reviews, compare hourly & daily rates, check real-time availability, and hire top-rated craftsmen across Sri Lanka.
+              </p>
+              <div className="community-hero-actions">
+                <button
+                  type="button"
+                  className="community-hero-primary-btn"
+                  onClick={() => {
+                    const el = document.getElementById('find-search-main');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                >
+                  <i className="fa-solid fa-magnifying-glass"></i>
+                  <span>Explore All Workers</span>
+                </button>
+                <button
+                  type="button"
+                  className="community-hero-secondary-btn"
+                  onClick={() => navigate('/ai/chat')}
+                >
+                  <i className="fa-solid fa-wand-magic-sparkles"></i>
+                  <span>Ask Workio AI</span>
+                </button>
               </div>
-              <span className="m3-drawer-badge">{workers.length}</span>
             </div>
 
-            {/* Starred / Saved Baas */}
-            <div
-              className={`m3-drawer-item ${favoritesOnly ? 'active' : ''}`}
-              onClick={() => setFavoritesOnly(!favoritesOnly)}
-              title="Filter by favorited workers"
-            >
-              <div className="m3-drawer-item-left">
-                <md-icon className="m3-drawer-icon">{favoritesOnly ? 'star' : 'star_outline'}</md-icon>
-                <span className="m3-drawer-label">Starred</span>
+            <div className="community-hero-right">
+              <div className="community-hero-artwork-card">
+                <img
+                  src={craftsmanHeroImg}
+                  alt="Workio Verified Craftsmen"
+                  className="community-hero-artwork-img"
+                />
               </div>
-              {Object.values(favorites).filter(Boolean).length > 0 && (
-                <span className="m3-drawer-badge">{Object.values(favorites).filter(Boolean).length}</span>
-              )}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* 2. Main Content Layout Container */}
+      <div className="community-layout-container find-layout-container">
+        {/* Left Sidebar Navigation (Uber Style matching Community) */}
+        <aside className={`community-sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+
+          {/* Location Filter Section: Landing Page Style with Sidebar Map */}
+          <div className="uber-sidebar-section">
+            <div className="uber-sidebar-section-title">
+              <span>Location</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  type="button"
+                  className="uber-sidebar-clear-btn"
+                  onClick={() => {
+                    setShowMap(!showMap);
+                    setSelectedMapWorker(null);
+                  }}
+                  title={showMap ? "Hide Map in Sidebar" : "Show Map in Sidebar"}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                >
+                  <md-icon style={{ fontSize: '14px' }}>{showMap ? 'visibility_off' : 'map'}</md-icon>
+                  <span>{showMap ? 'Hide map' : 'Map'}</span>
+                </button>
+
+                {appliedLocationQuery && (
+                  <button
+                    type="button"
+                    className="uber-sidebar-clear-btn"
+                    onClick={() => {
+                      setLocationQuery('');
+                      setAppliedLocationQuery('');
+                      const params = new URLSearchParams(window.location.search);
+                      params.delete('location');
+                      const qs = params.toString();
+                      navigate(qs ? `/find?${qs}` : '/find');
+                    }}
+                    title="Clear location filter"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
             </div>
 
-            {/* Available Now */}
-            <div
-              className={`m3-drawer-item ${availableNowOnly ? 'active' : ''}`}
-              onClick={() => setAvailableNowOnly(!availableNowOnly)}
-              title="Filter by workers currently on call"
-            >
-              <div className="m3-drawer-item-left">
-                <md-icon className="m3-drawer-icon">{availableNowOnly ? 'bolt' : 'offline_bolt'}</md-icon>
-                <span className="m3-drawer-label">Available Now</span>
-              </div>
-              <span className="m3-drawer-badge">
-                {workers.filter(w => w.isAvailable).length}
-              </span>
+            <div className="location-selector-wrap" style={{ padding: '6px 8px 6px' }}>
+              <LocationSelector
+                location={appliedLocationQuery || 'Colombo'}
+                onChange={(newLoc) => {
+                  setLocationQuery(newLoc);
+                  setAppliedLocationQuery(newLoc);
+                  localStorage.setItem('community_selected_district', newLoc);
+                  const params = new URLSearchParams(window.location.search);
+                  if (newLoc) {
+                    params.set('location', newLoc);
+                  } else {
+                    params.delete('location');
+                  }
+                  const newQs = params.toString();
+                  navigate(newQs ? `/find?${newQs}` : '/find');
+                }}
+              />
             </div>
 
-            {/* Top Rated (4.5+ ★) */}
-            <div
-              className={`m3-drawer-item ${minRating === '4.5' ? 'active' : ''}`}
-              onClick={() => setMinRating(minRating === '4.5' ? 'Any' : '4.5')}
-              title="Filter workers with 4.5+ star rating"
-            >
-              <div className="m3-drawer-item-left">
-                <md-icon className="m3-drawer-icon">{minRating === '4.5' ? 'workspace_premium' : 'hotel_class'}</md-icon>
-                <span className="m3-drawer-label">Top Rated (4.5★)</span>
+            {/* Interactive Map in Left Sidebar */}
+            {showMap && (
+              <div className="sidebar-map-wrapper">
+                <div className="sidebar-map-container">
+                  {/* Map Header Status Badge */}
+                  <div className="sidebar-map-badge">
+                    <span className="pulse-dot"></span>
+                    <span>{filteredWorkers.length} near {appliedLocationQuery || 'you'}</span>
+                  </div>
+
+                  {/* Leaflet Map Canvas */}
+                  <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }}></div>
+
+                  {/* Map Controls */}
+                  <div className="sidebar-map-controls">
+                    <button type="button" className="sidebar-map-btn" onClick={handleZoomIn} title="Zoom In">+</button>
+                    <button type="button" className="sidebar-map-btn" onClick={handleZoomOut} title="Zoom Out">–</button>
+                    <button type="button" className="sidebar-map-btn" onClick={handleRecenter} title="Find My Location">
+                      <md-icon style={{ fontSize: '16px', color: isLocating ? '#2563eb' : '#000000' }}>my_location</md-icon>
+                    </button>
+                  </div>
+
+                  {/* Floating Map Worker Card Popup when a pin is clicked */}
+                  {selectedMapWorker && (
+                    <div className="sidebar-map-popup-card">
+                      <button
+                        type="button"
+                        className="popup-close"
+                        onClick={() => setSelectedMapWorker(null)}
+                        aria-label="Close"
+                      >
+                        <md-icon style={{ fontSize: '15px' }}>close</md-icon>
+                      </button>
+
+                      <div className="popup-worker-info">
+                        {selectedMapWorker.profilePicture || selectedMapWorker.profileImage ? (
+                          <img
+                            src={selectedMapWorker.profilePicture || selectedMapWorker.profileImage}
+                            alt={selectedMapWorker.name}
+                            className="popup-avatar"
+                          />
+                        ) : (
+                          <div className="popup-avatar">
+                            {selectedMapWorker.name ? selectedMapWorker.name.charAt(0).toUpperCase() : 'W'}
+                          </div>
+                        )}
+                        <div className="popup-details">
+                          <h4 className="popup-name">{selectedMapWorker.name}</h4>
+                          <p className="popup-skill">
+                            ★ {selectedMapWorker.overallRating ? selectedMapWorker.overallRating.toFixed(1) : '5.0'} • {selectedMapWorker.skills && selectedMapWorker.skills.length > 0 ? selectedMapWorker.skills[0].skillName : 'Worker'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="popup-actions">
+                        <span className="popup-price">
+                          Rs. {getWorkerRate(selectedMapWorker, rateType)?.toLocaleString() || '0'}/h
+                        </span>
+                        <button
+                          type="button"
+                          className="popup-view-btn"
+                          onClick={() => navigate(`/worker-detail?id=${selectedMapWorker.id}`)}
+                        >
+                          View Profile
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-              <span className="m3-drawer-badge">
-                {workers.filter(w => (w.overallRating ?? 0) >= 4.5).length}
-              </span>
+            )}
+          </div>
+
+          <hr className="uber-sidebar-divider" />
+
+          {/* Worker Status Section */}
+          <div className="uber-sidebar-section worker-status-section">
+            <div className="uber-sidebar-section-title">
+              <span>Worker Status</span>
             </div>
-          </nav>
 
-          <hr className="m3-drawer-divider" />
+            <div className="uber-cat-list">
+              {/* All Baas */}
+              <div
+                className={`uber-sidebar-item ${!availableNowOnly && !favoritesOnly && minRating === 'Any' && selectedBadge === 'all' ? 'active' : ''}`}
+                onClick={() => {
+                  setAvailableNowOnly(false);
+                  setFavoritesOnly(false);
+                  setMinRating('Any');
+                  setSelectedBadge('all');
+                }}
+                title="View all verified home service workers"
+              >
+                <div className="uber-sidebar-item-left">
+                  <md-icon>engineering</md-icon>
+                  <span>All Baas</span>
+                </div>
+                <span className="uber-sidebar-badge">{workers.length}</span>
+              </div>
 
-          {/* Categories Section ("Labels" in Gmail) */}
-          <div className="m3-drawer-section">
-            <div className="m3-drawer-section-header">
-              <span className="m3-drawer-section-title">CATEGORIES</span>
+              {/* Verified Workers */}
+              <div
+                className={`uber-sidebar-item ${selectedBadge === 'verified' ? 'active' : ''}`}
+                onClick={() => setSelectedBadge(selectedBadge === 'verified' ? 'all' : 'verified')}
+                title="Filter by verified workers"
+              >
+                <div className="uber-sidebar-item-left">
+                  <md-icon>verified</md-icon>
+                  <span>Verified</span>
+                </div>
+                <span className="uber-sidebar-badge">{verifiedCount}</span>
+              </div>
+
+              {/* Starred / Saved Baas */}
+              <div
+                className={`uber-sidebar-item ${favoritesOnly ? 'active' : ''}`}
+                onClick={() => setFavoritesOnly(!favoritesOnly)}
+                title="Filter by favorited workers"
+              >
+                <div className="uber-sidebar-item-left">
+                  <md-icon>{favoritesOnly ? 'star' : 'star_outline'}</md-icon>
+                  <span>Starred</span>
+                </div>
+                <span className="uber-sidebar-badge">{starredCount}</span>
+              </div>
+
+              {/* Available Now */}
+              <div
+                className={`uber-sidebar-item ${availableNowOnly ? 'active' : ''}`}
+                onClick={() => setAvailableNowOnly(!availableNowOnly)}
+                title="Filter by workers currently on call"
+              >
+                <div className="uber-sidebar-item-left">
+                  <md-icon>bolt</md-icon>
+                  <span>Available Now</span>
+                </div>
+                <span className="uber-sidebar-badge">{availableCount}</span>
+              </div>
+
+              {/* Top Rated (4.5+ ★) */}
+              <div
+                className={`uber-sidebar-item ${minRating === '4.5' ? 'active' : ''}`}
+                onClick={() => setMinRating(minRating === '4.5' ? 'Any' : '4.5')}
+                title="Filter workers with 4.5+ star rating"
+              >
+                <div className="uber-sidebar-item-left">
+                  <md-icon>{minRating === '4.5' ? 'workspace_premium' : 'hotel_class'}</md-icon>
+                  <span>Top Rated (4.5★)</span>
+                </div>
+                <span className="uber-sidebar-badge">{topRatedCount}</span>
+              </div>
+            </div>
+          </div>
+
+          <hr className="uber-sidebar-divider" />
+
+          {/* Categories Section */}
+          <div className="uber-sidebar-section">
+            <div className="uber-sidebar-section-title">
+              <span>Categories</span>
               {selectedCategories.length > 0 && (
                 <button
                   type="button"
-                  className="m3-drawer-section-action"
+                  className="uber-sidebar-clear-btn"
                   onClick={() => setSelectedCategories([])}
                   title="Clear category selection"
                 >
@@ -874,93 +1205,51 @@ export default function Find() {
               )}
             </div>
 
-            <div className="m3-drawer-labels-list">
+            <div className="uber-cat-list">
+              <div
+                className={`uber-cat-item ${selectedCategories.length === 0 ? 'active' : ''}`}
+                onClick={() => setSelectedCategories([])}
+                title="All Categories"
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <md-icon>grid_view</md-icon>
+                  <span>All Categories</span>
+                </div>
+                <span className="uber-sidebar-badge">{workers.length}</span>
+              </div>
+
               {categories.map((cat) => {
                 const count = getCategoryCount(cat.id);
                 const isSelected = selectedCategories.includes(cat.id);
                 return (
                   <div
                     key={cat.id}
-                    className={`m3-drawer-item ${isSelected ? 'active' : ''}`}
+                    className={`uber-cat-item ${isSelected ? 'active' : ''}`}
                     onClick={() => toggleCategory(cat.id)}
                     title={`Filter by ${cat.label}`}
+                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                   >
-                    <div className="m3-drawer-item-left">
-                      <md-icon className="m3-drawer-icon">
-                        {cat.icon || 'handyman'}
-                      </md-icon>
-                      <span className="m3-drawer-label">{cat.label}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <md-icon>{cat.icon || 'handyman'}</md-icon>
+                      <span>{cat.label}</span>
                     </div>
-                    <span className="m3-drawer-badge">{count}</span>
+                    <span className="uber-sidebar-badge">{count}</span>
                   </div>
                 );
               })}
             </div>
           </div>
 
-          <hr className="m3-drawer-divider" />
-
-          {/* Location Filter Section */}
-          <div className="m3-drawer-section">
-            <div className="m3-drawer-section-header">
-              <span className="m3-drawer-section-title">City / Area</span>
-            </div>
-            <div style={{ position: 'relative', padding: '0 8px' }}>
-              <input
-                type="text"
-                placeholder="e.g. Ratnapura, Colombo..."
-                value={locationQuery}
-                onChange={(e) => {
-                  setLocationQuery(e.target.value);
-                  setAppliedLocationQuery(e.target.value);
-                }}
-                style={{
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  background: '#ffffff',
-                  border: '1px solid #cbd5e1',
-                  borderRadius: '8px',
-                  padding: '8px 12px',
-                  fontSize: '0.85rem',
-                  outline: 'none',
-                  color: '#0f172a'
-                }}
-              />
-              {locationQuery && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLocationQuery('');
-                    setAppliedLocationQuery('');
-                  }}
-                  style={{
-                    position: 'absolute',
-                    right: '16px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    color: '#94a3b8',
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}
-                >
-                  <md-icon style={{ fontSize: '16px' }}>close</md-icon>
-                </button>
-              )}
-            </div>
-          </div>
-
-          <hr className="m3-drawer-divider" />
+          <hr className="uber-sidebar-divider" />
 
           {/* Budget & Rate Filter Section */}
-          <div className="m3-drawer-section m3-rates-section">
-            <div className="m3-drawer-section-header">
-              <span className="m3-drawer-section-title">Rate Type</span>
+          <div className="uber-sidebar-section m3-rates-section">
+            <div className="uber-sidebar-section-title">
+              <span>Rate Type</span>
             </div>
 
-            {/* M3 Segmented Control */}
+            {/* Segmented Control */}
             <div className="m3-segmented-control">
               {['Any', 'Per day', 'Per hour'].map((type) => (
                 <button
@@ -1027,66 +1316,133 @@ export default function Find() {
           {hasActiveFilters && (
             <button
               type="button"
-              className="m3-drawer-reset-btn"
+              className="uber-btn-outline"
               onClick={handleResetFilters}
+              style={{ width: '100%', marginTop: '4px' }}
             >
-              <md-icon>restart_alt</md-icon>
+              <md-icon style={{ fontSize: '18px' }}>restart_alt</md-icon>
               <span>Reset All Filters</span>
             </button>
           )}
         </aside>
 
-        {/* Right Main Content Area (Spans full width above cards/map) */}
-        <main className="find-main" style={{ flex: 1, minWidth: 0 }}>
-          {/* Main Controls Header - ALWAYS at top right spanning full width */}
-          <div className="find-main-header">
-            <h1 className="find-results-title">
-              {loading ? 'Searching workers...' : `${filteredWorkers.length} workers available`}
-            </h1>
+        {/* Right Main Content Area */}
+        <main className="community-feed-column find-main" id="find-feed">
+          {/* Main Controls Search & Filter Bar */}
+          <div className="uber-search-card" id="find-search-main">
+            <div className="uber-search-input-wrap">
+              <i className="fa-solid fa-magnifying-glass uber-search-icon"></i>
+              <input
+                type="text"
+                className="uber-search-input"
+                placeholder="Search craftsmen by name, skill, service (e.g. Electrician)..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setAppliedSearchQuery(e.target.value);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    setAppliedSearchQuery(searchQuery);
+                    const params = new URLSearchParams(window.location.search);
+                    if (searchQuery) params.set('q', searchQuery);
+                    else params.delete('q');
+                    const qs = params.toString();
+                    navigate(qs ? `/find?${qs}` : '/find');
+                  }
+                }}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setAppliedSearchQuery('');
+                    const params = new URLSearchParams(window.location.search);
+                    params.delete('q');
+                    const qs = params.toString();
+                    navigate(qs ? `/find?${qs}` : '/find');
+                  }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#757575', padding: '4px' }}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
 
-            <div className="find-header-actions">
+            <div className="uber-toolbar-actions">
               <select
-                className="find-sort-select"
+                className="uber-sort-select"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
               >
-                <option value="recommended">Sort by: Recommended</option>
-                <option value="rating">Highest Rated</option>
-                <option value="price_asc">Price: Low to High</option>
-                <option value="price_desc">Price: High to Low</option>
+                <option value="recommended">Sort: Recommended</option>
+                <option value="rating">Sort: Highest Rated</option>
+                <option value="price_asc">Sort: Price (Low to High)</option>
+                <option value="price_desc">Sort: Price (High to Low)</option>
               </select>
 
-              <button
-                className="find-map-toggle-btn"
-                onClick={() => {
-                  setShowMap(!showMap);
-                  setSelectedMapWorker(null);
-                }}
-              >
-                <span>{showMap ? 'Hide map' : 'Show map'}</span>
-                <md-icon style={{ fontSize: '18px' }}>{showMap ? 'map' : 'explore'}</md-icon>
-              </button>
+              {/* Grid View Mode Switcher Button Group (Icon Only) */}
+              <div className="uber-view-mode-group" role="group" aria-label="Card grid view mode">
+                <button
+                  type="button"
+                  className={`uber-view-mode-btn ${viewMode === 'large' ? 'active' : ''}`}
+                  onClick={() => handleViewModeChange('large')}
+                  title="Large Cards View"
+                  aria-label="Large Cards View"
+                >
+                  <i className="fa-solid fa-table-cells-large"></i>
+                </button>
+                <button
+                  type="button"
+                  className={`uber-view-mode-btn ${viewMode === 'small' ? 'active' : ''}`}
+                  onClick={() => handleViewModeChange('small')}
+                  title="Small Cards View"
+                  aria-label="Small Cards View"
+                >
+                  <i className="fa-solid fa-grip"></i>
+                </button>
+                <button
+                  type="button"
+                  className={`uber-view-mode-btn ${viewMode === 'list' ? 'active' : ''}`}
+                  onClick={() => handleViewModeChange('list')}
+                  title="List View"
+                  aria-label="List View"
+                >
+                  <i className="fa-solid fa-list-ul"></i>
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Active Search & Location Filter Chips Bar */}
-          {(appliedSearchQuery || appliedLocationQuery) && (
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
+          {/* Results Count & Active Filter Chips Bar */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', margin: '4px 0 4px 0' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#000000', margin: 0, letterSpacing: '-0.02em' }}>
+              {loading ? 'Searching workers...' : `${filteredWorkers.length} verified worker${filteredWorkers.length === 1 ? '' : 's'} available`}
+            </h2>
+            {!loading && totalWorkers > 0 && (
+              <div style={{ fontSize: '0.85rem', color: '#71717a', fontWeight: 600 }}>
+                Showing {startIndex + 1}–{Math.min(startIndex + WORKERS_PER_PAGE, totalWorkers)} of {totalWorkers}
+              </div>
+            )}
+          </div>
+
+          {(appliedSearchQuery || (appliedLocationQuery && appliedLocationQuery.trim() !== '') || selectedCategories.length > 0 || availableNowOnly || favoritesOnly || minRating !== 'Any' || selectedBadge !== 'all') && (
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
               {appliedSearchQuery && (
                 <div style={{
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '6px',
-                  background: '#f1f5f9',
-                  border: '1px solid #cbd5e1',
-                  padding: '4px 12px',
+                  background: '#000000',
+                  color: '#ffffff',
+                  padding: '5px 12px',
                   borderRadius: '9999px',
-                  fontSize: '0.85rem',
-                  fontWeight: 600,
-                  color: '#0f172a'
+                  fontSize: '0.82rem',
+                  fontWeight: 600
                 }}>
                   <md-icon style={{ fontSize: '16px' }}>search</md-icon>
-                  <span>Service: {appliedSearchQuery}</span>
+                  <span>"{appliedSearchQuery}"</span>
                   <md-icon
                     style={{ fontSize: '16px', cursor: 'pointer', marginLeft: '4px' }}
                     onClick={() => {
@@ -1108,16 +1464,16 @@ export default function Find() {
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '6px',
-                  background: '#eff6ff',
-                  border: '1px solid #bfdbfe',
-                  padding: '4px 12px',
+                  background: '#f4f4f5',
+                  border: '1px solid #000000',
+                  padding: '5px 12px',
                   borderRadius: '9999px',
-                  fontSize: '0.85rem',
+                  fontSize: '0.82rem',
                   fontWeight: 600,
-                  color: '#1e40af'
+                  color: '#000000'
                 }}>
-                  <md-icon style={{ fontSize: '16px', color: '#2563eb' }}>location_on</md-icon>
-                  <span>Location: {appliedLocationQuery}</span>
+                  <md-icon style={{ fontSize: '16px', color: '#000000' }}>location_on</md-icon>
+                  <span>{appliedLocationQuery}</span>
                   <md-icon
                     style={{ fontSize: '16px', cursor: 'pointer', marginLeft: '4px' }}
                     onClick={() => {
@@ -1133,6 +1489,124 @@ export default function Find() {
                   </md-icon>
                 </div>
               )}
+
+              {favoritesOnly && (
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#fef3c7',
+                  border: '1px solid #f59e0b',
+                  padding: '5px 12px',
+                  borderRadius: '9999px',
+                  fontSize: '0.82rem',
+                  fontWeight: 600,
+                  color: '#92400e'
+                }}>
+                  <md-icon style={{ fontSize: '16px', color: '#d97706' }}>star</md-icon>
+                  <span>Starred Only</span>
+                  <md-icon
+                    style={{ fontSize: '16px', cursor: 'pointer', marginLeft: '4px' }}
+                    onClick={() => setFavoritesOnly(false)}
+                  >
+                    close
+                  </md-icon>
+                </div>
+              )}
+
+              {availableNowOnly && (
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#ecfdf5',
+                  border: '1px solid #10b981',
+                  padding: '5px 12px',
+                  borderRadius: '9999px',
+                  fontSize: '0.82rem',
+                  fontWeight: 600,
+                  color: '#065f46'
+                }}>
+                  <md-icon style={{ fontSize: '16px', color: '#059669' }}>bolt</md-icon>
+                  <span>Available Now</span>
+                  <md-icon
+                    style={{ fontSize: '16px', cursor: 'pointer', marginLeft: '4px' }}
+                    onClick={() => setAvailableNowOnly(false)}
+                  >
+                    close
+                  </md-icon>
+                </div>
+              )}
+
+              {minRating !== 'Any' && (
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#f4f4f5',
+                  border: '1px solid #d4d4d8',
+                  padding: '5px 12px',
+                  borderRadius: '9999px',
+                  fontSize: '0.82rem',
+                  fontWeight: 600,
+                  color: '#000000'
+                }}>
+                  <md-icon style={{ fontSize: '16px' }}>hotel_class</md-icon>
+                  <span>{minRating}+ Stars</span>
+                  <md-icon
+                    style={{ fontSize: '16px', cursor: 'pointer', marginLeft: '4px' }}
+                    onClick={() => setMinRating('Any')}
+                  >
+                    close
+                  </md-icon>
+                </div>
+              )}
+
+              {selectedBadge !== 'all' && (
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#000000',
+                  color: '#ffffff',
+                  padding: '5px 12px',
+                  borderRadius: '9999px',
+                  fontSize: '0.82rem',
+                  fontWeight: 600
+                }}>
+                  <md-icon style={{ fontSize: '16px' }}>verified</md-icon>
+                  <span>Verified</span>
+                  <md-icon
+                    style={{ fontSize: '16px', cursor: 'pointer', marginLeft: '4px' }}
+                    onClick={() => setSelectedBadge('all')}
+                  >
+                    close
+                  </md-icon>
+                </div>
+              )}
+
+              {selectedCategories.map(cat => (
+                <div key={cat} style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#f4f4f5',
+                  border: '1px solid #e4e4e7',
+                  padding: '5px 12px',
+                  borderRadius: '9999px',
+                  fontSize: '0.82rem',
+                  fontWeight: 600,
+                  color: '#000000'
+                }}>
+                  <span>{cat}</span>
+                  <md-icon
+                    style={{ fontSize: '16px', cursor: 'pointer', marginLeft: '4px' }}
+                    onClick={() => toggleCategory(cat)}
+                  >
+                    close
+                  </md-icon>
+                </div>
+              ))}
             </div>
           )}
 
@@ -1161,7 +1635,7 @@ export default function Find() {
                 style={{
                   background: '#0f172a',
                   color: '#ffffff',
-                  border: 'none',
+                  border: 'none'
                   borderRadius: '12px',
                   padding: '10px 20px',
                   fontWeight: 600,
@@ -1172,118 +1646,14 @@ export default function Find() {
                 Reset All Filters
               </button>
             </div>
-          ) : showMap ? (
-            /* Split View Mode: Middle Cards Column + Right Map Pane */
-            <div className="find-split-view-container">
-              {/* Middle Cards Column */}
-              <div className="find-middle-cards-col">
-                <div style={{ display: 'grid', gap: '20px', gridTemplateColumns: '1fr' }}>
-                  {filteredWorkers.map(worker => renderWorkerCard(worker))}
-                </div>
-              </div>
-
-              {/* Right Map Pane */}
-              <aside className="find-map-pane">
-                {/* Map Search Input */}
-                <div className="map-search-overlay">
-                  <md-icon style={{ fontSize: '18px', color: '#94a3b8' }}>search</md-icon>
-                  <input
-                    type="text"
-                    placeholder="Search address or workers..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    style={{ border: 'none', background: 'transparent', width: '100%', outline: 'none', fontSize: '0.875rem', color: '#0f172a' }}
-                  />
-                  {isLocating && (
-                    <md-circular-progress indeterminate style={{ '--md-circular-progress-size': '18px', width: '18px', height: '18px' }}></md-circular-progress>
-                  )}
-                </div>
-
-                {/* Floating Map Worker Card Popup */}
-                {selectedMapWorker && (
-                  <div className="map-floating-worker-card">
-                    <button
-                      className="map-floating-close-btn"
-                      onClick={() => setSelectedMapWorker(null)}
-                    >
-                      <md-icon style={{ fontSize: '16px' }}>close</md-icon>
-                    </button>
-
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#b45309', background: '#fffbeb', padding: '2px 8px', borderRadius: '12px' }}>
-                        ★ {selectedMapWorker.overallRating ? selectedMapWorker.overallRating.toFixed(1) : '5.0'} ({Math.round((selectedMapWorker.id * 37) % 150 + 20)})
-                      </div>
-                      <button
-                        onClick={(e) => toggleFavorite(e, selectedMapWorker.id)}
-                        style={{ background: 'none', border: 'none', color: favorites[selectedMapWorker.id] ? '#ef4444' : '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                      >
-                        <md-icon style={{ fontSize: '18px', color: favorites[selectedMapWorker.id] ? '#ef4444' : '#94a3b8' }}>{favorites[selectedMapWorker.id] ? 'favorite' : 'favorite_border'}</md-icon>
-                      </button>
-                    </div>
-
-                    <div style={{ width: '100%', height: '110px', borderRadius: '12px', background: '#f8fafc', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px' }}>
-                      {selectedMapWorker.profilePicture || selectedMapWorker.profileImage ? (
-                        <img
-                          src={selectedMapWorker.profilePicture || selectedMapWorker.profileImage}
-                          alt={selectedMapWorker.name}
-                          style={{ maxHeight: '95px', objectFit: 'contain' }}
-                        />
-                      ) : (
-                        <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: '#0f172a', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', fontWeight: 800 }}>
-                          {selectedMapWorker.name ? selectedMapWorker.name.charAt(0).toUpperCase() : 'W'}
-                        </div>
-                      )}
-                    </div>
-
-                    <h4 style={{ margin: '0 0 2px 0', fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>
-                      {selectedMapWorker.name}
-                    </h4>
-                    <p style={{ margin: '0 0 12px 0', fontSize: '0.78rem', color: '#64748b' }}>
-                      {selectedMapWorker.skills && selectedMapWorker.skills.length > 0 ? selectedMapWorker.skills[0].skillName : 'General Pro'}
-                    </p>
-
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                      <button
-                        onClick={() => navigate(`/worker-detail?id=${selectedMapWorker.id}`)}
-                        style={{
-                          flex: 1,
-                          background: '#0f172a',
-                          color: '#ffffff',
-                          border: 'none',
-                          borderRadius: '10px',
-                          padding: '8px 12px',
-                          fontWeight: 700,
-                          fontSize: '0.85rem',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Book
-                      </button>
-                      <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a', whiteSpace: 'nowrap' }}>
-                        Rs. {getWorkerRate(selectedMapWorker, rateType).toLocaleString()}/h
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Leaflet Map Canvas Div */}
-                <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }}></div>
-
-                {/* Map Controls */}
-                <div className="map-controls-group">
-                  <button className="map-control-btn" onClick={handleZoomIn} title="Zoom In">+</button>
-                  <button className="map-control-btn" onClick={handleZoomOut} title="Zoom Out">–</button>
-                  <button className="map-control-btn" onClick={handleRecenter} title="Find My Real Location">
-                    <md-icon style={{ fontSize: '18px', color: isLocating ? '#2563eb' : '#0f172a' }}>my_location</md-icon>
-                  </button>
-                </div>
-              </aside>
-            </div>
           ) : (
             /* Full Width Grid Mode */
-            <div className="worker-cards-grid">
-              {filteredWorkers.map(worker => renderWorkerCard(worker))}
-            </div>
+            <>
+              <div className={`worker-cards-grid view-${viewMode}`}>
+                {paginatedWorkers.map(worker => renderWorkerCard(worker))}
+              </div>
+              {renderPagination()}
+            </>
           )}
         </main>
       </div>
