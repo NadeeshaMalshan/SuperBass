@@ -795,10 +795,6 @@ export default function Find() {
       <M3TopNavbar
         theme="dark"
         activePage="find"
-        showSearch={false}
-        showSidebarToggle={true}
-        isSidebarCollapsed={isSidebarCollapsed}
-        onToggleSidebar={() => setIsSidebarCollapsed(prev => !prev)}
       />
 
       {/* 1. Craftsmen Hero Showcase Banner (Uber Pitch Black Aesthetic) */}
