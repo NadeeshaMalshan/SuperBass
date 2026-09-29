@@ -84,7 +84,7 @@ export default function Find() {
   const [isWorkerDropdownOpen, setIsWorkerDropdownOpen] = useState(false);
   const [failedWorkerAvatars, setFailedWorkerAvatars] = useState({});
   const workerDropdownRef = useRef(null);
-  
+
   const activeRole = localStorage.getItem('activeRole') || 'Resident';
   const isWorker = activeRole.toLowerCase() === 'worker' || localStorage.getItem('workerAuth') === 'true';
   const themePrimary = isWorker ? '#2563EB' : '#FDC101';
@@ -202,16 +202,16 @@ export default function Find() {
     window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
-  const hasActiveFilters = 
-    rateType !== 'Any' || 
-    availableNowOnly || 
-    favoritesOnly || 
-    minPrice !== '' || 
-    maxPrice !== '' || 
-    selectedCategories.length > 0 || 
-    minRating !== 'Any' || 
-    selectedBadge !== 'all' || 
-    appliedSearchQuery !== '' || 
+  const hasActiveFilters =
+    rateType !== 'Any' ||
+    availableNowOnly ||
+    favoritesOnly ||
+    minPrice !== '' ||
+    maxPrice !== '' ||
+    selectedCategories.length > 0 ||
+    minRating !== 'Any' ||
+    selectedBadge !== 'all' ||
+    appliedSearchQuery !== '' ||
     appliedLocationQuery !== '';
 
   const handleResetFilters = () => {
@@ -309,7 +309,7 @@ export default function Find() {
     if (appliedLocationQuery.trim() !== '') {
       const loc = appliedLocationQuery.toLowerCase().trim();
       if (loc !== 'current location' && loc !== 'my location') {
-        const locMatch = 
+        const locMatch =
           (w.primaryServiceArea && w.primaryServiceArea.toLowerCase().includes(loc)) ||
           (w.resident?.address && w.resident.address.toLowerCase().includes(loc)) ||
           (w.description && w.description.toLowerCase().includes(loc)) ||
@@ -633,7 +633,7 @@ export default function Find() {
   // Render Worker Search Results Dropdown inside Top Navbar
   const renderWorkerSearchDropdown = () => {
     if (!isWorkerDropdownOpen || !searchQuery.trim()) return null;
-    
+
     // The dropdown uses the live searchQuery, not the appliedSearchQuery
     const dropdownWorkers = workers.filter(w => {
       const q = searchQuery.toLowerCase();
@@ -803,7 +803,7 @@ export default function Find() {
           <div className="community-hero-left">
             <span className="community-hero-overline">SuperBass Verified Craftsmen Directory</span>
             <h1 className="community-hero-title">
-              Find Trusted Local Baas & Service Specialists
+              Find Trusted Local Workers & Service Specialists
             </h1>
             <p className="community-hero-desc">
               Browse verified technicians, read neighborhood reviews, compare hourly & daily rates, check real-time availability, and hire top-rated craftsmen across Sri Lanka.

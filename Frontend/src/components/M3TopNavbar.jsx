@@ -60,15 +60,15 @@ export default function M3TopNavbar({
 
       {/* Right: Navigation Buttons & User Avatar */}
       <div className="m3-navbar-right">
-        {/* 1. Services / Find Workers */}
+        {/* 1. Workers / Find Workers */}
         <button
           type="button"
-          className={`m3-nav-btn ${activePage === 'find' || activePage === 'services' ? 'active' : ''}`}
+          className={`m3-nav-btn ${activePage === 'find' || activePage === 'services' || activePage === 'workers' ? 'active' : ''}`}
           onClick={() => navigate('/find')}
           title="Find Craftsmen & Workers"
         >
-          <md-icon>build</md-icon>
-          <span>Services</span>
+          <md-icon>engineering</md-icon>
+          <span>Workers</span>
         </button>
 
         {/* 2. Community Button */}
