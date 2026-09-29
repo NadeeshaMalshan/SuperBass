@@ -508,10 +508,10 @@ export default function Find() {
         attributionControl: false
       }).setView(userLocation, 13);
 
-      // CartoDB Positron sleek light map tile layer
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      // Standard Leaflet OpenStreetMap tile layer
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
-        subdomains: 'abcd'
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
       }).addTo(map);
 
       mapInstanceRef.current = map;
