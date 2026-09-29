@@ -476,9 +476,6 @@ export default function WorkerDetail() {
       {/* Google Workspace / Material 3 Top Navbar */}
       <M3TopNavbar
         activePage="services"
-        showSearch={true}
-        showSidebarToggle={false}
-        searchPlaceholder="Search services, skills, or workers..."
       />
 
       {/* Main Container */}
