@@ -254,6 +254,61 @@ def test_deterministic_card_builder_for_post_draft_with_get_service_categories_t
     assert card_resp.response_type != "service_categories"
 
 
+def test_deterministic_card_builder_for_user_posts_with_post_id():
+    """Verify that get_user_community_posts properly extracts postId into post.id and avoids raw dump in message."""
+    tool_content = json.dumps([
+        {
+            "postId": 16,
+            "title": "AC Not Cooling - Repair Needed",
+            "content": "My AC unit in Colombo needs repair",
+            "serviceCategoryId": "ac-air-conditioning",
+            "location": "Colombo",
+            "userName": "Jayashan Manodya",
+            "likesCount": 2,
+            "commentsCount": 1
+        },
+        {
+            "postId": 15,
+            "title": "Bathroom Tap Leakage Repair",
+            "content": "I am looking for a plumber to fix a leaking tap",
+            "serviceCategoryId": "plumbing",
+            "location": "Colombo",
+            "userName": "Jayashan Manodya",
+            "likesCount": 0,
+            "commentsCount": 0
+        }
+    ])
+    raw_ai_msg = (
+        "Here are your community posts (2): 1) Post ID: 16 - Title: AC Not Cooling - Repair Needed - Content: My AC unit in Colombo needs repair "
+        "2) Post ID: 15 - Title: Bathroom Tap Leakage Repair - Content: I am looking for a plumber"
+    )
+    state = {
+        "messages": [
+            HumanMessage(content="give my community posts"),
+            AIMessage(content="", tool_calls=[{"name": "get_user_community_posts", "args": {"email": "resident@workio.lk"}, "id": "call_uposts_1"}]),
+            ToolMessage(content=tool_content, tool_call_id="call_uposts_1", name="get_user_community_posts"),
+            AIMessage(content=raw_ai_msg)
+        ],
+        "email": "resident@workio.lk",
+        "user_type": "Resident",
+        "user_profile": {"displayName": "Jayashan Manodya", "address": "Colombo"},
+        "next": None,
+        "structured_response": None,
+        "metadata": {}
+    }
+    card_resp = _deterministic_card_builder(state)
+    assert card_resp.response_type == "post_list"
+    posts = card_resp.card_data.get("posts", [])
+    assert len(posts) == 2
+    assert posts[0]["id"] == "16"
+    assert posts[1]["id"] == "15"
+    assert posts[0]["title"] == "AC Not Cooling - Repair Needed"
+    # Ensure message does NOT dump raw Post ID 16 list
+    assert "1) Post ID: 16" not in card_resp.message
+    assert "click any post card" in card_resp.message.lower()
+
+
+
 def test_community_tools_count():
     """Verify all 7 community MCP tools are registered."""
     assert len(COMMUNITY_TOOLS) == 7

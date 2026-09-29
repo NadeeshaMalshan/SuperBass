@@ -99,11 +99,25 @@ def _clean_card_intro_message(raw_msg: str, default_intro: str, card_type: str =
     if card_type == "post_confirmation":
         return "Here is your draft community post. Please review your post details below, edit if needed, and confirm to publish:"
 
+    if card_type == "post_list":
+        intro_m = re.search(
+            r'^(.*?)(?=(?:\s*\n\s*|\s+)(?:\d+[\.\)]\s*|[-*]\s*|###\s+|Post\s*ID\s*:))',
+            text,
+            re.DOTALL | re.IGNORECASE
+        )
+        intro = intro_m.group(1).strip() if intro_m else ""
+        if not intro or len(intro) < 6:
+            intro = default_intro
+        if not intro.endswith((".", "!", ":", "?")):
+            intro += ":"
+        return f"{intro} You can click any post card below to view details, or let me know if you would like to edit or delete one."
+
     # Detect if the text contains repetitive itemized card details (numbers/bullets followed by bold names, markdown images, tel links, etc.)
     has_dump = bool(
         re.search(
-            r'(?:(?:\n|\s+)(?:1\.\s*\*\*|\d+\.\s*\*\*|[-*]\s*\*\*)|!\[.*?\]\(.*?\)|\(tel:\d+\)|###\s+[A-Z])',
-            text
+            r'(?:(?:\n|\s+)(?:1\.\s*\*\*|\d+\.\s*\*\*|[-*]\s*\*\*|\d+[\.\)]\s*(?:Post\s*ID|Title|\*\*)|Post\s*ID\s*:)|!\[.*?\]\(.*?\)|\(tel:\d+\)|###\s+[A-Z])',
+            text,
+            re.IGNORECASE
         )
     )
 
@@ -112,9 +126,9 @@ def _clean_card_intro_message(raw_msg: str, default_intro: str, card_type: str =
 
     # Extract the introductory text before the first worker/post item (e.g. before "1. **" or "- **" or "![")
     intro_match = re.search(
-        r'^(.*?)(?=(?:\s*\n\s*|\s+)(?:1\.\s*\*\*|\d+\.\s*\*\*|[-*]\s*\*\*|!\[.*?\]\(.*?\)|###\s+))',
+        r'^(.*?)(?=(?:\s*\n\s*|\s+)(?:1\.\s*\*\*|\d+\.\s*\*\*|[-*]\s*\*\*|\d+[\.\)]\s*(?:Post\s*ID|Title|\*\*)|Post\s*ID\s*:|!\[.*?\]\(.*?\)|###\s+))',
         text,
-        re.DOTALL
+        re.DOTALL | re.IGNORECASE
     )
     intro = intro_match.group(1).strip() if intro_match else ""
 
@@ -166,8 +180,9 @@ async def format_specialist_structured_message(
     # Check if the message contains repetitive card-like dumps
     has_card_dump = bool(
         re.search(
-            r'(?:(?:\n|\s+)(?:1\.\s*\*\*|\d+\.\s*\*\*|[-*]\s*\*\*)|!\[.*?\]\(.*?\)|\(tel:\d+\)|###\s+[A-Z])',
-            raw_content
+            r'(?:(?:\n|\s+)(?:1\.\s*\*\*|\d+\.\s*\*\*|[-*]\s*\*\*|\d+[\.\)]\s*(?:Post\s*ID|Title|\*\*)|Post\s*ID\s*:)|!\[.*?\]\(.*?\)|\(tel:\d+\)|###\s+[A-Z])',
+            raw_content,
+            re.IGNORECASE
         )
     )
     if not has_card_dump:
@@ -361,16 +376,21 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
         if tool_name in ["get_community_posts", "get_user_community_posts"]:
             # Could be list or single item or dict
             raw_posts = data if isinstance(data, list) else data.get("posts", data.get("items", []))
-            if isinstance(data, dict) and data.get("id") and not isinstance(raw_posts, list):
+            has_single_id = isinstance(data, dict) and any(
+                data.get(k) is not None for k in ["id", "postId", "post_id", "Id", "PostId"]
+            )
+            if has_single_id and not isinstance(raw_posts, list):
                 # Single post returned by ID
+                post_id = str(data.get("id") or data.get("postId") or data.get("post_id") or data.get("Id") or data.get("PostId") or "")
                 card = PostDetailCard(
-                    id=data.get("id"),
+                    id=post_id,
                     title=data.get("title", ""),
                     content=data.get("content", ""),
-                    communityId=data.get("serviceCategoryId") or data.get("communityId", "General"),
+                    communityId=data.get("serviceCategoryId") or data.get("serviceCategoryName") or data.get("communityId", "General"),
                     location=data.get("location", "Colombo"),
                     authorName=data.get("userName") or data.get("userEmail", "").split("@")[0],
-                    authorEmail=data.get("userEmail"),
+                    authorEmail=data.get("userEmail") or data.get("userId"),
+                    createdAt=data.get("createdAt"),
                     likesCount=data.get("likesCount", 0),
                     commentsCount=data.get("commentsCount", 0)
                 )
@@ -390,15 +410,16 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
             post_summaries: List[CommunityPostSummary] = []
             for item in (raw_posts if isinstance(raw_posts, list) else []):
                 if isinstance(item, dict):
+                    post_id = str(item.get("id") or item.get("postId") or item.get("post_id") or item.get("Id") or item.get("PostId") or "")
                     post_summaries.append(
                         CommunityPostSummary(
-                            id=item.get("id", ""),
+                            id=post_id,
                             title=item.get("title", "Untitled"),
                             content=item.get("content", "")[:140],
-                            communityId=item.get("serviceCategoryId") or item.get("communityId", "General"),
+                            communityId=item.get("serviceCategoryId") or item.get("serviceCategoryName") or item.get("communityId", "General"),
                             location=item.get("location", "Colombo"),
                             authorName=item.get("userName") or item.get("userEmail", "").split("@")[0],
-                            authorEmail=item.get("userEmail"),
+                            authorEmail=item.get("userEmail") or item.get("userId"),
                             createdAt=item.get("createdAt"),
                             likesCount=item.get("likesCount", 0),
                             commentsCount=item.get("commentsCount", 0)
