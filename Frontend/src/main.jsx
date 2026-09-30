@@ -3,7 +3,9 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 import Find from './Find.jsx'
-import Join from './Join.jsx'
+import { AuthProvider } from './AuthProvider.jsx'
+import { GoogleOAuthProvider } from '@react-oauth/google'
+import { GOOGLE_CLIENT_ID } from './config.js'
 import Community from './Community.jsx'
 import Onboarding from './Onboarding.jsx'
 import Chats from './Chats.jsx'
@@ -122,9 +124,6 @@ function Router() {
   if (path === '/worker-detail' || path === '/worker-detail.jsx' || path.startsWith('/worker-detail')) {
     return <WorkerDetail />;
   }
-  if (path === '/join' || path === '/join.jsx') {
-    return <Join />;
-  }
   if (path === '/ai/chat' || path === '/community/chat' || path === '/ai-chat' || path === '/agent') {
     return <AiCommunityChat />;
   }
@@ -173,8 +172,12 @@ function Router() {
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <ErrorBoundary>
-      <Router />
-    </ErrorBoundary>
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <AuthProvider>
+        <ErrorBoundary>
+          <Router />
+        </ErrorBoundary>
+      </AuthProvider>
+    </GoogleOAuthProvider>
   </StrictMode>,
 )

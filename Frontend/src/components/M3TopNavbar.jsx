@@ -4,6 +4,7 @@ import UserMenu from './UserMenu.jsx';
 import '@material/web/icon/icon.js';
 import workioLogoWhite from '../assets/Workio_Logo/Workio_Logo_White_With_Text.png';
 import workioLogoBlack from '../assets/Workio_Logo/Workio_Logo_Black_With_Text.png';
+import { useAuth } from '../AuthProvider.jsx';
 
 export default function M3TopNavbar({
   activePage = '',
@@ -22,6 +23,7 @@ export default function M3TopNavbar({
 }) {
   const [internalSearch, setInternalSearch] = useState(searchValue || '');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { login } = useAuth();
 
   useEffect(() => {
     const checkAuth = () => {
@@ -171,7 +173,7 @@ export default function M3TopNavbar({
           <button
             type="button"
             className={`m3-nav-btn ${activePage === 'chats' ? 'active' : ''}`}
-            onClick={() => navigate(isLoggedIn ? '/chats' : '/join')}
+            onClick={() => isLoggedIn ? navigate('/chats') : login()}
             title="Direct Messages"
           >
             <md-icon>chat</md-icon>
@@ -184,7 +186,7 @@ export default function M3TopNavbar({
           <button
             type="button"
             className={`m3-nav-btn ${activePage === 'bookings' ? 'active' : ''}`}
-            onClick={() => navigate(isLoggedIn ? '/bookings' : '/join')}
+            onClick={() => isLoggedIn ? navigate('/bookings') : login()}
             title="My Bookings"
           >
             <md-icon>calendar_today</md-icon>
@@ -199,7 +201,7 @@ export default function M3TopNavbar({
           <button
             type="button"
             className="m3-signin-btn"
-            onClick={() => navigate('/join')}
+            onClick={() => login()}
             title="Sign in to Workio"
           >
             Sign in

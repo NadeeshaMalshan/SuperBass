@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useAuth } from './AuthProvider.jsx';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
 import './App.css';
@@ -60,6 +61,7 @@ function ModalLocationMarker({ lat, lng, onSelect }) {
 
 
 export default function WorkerDetail() {
+  const { login } = useAuth();
   const urlParams = new URLSearchParams(window.location.search);
   const workerId = urlParams.get('id');
 
@@ -269,7 +271,7 @@ export default function WorkerDetail() {
     const userEmail = localStorage.getItem('email');
     if (!token) {
       alert('Please sign in or register to hire verified professionals.');
-      navigate('/join');
+      login();
       return;
     }
 
