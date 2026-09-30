@@ -91,6 +91,8 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     comment: ''
   });
   const [submittingReview, setSubmittingReview] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   let userEmail = localStorage.getItem('email');
   const token = localStorage.getItem('token');
@@ -436,18 +438,27 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
   };
 
   const handleDeleteAccount = async () => {
-    if (!window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
+    if (deleteConfirmText !== 'DELETE') {
+      alert("Please type DELETE in capital letters to confirm permanent account deletion.");
+      return;
+    }
+
+    if (!window.confirm("FINAL WARNING: Are you absolutely certain you want to permanently delete your Resident account? All your bookings, community posts, and data will be permanently wiped. Your email will be freed up.")) {
       return;
     }
 
     try {
+      setIsDeletingAccount(true);
       await axios.delete(`${API_BASE_URL}/residents/${encodeURIComponent(userEmail)}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
+      alert("Your Resident account has been permanently deleted. Your email is now freed up to register as either Resident or Worker.");
       handleLogout();
     } catch (err) {
       console.error(err);
-      alert('Failed to delete account.');
+      alert(err.response?.data?.message || 'Failed to delete account.');
+    } finally {
+      setIsDeletingAccount(false);
     }
   };
 
@@ -716,21 +727,6 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
               </div>
             </div>
 
-            {isWorker && (
-              <div
-                className="m3-drawer-item"
-                onClick={() => {
-                  localStorage.setItem('activeRole', 'Worker');
-                  navigateTo('/worker/dashboard');
-                }}
-                style={{ marginTop: '8px' }}
-              >
-                <div className="m3-drawer-item-left">
-                  <md-icon className="m3-drawer-icon" style={{ color: '#2563eb' }}>engineering</md-icon>
-                  <span className="m3-drawer-label" style={{ color: '#2563eb', fontWeight: 700 }}>Worker Portal</span>
-                </div>
-              </div>
-            )}
           </nav>
         </aside>
 
@@ -1315,26 +1311,90 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                 </md-outlined-button>
               </div>
 
-              <div style={{ padding: '1.5rem', border: '1px solid #ef4444', borderRadius: '12px', backgroundColor: '#fef2f2' }}>
-                <h3 style={{ color: '#ef4444', marginTop: 0, fontWeight: '800', fontSize: '1.2rem' }}>Danger Zone</h3>
-                <p style={{ color: '#7f1d1d', marginBottom: '1.5rem', fontSize: '0.95rem' }}>Once you delete your account, there is no going back. All of your profile data will be permanently removed.</p>
-                <md-filled-button
+              {/* RESTRICTED DANGER ZONE */}
+              <div style={{
+                marginTop: '2rem',
+                border: '2px solid #dc2626',
+                borderRadius: '16px',
+                backgroundColor: '#fef2f2',
+                padding: '24px',
+                boxShadow: '0 4px 16px rgba(220, 38, 38, 0.08)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '1.4rem' }}>🚨</span>
+                  <div>
+                    <h3 style={{ margin: 0, color: '#991b1b', fontWeight: 800, fontSize: '1.15rem', letterSpacing: '-0.01em' }}>
+                      RESTRICTED AREA — DANGER ZONE
+                    </h3>
+                    <p style={{ margin: '2px 0 0 0', color: '#b91c1c', fontSize: '0.825rem', fontWeight: 600 }}>
+                      Permanent Resident Account Erasure & Role Liberation
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ backgroundColor: '#ffffff', borderRadius: '10px', padding: '16px', border: '1px solid #fecaca', marginBottom: '18px' }}>
+                  <p style={{ margin: '0 0 8px 0', fontSize: '0.88rem', color: '#7f1d1d', lineHeight: 1.5 }}>
+                    <strong>Warning:</strong> Deleting your account will permanently wipe your profile, service bookings, community posts, comments, and messages. This action is irreversible.
+                  </p>
+                  <p style={{ margin: 0, fontSize: '0.88rem', color: '#991b1b', lineHeight: 1.5 }}>
+                    <strong>Role Exclusivity:</strong> An email can only be registered as either a Resident or a Worker. If you wish to switch roles and become a Worker, you must permanently delete this Resident account first. Once deleted, this email address is released to register as a Worker.
+                  </p>
+                </div>
+
+                <div style={{ marginBottom: '18px' }}>
+                  <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', color: '#7f1d1d', marginBottom: '6px' }}>
+                    To confirm permanent deletion, please type <code style={{ backgroundColor: '#fee2e2', padding: '2px 6px', borderRadius: '4px', color: '#991b1b', fontWeight: 800 }}>DELETE</code> below:
+                  </label>
+                  <input
+                    type="text"
+                    value={deleteConfirmText}
+                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                    placeholder="Type DELETE to confirm"
+                    style={{
+                      width: '100%',
+                      maxWidth: '360px',
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      border: deleteConfirmText === 'DELETE' ? '2px solid #dc2626' : '1.5px solid #fca5a5',
+                      fontSize: '0.95rem',
+                      fontFamily: 'monospace',
+                      fontWeight: 700,
+                      outline: 'none',
+                      backgroundColor: '#ffffff',
+                      color: '#991b1b'
+                    }}
+                  />
+                </div>
+
+                <button
                   type="button"
+                  disabled={deleteConfirmText !== 'DELETE' || isDeletingAccount}
                   onClick={handleDeleteAccount}
                   style={{
-                    '--md-sys-color-primary': '#ef4444',
-                    '--md-sys-color-on-primary': '#ffffff',
-                    '--md-filled-button-container-shape': '8px',
+                    backgroundColor: deleteConfirmText === 'DELETE' ? '#dc2626' : '#f87171',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '12px 24px',
+                    borderRadius: '8px',
+                    fontWeight: 800,
+                    fontSize: '0.92rem',
+                    cursor: deleteConfirmText === 'DELETE' ? 'pointer' : 'not-allowed',
+                    opacity: deleteConfirmText === 'DELETE' ? 1 : 0.6,
+                    transition: 'all 0.2s ease',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px'
                   }}
                 >
-                  Delete Account
-                </md-filled-button>
+                  <span>🗑️</span>
+                  <span>{isDeletingAccount ? 'Deleting Account...' : 'Permanently Delete Resident Account'}</span>
+                </button>
               </div>
             </div>
           )}
 
-          {/* TAB: Become Worker */}
-          {activeTab === 'become-worker' && (
+          {/* TAB: Become Worker (Disabled - account must be deleted to switch roles) */}
+          {false && (
             <div>
               <div style={{ marginBottom: '1.5rem' }}>
                 <h2 style={{ fontSize: '1.5rem', fontWeight: '800', margin: 0, color: '#111827' }}>Upgrade to Worker Profile</h2>

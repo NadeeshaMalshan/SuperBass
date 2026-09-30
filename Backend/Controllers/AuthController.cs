@@ -98,6 +98,8 @@ namespace Superbass.Controllers
                 return Unauthorized(new { message = "Invalid Google token." });
             }
 
+            email = email.Trim().ToLowerInvariant();
+
             // Generate JWT for our application
             var tokenHandler = new JwtSecurityTokenHandler();
             var key = Encoding.ASCII.GetBytes(_configuration["Authentication:Jwt:Secret"] ?? "super_secret_key_that_must_be_long_enough_12345");
@@ -117,44 +119,41 @@ namespace Superbass.Controllers
 
             var jwtHash = Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(jwt)));
 
-            bool isNewUser = false;
-            var resident = await _dbContext.Residents.FindAsync(email);
-            if (resident == null)
-            {
-                isNewUser = true;
-                resident = new Resident
-                {
-                    Email = email,
-                    Name = name ?? email,
-                    PasswordHash = jwtHash,
-                    PhoneNo = request.PhoneNo,
-                    Address = request.Address,
-                    LocationLat = request.LocationLat,
-                    LocationLng = request.LocationLng
-                };
-                _dbContext.Residents.Add(resident);
-            }
-            else
-            {
-                resident.PasswordHash = jwtHash;
-                if (request.PhoneNo != null) resident.PhoneNo = request.PhoneNo;
-                if (request.Address != null) resident.Address = request.Address;
-                if (request.LocationLat != null) resident.LocationLat = request.LocationLat;
-                if (request.LocationLng != null) resident.LocationLng = request.LocationLng;
-            }
-            await _dbContext.SaveChangesAsync();
-
-            var worker = await _dbContext.Workers.FirstOrDefaultAsync(w => w.ResidentEmail == email || w.Email == email);
-            bool isWorker = worker != null;
-            bool isNewWorker = false;
-            string activeRole = "Resident";
+            var existingResident = await _dbContext.Residents.FirstOrDefaultAsync(r => r.Email.ToLower() == email);
+            var existingWorker = await _dbContext.Workers.FirstOrDefaultAsync(w => 
+                (w.ResidentEmail != null && w.ResidentEmail.ToLower() == email) || 
+                (w.Email != null && w.Email.ToLower() == email));
 
             if (string.Equals(request.IntendedRole, "Worker", StringComparison.OrdinalIgnoreCase))
             {
-                if (worker == null)
+                // Strict rule: If email is already registered as Resident, it cannot become or login as a Worker
+                if (existingResident != null && existingWorker == null)
+                {
+                    return BadRequest(new { 
+                        message = "This email is registered as a Resident. You cannot log in or sign up as a Worker with this email. To switch roles, you must first delete your Resident account in the restricted Danger Zone."
+                    });
+                }
+
+                // If not existing worker yet, register as new worker
+                bool isNewWorker = false;
+                if (existingWorker == null)
                 {
                     isNewWorker = true;
-                    worker = new Worker
+                    if (existingResident == null)
+                    {
+                        existingResident = new Resident
+                        {
+                            Email = email,
+                            Name = name ?? email,
+                            PasswordHash = jwtHash,
+                            PhoneNo = request.PhoneNo,
+                            Address = request.Address
+                        };
+                        _dbContext.Residents.Add(existingResident);
+                        await _dbContext.SaveChangesAsync();
+                    }
+
+                    existingWorker = new Worker
                     {
                         ResidentEmail = email,
                         Email = email,
@@ -167,32 +166,71 @@ namespace Superbass.Controllers
                         PricingModel = "Hourly",
                         IsAvailable = true
                     };
-                    _dbContext.Workers.Add(worker);
+                    _dbContext.Workers.Add(existingWorker);
                     await _dbContext.SaveChangesAsync();
                 }
-                isWorker = true;
-                activeRole = "Worker";
-            }
-            else if (string.Equals(request.IntendedRole, "Resident", StringComparison.OrdinalIgnoreCase))
-            {
-                activeRole = "Resident";
+
+                return Ok(new { 
+                    token = jwt, 
+                    email = email, 
+                    name = name ?? email, 
+                    picture = picture, 
+                    isNewUser = isNewWorker,
+                    isWorker = true,
+                    isNewWorker = isNewWorker,
+                    activeRole = "Worker",
+                    workerId = existingWorker.Id
+                });
             }
             else
             {
-                activeRole = isWorker ? "Worker" : "Resident";
-            }
+                // IntendedRole is "Resident"
+                // Strict rule: If email is already registered as Worker, it cannot log in or sign up as a Resident
+                if (existingWorker != null)
+                {
+                    return BadRequest(new { 
+                        message = "This email is registered as a Worker. You cannot log in or sign up as a Resident with this email. To switch roles, you must first delete your Worker account in the restricted Danger Zone."
+                    });
+                }
 
-            return Ok(new { 
-                token = jwt, 
-                email = email, 
-                name = name ?? email, 
-                picture = picture, 
-                isNewUser = isNewUser,
-                isWorker = isWorker,
-                isNewWorker = isNewWorker,
-                activeRole = activeRole,
-                workerId = worker?.Id
-            });
+                bool isNewUser = false;
+                if (existingResident == null)
+                {
+                    isNewUser = true;
+                    existingResident = new Resident
+                    {
+                        Email = email,
+                        Name = name ?? email,
+                        PasswordHash = jwtHash,
+                        PhoneNo = request.PhoneNo,
+                        Address = request.Address,
+                        LocationLat = request.LocationLat,
+                        LocationLng = request.LocationLng
+                    };
+                    _dbContext.Residents.Add(existingResident);
+                    await _dbContext.SaveChangesAsync();
+                }
+                else
+                {
+                    existingResident.PasswordHash = jwtHash;
+                    if (request.PhoneNo != null) existingResident.PhoneNo = request.PhoneNo;
+                    if (request.Address != null) existingResident.Address = request.Address;
+                    if (request.LocationLat != null) existingResident.LocationLat = request.LocationLat;
+                    if (request.LocationLng != null) existingResident.LocationLng = request.LocationLng;
+                    await _dbContext.SaveChangesAsync();
+                }
+
+                return Ok(new { 
+                    token = jwt, 
+                    email = email, 
+                    name = name ?? email, 
+                    picture = picture, 
+                    isNewUser = isNewUser,
+                    isWorker = false,
+                    isNewWorker = false,
+                    activeRole = "Resident"
+                });
+            }
         }
 
         [HttpPost("worker-login")]
