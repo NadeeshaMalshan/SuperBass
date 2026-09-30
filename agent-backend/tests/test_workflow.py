@@ -713,6 +713,30 @@ async def test_card_builder_with_list_content_blocks():
     assert res_ai.content == "A simple list message"
 
 
+def test_clean_card_intro_message_removes_bold_field_dumps():
+    """Verify that bold field dumps like **Title:** and • **Category:** are completely stripped from chat messages."""
+    from agent_backend.utils.card_builders import _clean_card_intro_message
+
+    raw = (
+        "Here is your draft community post: • **Title:** Car Repair Service Request • "
+        "**Category:** Vehicle Repair & Mechanic • **Location:** Colombo • "
+        "**Content:** My car has broken down and needs professional inspection and repair. "
+        "Please review the details above. You can edit them or attach photos before publishing. "
+        "I'll wait for your confirmation before posting."
+    )
+    cleaned = _clean_card_intro_message(raw, "Please review your draft below:", "post_confirmation")
+    assert "**Title:**" not in cleaned
+    assert "**Category:**" not in cleaned
+    assert "**Location:**" not in cleaned
+    assert "**Content:**" not in cleaned
+    assert "•" not in cleaned
+    assert "Car Repair Service Request" not in cleaned
+    assert "Here is your draft community post:" in cleaned
+    assert "Please review the details below." in cleaned
+    assert "I'll wait for your confirmation before posting." in cleaned
+
+
+
 if __name__ == "__main__":
     test_card_schemas()
     test_langgraph_compilation()

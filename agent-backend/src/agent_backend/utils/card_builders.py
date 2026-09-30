@@ -67,17 +67,54 @@ def _clean_card_intro_message(raw_msg: str, default_intro: str, card_type: str =
     # Detect if the text contains repetitive itemized card details (numbers/bullets followed by bold names, markdown images, tel links, etc.)
     has_dump = bool(
         re.search(
-            r'(?:(?:\n|\s+)(?:1\.\s*\*\*|\d+\.\s*\*\*|[-*]\s*\*\*)|!\[.*?\]\(.*?\)|\(tel:\d+\)|###\s+[A-Z])',
-            text
+            r'(?:'
+            r'(?:\n|\s+)(?:1\.\s*\*\*|\d+\.\s*\*\*|[-*•]\s*\*\*)|'
+            r'(?:[•\-*]?\s*)\*\*(?:Title|Category|Location|Content|Description|Urgency|Worker|Price|Rate|Phone|Email|Skills?):\*\*|'
+            r'!\[.*?\]\(.*?\)|\(tel:\d+\)|###\s+[A-Z]'
+            r')',
+            text,
+            re.IGNORECASE
         )
     )
 
     if not has_dump:
         return text
 
+    # Special handling for draft community post confirmation cards
+    if card_type == "post_confirmation" or bool(re.search(r'\*\*(?:Title|Category|Location|Content|Description):\*\*', text, re.IGNORECASE)):
+        intro_match = re.search(
+            r'^(.*?)(?=(?:\s*[•\-*]?\s*)\*\*(?:Title|Category|Location|Content|Description|Urgency):\*\*)',
+            text,
+            re.IGNORECASE | re.DOTALL
+        )
+        intro = intro_match.group(1).strip() if intro_match else ""
+        if intro:
+            intro = intro.rstrip(" \t\n•-*")
+            if not intro.endswith((".", "!", ":", "?")):
+                intro += ":"
+
+        closing_match = re.search(
+            r'((?:Please review|You can edit|Feel free|Would you like|I\'ll wait|I will wait|Reply with|Reply \'confirm\')[^\n]*[.?!]?\s*)$',
+            text,
+            re.IGNORECASE
+        )
+        closing = closing_match.group(1).strip() if closing_match else ""
+        if closing:
+            closing = re.sub(r'\bdetails above\b', 'details below', closing, flags=re.IGNORECASE)
+        else:
+            closing = "Please review the details below and confirm when you're ready to publish."
+
+        if intro and len(intro) > 5 and not intro.startswith(("•", "-", "*", "1.")):
+            cleaned = f"{intro} {closing}".strip()
+        else:
+            cleaned = f"Here is your draft community post. {closing}".strip()
+
+        cleaned = re.sub(r'\s{2,}', ' ', cleaned)
+        return cleaned
+
     # Extract the introductory text before the first worker/post item (e.g. before "1. **" or "- **" or "![")
     intro_match = re.search(
-        r'^(.*?)(?=(?:\s*\n\s*|\s+)(?:1\.\s*\*\*|\d+\.\s*\*\*|[-*]\s*\*\*|!\[.*?\]\(.*?\)|###\s+))',
+        r'^(.*?)(?=(?:\s*\n\s*|\s+)(?:1\.\s*\*\*|\d+\.\s*\*\*|[-*•]\s*\*\*|(?:[•\-*]?\s*)\*\*(?:Worker|Name|Price|Rate|Title):\*\*|!\[.*?\]\(.*?\)|###\s+))',
         text,
         re.DOTALL
     )
@@ -91,7 +128,7 @@ def _clean_card_intro_message(raw_msg: str, default_intro: str, card_type: str =
     closing = closing_match.group(1).strip() if closing_match else ""
 
     parts = []
-    if intro and len(intro) > 8 and not intro.startswith(("1.", "-", "*")):
+    if intro and len(intro) > 8 and not intro.startswith(("1.", "-", "*", "•")):
         # Ensure proper punctuation at the end of intro
         if not intro.endswith((".", "!", ":", "?")):
             intro += ":"
@@ -119,50 +156,44 @@ async def format_specialist_structured_message(
     llm: Optional[ChatOpenAI] = None
 ) -> AIMessage:
     """
-    Validates and formats the specialist agent's conversational output using
-    Pydantic Structured Output (response_format / with_structured_output).
+    Validates and formats the specialist agent's conversational output.
     If the response contains repetitive bullet lists, card dumps, or markdown images,
-    enforces a clean, friendly 1-2 sentence message via SpecialistConversationalOutput.
+    enforces a clean, friendly 1-2 sentence message without duplicating UI card contents.
     """
     raw_content = extract_text_content(getattr(response, "content", ""))
-    if isinstance(getattr(response, "content", None), list):
-        response = AIMessage(
-            content=raw_content,
-            additional_kwargs=getattr(response, "additional_kwargs", {}),
-            response_metadata=getattr(response, "response_metadata", {})
-        )
     if not raw_content:
         return response
 
     # Check if the message contains repetitive card-like dumps
     has_card_dump = bool(
         re.search(
-            r'(?:(?:\n|\s+)(?:1\.\s*\*\*|\d+\.\s*\*\*|[-*]\s*\*\*)|!\[.*?\]\(.*?\)|\(tel:\d+\)|###\s+[A-Z])',
-            raw_content
+            r'(?:'
+            r'(?:\n|\s+)(?:1\.\s*\*\*|\d+\.\s*\*\*|[-*•]\s*\*\*)|'
+            r'(?:[•\-*]?\s*)\*\*(?:Title|Category|Location|Content|Description|Urgency|Worker|Price|Rate):\*\*|'
+            r'!\[.*?\]\(.*?\)|\(tel:\d+\)|###\s+[A-Z]'
+            r')',
+            raw_content,
+            re.IGNORECASE
         )
     )
     if not has_card_dump:
+        if isinstance(getattr(response, "content", None), list):
+            return AIMessage(
+                content=raw_content,
+                additional_kwargs=getattr(response, "additional_kwargs", {}),
+                response_metadata=getattr(response, "response_metadata", {})
+            )
         return response
 
-    if settings.openai_api_key and settings.openai_api_key != "your_openai_api_key_here":
-        try:
-            active_llm = llm
-            if not active_llm:
-                active_llm = ChatOpenAI(
-                    model=settings.openai_model,
-                    api_key=settings.openai_api_key
-                )
-            structured_llm = active_llm.with_structured_output(SpecialistConversationalOutput)
-            structured_res: SpecialistConversationalOutput = await structured_llm.ainvoke(prompt)
-            if structured_res and structured_res.message:
-                logger.info(f"✨ [Structured Output] Enforced schema message: '{structured_res.message[:80]}...'")
-                return AIMessage(content=structured_res.message)
-        except Exception as e:
-            logger.warning(f"Structured output formatting notice: {e}")
+    # Clean the message deterministically
+    card_type_hint = "post_confirmation" if bool(re.search(r'\*\*(?:Title|Category|Location|Content):\*\*', raw_content, re.IGNORECASE)) else "worker_list"
+    cleaned = _clean_card_intro_message(raw_content, "Here are the recommended service options:", card_type_hint)
+    return AIMessage(
+        content=cleaned,
+        additional_kwargs=getattr(response, "additional_kwargs", {}),
+        response_metadata=getattr(response, "response_metadata", {})
+    )
 
-    # Fallback to local cleaner if offline or network error
-    cleaned = _clean_card_intro_message(raw_content, "Here are the recommended service options:")
-    return AIMessage(content=cleaned)
 
 
 def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = None) -> AgentCardResponse:
