@@ -394,27 +394,38 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
 
         # 6. get_service_categories
         if tool_name == "get_service_categories":
-            categories_raw = data if isinstance(data, list) else (
-                data.get("value") or data.get("categories") or []
-                if isinstance(data, dict) else []
+            # Check if this tool was called internally while preparing a draft community post
+            lower_ai = (last_ai_content or "").lower()
+            is_draft_post = (
+                any(kw in lower_ai for kw in [
+                    "draft", "draft community post", "confirm to publish", "confirm and publish",
+                    "would you like me to confirm", "would you like me to publish", "would you like to publish",
+                    "reply \"confirm\" or \"publish\"", "reply 'confirm' or 'publish'"
+                ]) or
+                (("title:" in lower_ai or "• title" in lower_ai) and ("category:" in lower_ai or "• category" in lower_ai))
             )
-            if not isinstance(categories_raw, list):
-                categories_raw = []
-            card = ServiceCategoriesCard(
-                categories=categories_raw,
-                totalCount=len(categories_raw)
-            )
-            clean_msg = _clean_card_intro_message(
-                last_ai_content,
-                f"Here are {len(categories_raw)} official service categories available on Workio:",
-                "service_categories"
-            )
-            return AgentCardResponse(
-                response_type="service_categories",
-                message=clean_msg,
-                card_data=card.model_dump(),
-                metadata={"agent": "community_agent", "user_email": email}
-            )
+            if not is_draft_post:
+                categories_raw = data if isinstance(data, list) else (
+                    data.get("value") or data.get("categories") or []
+                    if isinstance(data, dict) else []
+                )
+                if not isinstance(categories_raw, list):
+                    categories_raw = []
+                card = ServiceCategoriesCard(
+                    categories=categories_raw,
+                    totalCount=len(categories_raw)
+                )
+                clean_msg = _clean_card_intro_message(
+                    last_ai_content,
+                    f"Here are {len(categories_raw)} official service categories available on Workio:",
+                    "service_categories"
+                )
+                return AgentCardResponse(
+                    response_type="service_categories",
+                    message=clean_msg,
+                    card_data=card.model_dump(),
+                    metadata={"agent": "community_agent", "user_email": email}
+                )
 
         # 7. create_booking
         if tool_name == "create_booking":
@@ -902,7 +913,10 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
 
 
     # Check if the assistant has prepared a community post draft awaiting confirmation
-    is_draft = not is_choice_turn and (any(keyword in lower_content for keyword in ["draft", "confirm and publish", "would you like me to confirm", "would you like me to publish"]) or (
+    is_draft = not is_choice_turn and (any(keyword in lower_content for keyword in [
+        "draft", "confirm and publish", "would you like me to confirm", "would you like me to publish",
+        "would you like to publish", "reply 'confirm'", "reply \"confirm\"", "draft community post"
+    ]) or (
         ("title:" in lower_content or "• title" in lower_content) and ("category:" in lower_content or "• category" in lower_content)
     ))
 
@@ -914,20 +928,29 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
         draft_urgency = "As soon as possible"
         draft_content = ""
 
-        for line in last_ai_content.splitlines():
+        # Support multi-line outputs as well as single-paragraph bullet-separated outputs
+        raw_chunks = last_ai_content.splitlines()
+        chunks = []
+        for c in raw_chunks:
+            if "•" in c:
+                chunks.extend(c.split("•"))
+            else:
+                chunks.append(c)
+
+        for line in chunks:
             line_str = line.strip().lstrip("•-* \t").strip()
             line_lower = line_str.lower()
-            if line_lower.startswith("title:") or "title:" in line_lower:
+            if line_lower.startswith("title:") or ("title:" in line_lower and "category:" not in line_lower):
                 parts = line_str.split(":", 1)
                 if len(parts) > 1:
                     draft_title = parts[1].strip().strip("*").strip()
-            elif "category:" in line_lower:
+            elif "category:" in line_lower and "title:" not in line_lower:
                 parts = line_str.split(":", 1)
                 if len(parts) > 1:
                     cat_val = parts[1].strip().strip("*").strip()
                     if cat_val and cat_val.lower() != "general":
                         draft_category = cat_val
-            elif line_lower.startswith("location:") or "location:" in line_lower:
+            elif (line_lower.startswith("location:") or "location:" in line_lower) and "title:" not in line_lower:
                 parts = line_str.split(":", 1)
                 if len(parts) > 1:
                     draft_location = parts[1].strip().strip("*").strip()
@@ -935,6 +958,19 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                 parts = line_str.split(":", 1)
                 if len(parts) > 1:
                     draft_content = parts[1].strip().strip("*").strip()
+
+        # Clean trailing questions or instructions from draft_content
+        for trail in [
+            "please review your post",
+            "would you like to publish",
+            "would you like me to publish",
+            "reply 'confirm'",
+            "reply \"confirm\"",
+            "you can edit any details"
+        ]:
+            if trail in draft_content.lower():
+                idx = draft_content.lower().find(trail)
+                draft_content = draft_content[:idx].strip().rstrip(". ")
 
         if not draft_content:
             draft_content = last_ai_content

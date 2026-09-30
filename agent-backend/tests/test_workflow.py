@@ -222,6 +222,41 @@ def test_deterministic_card_builder_for_service_categories():
     assert len(card_resp.card_data["categories"]) == 4
 
 
+def test_deterministic_card_builder_ignores_service_categories_during_draft_post():
+    """Verify card formatter builds post_confirmation card when drafting a post, even if get_service_categories tool was called."""
+    tool_content = '{"categories": ["Plumbing", "Electrical", "Carpentry", "Masonry"]}'
+    draft_ai_message = (
+        "Here is your draft community post:\n"
+        "• Title: Emergency Water Leak Repair\n"
+        "• Category: Plumbing\n"
+        "• Location: Colombo\n"
+        "• Content: I have an emergency water leak at my property in Colombo causing ongoing water overflow. "
+        "I need an experienced plumber to attend immediately.\n"
+        "Would you like to publish this post now? Reply 'confirm' or 'publish' to proceed."
+    )
+    state = {
+        "messages": [
+            HumanMessage(content="Create a community post for emergency plumber for water leak"),
+            AIMessage(content="Checking categories..."),
+            ToolMessage(content=tool_content, tool_call_id="call_cat_draft", name="get_service_categories"),
+            AIMessage(content=draft_ai_message)
+        ],
+        "email": "resident@workio.lk",
+        "user_type": "Resident",
+        "user_profile": {"displayName": "John Doe", "address": "Colombo"},
+        "next": None,
+        "structured_response": None,
+        "metadata": {}
+    }
+    card_resp = _deterministic_card_builder(state)
+    assert card_resp.response_type == "post_confirmation"
+    assert card_resp.card_data["title"] == "Emergency Water Leak Repair"
+    assert card_resp.card_data["communityId"] == "Plumbing"
+    assert card_resp.card_data["location"] == "Colombo"
+    assert "emergency water leak" in card_resp.card_data["content"]
+
+
+
 def test_community_tools_count():
     """Verify all 7 community MCP tools are registered."""
     assert len(COMMUNITY_TOOLS) == 7
