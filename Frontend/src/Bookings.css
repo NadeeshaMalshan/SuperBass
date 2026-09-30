@@ -82,6 +82,9 @@
 
 /* Booking Card */
 .booking-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
   background-color: #ffffff;
   border-radius: 18px;
   padding: 24px;
