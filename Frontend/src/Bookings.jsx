@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import axios from 'axios';
 import './App.css'; // Leveraging existing App.css for styles
 import './Bookings.css';
-import M3TopNavbar from './components/M3TopNavbar.jsx';
 import UserMenu from './components/UserMenu.jsx';
 import Loader from './components/Loader.jsx';
 import { API_BASE_URL } from './config.js';
@@ -429,15 +428,7 @@ export default function Bookings() {
   return (
     <div className="bookings-page-container">
       {/* Google Workspace / Material 3 Top Navbar */}
-      <M3TopNavbar
-        activePage="bookings"
-        searchValue={bookingSearch}
-        onSearchChange={setBookingSearch}
-        searchPlaceholder="Search bookings by job, worker, location, status..."
-        showSidebarToggle={true}
-        isSidebarCollapsed={isSidebarCollapsed}
-        onToggleSidebar={() => setIsSidebarCollapsed(prev => !prev)}
-      />
+      
 
       <div className="bookings-layout">
         {/* Left Sidebar Navigation */}

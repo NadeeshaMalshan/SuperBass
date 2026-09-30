@@ -14,7 +14,6 @@ import '@material/web/iconbutton/icon-button.js';
 import '@material/web/progress/circular-progress.js';
 import Loader from './components/Loader.jsx';
 import UserMenu from './components/UserMenu.jsx';
-import M3TopNavbar from './components/M3TopNavbar.jsx';
 import LocationSelector from './components/LocationSelector.jsx';
 import './components/M3Navbar.css';
 import { API_BASE_URL } from './config.js';
@@ -908,11 +907,7 @@ export default function Find() {
   return (
     <div className="community-page-wrapper">
       {/* Sleek Dark Top Navbar (Uber Pitch Black Aesthetic) */}
-      <M3TopNavbar
-        theme="dark"
-        activePage="find"
-      />
-
+      
       {/* 1. Craftsmen Hero Showcase Banner (Uber Pitch Black Aesthetic) */}
       {isHeroBannerVisible && (
         <section className="community-hero-banner">

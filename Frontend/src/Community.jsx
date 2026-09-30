@@ -6,7 +6,6 @@ import categoriesData from './data/categories.json';
 import ChatModal from './components/ChatModal.jsx';
 import UserMenu from './components/UserMenu.jsx';
 import AiAssistantWidget from './components/AiAssistantWidget.jsx';
-import M3TopNavbar from './components/M3TopNavbar.jsx';
 import hero2Img from './assets/community.png';
 import sriLankaDistricts from './data/sriLankaDistricts.json';
 import { BACKEND_URL } from './config.js';
@@ -23,6 +22,7 @@ export default function Community() {
   // State (DB Posts strictly)
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [showHero, setShowHero] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const { login } = useAuth();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -509,11 +509,14 @@ export default function Community() {
   return (
     <div className="community-page-wrapper">
       {/* Sleek Dark Top Navbar */}
-      <M3TopNavbar theme="dark" activePage="community" />
-
+      
       {/* 1. Community Hero Showcase Banner (Uber Pitch Black Aesthetic) */}
-      <section className="community-hero-banner">
-        <div className="community-hero-container">
+      {showHero && (
+        <section className="community-hero-banner">
+          <button className="community-hero-close-btn" onClick={() => setShowHero(false)} title="Close banner">
+            <md-icon>close</md-icon>
+          </button>
+          <div className="community-hero-container">
           <div className="community-hero-left">
             <span className="community-hero-overline">Workio Community Network</span>
             <h1 className="community-hero-title">
@@ -551,8 +554,9 @@ export default function Community() {
               />
             </div>
           </div>
-        </div>
-      </section>
+          </div>
+        </section>
+      )}
 
       {/* 2. Main Content Layout (Sidebar + Feed) */}
       <div className="community-layout-container">
