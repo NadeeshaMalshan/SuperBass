@@ -1008,8 +1008,9 @@
    Find Page Community Theme Adaptations
    ========================================================================== */
 .find-layout-container {
-  max-width: 1360px !important;
+  max-width: 100% !important;
   margin: 0 auto;
+  padding: 0 32px;
 }
 
 /* Collapsed rail adjustments on desktop */
@@ -1087,9 +1088,4 @@
 
 .worker-status-section .uber-sidebar-item.active .uber-sidebar-badge {
   font-weight: 500 !important;
-}
-
-.find-sidebar.m3-drawer {
-  height: calc(100vh - 64px - 48px) !important;
-  top: 88px !important;
 }
