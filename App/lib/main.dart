@@ -56,12 +56,12 @@ void main() async {
 
   await AuthService().init();
   await NotificationService().initialize();
-  runApp(const SuperBassApp());
+  runApp(const WorkioApp());
 }
 
-class SuperBassApp extends StatelessWidget {
+class WorkioApp extends StatelessWidget {
   final String? initialRoute;
-  const SuperBassApp({super.key, this.initialRoute});
+  const WorkioApp({super.key, this.initialRoute});
 
   @override
   Widget build(BuildContext context) {

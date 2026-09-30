@@ -1,5 +1,5 @@
 """
-Supervisor Agent Node for SuperBass Multi-Agent System.
+Supervisor Agent Node for Workio Multi-Agent System.
 Inspects incoming user messages using LLM natural language understanding (zero hardcoded keywords)
 and orchestrates routing to the community_agent, booking_agent, or direct response.
 """

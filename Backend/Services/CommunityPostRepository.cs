@@ -4,9 +4,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-using Superbass.Models;
+using Workio.Models;
 
-namespace Superbass.Services
+namespace Workio.Services
 {
     public interface ICommunityPostRepository
     {

@@ -1,5 +1,5 @@
 """
-Structured Card Formatter Node for SuperBass.
+Structured Card Formatter Node for Workio.
 Translates agent execution history and tool outputs into strictly typed Pydantic
 UI Card responses (AgentCardResponse) for the frontend application.
 """

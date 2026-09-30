@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
-namespace Superbass.Models
+namespace Workio.Models
 {
     public class CommunityPost
     {

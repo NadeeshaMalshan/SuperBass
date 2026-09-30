@@ -1,6 +1,6 @@
 @echo off
 echo ===================================================
-echo   SuperBass - Flutter Release APK Build Script
+echo   Workio - Flutter Release APK Build Script
 echo ===================================================
 echo.
 

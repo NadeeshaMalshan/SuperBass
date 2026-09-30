@@ -5,13 +5,13 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
-using Superbass.Models;
+using Workio.Models;
 
 #nullable disable
 
-namespace Superbass.Migrations
+namespace Workio.Migrations
 {
-    [DbContext(typeof(SuperbassDbContext))]
+    [DbContext(typeof(WorkioDbContext))]
     [Migration("20260822180000_AddBookingTable")]
     partial class AddBookingTable
     {

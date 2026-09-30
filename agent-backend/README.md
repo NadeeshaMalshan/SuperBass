@@ -1,6 +1,6 @@
-# SuperBass Agent Backend 🤖
+# Workio Agent Backend 🤖
 
-AI-Powered Multi-Agent System for SuperBass, orchestrated with **LangGraph**, powered by **OpenAI `gpt-4o-mini`**, and executing tools through the **Model Context Protocol (MCP) Server**. Managed with high-performance Python package manager **`uv`**.
+AI-Powered Multi-Agent System for Workio, orchestrated with **LangGraph**, powered by **OpenAI `gpt-4o-mini`**, and executing tools through the **Model Context Protocol (MCP) Server**. Managed with high-performance Python package manager **`uv`**.
 
 ---
 
@@ -34,7 +34,7 @@ AI-Powered Multi-Agent System for SuperBass, orchestrated with **LangGraph**, po
                               │ MCP tools/call (JSON-RPC 2.0)
                               ▼
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                            SuperBass MCP Server (FastAPI :8000/mcp)                               │
+│                            Workio MCP Server (FastAPI :8000/mcp)                               │
 │  - create_community_post   - get_community_posts   - update_community_post                       │
 │  - delete_community_post   - get_user_community_posts - get_user_details                          │
 │  - search_workers          - get_booking           - create_booking ...                           │
@@ -42,7 +42,7 @@ AI-Powered Multi-Agent System for SuperBass, orchestrated with **LangGraph**, po
                                               │ HTTP REST
                                               ▼
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                         SuperBass Core Backend (.NET 8 Web API :5237)                            │
+│                         Workio Core Backend (.NET 8 Web API :5237)                            │
 └──────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -54,7 +54,7 @@ AI-Powered Multi-Agent System for SuperBass, orchestrated with **LangGraph**, po
 2. **LangGraph StateGraph Workflow**:
    - `AgentState`: Tracks conversation messages, active user identity (`email`, `user_type`), routing state, and structured UI response.
    - `MemorySaver`: Session persistence across conversation turns using `conversation_id`.
-3. **MCP Tool Integration**: Calls community tools hosted on the SuperBass MCP Server (`http://localhost:8000/mcp`) via JSON-RPC 2.0.
+3. **MCP Tool Integration**: Calls community tools hosted on the Workio MCP Server (`http://localhost:8000/mcp`) via JSON-RPC 2.0.
 4. **Specialized Multi-Agent Structure**:
    - **Supervisor Agent**: Intelligently routes incoming queries to sub-agents or provides helpful direct responses.
    - **Community Agent**: Specialized in community posts, categories, updates, deletions, user history, and profile inspection.
@@ -74,7 +74,7 @@ uv --version
 ### 2. Environment Setup
 Copy `.env.example` to `.env`:
 ```powershell
-cd d:\Projects_New\SuperBass\agent-backend
+cd d:\Projects_New\Workio\agent-backend
 copy .env.example .env
 ```
 
@@ -87,7 +87,7 @@ OPENAI_TEMPERATURE=0.2
 # MCP Server URL (Model Context Protocol JSON-RPC 2.0)
 MCP_SERVER_URL=http://localhost:8000/mcp
 
-# SuperBass Core Backend API URL (ASP.NET Core API)
+# Workio Core Backend API URL (ASP.NET Core API)
 BACKEND_BASE_URL=http://localhost:5237
 
 # Server Settings
@@ -215,7 +215,7 @@ function RenderAgentMessage({ response }: { response: AgentCardResponse }) {
 ## 🛠️ MCP Tools Integrated
 
 The community agent is equipped with 6 MCP tools:
-1. `create_community_post`: Creates a post on the SuperBass community board.
+1. `create_community_post`: Creates a post on the Workio community board.
 2. `get_community_posts`: Queries posts by category (`General`, `Electrical`, `Plumbing`, `AC`, etc.) or numeric ID.
 3. `update_community_post`: Modifies an existing post.
 4. `delete_community_post`: Soft-deletes a post (`Removed` status).

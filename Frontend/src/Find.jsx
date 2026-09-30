@@ -788,7 +788,7 @@ export default function Find() {
       <div className="find-layout">
         {/* Left Sidebar Filters - Google Material Design 3 Navigation Drawer (Gmail Style) */}
         <aside className={`find-sidebar m3-drawer ${isSidebarCollapsed ? 'minimized' : ''}`}>
-          {/* Extended Action FAB (Gmail Compose style - Warm SuperBass Yellow) */}
+          {/* Extended Action FAB (Gmail Compose style - Warm Workio Yellow) */}
 
           {/* Primary Navigation List (Inbox / Starred / Available / Top Rated) */}
           <nav className="m3-drawer-nav">

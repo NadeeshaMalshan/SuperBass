@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace Superbass.Migrations
+namespace Workio.Migrations
 {
     /// <inheritdoc />
     public partial class AddReceiverToChatMessages : Migration

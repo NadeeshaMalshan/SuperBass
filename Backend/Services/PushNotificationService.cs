@@ -2,7 +2,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 
-namespace Superbass.Services;
+namespace Workio.Services;
 
 public interface IPushNotificationService
 {

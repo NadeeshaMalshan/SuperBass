@@ -1,6 +1,6 @@
-# Backend Documentation - Superbass Platform
+# Backend Documentation - Workio Platform
 
-The Superbass backend is a robust ASP.NET Core 8.0 Web API designed to power a community-driven home service platform. It facilitates the connection between residents needing services and skilled workers.
+The Workio backend is a robust ASP.NET Core 8.0 Web API designed to power a community-driven home service platform. It facilitates the connection between residents needing services and skilled workers.
 
 ## 🏗️ Architecture Overview
 
@@ -105,7 +105,7 @@ The `PushNotificationService` integrates with OneSignal to ensure users don't mi
 - New chat messages.
 
 ### 💾 Data Layer
-- **DbContext**: `SuperbassDbContext` handles the mapping to PostgreSQL.
+- **DbContext**: `WorkioDbContext` handles the mapping to PostgreSQL.
 - **Repositories**: Uses the Repository pattern (e.g., `EfWorkerRepository`) to abstract data access logic from controllers.
 - **Migrations**: The application automatically applies pending EF Core migrations on startup to ensure the schema is up-to-date.
 

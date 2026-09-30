@@ -356,7 +356,7 @@ export default function AiCommunityChat() {
 
   return (
     <div className="find-page-container ai-chat-uber-page">
-      {/* SuperBass Material 3 Top Navbar (Dark Theme matching Landing Page) */}
+      {/* Workio Material 3 Top Navbar (Dark Theme matching Landing Page) */}
       <M3TopNavbar
         theme="dark"
         activePage="ai"

@@ -2,7 +2,7 @@ using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Superbass.Models
+namespace Workio.Models
 {
     public class Booking
     {

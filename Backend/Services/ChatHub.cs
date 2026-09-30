@@ -2,9 +2,9 @@ using System;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR;
-using Superbass.Models;
+using Workio.Models;
 
-namespace Superbass.Services
+namespace Workio.Services
 {
     public class ChatHub : Hub
     {

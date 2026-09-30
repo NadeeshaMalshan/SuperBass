@@ -245,7 +245,7 @@ class _WorkerPortalScreenState extends State<WorkerPortalScreen> {
                     ),
                   ),
                   content: Text(
-                    'Are you sure you want to log out of SuperBass?',
+                    'Are you sure you want to log out of Workio?',
                     style: GoogleFonts.dmSans(fontSize: 14),
                   ),
                   actions: [

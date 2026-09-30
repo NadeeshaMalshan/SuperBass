@@ -1,12 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
-using Superbass.Models;
-using Superbass.Services;
+using Workio.Models;
+using Workio.Services;
 using System.Security.Claims;
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
-namespace Superbass.Controllers
+namespace Workio.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]

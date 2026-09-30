@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "superbass" "\0"
+            VALUE "FileDescription", "Workio" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "superbass" "\0"
+            VALUE "InternalName", "Workio" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "superbass.exe" "\0"
-            VALUE "ProductName", "superbass" "\0"
+            VALUE "OriginalFilename", "Workio.exe" "\0"
+            VALUE "ProductName", "Workio" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

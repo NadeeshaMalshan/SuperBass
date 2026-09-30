@@ -98,7 +98,7 @@ export default function M3TopNavbar({
         </a>
       </div>
 
-      {/* Center: Search Pill ("Ask SuperBass" like "Ask Gmail") */}
+      {/* Center: Search Pill ("Ask Workio" like "Ask Gmail") */}
       {showSearch && (
         <div className="m3-navbar-center">
           <div className="m3-search-pill">

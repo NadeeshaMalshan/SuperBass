@@ -7,23 +7,23 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
-using Superbass.Models;
-using Superbass.Services;
+using Workio.Models;
+using Workio.Services;
 
-namespace Superbass.Controllers
+namespace Workio.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
     [EnableCors("AllowFrontend")]
     public class BookingsController : ControllerBase
     {
-        private readonly SuperbassDbContext _context;
+        private readonly WorkioDbContext _context;
         private readonly ICommunicationRepository _communicationRepo;
         private readonly IHubContext<ChatHub> _hubContext;
         private readonly IPushNotificationService _pushNotificationService;
 
         public BookingsController(
-            SuperbassDbContext context,
+            WorkioDbContext context,
             ICommunicationRepository communicationRepo,
             IHubContext<ChatHub> hubContext,
             IPushNotificationService pushNotificationService)
@@ -95,7 +95,7 @@ namespace Superbass.Controllers
                 var residentEmail = request.ResidentEmail ?? GetCurrentUserEmail();
                 if (string.IsNullOrWhiteSpace(residentEmail))
                 {
-                    residentEmail = "resident@superbass.lk";
+                    residentEmail = "resident@Workio.lk";
                 }
 
                 // Reject if hiring account is a worker

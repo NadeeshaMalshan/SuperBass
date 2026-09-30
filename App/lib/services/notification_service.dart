@@ -11,7 +11,7 @@ class NotificationService {
   factory NotificationService() => _instance;
   NotificationService._internal();
 
-  static const String _prefsKey = 'superbass_app_notifications';
+  static const String _prefsKey = 'Workio_app_notifications';
 
   final List<AppNotification> _notifications = [];
   final StreamController<AppNotification> _notificationStreamController =

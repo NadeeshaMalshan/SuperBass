@@ -306,7 +306,7 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen> with SingleTickerPr
 
     return Column(
       children: [
-        // Tab Header matching SuperBass clean styling
+        // Tab Header matching Workio clean styling
         Container(
           color: WorkerColors.surface,
           child: TabBar(
