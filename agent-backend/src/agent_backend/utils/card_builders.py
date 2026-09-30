@@ -657,10 +657,11 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                 idx = draft_content.lower().find(trail)
                 draft_content = draft_content[:idx].strip().rstrip(". ")
 
-        # Ensure draft content is meaningful and never the AI's announcement
-        if not draft_content or any(p in draft_content.lower() for p in [
-            "here is your draft", "draft community post", "review the details", "draft card", "you can edit them"
-        ]):
+        # Ensure draft content is articulate, detailed, and never conversational meta-speech
+        is_bad_content = not draft_content or any(p in draft_content.lower() for p in [
+            "here is your draft", "draft community post", "review the details", "draft card", "you can edit them", "confirm to publish"
+        ])
+        if is_bad_content or len(draft_content) < 30:
             user_problem_txt = ""
             for msg in reversed(messages):
                 if getattr(msg, "type", "") in ("human", "user"):
@@ -670,10 +671,28 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                     ]):
                         user_problem_txt = content_str
                         break
-            if user_problem_txt:
-                draft_content = user_problem_txt
+
+            target_issue = user_problem_txt or draft_content or draft_title
+            target_issue = re.sub(
+                r'^(?:i need|i want|please|can you|help me)\s+(?:to\s+)?(?:create|make|post|publish)?\s*(?:a\s+)?(?:community\s+)?(?:post\s+)?(?:for|about|to)?\s*',
+                '',
+                target_issue,
+                flags=re.IGNORECASE
+            ).strip()
+
+            if target_issue and len(target_issue) > 10:
+                draft_content = (
+                    f"I am experiencing an issue: {target_issue}. "
+                    f"Looking for an experienced, reliable professional in {draft_location} to inspect and resolve this promptly. "
+                    f"Please contact me with your availability and an estimate."
+                )
             else:
-                draft_content = f"Looking for professional service assistance with {draft_title} in {draft_location}."
+                draft_content = (
+                    f"I am looking for a qualified professional for {draft_title} in {draft_location}. "
+                    f"Please inspect the requirements and reach out with your schedule, availability, and an estimate for the work."
+                )
+        elif not any(k in draft_content.lower() for k in ["availability", "estimate", "quote", "contact me", "reach out"]):
+            draft_content = draft_content.rstrip(". ") + ". Please contact me with your availability and an estimate."
 
         if not draft_category or draft_category.lower() == "general":
             if metadata.get("inferred_category"):
