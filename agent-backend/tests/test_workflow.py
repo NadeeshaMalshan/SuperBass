@@ -20,31 +20,9 @@ from agent_backend.schemas.card_models import (
     ErrorCard,
     ServiceCategoriesCard
 )
-from agent_backend.agents.community_agent import build_community_card
-from agent_backend.agents.worker_matching_agent import build_worker_matching_card
-from agent_backend.agents.booking_agent import build_booking_card
-from agent_backend.agents.support_review_agent import build_support_review_card
-from agent_backend.agents.supervisor import build_supervisor_card, supervisor_node
+from agent_backend.utils.card_builders import _deterministic_card_builder
+from agent_backend.agents.supervisor import supervisor_node
 from agent_backend.tools.community_tools import COMMUNITY_TOOLS
-from agent_backend.utils.sanitizer import (
-    clean_card_intro_message as _clean_card_intro_message,
-    format_specialist_structured_message
-)
-
-
-def _deterministic_card_builder(state, ai_message=None):
-    messages = list(state.get("messages", []))
-    for msg in reversed(messages):
-        if isinstance(msg, ToolMessage) or getattr(msg, "type", "") == "tool":
-            tname = getattr(msg, "name", "")
-            if tname in ["search_workers", "get_worker_details"]:
-                return build_worker_matching_card(state, ai_message=ai_message)
-            if tname in ["get_resident_bookings", "create_booking", "cancel_booking", "reschedule_booking", "check_worker_availability"]:
-                return build_booking_card(state, ai_message=ai_message)
-            if tname in ["create_worker_review", "file_dispute_ticket", "escalate_to_human", "get_user_job_history"]:
-                return build_support_review_card(state, ai_message=ai_message)
-            return build_community_card(state, ai_message=ai_message)
-    return build_community_card(state, ai_message=ai_message)
 
 
 def test_card_schemas():
@@ -515,7 +493,7 @@ async def test_supervisor_support_review_routing():
 async def test_card_builder_zero_llm():
     """Verify card builder is 100% deterministic with zero LLM calls and executes in < 5ms."""
     import time
-    from agent_backend.agents.worker_matching_agent import build_worker_matching_card
+    from agent_backend.utils.card_builders import build_worker_matching_card
 
     state = {
         "messages": [
@@ -702,6 +680,7 @@ async def test_architecture_a_direct_structured_responses():
 @pytest.mark.asyncio
 async def test_card_builder_with_list_content_blocks():
     """Verify handling of list-based content blocks (from reasoning models like Luna/o1) without 'list has no lower' error."""
+    from agent_backend.utils.card_builders import _deterministic_card_builder, build_community_card, format_specialist_structured_message
     from agent_backend.utils.sanitizer import extract_text_content
 
     # 1. extract_text_content unit tests
@@ -736,6 +715,8 @@ async def test_card_builder_with_list_content_blocks():
 
 def test_clean_card_intro_message_removes_bold_field_dumps():
     """Verify that bold field dumps like **Title:** and • **Category:** are completely stripped from chat messages."""
+    from agent_backend.utils.card_builders import _clean_card_intro_message
+
     raw = (
         "Here is your draft community post: • **Title:** Car Repair Service Request • "
         "**Category:** Vehicle Repair & Mechanic • **Location:** Colombo • "
@@ -757,6 +738,8 @@ def test_clean_card_intro_message_removes_bold_field_dumps():
 
 def test_single_post_detail_card_built_from_get_community_posts():
     """Verify that get_community_posts with single post dict creates PostDetailCard, not empty PostListCard."""
+    from agent_backend.utils.card_builders import _deterministic_card_builder
+
     state = {
         "messages": [
             HumanMessage(content="Show details for post #20"),
@@ -782,6 +765,8 @@ def test_single_post_detail_card_built_from_get_community_posts():
 
 def test_conversational_turn_does_not_recycle_old_tools():
     """Verify that a turn without tool execution (e.g. 'i need edit it') builds TextMessageCard and does not recycle previous tools."""
+    from agent_backend.utils.card_builders import _deterministic_card_builder
+
     state = {
         "messages": [
             # Turn 1: Tool executed
@@ -808,6 +793,7 @@ def test_conversational_turn_does_not_recycle_old_tools():
 def test_strips_leading_empty_brackets():
     """Verify that leading '[]' empty citation/thought artifacts from Luna are stripped cleanly."""
     from agent_backend.utils.sanitizer import extract_text_content
+    from agent_backend.utils.card_builders import _clean_card_intro_message
 
     raw1 = "[]\nHere is your draft community post: Please review the details."
     raw2 = "[] Post #20 currently has the title 'Car Repair'."
@@ -822,6 +808,8 @@ def test_strips_leading_empty_brackets():
 
 def test_draft_content_never_uses_ai_announcement():
     """Verify draft_content uses user's problem description, never 'Here is your draft...'"""
+    from agent_backend.utils.card_builders import _deterministic_card_builder
+
     state = {
         "messages": [
             HumanMessage(content="My washroom tap is leaking heavily and flooding the floor"),
@@ -842,6 +830,7 @@ def test_draft_content_never_uses_ai_announcement():
 
 def test_title_update_suggestions():
     """Verify that asking for a new title shows relevant suggestions, not technician/booking buttons."""
+    from agent_backend.utils.card_builders import _deterministic_card_builder
 
     state = {
         "messages": [
