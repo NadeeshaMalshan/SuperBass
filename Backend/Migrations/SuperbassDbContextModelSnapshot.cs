@@ -490,13 +490,9 @@ namespace Superbass.Migrations
                         .HasColumnType("integer");
 
                     b.Property<string>("ResidentEmail")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ResidentEmail")
-                        .IsUnique();
 
                     b.ToTable("Workers");
                 });
@@ -589,17 +585,6 @@ namespace Superbass.Migrations
                     b.Navigation("Worker");
                 });
 
-            modelBuilder.Entity("Superbass.Models.Worker", b =>
-                {
-                    b.HasOne("Superbass.Models.Resident", "Resident")
-                        .WithOne("WorkerProfile")
-                        .HasForeignKey("Superbass.Models.Worker", "ResidentEmail")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Resident");
-                });
-
             modelBuilder.Entity("Superbass.Models.WorkerSkill", b =>
                 {
                     b.HasOne("Superbass.Models.Worker", null)
@@ -612,11 +597,6 @@ namespace Superbass.Migrations
             modelBuilder.Entity("Superbass.Models.Conversation", b =>
                 {
                     b.Navigation("Messages");
-                });
-
-            modelBuilder.Entity("Superbass.Models.Resident", b =>
-                {
-                    b.Navigation("WorkerProfile");
                 });
 
             modelBuilder.Entity("Superbass.Models.Worker", b =>
