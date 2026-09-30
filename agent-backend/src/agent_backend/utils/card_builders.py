@@ -394,8 +394,22 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
 
         # 6. get_service_categories
         if tool_name == "get_service_categories":
-            # Check if this tool was called internally while preparing a draft community post
+            user_msg_content = ""
+            for msg in reversed(messages):
+                if getattr(msg, "type", "") in ("human", "user"):
+                    user_msg_content = getattr(msg, "content", "") or ""
+                    break
+
+            lower_user = user_msg_content.lower()
             lower_ai = (last_ai_content or "").lower()
+
+            # Check if user explicitly asked to see or browse categories
+            user_explicitly_asked_categories = any(kw in lower_user for kw in [
+                "category", "categories", "what services", "list services", "available services",
+                "all services", "browse services", "explore services", "services do you provide",
+                "services you offer", "types of services", "types of workers", "show services"
+            ])
+
             is_draft_post = (
                 any(kw in lower_ai for kw in [
                     "draft", "draft community post", "confirm to publish", "confirm and publish",
@@ -404,7 +418,15 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                 ]) or
                 (("title:" in lower_ai or "• title" in lower_ai) and ("category:" in lower_ai or "• category" in lower_ai))
             )
-            if not is_draft_post:
+
+            is_choice_turn_check = any(kw in lower_ai for kw in [
+                "find a verified worker", "create a community post", "how would you like to proceed",
+                "would you like to: 1)", "reply with '1'", "reply with \"1\"", "find a worker) or '2'"
+            ])
+
+            # Only show ServiceCategoriesCard if the user actually requested to see categories,
+            # and never when the agent called get_service_categories as an internal helper for a choice or draft turn!
+            if user_explicitly_asked_categories and not is_draft_post and not is_choice_turn_check:
                 categories_raw = data if isinstance(data, list) else (
                     data.get("value") or data.get("categories") or []
                     if isinstance(data, dict) else []
@@ -751,7 +773,13 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
         "how would you like to proceed",
         "would you like to proceed with finding a worker or creating a community post",
         "would you like to find a worker or create a community post",
-        "proceed with finding a worker"
+        "proceed with finding a worker",
+        "find a verified worker",
+        "would you like to: 1)",
+        "reply with '1'",
+        "reply with \"1\"",
+        "find a worker) or '2'",
+        "create a community post — publish"
     ]) or (
         bool((metadata or {}).get("suggested_actions"))
         and any(kw in lower_content for kw in ["how would you like", "proceed", "option", "recommendations and offers"])

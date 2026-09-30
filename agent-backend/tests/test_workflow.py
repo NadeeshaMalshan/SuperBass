@@ -256,6 +256,38 @@ def test_deterministic_card_builder_ignores_service_categories_during_draft_post
     assert "emergency water leak" in card_resp.card_data["content"]
 
 
+def test_deterministic_card_builder_ignores_service_categories_during_choice_turn():
+    """Verify card formatter builds choice turn text card (Worker vs Community) instead of dumping 22 categories."""
+    tool_content = '{"categories": ["Plumbing", "Electrical", "Carpentry", "Masonry"]}'
+    choice_ai_message = (
+        "I understand you are facing an emergency water leak and need an emergency plumber. "
+        "Would you like to: 1) Find a Verified Worker — search and book a rated plumber now, "
+        "or 2) Create a Community Post — publish your emergency service request on the community board for workers to contact you? "
+        "Please reply with '1' (Find a Worker) or '2' (Create a Community Post)."
+    )
+    state = {
+        "messages": [
+            HumanMessage(content="Emergency plumber for water leak"),
+            AIMessage(content="Checking categories..."),
+            ToolMessage(content=tool_content, tool_call_id="call_cat_choice", name="get_service_categories"),
+            AIMessage(content=choice_ai_message)
+        ],
+        "email": "resident@workio.lk",
+        "user_type": "Resident",
+        "user_profile": {"displayName": "John Doe", "address": "Colombo"},
+        "next": None,
+        "structured_response": None,
+        "metadata": {}
+    }
+    card_resp = _deterministic_card_builder(state)
+    assert card_resp.response_type == "text_message"
+    assert card_resp.card_data.get("is_choice") is True
+    suggestion_texts = [s["text"] if isinstance(s, dict) else str(s) for s in card_resp.card_data.get("suggestions", [])]
+    assert any("worker" in s.lower() for s in suggestion_texts)
+    assert any("community" in s.lower() for s in suggestion_texts)
+
+
+
 
 def test_community_tools_count():
     """Verify all 7 community MCP tools are registered."""
