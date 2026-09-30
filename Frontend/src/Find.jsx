@@ -788,6 +788,10 @@ export default function Find() {
       <div className="find-layout">
         {/* Left Sidebar Filters - Google Material Design 3 Navigation Drawer (Gmail Style) */}
         <aside className={`find-sidebar m3-drawer ${isSidebarCollapsed ? 'minimized' : ''}`}>
+          <button className="sidebar-toggle-btn" onClick={() => setIsSidebarCollapsed(prev => !prev)} title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}>
+            <md-icon>{isSidebarCollapsed ? 'chevron_right' : 'chevron_left'}</md-icon>
+          </button>
+
           {/* Extended Action FAB (Gmail Compose style - Warm Workio Yellow) */}
 
           {/* Primary Navigation List (Inbox / Starred / Available / Top Rated) */}

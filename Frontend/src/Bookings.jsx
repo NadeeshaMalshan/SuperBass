@@ -442,6 +442,10 @@ export default function Bookings() {
       <div className="bookings-layout">
         {/* Left Sidebar Navigation */}
         <aside className={`bookings-sidebar m3-drawer ${isSidebarCollapsed ? 'minimized' : ''}`}>
+          <button className="sidebar-toggle-btn" onClick={() => setIsSidebarCollapsed(prev => !prev)} title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}>
+            <md-icon>{isSidebarCollapsed ? 'chevron_right' : 'chevron_left'}</md-icon>
+          </button>
+
           <nav className="m3-drawer-nav">
             <div
               className={`m3-drawer-item ${statusFilter === 'All' ? 'active' : ''}`}

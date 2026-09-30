@@ -392,6 +392,10 @@ export default function AiCommunityChat() {
       <div className="find-layout ai-chat-uber-layout">
         {/* Left Sidebar — Quick Actions, Emergency Services & Urgent Help */}
         <aside className={`find-sidebar m3-drawer ai-chat-uber-sidebar ${isSidebarCollapsed ? 'minimized' : ''}`}>
+          <button className="sidebar-toggle-btn" onClick={() => setIsSidebarCollapsed(prev => !prev)} title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}>
+            <md-icon>{isSidebarCollapsed ? 'chevron_right' : 'chevron_left'}</md-icon>
+          </button>
+
 
           {/* Brand / Identity */}
           <div className="ai-sidebar-brand">

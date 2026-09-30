@@ -192,3 +192,44 @@ md-select-option, md-menu-item {
     transform: rotate(360deg);
   }
 }
+
+
+/* Sidebar Floating Toggle Button */
+.sidebar-toggle-btn {
+  position: absolute;
+  top: 50%;
+  right: 0px;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 48px;
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-right: none;
+  border-radius: 24px 0 0 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: -2px 0 5px rgba(0,0,0,0.05);
+  z-index: 100;
+  color: #5f6368;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.sidebar-toggle-btn:hover {
+  background-color: #f1f3f4;
+  color: #202124;
+}
+
+.sidebar-toggle-btn md-icon {
+  font-size: 20px;
+}
+
+.sidebar-toggle-btn:hover {
+  background-color: #f1f3f4;
+  color: #202124;
+}
+
+.find-sidebar, .community-sidebar, .chats-sidebar, .bookings-sidebar {
+  position: relative; /* ensure button is positioned relative to sidebar */
+}

@@ -84,6 +84,10 @@ export default function WorkerLayout({ children, activeTab = 'dashboard' }) {
       <div className="find-layout" style={{ flex: 1, display: 'flex' }}>
         {/* Navigation Sidebar */}
         <aside className={`find-sidebar m3-drawer ${isSidebarCollapsed ? 'minimized' : ''}`}>
+          <button className="sidebar-toggle-btn" onClick={() => setIsSidebarCollapsed(prev => !prev)} title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}>
+            <md-icon>{isSidebarCollapsed ? 'chevron_right' : 'chevron_left'}</md-icon>
+          </button>
+
           {/* Live Availability Status Card in Sidebar */}
           <div
             onClick={toggleStatus}
