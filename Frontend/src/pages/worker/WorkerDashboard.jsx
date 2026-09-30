@@ -279,7 +279,7 @@ export default function WorkerDashboard() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <button
-              onClick={() => navigate('/worker/profile')}
+              onClick={() => navigate('/worker/profile?tab=skills')}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -306,7 +306,7 @@ export default function WorkerDashboard() {
             </button>
 
             <button
-              onClick={() => navigate('/worker/profile')}
+              onClick={() => navigate('/worker/profile?tab=availability')}
               style={{
                 display: 'flex',
                 alignItems: 'center',
