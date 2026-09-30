@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from typing import Dict, Any
 from langchain_core.messages import SystemMessage, AIMessage
@@ -7,6 +8,13 @@ from agent_backend.state.state import AgentState
 from agent_backend.tools.booking_tools import BOOKING_TOOLS, get_live_service_categories
 from agent_backend.prompts.booking_prompts import BOOKING_AGENT_SYSTEM_PROMPT
 from agent_backend.utils.sanitizer import sanitize_messages_for_llm
+from agent_backend.utils.card_builders import (
+    build_booking_card,
+    format_specialist_structured_message
+)
+
+logger = logging.getLogger("agent_backend.booking_agent")
+
 
 async def booking_agent_node(state: AgentState) -> Dict[str, Any]:
     messages = list(state.get("messages", []))
@@ -58,6 +66,7 @@ async def booking_agent_node(state: AgentState) -> Dict[str, Any]:
     ] + clean_messages
 
     if settings.openai_api_key and settings.openai_api_key !="your_openai_api_key_here":
+        logger.info(f"🛠️ [Booking Agent] Executing LLM with tools for '{email}' (location: {location_info})")
         llm = ChatOpenAI(
             model=settings.openai_model,
             temperature=0.2, # Low temperature for accurate slot filling
@@ -65,6 +74,20 @@ async def booking_agent_node(state: AgentState) -> Dict[str, Any]:
         ).bind_tools(BOOKING_TOOLS)
 
         response = await llm.ainvoke(prompt)
-        return {"messages": [response]}
+        result: Dict[str, Any] = {"messages": [response]}
+        if not getattr(response, "tool_calls", None):
+            # Final agent turn: enforce Pydantic Structured Output on conversational message
+            response = await format_specialist_structured_message(prompt, response, llm=llm)
+            sim_state = dict(state)
+            sim_state["messages"] = messages + [response]
+            result["messages"] = [response]
+            result["structured_response"] = build_booking_card(sim_state, ai_message=response)
+        return result
     
-    return {"messages": [AIMessage(content="[Offline Mode] Booking Agent ready. Please configure OPENAI_API_KEY.")]}
+    offline_msg = AIMessage(content="[Offline Mode] Booking Agent ready. Please configure OPENAI_API_KEY.")
+    sim_state = dict(state)
+    sim_state["messages"] = messages + [offline_msg]
+    return {
+        "messages": [offline_msg],
+        "structured_response": build_booking_card(sim_state, ai_message=offline_msg)
+    }

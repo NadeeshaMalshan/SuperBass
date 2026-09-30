@@ -4,62 +4,104 @@ AI-Powered Multi-Agent System for Workio, orchestrated with **LangGraph**, power
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ Workio Architecture A
 
+```text
+                         USER / BROWSER
+                               │
+                               ▼
+                       React / Vite
+                               │
+                         POST /api/chat
+                               │
+                               ▼
+                       FastAPI :8001
+                               │
+                               ▼
+                       LangGraph Workflow
+                               │
+                               ▼
+                    ┌─────────────────────┐
+                    │  SUPERVISOR AGENT   │
+                    │       LLM #1        │
+                    │                     │
+                    │ Intent / Routing /  │
+                    │ Clarification       │
+                    └──────────┬──────────┘
+                               │
+              ┌────────────────┼────────────────┐
+              ▼                ▼                ▼
+         Community        Worker Matching    Booking
+           Agent               Agent          Agent
+              │                │                │
+              └────────────────┼────────────────┘
+                               │
+                               ▼
+                       Support / Review
+                             Agent
+                               │
+                               ▼
+                         MCP ToolNodes
+                               │
+                               ▼
+                         MCP Server
+                               │
+                               ▼
+                       .NET Backend
+                               │
+                               ▼
+                          PostgreSQL
+                               │
+                               ▼
+                         Tool Result
+                               │
+                               ▼
+                      Specialist Agent
+                               │
+                ┌──────────────┴──────────────┐
+                │ Domain reasoning             │
+                │ Tool-result interpretation  │
+                │ Structured output            │
+                └──────────────┬──────────────┘
+                               │
+                               ▼
+                     AgentCardResponse
+                {response_type, message, card_data}
+                               │
+                               ▼
+                              END
+                               │
+                               ▼
+                            FastAPI
+                               │
+                               ▼
+                    React MessageRenderer
+                               │
+                               ▼
+                     Predefined UI Card
 ```
-                                      ┌──────────────────────────────────────────────┐
-                                      │              Frontend / Mobile App           │
-                                      │       (Vite React / Flutter / App Client)    │
-                                      └──────────────────────┬───────────────────────┘
-                                                             │ POST /api/chat
-                                                             ▼
-                                      ┌──────────────────────────────────────────────┐
-                                      │         Agent Backend (FastAPI :8001)        │
-                                      │          StateGraph / LangGraph              │
-                                      └──────────────────────┬───────────────────────┘
-                                                             │
-                              ┌──────────────────────────────┴──────────────────────────────┐
-                              ▼                                                             ▼
-                   ┌───────────────────────┐                                     ┌──────────────────────┐
-                   │    Supervisor Agent   │                                     │    Card Formatter    │
-                   │ (Intent Classifier &  │                                     │ (Structured Response │
-                   │        Router)        │                                     │     Card Builder)    │
-                   └──────────┬────────────┘                                     └──────────▲───────────┘
-                              │ Routes intent                                               │
-                              ▼                                                             │
-                   ┌───────────────────────┐                                                │
-                   │    Community Agent    ├────────────────────────────────────────────────┘
-                   │(Specialist Sub-Agent) │
-                   └──────────┬────────────┘
-                              │ MCP tools/call (JSON-RPC 2.0)
-                              ▼
-┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                            Workio MCP Server (FastAPI :8000/mcp)                               │
-│  - create_community_post   - get_community_posts   - update_community_post                       │
-│  - delete_community_post   - get_user_community_posts - get_user_details                          │
-│  - search_workers          - get_booking           - create_booking ...                           │
-└─────────────────────────────────────────────┬────────────────────────────────────────────────────┘
-                                              │ HTTP REST
-                                              ▼
-┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                         Workio Core Backend (.NET 8 Web API :5237)                            │
-└──────────────────────────────────────────────────────────────────────────────────────────────────┘
-```
+
+> **The Specialist Agent directly interprets MCP tool results and produces the validated structured AgentCardResponse. No separate Card Formatter node or LLM-based formatting stage exists in the LangGraph workflow.**
+
+> **The architecture contains two logical LLM stages: Supervisor and Specialist Agent. The Specialist Agent may perform multiple reasoning/tool iterations depending on the workflow.**
 
 ---
 
 ## ⚡ Features
 
 1. **`uv` Package Manager**: Lightning fast dependency resolution, lockfile management, and virtual environment handling.
-2. **LangGraph StateGraph Workflow**:
+2. **LangGraph StateGraph Workflow (Architecture A)**:
    - `AgentState`: Tracks conversation messages, active user identity (`email`, `user_type`), routing state, and structured UI response.
    - `MemorySaver`: Session persistence across conversation turns using `conversation_id`.
-3. **MCP Tool Integration**: Calls community tools hosted on the Workio MCP Server (`http://localhost:8000/mcp`) via JSON-RPC 2.0.
+   - Direct execution from Specialist Agent to `END` without any separate formatting stage.
+3. **MCP Tool Integration**: Executes domain tools hosted on the Workio MCP Server (`http://localhost:8000/mcp`) via JSON-RPC 2.0.
 4. **Specialized Multi-Agent Structure**:
    - **Supervisor Agent**: Intelligently routes incoming queries to sub-agents or provides helpful direct responses.
    - **Community Agent**: Specialized in community posts, categories, updates, deletions, user history, and profile inspection.
-   - **Extensible for Team**: Designed so team members can effortlessly add `booking_agent` and `worker_agent`.
-5. **Structured UI Card Responses**: Every response emitted conforms to a strictly typed Pydantic card model with unique `response_type` tags for dynamic frontend card rendering.
+   - **Worker Matching Agent**: Specialized in technician search, filtering by rate/rating, and worker profile details.
+   - **Booking Agent**: Specialized in worker availability inspection, booking creation, rescheduling, and cancellation.
+   - **Support & Review Agent**: Specialized in worker reviews, ratings submission, and performance metric retrieval.
+5. **Structured UI Card Responses**: Every response emitted conforms to a strictly typed Pydantic card model (`AgentCardResponse`) with unique `response_type` tags for dynamic frontend card rendering.
 
 ---
 
@@ -74,7 +116,7 @@ uv --version
 ### 2. Environment Setup
 Copy `.env.example` to `.env`:
 ```powershell
-cd d:\Projects_New\Workio\agent-backend
+cd d:\Projects_New\SuperBass\agent-backend
 copy .env.example .env
 ```
 
@@ -87,7 +129,7 @@ OPENAI_TEMPERATURE=0.2
 # MCP Server URL (Model Context Protocol JSON-RPC 2.0)
 MCP_SERVER_URL=http://localhost:8000/mcp
 
-# Workio Core Backend API URL (ASP.NET Core API)
+# SuperBass Core Backend API URL (ASP.NET Core API)
 BACKEND_BASE_URL=http://localhost:5237
 
 # Server Settings
@@ -212,26 +254,33 @@ function RenderAgentMessage({ response }: { response: AgentCardResponse }) {
 
 ---
 
-## 🛠️ MCP Tools Integrated
+## 🛠️ Specialist Agents & Integrated MCP Tools
 
-The community agent is equipped with 6 MCP tools:
-1. `create_community_post`: Creates a post on the Workio community board.
-2. `get_community_posts`: Queries posts by category (`General`, `Electrical`, `Plumbing`, `AC`, etc.) or numeric ID.
-3. `update_community_post`: Modifies an existing post.
-4. `delete_community_post`: Soft-deletes a post (`Removed` status).
-5. `get_user_community_posts`: Retrieves all posts authored by a user.
-6. `get_user_details`: Retrieves user profile, resident details, and worker skills/ratings.
+The system features 4 specialized agents connected to the MCP Server:
 
----
+### 1. Community Agent (`community_agent`)
+- `create_community_post`: Creates a post on the community board with optional images.
+- `get_community_posts`: Queries posts by category (`General`, `Electrical`, `Plumbing`, `AC`, etc.) or ID.
+- `update_community_post`: Modifies an existing post title, content, or category.
+- `delete_community_post`: Soft-deletes a post (`Removed` status).
+- `get_user_community_posts`: Retrieves all posts authored by a user.
+- `get_user_details`: Retrieves user profile, resident details, and worker skills/ratings.
+- `get_service_categories`: Retrieves official service categories.
 
-## 👥 Extensibility Guide for Team Members
+### 2. Worker Matching Agent (`worker_matching_agent`)
+- `search_workers`: Searches and filters workers by profession, hourly rate, rating, and location.
+- `get_worker_details`: Retrieves comprehensive worker profile, skills, verified badges, and reviews.
+- `get_worker_performance`: Retrieves completed job metrics, ratings, and customer reviews.
 
-When adding upcoming agents:
-1. **Booking Agent**:
-   - Define booking tools wrapping MCP booking tools (`create_booking`, `get_booking`, `reschedule_booking`, `cancel_booking`).
-   - Add `booking_agent` node to `src/agent_backend/graph/workflow.py`.
-   - Update `supervisor` prompt to route booking intents to `booking_agent`.
-2. **Worker Agent**:
-   - Define worker search tools wrapping MCP tools (`search_workers`, `get_worker_details`, `get_worker_performance`).
-   - Add `worker_agent` node to `src/agent_backend/graph/workflow.py`.
-   - Update `supervisor` prompt to route worker discovery requests to `worker_agent`.
+### 3. Booking Agent (`booking_agent`)
+- `check_worker_availability`: Verifies real-time calendar and time slot availability.
+- `create_booking`: Initiates a new booking appointment with a worker.
+- `get_resident_bookings`: Retrieves active and upcoming bookings for the resident.
+- `reschedule_booking`: Updates the scheduled date and time of an existing booking.
+- `cancel_booking`: Cancels a confirmed or pending booking appointment.
+
+### 4. Support & Review Agent (`support_review_agent`)
+- `create_worker_review`: Submits rating and feedback for completed jobs.
+- `get_worker_performance`: Retrieves worker performance metrics and dispute status.
+- `get_user_details`: Fetches user profile for account support.
+

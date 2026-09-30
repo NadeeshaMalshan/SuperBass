@@ -25,6 +25,39 @@
   overflow: hidden;
 }
 
+.community-hero-close-btn {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 10;
+  padding: 0;
+  opacity: 0.75;
+}
+
+.community-hero-close-btn:hover {
+  background: transparent;
+  border: none;
+  opacity: 1;
+  transform: scale(1.15);
+}
+
+.community-hero-close-btn md-icon,
+.community-hero-close-btn i {
+  color: #ffffff;
+  font-size: 22px;
+  --md-icon-size: 22px;
+}
+
 .community-hero-container {
   max-width: 1240px;
   margin: 0 auto;

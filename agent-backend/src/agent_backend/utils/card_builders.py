@@ -1,14 +1,14 @@
 """
-Structured Card Formatter Node for Workio.
+Deterministic UI Card Builder Utilities for SuperBass (Architecture A).
 Translates agent execution history and tool outputs into strictly typed Pydantic
 UI Card responses (AgentCardResponse) for the frontend application.
 """
 
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import json
 import logging
 import re
-from langchain_core.messages import SystemMessage, ToolMessage, HumanMessage
+from langchain_core.messages import SystemMessage, ToolMessage, HumanMessage, AIMessage
 from langchain_openai import ChatOpenAI
 from agent_backend.config import settings
 from agent_backend.state.state import AgentState
@@ -26,10 +26,12 @@ from agent_backend.schemas.card_models import (
     ErrorCard,
     CommunityPostSummary,
     WorkerListCard,
-    WorkerSummary
+    WorkerSummary,
+    SpecialistConversationalOutput
 )
 
-logger = logging.getLogger("agent_backend.card_formatter")
+logger = logging.getLogger("agent_backend.card_builders")
+
 
 CARD_FORMATTER_PROMPT = """You are the Frontend UI Card Formatter for Workio.
 Your role is to format the conversation output and any tool results into a structured AgentCardResponse JSON object so the Frontend can render the appropriate interactive UI card component.
@@ -64,8 +66,134 @@ Choose the exact response_type that best represents the latest action.
 """
 
 
-def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
-    """Deterministic fallback builder based on tool execution logs."""
+def _normalize_skills(raw: Any) -> List[str]:
+    """Ensure skills are always a clean list of strings, extracting names if dicts are provided."""
+    if not raw:
+        return []
+    result = []
+    if isinstance(raw, list):
+        for s in raw:
+            if isinstance(s, dict):
+                val = s.get("name") or s.get("skillName") or s.get("title") or s.get("label")
+                if val:
+                    result.append(str(val))
+            elif s:
+                result.append(str(s))
+    elif isinstance(raw, str) and raw:
+        result.append(raw)
+    return result
+
+
+def _clean_card_intro_message(raw_msg: str, default_intro: str, card_type: str = "card") -> str:
+    """
+    Ensures that when a rich interactive UI card is rendered below the chat bubble,
+    the chat bubble message does not duplicate card fields, markdown image tags,
+    bulleted worker/post dumps, or telephone links.
+    Preserves clean introductory text and any natural closing call-to-action question.
+    """
+    if not raw_msg or not isinstance(raw_msg, str):
+        return default_intro
+
+    text = raw_msg.strip()
+
+    # Detect if the text contains repetitive itemized card details (numbers/bullets followed by bold names, markdown images, tel links, etc.)
+    has_dump = bool(
+        re.search(
+            r'(?:(?:\n|\s+)(?:1\.\s*\*\*|\d+\.\s*\*\*|[-*]\s*\*\*)|!\[.*?\]\(.*?\)|\(tel:\d+\)|###\s+[A-Z])',
+            text
+        )
+    )
+
+    if not has_dump:
+        return text
+
+    # Extract the introductory text before the first worker/post item (e.g. before "1. **" or "- **" or "![")
+    intro_match = re.search(
+        r'^(.*?)(?=(?:\s*\n\s*|\s+)(?:1\.\s*\*\*|\d+\.\s*\*\*|[-*]\s*\*\*|!\[.*?\]\(.*?\)|###\s+))',
+        text,
+        re.DOTALL
+    )
+    intro = intro_match.group(1).strip() if intro_match else ""
+
+    # Extract any concluding question or call to action at the end of the text
+    closing_match = re.search(
+        r'(?:(?:\n|\.\s+|:\s+))([A-Z][^\n]*\?)\s*$',
+        text
+    )
+    closing = closing_match.group(1).strip() if closing_match else ""
+
+    parts = []
+    if intro and len(intro) > 8 and not intro.startswith(("1.", "-", "*")):
+        # Ensure proper punctuation at the end of intro
+        if not intro.endswith((".", "!", ":", "?")):
+            intro += ":"
+        parts.append(intro)
+    else:
+        parts.append(default_intro)
+
+    if closing and closing not in (parts[0] if parts else ""):
+        parts.append(closing)
+    elif card_type == "worker_list" and not any("book" in p.lower() for p in parts):
+        parts.append("Would you like to book one of these technicians, or inspect more details?")
+
+    cleaned = " ".join(parts).strip()
+    # Strip any stray markdown image embeds or tel links if any remained
+    cleaned = re.sub(r'!\[.*?\]\(.*?\)', '', cleaned).strip()
+    cleaned = re.sub(r'\[(.*?)\]\(tel:.*?\)', r'\1', cleaned).strip()
+    # Normalize multiple spaces
+    cleaned = re.sub(r'\s{2,}', ' ', cleaned)
+    return cleaned if cleaned else default_intro
+
+
+async def format_specialist_structured_message(
+    prompt: list,
+    response: AIMessage,
+    llm: Optional[ChatOpenAI] = None
+) -> AIMessage:
+    """
+    Validates and formats the specialist agent's conversational output using
+    Pydantic Structured Output (response_format / with_structured_output).
+    If the response contains repetitive bullet lists, card dumps, or markdown images,
+    enforces a clean, friendly 1-2 sentence message via SpecialistConversationalOutput.
+    """
+    raw_content = getattr(response, "content", "")
+    if not isinstance(raw_content, str) or not raw_content:
+        return response
+
+    # Check if the message contains repetitive card-like dumps
+    has_card_dump = bool(
+        re.search(
+            r'(?:(?:\n|\s+)(?:1\.\s*\*\*|\d+\.\s*\*\*|[-*]\s*\*\*)|!\[.*?\]\(.*?\)|\(tel:\d+\)|###\s+[A-Z])',
+            raw_content
+        )
+    )
+    if not has_card_dump:
+        return response
+
+    if settings.openai_api_key and settings.openai_api_key != "your_openai_api_key_here":
+        try:
+            active_llm = llm
+            if not active_llm:
+                active_llm = ChatOpenAI(
+                    model=settings.openai_model,
+                    temperature=0.2,
+                    api_key=settings.openai_api_key
+                )
+            structured_llm = active_llm.with_structured_output(SpecialistConversationalOutput)
+            structured_res: SpecialistConversationalOutput = await structured_llm.ainvoke(prompt)
+            if structured_res and structured_res.message:
+                logger.info(f"✨ [Structured Output] Enforced schema message: '{structured_res.message[:80]}...'")
+                return AIMessage(content=structured_res.message)
+        except Exception as e:
+            logger.warning(f"Structured output formatting notice: {e}")
+
+    # Fallback to local cleaner if offline or network error
+    cleaned = _clean_card_intro_message(raw_content, "Here are the recommended service options:")
+    return AIMessage(content=cleaned)
+
+
+def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = None) -> AgentCardResponse:
+    """Deterministic response builder based on tool execution logs and agent message."""
     messages = list(state.get("messages", []))
     email = state.get("email", "resident@workio.lk")
     user_type = state.get("user_type", "Resident")
@@ -74,10 +202,13 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
     user_name = metadata.get("user_name") or user_profile.get("displayName") or (email.split("@")[0] if "@" in email else "Resident")
 
     last_ai_content = ""
-    for msg in reversed(messages):
-        if msg.type == "ai" and msg.content:
-            last_ai_content = msg.content
-            break
+    if ai_message and hasattr(ai_message, "content") and ai_message.content:
+        last_ai_content = ai_message.content
+    else:
+        for msg in reversed(messages):
+            if getattr(msg, "type", "") == "ai" and msg.content:
+                last_ai_content = msg.content
+                break
 
     # Search for latest ToolMessage
     latest_tool: ToolMessage = None
@@ -123,9 +254,14 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
                 authorId=data.get("userId") or email,
                 authorName=data.get("userName") or email.split("@")[0]
             )
+            clean_msg = _clean_card_intro_message(
+                last_ai_content,
+                f"Your community post '{card.title}' has been published successfully!",
+                "post_created"
+            )
             return AgentCardResponse(
                 response_type="post_created",
-                message=last_ai_content or f"Your community post '{card.title}' has been published successfully!",
+                message=clean_msg,
                 card_data=card.model_dump(),
                 metadata={"agent": "community_agent", "user_email": email}
             )
@@ -147,9 +283,14 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
                     likesCount=data.get("likesCount", 0),
                     commentsCount=data.get("commentsCount", 0)
                 )
+                clean_msg = _clean_card_intro_message(
+                    last_ai_content,
+                    f"Here are the details for post #{card.id}:",
+                    "post_detail"
+                )
                 return AgentCardResponse(
                     response_type="post_detail",
-                    message=last_ai_content or f"Here are the details for post #{card.id}.",
+                    message=clean_msg,
                     card_data=card.model_dump(),
                     metadata={"agent": "community_agent", "user_email": email}
                 )
@@ -177,9 +318,14 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
                 totalCount=len(post_summaries),
                 posts=post_summaries
             )
+            clean_msg = _clean_card_intro_message(
+                last_ai_content,
+                f"Found {len(post_summaries)} community posts in your area:",
+                "post_list"
+            )
             return AgentCardResponse(
                 response_type="post_list",
-                message=last_ai_content or f"Found {len(post_summaries)} community posts.",
+                message=clean_msg,
                 card_data=card.model_dump(),
                 metadata={"agent": "community_agent", "user_email": email}
             )
@@ -193,9 +339,14 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
                 communityId=data.get("serviceCategoryId") or data.get("communityId"),
                 location=data.get("location")
             )
+            clean_msg = _clean_card_intro_message(
+                last_ai_content,
+                f"Post #{card.id} has been updated.",
+                "post_updated"
+            )
             return AgentCardResponse(
                 response_type="post_updated",
-                message=last_ai_content or f"Post #{card.id} has been updated.",
+                message=clean_msg,
                 card_data=card.model_dump(),
                 metadata={"agent": "community_agent", "user_email": email}
             )
@@ -206,9 +357,14 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
                 id=data.get("id") or data.get("postId") or "",
                 message="Community post marked as removed."
             )
+            clean_msg = _clean_card_intro_message(
+                last_ai_content,
+                "Community post marked as removed.",
+                "post_deleted"
+            )
             return AgentCardResponse(
                 response_type="post_deleted",
-                message=last_ai_content or "Post successfully removed.",
+                message=clean_msg,
                 card_data=card.model_dump(),
                 metadata={"agent": "community_agent", "user_email": email}
             )
@@ -222,11 +378,16 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
                 displayName=data.get("displayName"),
                 phoneNo=data.get("phoneNo"),
                 address=data.get("address"),
-                skills=data.get("workerProfile", {}).get("skills") if isinstance(data.get("workerProfile"), dict) else None
+                skills=_normalize_skills(data.get("workerProfile", {}).get("skills")) if isinstance(data.get("workerProfile"), dict) else None
+            )
+            clean_msg = _clean_card_intro_message(
+                last_ai_content,
+                f"Profile details for {card.displayName or card.email}:",
+                "user_profile"
             )
             return AgentCardResponse(
                 response_type="user_profile",
-                message=last_ai_content or f"Profile details for {card.email}",
+                message=clean_msg,
                 card_data=card.model_dump(),
                 metadata={"agent": "community_agent", "user_email": email}
             )
@@ -243,9 +404,14 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
                 categories=categories_raw,
                 totalCount=len(categories_raw)
             )
+            clean_msg = _clean_card_intro_message(
+                last_ai_content,
+                f"Here are {len(categories_raw)} official service categories available on Workio:",
+                "service_categories"
+            )
             return AgentCardResponse(
                 response_type="service_categories",
-                message=last_ai_content or f"Here are {len(categories_raw)} official service categories available on Workio.",
+                message=clean_msg,
                 card_data=card.model_dump(),
                 metadata={"agent": "community_agent", "user_email": email}
             )
@@ -362,11 +528,16 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
                     totalCount=len(worker_summaries),
                     workers=worker_summaries
                 )
+                clean_msg = _clean_card_intro_message(
+                    last_ai_content,
+                    f"I found {len(worker_summaries)} verified professionals matching your request:",
+                    "worker_list"
+                )
                 return AgentCardResponse(
                     response_type="worker_list",
-                    message=last_ai_content or f"I found {len(worker_summaries)} verified professionals matching your budget:",
+                    message=clean_msg,
                     card_data=card.model_dump(),
-                    metadata={"agent": "booking_agent", "user_email": email}
+                    metadata={"agent": "worker_matching_agent", "user_email": email}
                 )
 
             rates = [float(w.get("hourlyRate")) for w in raw_workers if isinstance(w, dict) and w.get("hourlyRate") is not None]
@@ -382,7 +553,170 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
                 response_type="text_message",
                 message=card.text,
                 card_data=card.model_dump(),
+                metadata={"agent": "worker_matching_agent", "user_email": email}
+            )
+
+        # 10. get_worker_details
+        if tool_name == "get_worker_details":
+            w_data = data if isinstance(data, dict) else {}
+            card = UserProfileCard(
+                email=w_data.get("email") or w_data.get("userEmail") or f"worker_{w_data.get('id', '')}@workio.lk",
+                role="Worker",
+                isWorker=True,
+                displayName=w_data.get("name") or w_data.get("displayName") or "Verified Technician",
+                phoneNo=w_data.get("phoneNo") or w_data.get("phoneNumber"),
+                address=w_data.get("address") or w_data.get("primaryServiceArea") or "Colombo",
+                workerRating=float(w_data.get("overallRating") or w_data.get("rating") or 5.0),
+                completedJobs=int(w_data.get("completedJobs") or 0),
+                skills=_normalize_skills(w_data.get("skills")) or ["General Handyman"],
+                pricingModel=w_data.get("pricingModel") or ("Hourly" if w_data.get("hourlyRate") else "Standard")
+            )
+            clean_msg = _clean_card_intro_message(
+                last_ai_content,
+                f"Profile details for {card.displayName}:",
+                "user_profile"
+            )
+            return AgentCardResponse(
+                response_type="user_profile",
+                message=clean_msg,
+                card_data=card.model_dump(),
+                metadata={"agent": "worker_matching_agent", "user_email": email}
+            )
+
+        # 11. get_worker_performance
+        if tool_name == "get_worker_performance":
+            perf = data if isinstance(data, dict) else {}
+            rating = perf.get("overallRating") or perf.get("averageRating") or 5.0
+            jobs = perf.get("completedJobs") or perf.get("totalJobs") or 0
+            comp_rate = perf.get("completionRate") or "98%"
+            card = TextMessageCard(
+                text=last_ai_content or f"Worker Performance: ★ {rating} ({jobs} completed jobs, {comp_rate} completion rate).",
+                suggestions=["Book this technician", "Check availability", "Search other workers"]
+            )
+            return AgentCardResponse(
+                response_type="text_message",
+                message=card.text,
+                card_data=card.model_dump(),
+                metadata={"agent": "worker_matching_agent", "user_email": email}
+            )
+
+        # 12. get_resident_bookings
+        if tool_name == "get_resident_bookings":
+            raw_bookings = data if isinstance(data, list) else (
+                data.get("bookings") or data.get("items") or [] if isinstance(data, dict) else []
+            )
+            if isinstance(raw_bookings, list) and raw_bookings:
+                b_count = len(raw_bookings)
+                card = TextMessageCard(
+                    text=last_ai_content or f"You have {b_count} scheduled booking appointment(s):",
+                    suggestions=["Reschedule an appointment", "Cancel a booking", "Find another worker"]
+                )
+            else:
+                card = TextMessageCard(
+                    text=last_ai_content or "You do not have any upcoming bookings at the moment.",
+                    suggestions=["Find a technician", "Book a service", "View community posts"]
+                )
+            return AgentCardResponse(
+                response_type="text_message",
+                message=card.text,
+                card_data=card.model_dump(),
                 metadata={"agent": "booking_agent", "user_email": email}
+            )
+
+        # 13. reschedule_booking
+        if tool_name == "reschedule_booking":
+            b_id = data.get("bookingId") or data.get("id") or ""
+            card = TextMessageCard(
+                text=last_ai_content or f"Booking #{b_id} has been successfully rescheduled.",
+                suggestions=["View my bookings", "Contact worker", "Done"]
+            )
+            return AgentCardResponse(
+                response_type="text_message",
+                message=card.text,
+                card_data=card.model_dump(),
+                metadata={"agent": "booking_agent", "user_email": email}
+            )
+
+        # 14. cancel_booking
+        if tool_name == "cancel_booking":
+            b_id = data.get("bookingId") or data.get("id") or ""
+            card = TextMessageCard(
+                text=last_ai_content or f"Booking #{b_id} has been canceled.",
+                suggestions=["Find another worker", "View my bookings", "Create a community post"]
+            )
+            return AgentCardResponse(
+                response_type="text_message",
+                message=card.text,
+                card_data=card.model_dump(),
+                metadata={"agent": "booking_agent", "user_email": email}
+            )
+
+        # 15. get_booking / get_booking_details
+        if tool_name in ["get_booking", "get_booking_details"]:
+            b_id = data.get("id") or data.get("bookingId") or ""
+            status = data.get("status") or "Confirmed"
+            card = TextMessageCard(
+                text=last_ai_content or f"Booking #{b_id} Status: {status}.",
+                suggestions=["Reschedule", "Cancel booking", "View all bookings"]
+            )
+            return AgentCardResponse(
+                response_type="text_message",
+                message=card.text,
+                card_data=card.model_dump(),
+                metadata={"agent": "booking_agent", "user_email": email}
+            )
+
+        # 16. create_worker_review
+        if tool_name == "create_worker_review":
+            card = TextMessageCard(
+                text=last_ai_content or "Thank you! Your rating and review have been submitted successfully.",
+                suggestions=["Book another worker", "Browse community feed", "View profile"]
+            )
+            return AgentCardResponse(
+                response_type="text_message",
+                message=card.text,
+                card_data=card.model_dump(),
+                metadata={"agent": "support_review_agent", "user_email": email}
+            )
+
+        # 17. file_dispute_ticket
+        if tool_name == "file_dispute_ticket":
+            ticket_id = data.get("ticket_id") or data.get("id") or "D-101"
+            card = TextMessageCard(
+                text=last_ai_content or f"Dispute ticket #{ticket_id} has been filed. Our support team will follow up within 24 hours.",
+                suggestions=["Contact human support", "Return to home"]
+            )
+            return AgentCardResponse(
+                response_type="text_message",
+                message=card.text,
+                card_data=card.model_dump(),
+                metadata={"agent": "support_review_agent", "user_email": email}
+            )
+
+        # 18. escalate_to_human
+        if tool_name == "escalate_to_human":
+            card = TextMessageCard(
+                text=last_ai_content or "Your conversation has been escalated to a customer support specialist who will assist you shortly.",
+                suggestions=["Return to home", "View community feed"]
+            )
+            return AgentCardResponse(
+                response_type="text_message",
+                message=card.text,
+                card_data=card.model_dump(),
+                metadata={"agent": "support_review_agent", "user_email": email}
+            )
+
+        # 19. get_user_job_history
+        if tool_name == "get_user_job_history":
+            card = TextMessageCard(
+                text=last_ai_content or "Here is your recent service history:",
+                suggestions=["Leave a review", "Book technician again", "File dispute"]
+            )
+            return AgentCardResponse(
+                response_type="text_message",
+                message=card.text,
+                card_data=card.model_dump(),
+                metadata={"agent": "support_review_agent", "user_email": email}
             )
 
     # Check if this is a booking confirmation summary
@@ -626,15 +960,20 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
             validationNotes=f"Please review your draft details above and confirm to publish under your account ({user_name}).",
             confirmPrompt=f"CONFIRM_PUBLISH: Yes, please publish the post '{draft_title}' in {draft_category} for {draft_location}."
         )
+        clean_msg = _clean_card_intro_message(
+            last_ai_content,
+            "Please review your draft community post below and confirm to publish:",
+            "post_confirmation"
+        )
         return AgentCardResponse(
             response_type="post_confirmation",
-            message=last_ai_content,
+            message=clean_msg,
             card_data=card.model_dump(),
             metadata={"agent": "community_agent", "user_email": email}
         )
 
     # General text message fallback
-    suggestions = [
+    suggestions = metadata.get("suggested_actions") or [
         "Book a service technician",
         "View recent community posts",
         "Create a post for AC repair",
@@ -654,147 +993,67 @@ def _deterministic_card_builder(state: AgentState) -> AgentCardResponse:
 
 async def card_formatter_node(state: AgentState) -> Dict[str, Any]:
     """
-    Card Formatter Node invokes structured output with ChatOpenAI gpt-4o-mini
-    or uses the robust deterministic builder.
+    Deterministic UI Card Formatter Node for Workio (Legacy/Fallback).
+    Pure Python: Transforms agent execution history, structured tool outputs, and state into
+    strictly typed Pydantic UI Card responses (AgentCardResponse) for the React frontend.
+    ZERO LLM CALLS.
     """
-    messages = list(state.get("messages", []))
+    card_response = _deterministic_card_builder(state)
+    return {"structured_response": card_response}
+
+
+def build_community_card(state: AgentState, ai_message: Optional[Any] = None) -> AgentCardResponse:
+    """Build structured AgentCardResponse for community agent."""
+    res = _deterministic_card_builder(state, ai_message=ai_message)
+    if not res.metadata:
+        res.metadata = {}
+    res.metadata.setdefault("agent", "community_agent")
+    return res
+
+
+def build_worker_matching_card(state: AgentState, ai_message: Optional[Any] = None) -> AgentCardResponse:
+    """Build structured AgentCardResponse for worker matching agent."""
+    res = _deterministic_card_builder(state, ai_message=ai_message)
+    if not res.metadata:
+        res.metadata = {}
+    res.metadata.setdefault("agent", "worker_matching_agent")
+    return res
+
+
+def build_booking_card(state: AgentState, ai_message: Optional[Any] = None) -> AgentCardResponse:
+    """Build structured AgentCardResponse for booking agent."""
+    res = _deterministic_card_builder(state, ai_message=ai_message)
+    if not res.metadata:
+        res.metadata = {}
+    res.metadata.setdefault("agent", "booking_agent")
+    return res
+
+
+def build_support_review_card(state: AgentState, ai_message: Optional[Any] = None) -> AgentCardResponse:
+    """Build structured AgentCardResponse for support & review agent."""
+    res = _deterministic_card_builder(state, ai_message=ai_message)
+    if not res.metadata:
+        res.metadata = {}
+    res.metadata.setdefault("agent", "support_review_agent")
+    return res
+
+
+def build_supervisor_card(state: AgentState, text: str, suggestions: Optional[List[str]] = None) -> AgentCardResponse:
+    """Build structured AgentCardResponse directly for supervisor greeting/clarification turns."""
     email = state.get("email", "resident@workio.lk")
-    user_type = state.get("user_type", "Resident")
+    card = TextMessageCard(
+        text=text,
+        suggestions=suggestions or [
+            "Find a plumber or electrician",
+            "View community posts",
+            "Book a service technician",
+            "Check my account profile"
+        ]
+    )
+    return AgentCardResponse(
+        response_type="text_message",
+        message=text,
+        card_data=card.model_dump(),
+        metadata={"agent": "supervisor", "user_email": email}
+    )
 
-    if settings.openai_api_key and settings.openai_api_key != "your_openai_api_key_here":
-        try:
-            llm = ChatOpenAI(
-                model=settings.openai_model,
-                temperature=0.0,
-                api_key=settings.openai_api_key
-            )
-            structured_formatter = llm.with_structured_output(AgentCardResponse, method="function_calling")
-
-            format_messages = [
-                SystemMessage(content=CARD_FORMATTER_PROMPT),
-                SystemMessage(content=f"Active user: email={email}, role={user_type}")
-            ] + messages
-
-            card_response: AgentCardResponse = await structured_formatter.ainvoke(format_messages)
-            if card_response:
-                # If worker_list, enforce budget constraint strictly
-                if card_response.response_type == "worker_list" and isinstance(card_response.card_data, dict):
-                    budget_limit = None
-                    for msg in reversed(messages):
-                        t_calls = getattr(msg, "tool_calls", None)
-                        if t_calls:
-                            for tc in t_calls:
-                                if tc.get("name") == "search_workers":
-                                    tc_args = tc.get("args") or {}
-                                    if tc_args.get("maxHourlyRate"):
-                                        try:
-                                            budget_limit = float(tc_args["maxHourlyRate"])
-                                        except (ValueError, TypeError):
-                                            pass
-                                    break
-                            if budget_limit is not None:
-                                break
-
-                    if budget_limit is None:
-                        for msg in reversed(messages):
-                            if isinstance(msg, HumanMessage) or getattr(msg, "type", "") == "human":
-                                user_txt = msg.content if isinstance(msg.content, str) else str(msg.content)
-                                m = re.search(r'(?:below|under|less than|max(?:imum)?|rate of|budget of)\s*(?:rs\.?|lkr)?\s*(\d+)', user_txt, re.IGNORECASE)
-                                if m:
-                                    try:
-                                        budget_limit = float(m.group(1))
-                                    except ValueError:
-                                        pass
-                                    break
-
-                    if budget_limit is not None:
-                        existing_workers = card_response.card_data.get("workers") or []
-                        valid_workers = [
-                            w for w in existing_workers
-                            if isinstance(w, dict) and w.get("hourlyRate") is not None and float(w["hourlyRate"]) <= budget_limit
-                        ]
-                        if valid_workers:
-                            card_response.card_data["workers"] = valid_workers
-                            card_response.card_data["totalCount"] = len(valid_workers)
-                        else:
-                            rates = [float(w["hourlyRate"]) for w in existing_workers if isinstance(w, dict) and w.get("hourlyRate") is not None]
-                            min_rate = min(rates) if rates else None
-                            rate_info = f" The lowest available rate for nearby workers starts from Rs. {int(min_rate)}/hr." if min_rate else ""
-                            msg_text = f"No verified service workers found with an hourly rate below Rs. {int(budget_limit)}.{rate_info}"
-                            card = TextMessageCard(
-                                text=msg_text,
-                                suggestions=["Create a community post", f"Show workers from Rs. {int(min_rate)}/hr"] if min_rate else ["Create a community post", "Search all workers"]
-                            )
-                            card_response = AgentCardResponse(
-                                response_type="text_message",
-                                message=msg_text,
-                                card_data=card.model_dump(),
-                                metadata={"agent": "booking_agent", "user_email": email}
-                            )
-
-                # Sanitize card_data suggestions to remove any tips or DIY advice
-                if isinstance(card_response.card_data, dict):
-                    metadata_sugg = state.get("metadata", {}).get("suggested_actions")
-                    raw_sugg = metadata_sugg or card_response.card_data.get("suggestions") or []
-                    clean_sugg = []
-                    for s in raw_sugg:
-                        s_text = str(s.get("text") if isinstance(s, dict) else s)
-                        if any(t in s_text.lower() for t in ["tip", "diy", "myself", "advice", "tutorial", "guide"]):
-                            continue
-                        clean_sugg.append(s)
-
-                    lower_msg = (card_response.message or "").lower()
-                    is_question = any(q in lower_msg for q in [
-                        "specify the type of service",
-                        "type of service",
-                        "what type of service",
-                        "what kind of service",
-                        "what specific service",
-                        "what problem",
-                        "what issue",
-                        "tell me a few details",
-                        "what date",
-                        "preferred date",
-                        "when would you like",
-                        "registered address",
-                        "registered phone"
-                    ])
-
-                    is_choice = not is_question and (
-                        any(k in lower_msg for k in [
-                            "how would you like to proceed",
-                            "proceed with finding a worker or creating a community post",
-                            "find a worker or create a community post"
-                        ]) or card_response.card_data.get("is_choice") is True
-                    )
-
-                    if is_choice:
-                        card_response.card_data["is_choice"] = True
-                        structured = []
-                        for idx, s in enumerate(clean_sugg):
-                            if isinstance(s, dict):
-                                structured.append(s)
-                            else:
-                                s_str = str(s)
-                                s_type = "community" if "community" in s_str.lower() or "post" in s_str.lower() or idx == 1 else "find"
-                                structured.append({"text": s_str, "type": s_type})
-                        card_response.card_data["suggestions"] = structured
-                    else:
-                        card_response.card_data["is_choice"] = False
-                        # If asking a question or not a choice turn, remove any generic choice buttons
-                        filtered = []
-                        for s in clean_sugg:
-                            s_text = str(s.get("text") if isinstance(s, dict) else s)
-                            s_lower = s_text.lower()
-                            if any(b in s_lower for b in ["find a worker", "find a service worker", "create a community post", "find trusted workers"]):
-                                continue
-                            filtered.append(s)
-                        card_response.card_data["suggestions"] = filtered
-
-                return {"structured_response": card_response}
-        except Exception as e:
-            logger.warning(f"Structured card formatter LLM error: {e}. Falling back to deterministic builder.")
-
-    # Fallback deterministic builder
-    fallback_response = _deterministic_card_builder(state)
-    return {"structured_response": fallback_response}

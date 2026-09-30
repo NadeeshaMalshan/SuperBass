@@ -1,7 +1,7 @@
 """
 Supervisor Agent Node for Workio Multi-Agent System.
 Inspects incoming user messages using LLM natural language understanding (zero hardcoded keywords)
-and orchestrates routing to the community_agent, booking_agent, or direct response.
+and orchestrates routing to community_agent, worker_matching_agent, booking_agent, support_review_agent, or direct response.
 """
 
 from typing import Dict, Any, Literal, Optional, List
@@ -14,20 +14,28 @@ from agent_backend.state.state import AgentState
 from agent_backend.prompts.supervisor_prompts import SUPERVISOR_SYSTEM_PROMPT
 from agent_backend.tools.booking_tools import get_live_service_categories
 from agent_backend.utils.sanitizer import sanitize_messages_for_llm
+from agent_backend.utils.card_builders import build_supervisor_card
 
 logger = logging.getLogger("agent_backend.supervisor")
 
 
+
 class SupervisorDecision(BaseModel):
     """Routing decision and natural language intent classification made by the LLM."""
-    next_agent: Literal["community_agent", "booking_agent", "FINISH"] = Field(
-        description="The next sub-agent to delegate the task to, or 'FINISH' if answered directly or asking a clarifying question"
+    next_agent: Literal[
+        "community_agent",
+        "worker_matching_agent",
+        "booking_agent",
+        "support_review_agent",
+        "FINISH"
+    ] = Field(
+        description="The next specialized sub-agent to delegate the task to, or 'FINISH' if answering directly or asking a clarifying question"
     )
     inferred_category: Optional[str] = Field(
         default=None,
         description="The matching Workio service category from the official categories if a problem or service was described"
     )
-    direct_response: str = Field(
+    direct_response: Optional[str] = Field(
         default="",
         description="Direct conversational response when choosing FINISH (e.g. greeting, problem summary with options, or explanation)"
     )
@@ -70,11 +78,12 @@ async def supervisor_node(state: AgentState) -> Dict[str, Any]:
             ] + clean_messages
 
             decision: SupervisorDecision = await structured_router.ainvoke(prompt_messages)
+            logger.info(
+                f"🧭 [Supervisor Routing] Agent: '{decision.next_agent}' | Inferred Category: '{decision.inferred_category}' | Actions: {decision.suggested_actions}"
+            )
 
             updates: Dict[str, Any] = {"next": decision.next_agent}
-            if decision.next_agent == "FINISH" and decision.direct_response:
-                updates["messages"] = [AIMessage(content=decision.direct_response)]
-
+            clean_actions: List[str] = []
             if decision.suggested_actions:
                 # Strictly filter out tips, DIY, tutorials, and advice
                 clean_actions = [
@@ -86,16 +95,30 @@ async def supervisor_node(state: AgentState) -> Dict[str, Any]:
                 metadata["inferred_category"] = decision.inferred_category
 
             updates["metadata"] = metadata
+
+            if decision.next_agent == "FINISH":
+                direct_text = decision.direct_response or "How can I assist you with Workio home services and community posts?"
+                ai_msg = AIMessage(content=direct_text)
+                updates["messages"] = [ai_msg]
+                sim_state = dict(state)
+                sim_state["messages"] = messages + [ai_msg]
+                sim_state["metadata"] = metadata
+                updates["structured_response"] = build_supervisor_card(sim_state, direct_text, clean_actions or None)
+
             return updates
         except Exception as e:
             logger.warning(f"Supervisor LLM router error: {e}. Using offline fallback.")
 
-    # Generic offline fallback (Zero hardcoded trade/category dictionaries; LLM handles categories when online)
+    # Generic offline fallback
     raw_text = messages[-1].content if messages[-1].content else ""
     lower_text = raw_text.lower()
 
-    if any(w in lower_text for w in ["worker", "find a worker", "find worker", "book", "appointment", "schedule", "hire", "technician", "craftsman"]):
+    if any(w in lower_text for w in ["review", "rate", "star", "feedback", "complain", "dispute", "support", "billing", "cancel policy"]):
+        return {"next": "support_review_agent", "metadata": metadata}
+    if any(w in lower_text for w in ["book", "appointment", "schedule", "reschedule", "cancel booking", "my bookings", "upcoming"]):
         return {"next": "booking_agent", "metadata": metadata}
+    if any(w in lower_text for w in ["worker", "find a worker", "find worker", "hire", "technician", "craftsman", "plumber", "electrician", "mechanic"]):
+        return {"next": "worker_matching_agent", "metadata": metadata}
     if any(w in lower_text for w in ["post", "community", "feed"]):
         return {"next": "community_agent", "metadata": metadata}
 
@@ -109,8 +132,14 @@ async def supervisor_node(state: AgentState) -> Dict[str, Any]:
         f"2. **Create a Community Post** — Share your service request on the community board for workers to reach out."
     )
 
+    ai_msg = AIMessage(content=fallback_text)
+    sim_state = dict(state)
+    sim_state["messages"] = messages + [ai_msg]
+    sim_state["metadata"] = metadata
     return {
         "next": "FINISH",
-        "messages": [AIMessage(content=fallback_text)],
+        "messages": [ai_msg],
+        "structured_response": build_supervisor_card(sim_state, fallback_text, default_chips),
         "metadata": metadata
     }
+

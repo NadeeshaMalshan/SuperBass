@@ -13,6 +13,7 @@ import {
   listConversations,
   getConversationMessages,
   deleteConversation,
+  getBackendLogs,
 } from '../services/agentApi.js';
 
 export default function AiCommunityChat() {
@@ -219,6 +220,28 @@ export default function AiCommunityChat() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
+
+  // Expose global window helper for inspecting AI chat logs directly in DevTools console
+  useEffect(() => {
+    window.showAiLogs = async (limit = 100) => {
+      console.log(`%c⏳ Fetching latest ${limit} AI backend chat logs...`, 'color: #3b82f6;');
+      const data = await getBackendLogs(limit);
+      if (data.logs && data.logs.length > 0) {
+        console.group(
+          `%c📋 AI Chat Logs (${data.logs.length} entries from ${data.log_file || 'ai_chat.log'})`,
+          'color: #10b981; font-weight: bold;'
+        );
+        data.logs.forEach((line) => console.log(line));
+        console.groupEnd();
+      } else {
+        console.log('%cℹ️ No logs found yet or log file is empty.', 'color: #f59e0b;');
+      }
+      return data;
+    };
+    return () => {
+      delete window.showAiLogs;
+    };
+  }, []);
 
   const handleSendMessage = async (textToSend) => {
     let prompt = '';

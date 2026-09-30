@@ -1,159 +1,166 @@
-from langchain_core.tools import tool
+"""
+Support and Review Tools backed by Workio MCP Server.
+Equips the Support & Review Agent to handle ratings, post-job reviews, dispute resolution,
+worker performance metrics, profile lookups, and human support escalation.
+"""
+
+import logging
+import uuid
 from typing import Optional, Dict, Any
+from langchain_core.tools import tool
+from langchain_core.runnables.config import RunnableConfig
 from agent_backend.tools.community_tools import sanitize_payload
 from agent_backend.tools.mcp_client import mcp_client
-import uuid 
-from langchain_core.runnables.config import RunnableConfig
+
+logger = logging.getLogger("agent_backend.support_review_tools")
+
 
 @tool
-async def get_user_job_history(limit: Optional[int] = 5) -> Dict[str, Any]:
-    """
-    Fetches the recent job history for the authenticated user.
-    
-    Use this tool when the user wants to review or dispute a worker but doesn't 
-    know the worker's exact name or ID. Present the recent jobs to the user 
-    to help them identify the correct worker.
-    
-    MCP Tool: get_user_job_history
-    Arguments:
-    - limit (integer, optional): The number of recent jobs to fetch. Defaults to 5.
-    """
-    args = {"limit": min(limit, 20)} if limit else {"limit": 5}
-    
-    try:
-        raw = await mcp_client.call_tool("get_user_job_history", args)
-        return sanitize_payload(raw)
-    except Exception as e:
-        return {"status": "error", "message": f"Failed to fetch job history: {str(e)}"}
-
-@tool
-async def submit_worker_review(
-    worker_id: str, 
-    rating: int, 
+async def create_worker_review(
+    bookingId: str,
+    workerId: str,
+    residentId: str,
+    rating: int,
     comment: Optional[str] = None
 ) -> Dict[str, Any]:
     """
-    Submits a review for a worker after a job is completed via the MCP Server.
+    Submits a formal review and star rating for a worker after job completion via the MCP Server.
     
-    Use this tool ONLY when the user has explicitly provided a star rating (1 to 5) 
-    and identified the worker. Do not guess the rating.
-
-    MCP Tool: submit_worker_review
+    MCP Tool: create_worker_review
     Arguments:
-    - worker_id (string, required): The unique identifier of the worker.
+    - bookingId (string, required): The associated booking ID.
+    - workerId (string, required): The unique identifier of the worker.
+    - residentId (string, required): The resident ID or email submitting the review.
     - rating (integer, required): Star rating between 1 and 5.
-    - comment (string, optional): Additional text review from the user.
+    - comment (string, optional): Additional review comments/feedback.
     """
-    # 1. Validation
     if not (1 <= rating <= 5):
-        return {"status": "error", "message": "Rating must be between 1 and 5."}
-    
-    # 2. Argument Sanitization
+        return {"status": "error", "message": "Rating must be an integer between 1 and 5."}
+
     args = {
-        "worker_id": str(worker_id).strip(),
+        "bookingId": str(bookingId).strip(),
+        "workerId": str(workerId).strip(),
+        "residentId": str(residentId).strip(),
         "rating": int(rating),
         "comment": str(comment).strip() if comment else None
     }
-    
-    # 3. Call the MCP Server
+
     try:
-        raw = await mcp_client.call_tool("submit_worker_review", args)
+        raw = await mcp_client.call_tool("create_worker_review", args)
         return sanitize_payload(raw)
     except Exception as e:
-        return {"status": "error", "message": f"Failed to submit review: {str(e)}"}
+        return {"status": "error", "message": f"Failed to submit worker review: {str(e)}"}
 
 
 @tool
-async def search_workers(query: str) -> Dict[str, Any]:
+async def get_worker_performance(workerId: str) -> Dict[str, Any]:
     """
-    Searches for a worker by name, profession, or recent job to retrieve their worker_id.
+    Retrieve performance metrics, overall rating, and completion stats for a worker.
+    Useful for resolving disputes or reviewing quality of work.
     
-    Use this tool BEFORE calling submit_worker_review if the user mentions a worker 
-    by name. 
-    
-    CRITICAL: If this tool returns multiple workers, you MUST stop and ask the 
-    user to clarify which worker they meant based on the returned professions or dates. 
-    Do not guess the worker_id.
-    
-    MCP Tool: search_workers
+    MCP Tool: get_worker_performance
     Arguments:
-    - query (string, required): The name, profession, or keywords to search.
+    - workerId (string, required): The unique identifier of the worker.
     """
-    args = {"query": str(query).strip()}
-    
+    args = {"workerId": str(workerId).strip()}
     try:
-        raw = await mcp_client.call_tool("search_workers", args)
+        raw = await mcp_client.call_tool("get_worker_performance", args)
         return sanitize_payload(raw)
     except Exception as e:
-        return {"status": "error", "message": f"Failed to search for workers: {str(e)}"}
+        return {"status": "error", "message": f"Failed to fetch worker performance: {str(e)}"}
+
+
+@tool
+async def get_user_details(email: str) -> Dict[str, Any]:
+    """
+    Retrieve user profile and account details (role, contact info, status) by email address.
+    
+    MCP Tool: get_user_details
+    Arguments:
+    - email (string, required): User email address.
+    """
+    args = {"email": str(email).strip()}
+    try:
+        raw = await mcp_client.call_tool("get_user_details", args)
+        return sanitize_payload(raw)
+    except Exception as e:
+        return {"status": "error", "message": f"Failed to fetch user details: {str(e)}"}
 
 
 @tool
 async def file_dispute_ticket(
-    worker_id: str, 
-    reason: str, 
+    worker_id: str,
+    reason: str,
     urgency_level: str,
-    config: RunnableConfig
+    config: Optional[RunnableConfig] = None
 ) -> Dict[str, Any]:
     """
-    Files a formal dispute ticket against a worker via the MCP Server.
-    
-    Use this tool when a user expresses serious dissatisfaction, safety concerns, 
-    or financial disagreement regarding a job. 
-    
-    MCP Tool: file_dispute_ticket
+    Files a formal dispute ticket against a worker for incomplete jobs, damages, or financial disputes.
     Arguments:
-    - worker_id (string, required): The unique identifier of the worker being reported.
-    - reason (string, required): A concise summary of the user's complaint.
-    - urgency_level (string, required): Must be strictly 'low', 'medium', or 'high' based on severity.
+    - worker_id (string, required): The worker identifier.
+    - reason (string, required): Summary of the complaint or dispute.
+    - urgency_level (string, required): 'low', 'medium', or 'high'.
     """
     safe_urgency = str(urgency_level).strip().lower()
     if safe_urgency not in ["low", "medium", "high"]:
-        return {"status": "error", "message": "urgency_level must be 'low', 'medium', or 'high'."}
-        
+        safe_urgency = "medium"
+
     args = {
         "worker_id": str(worker_id).strip(),
         "reason": str(reason).strip(),
         "urgency_level": safe_urgency
     }
-    
-    idempotency_key = str(uuid.uuid4())
-    run_id = str(config.get("run_id", "unknown_run_id"))
-    metadata = {
-        "x-idempotency-key": idempotency_key,
-        "x-ai-trace-id": run_id
-    }
-    
+
     try:
-        # Standard signature for MCP Tool execution with metadata
-        args["_metadata"] = metadata
         raw = await mcp_client.call_tool("file_dispute_ticket", args)
         return sanitize_payload(raw)
     except Exception as e:
-        return {"status": "error", "message": f"Failed to file dispute ticket: {str(e)}"}
+        return {"status": "error", "message": f"Failed to file dispute: {str(e)}"}
+
 
 @tool
 async def escalate_to_human(
     reason: str,
-    urgency: str
+    urgency: str = "medium"
 ) -> Dict[str, Any]:
     """
-    Escalates the current conversation to a human support agent.
-    
-    Call this tool immediately if the user is irate, threatens self-harm, 
-    explicitly requests a human, or if you cannot resolve their issue. 
-    
+    Escalates the issue to a human support agent when the user is unsatisfied or facing critical issues.
     Arguments:
-    - reason (string, required): A brief summary of why the user needs a human.
-    - urgency (string, required): 'low', 'medium', or 'high'. Use 'high' for safety threats.
+    - reason (string, required): Why human intervention is required.
+    - urgency (string, optional): 'low', 'medium', or 'high'.
     """
     args = {"reason": reason, "urgency": urgency}
-    
     try:
         raw = await mcp_client.call_tool("escalate_to_human", args)
         return sanitize_payload(raw)
     except Exception as e:
         return {"status": "error", "message": f"Failed to escalate: {str(e)}"}
 
-REVIEW_TOOLS = [submit_worker_review, search_workers]
-SUPPORT_TOOLS = [file_dispute_ticket, escalate_to_human, get_user_job_history]
+
+@tool
+async def get_user_job_history(limit: Optional[int] = 5) -> Dict[str, Any]:
+    """
+    Fetches the recent job history for the authenticated user to help identify past workers or bookings.
+    Arguments:
+    - limit (integer, optional): Number of past jobs to fetch (default: 5).
+    """
+    args = {"limit": min(limit, 20)} if limit else {"limit": 5}
+    try:
+        raw = await mcp_client.call_tool("get_user_job_history", args)
+        return sanitize_payload(raw)
+    except Exception as e:
+        return {"status": "error", "message": f"Failed to fetch job history: {str(e)}"}
+
+
+SUPPORT_REVIEW_TOOLS = [
+    create_worker_review,
+    get_worker_performance,
+    get_user_details,
+    file_dispute_ticket,
+    escalate_to_human,
+    get_user_job_history
+]
+
+# Aliases for backward compatibility
+SUPPORT_TOOLS = SUPPORT_REVIEW_TOOLS
+REVIEW_TOOLS = SUPPORT_REVIEW_TOOLS
