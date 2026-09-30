@@ -726,20 +726,14 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
             metadata={"agent": "community_agent", "user_email": email, "is_choice": True}
         )
 
-    # C. Context-aware suggestions for Update / Edit / Category turns
+    # C. Context-aware suggestions for Update / Edit / Question turns
     suggestions = metadata.get("suggested_actions")
     if not suggestions:
-        last_user_msg = ""
-        for msg in reversed(messages):
-            if getattr(msg, "type", "") in ("human", "user"):
-                last_user_msg = extract_text_content(getattr(msg, "content", "")).lower()
-                break
-
-        is_asking_category = any(k in lower_content for k in [
+        is_asking_question = any(k in lower_content for k in [
             "what kind of work", "what service", "what type of service", "plumbing, electrical", "plumbing or electrical",
             "what category", "tell me what you need", "what issue are you facing", "service you need", "kind of service",
-            "repairs, or something else", "what do you need help with"
-        ])
+            "repairs, or something else", "what do you need help with", "what would you like to"
+        ]) or last_ai_content.strip().endswith("?")
 
         if any(k in lower_content for k in ["new title", "what would you like the new title", "title to be"]):
             suggestions = ["Keep current title", "Change description instead", "Cancel update"]
@@ -747,49 +741,11 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
             suggestions = ["Keep current description", "Change title instead", "Cancel update"]
         elif any(k in lower_content for k in ["what would you like to change", "proposed edits", "proposed update", "edit", "update", "change its title"]):
             suggestions = ["Change the title", "Change the description", "Change the category", "Change the location"]
-        elif is_asking_category:
-            if any(k in last_user_msg for k in ["create", "post", "publish"]):
-                suggestions = [
-                    "Plumbing service request",
-                    "Electrical wiring repair",
-                    "AC & Air Conditioning repair",
-                    "Vehicle repair & mechanic"
-                ]
-            elif any(k in last_user_msg for k in ["worker", "find", "hire", "technician"]):
-                suggestions = [
-                    "Find a Plumber",
-                    "Find an Electrician",
-                    "Find an AC Technician",
-                    "Find a Vehicle Mechanic"
-                ]
-            else:
-                suggestions = [
-                    "Plumbing",
-                    "Electrical",
-                    "AC & Air Conditioning",
-                    "Vehicle Repair & Mechanic"
-                ]
-        elif any(k in last_user_msg for k in ["find a worker", "find worker", "hire worker", "look for worker"]):
-            suggestions = [
-                "Find a Plumber",
-                "Find an Electrician",
-                "Find an AC Technician",
-                "Find a Vehicle Mechanic"
-            ]
-        elif any(k in last_user_msg for k in ["create a post", "create post", "make a post", "post on community"]):
-            suggestions = [
-                "Plumbing service request",
-                "Electrical wiring repair",
-                "AC & Air Conditioning repair",
-                "Vehicle repair & mechanic"
-            ]
+        elif is_asking_question:
+            # When the agent is asking a clarification question, do not show recommendation cards; only show the question
+            suggestions = None
         else:
-            suggestions = [
-                "Find a verified plumber",
-                "Find an electrician",
-                "Browse community posts",
-                "Check my profile"
-            ]
+            suggestions = None
 
     card = TextMessageCard(
         text=last_ai_content or "How can I assist you with Workio home services and community posts?",
