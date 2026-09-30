@@ -126,8 +126,6 @@ $RECYCLE.BIN/
 *~
 *.tmp
 /App/linux/flutter
-*.h
-*.yaml
 App/linux/flutter/generated_plugin_registrant.cc
 App/linux/flutter/generated_plugin_registrant.h
 App/linux/flutter/generated_plugins.cmake

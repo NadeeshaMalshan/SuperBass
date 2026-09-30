@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import categoriesData from './data/categories.json';
 import sriLankaDistricts from './data/sriLankaDistricts.json';
-import M3TopNavbar from './components/M3TopNavbar.jsx';
 import UserMenu from './components/UserMenu.jsx';
 import '@material/web/button/filled-button.js';
 import '@material/web/button/outlined-button.js';
@@ -561,13 +560,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     <div className="find-page-container">
 
       {/* Google Workspace / Material 3 Top Navbar */}
-      <M3TopNavbar
-        activePage="account"
-        showSearch={false}
-        showSidebarToggle={true}
-        isSidebarCollapsed={isSidebarCollapsed}
-        onToggleSidebar={() => setIsSidebarCollapsed(prev => !prev)}
-      />
+      
 
       <div className="find-layout">
         {/* Left Sidebar Navigation Drawer */}

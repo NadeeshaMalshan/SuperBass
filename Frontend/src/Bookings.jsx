@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import axios from 'axios';
 import './App.css'; // Leveraging existing App.css for styles
 import './Bookings.css';
-import M3TopNavbar from './components/M3TopNavbar.jsx';
 import UserMenu from './components/UserMenu.jsx';
 import Loader from './components/Loader.jsx';
 import { API_BASE_URL } from './config.js';
@@ -127,7 +126,9 @@ const getGoogleMapsUrl = (booking) => {
 
 export default function Bookings() {
   const [bookings, setBookings] = useState([]);
-  const [bookingSearch, setBookingSearch] = useState('');
+    const [bookingSearch, setBookingSearch] = useState('');
+  const [viewMode, setViewMode] = useState('list');
+  const [sortBy, setSortBy] = useState('newest');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -429,15 +430,7 @@ export default function Bookings() {
   return (
     <div className="bookings-page-container">
       {/* Google Workspace / Material 3 Top Navbar */}
-      <M3TopNavbar
-        activePage="bookings"
-        searchValue={bookingSearch}
-        onSearchChange={setBookingSearch}
-        searchPlaceholder="Search bookings by job, worker, location, status..."
-        showSidebarToggle={true}
-        isSidebarCollapsed={isSidebarCollapsed}
-        onToggleSidebar={() => setIsSidebarCollapsed(prev => !prev)}
-      />
+      
 
       <div className="bookings-layout">
         {/* Left Sidebar Navigation */}
@@ -505,13 +498,72 @@ export default function Bookings() {
         </aside>
 
         <main className="bookings-main">
-          <div className="bookings-main-header">
-            <div>
-              <h1 className="bookings-title">My Bookings ({activeRole})</h1>
-              <p className="bookings-subtitle">
-                Manage your home service requests and appointments
-              </p>
+                    {/* Main Controls Search & Filter Bar */}
+          <div className="uber-search-card" id="find-search-main" style={{ marginTop: '0', marginBottom: '16px' }}>
+            <div className="uber-search-input-wrap">
+              <i className="fa-solid fa-magnifying-glass uber-search-icon"></i>
+              <input
+                type="text"
+                className="uber-search-input"
+                placeholder="Search bookings by job, worker, location, status..."
+                value={bookingSearch}
+                onChange={(e) => setBookingSearch(e.target.value)}
+              />
+              {bookingSearch && (
+                <button
+                  type="button"
+                  onClick={() => setBookingSearch('')}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#757575', padding: '4px' }}
+                >
+                  ✕
+                </button>
+              )}
             </div>
+
+            <div className="uber-toolbar-actions">
+              <select
+                className="uber-sort-select"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+              >
+                <option value="newest">Sort: Newest First</option>
+                <option value="oldest">Sort: Oldest First</option>
+              </select>
+
+              {/* Grid View Mode Switcher Button Group (Icon Only) */}
+              <div className="uber-view-mode-group" role="group" aria-label="Card grid view mode">
+                <button
+                  type="button"
+                  className={`uber-view-mode-btn ${viewMode === 'large' ? 'active' : ''}`}
+                  onClick={() => setViewMode('large')}
+                  title="Large Cards View"
+                >
+                  <i className="fa-solid fa-table-cells-large"></i>
+                </button>
+                <button
+                  type="button"
+                  className={`uber-view-mode-btn ${viewMode === 'small' ? 'active' : ''}`}
+                  onClick={() => setViewMode('small')}
+                  title="Small Cards View"
+                >
+                  <i className="fa-solid fa-grip"></i>
+                </button>
+                <button
+                  type="button"
+                  className={`uber-view-mode-btn ${viewMode === 'list' ? 'active' : ''}`}
+                  onClick={() => setViewMode('list')}
+                  title="List View"
+                >
+                  <i className="fa-solid fa-list-ul"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', margin: '4px 0 16px 0' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#000000', margin: 0, letterSpacing: '-0.02em' }}>
+              My Bookings ({activeRole})
+            </h2>
           </div>
 
           {/* Worker Busy / In Progress Status Banner */}
@@ -574,7 +626,7 @@ export default function Bookings() {
               )}
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div className={`community-cards-grid view-${viewMode}`}>
               {filteredBookings.map((booking) => (
                 <div key={booking.id} className="booking-card">
                   <div className="booking-card-header">

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import M3TopNavbar from '../../components/M3TopNavbar.jsx';
 import '../../App.css';
 import './worker.css';
 import { API_BASE_URL } from '../../config.js';
@@ -71,14 +70,7 @@ export default function WorkerLayout({ children, activeTab = 'dashboard' }) {
   return (
     <div className="find-page-container" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Google Workspace / Material 3 Top Navbar */}
-      <M3TopNavbar
-        activePage="worker-dashboard"
-        showSearch={true}
-        searchPlaceholder="Search jobs, requests, or tools..."
-        showSidebarToggle={true}
-        isSidebarCollapsed={isSidebarCollapsed}
-        onToggleSidebar={() => setIsSidebarCollapsed(prev => !prev)}
-      />
+      
 
       {/* Main Content Area with Material 3 Sidebar */}
       <div className="find-layout" style={{ flex: 1, display: 'flex' }}>
