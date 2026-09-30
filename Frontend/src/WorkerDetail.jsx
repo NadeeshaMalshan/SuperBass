@@ -18,6 +18,7 @@ import Loader from './components/Loader.jsx';
 import M3TopNavbar from './components/M3TopNavbar.jsx';
 import M3DatePickerDialog from './components/M3DatePickerDialog.jsx';
 import M3TimePickerDialog from './components/M3TimePickerDialog.jsx';
+import { showToast } from './utils/toast.js';
 import './components/M3Navbar.css';
 import { API_BASE_URL } from './config.js';
 
@@ -66,6 +67,7 @@ export default function WorkerDetail() {
   const [worker, setWorker] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [imgError, setImgError] = useState(false);
 
   // Nav State
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -379,6 +381,7 @@ export default function WorkerDetail() {
       });
 
       setCreatedBooking(res.data);
+      showToast('Booking request sent successfully!');
       setHireStep('success');
     } catch (err) {
       console.error('Error submitting booking request:', err);
@@ -483,12 +486,7 @@ export default function WorkerDetail() {
   return (
     <div style={{ backgroundColor: '#f9fafb', minHeight: '100vh', color: '#111827', fontFamily: "var(--font-body, 'DM Sans', sans-serif)" }}>
       {/* Google Workspace / Material 3 Top Navbar */}
-      <M3TopNavbar
-        activePage="services"
-        showSearch={true}
-        showSidebarToggle={false}
-        searchPlaceholder="Search services, skills, or workers..."
-      />
+      
 
       {/* Main Container */}
       <main style={{ maxWidth: '1100px', margin: '0 auto', padding: '2rem 1rem' }}>
@@ -505,8 +503,8 @@ export default function WorkerDetail() {
                   width: '100px',
                   height: '100px',
                   borderRadius: '32px',
-                  backgroundColor: '#FDC101',
-                  color: '#0f172a',
+                  backgroundColor: '#000000',
+                  color: '#ffffff',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -515,8 +513,14 @@ export default function WorkerDetail() {
                   overflow: 'hidden',
                   fontFamily: "var(--font-heading, 'DM Sans', sans-serif)"
                 }}>
-                  {worker.profileImage ? (
-                    <img src={worker.profileImage} alt={worker.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  {(worker.profileImage && !imgError) ? (
+                    <img 
+                      src={worker.profileImage} 
+                      alt={worker.name} 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                      onError={() => setImgError(true)} 
+                      referrerPolicy="no-referrer"
+                    />
                   ) : (
                     worker.name ? worker.name.charAt(0).toUpperCase() : 'W'
                   )}
@@ -900,7 +904,15 @@ export default function WorkerDetail() {
 
             {/* STEP 1: FORM */}
             {hireStep === 'form' && (
-              <form onSubmit={handleBookingSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <form onSubmit={handleBookingSubmit} style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: '20px',
+                '--md-sys-color-primary': '#0f172a',
+                '--md-sys-color-outline': '#cbd5e1',
+                '--md-sys-color-on-surface': '#111827',
+                '--md-sys-color-on-surface-variant': '#475569'
+              }}>
 
                 {hireError && (
                   <div style={{ backgroundColor: '#fee2e2', color: '#991b1b', padding: '12px 16px', borderRadius: '10px', fontSize: '0.9rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1177,30 +1189,24 @@ export default function WorkerDetail() {
 
                 {/* Pricing Info (Read-only) */}
                 <div style={{ padding: '12px 16px', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <md-icon style={{ fontSize: '18px', color: '#ca8a04' }}>payments</md-icon>
+                  <span style={{ fontSize: '0.85rem', color: '#0f172a', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <md-icon style={{ fontSize: '18px', color: '#0f172a' }}>payments</md-icon>
                     Pricing Model
                   </span>
                   <strong style={{ color: '#111827' }}>{bookingForm.pricingModel} {bookingForm.estimatedPrice ? `(${bookingForm.estimatedPrice})` : ''}</strong>
                 </div>
 
                 {/* Submit Button */}
-                <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-                  <md-text-button
-                    type="button"
-                    onClick={() => setIsHireModalOpen(false)}
-                    style={{ flex: 1, '--md-sys-color-primary': '#475569', '--md-text-button-label-text-font': "var(--font-body, 'DM Sans', sans-serif)" }}
-                  >
-                    Cancel
-                  </md-text-button>
+                <div style={{ display: 'flex', marginTop: '8px' }}>
                   <md-filled-button
                     type="submit"
                     style={{
-                      flex: 2,
-                      '--md-sys-color-primary': '#FDC101',
-                      '--md-sys-color-on-primary': '#000000',
+                      width: '100%',
+                      '--md-sys-color-primary': '#000000',
+                      '--md-sys-color-on-primary': '#ffffff',
                       '--md-filled-button-label-text-font': "var(--font-body, 'DM Sans', sans-serif)",
-                      '--md-filled-button-label-text-weight': '800'
+                      '--md-filled-button-label-text-weight': '800',
+                      '--md-filled-button-container-height': '48px'
                     }}
                   >
                     <md-icon slot="icon">send</md-icon>
@@ -1227,7 +1233,7 @@ export default function WorkerDetail() {
 
                 {/* Top Success Banner */}
                 <div style={{
-                  backgroundColor: '#111827',
+                  backgroundColor: '#000000',
                   borderRadius: '16px',
                   padding: '18px 20px',
                   display: 'flex',
@@ -1235,7 +1241,7 @@ export default function WorkerDetail() {
                   gap: '14px'
                 }}>
                   <div style={{
-                    backgroundColor: '#FDC101',
+                    backgroundColor: '#ffffff',
                     color: '#000000',
                     width: '40px',
                     height: '40px',
@@ -1255,7 +1261,7 @@ export default function WorkerDetail() {
                 </div>
 
                 {/* Interactive Booking Lifecycle Stepper */}
-                <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '20px' }}>
+                <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '20px' }}>
                   <h5 style={{ margin: '0 0 16px 0', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569', fontWeight: 700, fontFamily: "var(--font-heading, 'DM Sans', sans-serif)" }}>
                     Service Status
                   </h5>
@@ -1269,16 +1275,16 @@ export default function WorkerDetail() {
                         height: '28px',
                         borderRadius: '8px',
                         backgroundColor: '#000000',
-                        color: '#FDC101',
+                        color: '#ffffff',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center'
                       }}>
-                        <md-icon style={{ fontSize: '18px', color: '#FDC101' }}>check</md-icon>
+                        <md-icon style={{ fontSize: '18px', color: '#ffffff' }}>check</md-icon>
                       </div>
                       <div style={{ flex: 1 }}>
-                        <strong style={{ color: '#111827', fontSize: '0.95rem' }}>1. Booking Requested</strong>
-                        <span style={{ marginLeft: '8px', fontSize: '0.75rem', backgroundColor: '#fef3c7', color: '#000000', padding: '2px 8px', borderRadius: '10px', fontWeight: 700 }}>Completed</span>
+                        <strong style={{ color: '#000000', fontSize: '0.95rem' }}>1. Booking Requested</strong>
+                        <span style={{ marginLeft: '8px', fontSize: '0.75rem', backgroundColor: '#f1f5f9', color: '#000000', padding: '2px 8px', borderRadius: '10px', fontWeight: 700 }}>Completed</span>
                       </div>
                     </div>
 
@@ -1288,20 +1294,20 @@ export default function WorkerDetail() {
                         width: '28px',
                         height: '28px',
                         borderRadius: '8px',
-                        backgroundColor: '#FDC101',
-                        color: '#000000',
+                        backgroundColor: '#000000',
+                        color: '#ffffff',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         fontSize: '0.85rem',
                         fontWeight: 800,
-                        boxShadow: '0 0 0 4px rgba(253,193,1,0.2)'
+                        boxShadow: '0 0 0 4px rgba(0,0,0,0.1)'
                       }}>
                         2
                       </div>
                       <div style={{ flex: 1 }}>
                         <strong style={{ color: '#000000', fontSize: '0.95rem' }}>2. Worker Accepts / Rejects</strong>
-                        <span style={{ marginLeft: '8px', fontSize: '0.75rem', backgroundColor: '#fffbeb', color: '#b45309', padding: '2px 8px', borderRadius: '10px', fontWeight: 700 }}>In Progress (Worker notified)</span>
+                        <span style={{ marginLeft: '8px', fontSize: '0.75rem', backgroundColor: '#f1f5f9', color: '#000000', padding: '2px 8px', borderRadius: '10px', fontWeight: 700 }}>In Progress (Worker notified)</span>
                       </div>
                     </div>
 
@@ -1416,8 +1422,8 @@ export default function WorkerDetail() {
                     }}
                     style={{
                       flex: 1,
-                      '--md-sys-color-primary': '#FDC101',
-                      '--md-sys-color-on-primary': '#000000',
+                      '--md-sys-color-primary': '#111827',
+                      '--md-sys-color-on-primary': '#ffffff',
                       '--md-filled-button-label-text-font': "var(--font-body, 'DM Sans', sans-serif)",
                       '--md-filled-button-label-text-weight': '800'
                     }}

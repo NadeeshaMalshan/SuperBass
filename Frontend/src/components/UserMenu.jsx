@@ -10,8 +10,8 @@ export default function UserMenu({ variant = 'default' }) {
 
   const token = localStorage.getItem('token');
   const userEmail = localStorage.getItem('email') || '';
-  const userName = localStorage.getItem('userName') || (userEmail ? userEmail.split('@')[0] : 'Account');
-  const userPicture = localStorage.getItem('userPicture');
+  const [userName, setUserName] = useState(localStorage.getItem('userName') || (userEmail ? userEmail.split('@')[0] : 'Account'));
+  const [userPicture, setUserPicture] = useState(localStorage.getItem('userPicture'));
   const activeRole = localStorage.getItem('activeRole') || 'Resident';
 
   if (!token) return null;
@@ -50,6 +50,16 @@ export default function UserMenu({ variant = 'default' }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Listen for profile updates from ResidentProfile/WorkerProfile
+  useEffect(() => {
+    const handleProfileUpdate = () => {
+      setUserName(localStorage.getItem('userName') || (userEmail ? userEmail.split('@')[0] : 'Account'));
+      setUserPicture(localStorage.getItem('userPicture'));
+    };
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+    return () => window.removeEventListener('profileUpdated', handleProfileUpdate);
+  }, [userEmail]);
+
   // Fetch unread count for badge
   useEffect(() => {
     const fetchUnread = async () => {
@@ -82,7 +92,7 @@ export default function UserMenu({ variant = 'default' }) {
         >
           <div className={`m3-google-avatar-ring ${isWorker ? 'worker-ring' : 'resident-ring'}`}>
             {userPicture ? (
-              <img src={userPicture} alt={userName} className="m3-google-avatar-img" />
+              <img src={userPicture} alt={userName} className="m3-google-avatar-img" referrerPolicy="no-referrer" />
             ) : (
               <div className="m3-google-avatar-letter">{getInitial(userName)}</div>
             )}
@@ -96,7 +106,7 @@ export default function UserMenu({ variant = 'default' }) {
           title="User menu"
         >
           {userPicture ? (
-            <img src={userPicture} alt="User" className="user-menu-avatar" />
+            <img src={userPicture} alt="User" className="user-menu-avatar" referrerPolicy="no-referrer" />
           ) : (
             <div className="user-menu-avatar">{getInitial(userName)}</div>
           )}
@@ -116,7 +126,7 @@ export default function UserMenu({ variant = 'default' }) {
             title="Open Account Settings"
           >
             {userPicture ? (
-              <img src={userPicture} alt="Avatar" className="user-menu-header-avatar" />
+              <img src={userPicture} alt="Avatar" className="user-menu-header-avatar" referrerPolicy="no-referrer" />
             ) : (
               <div className="user-menu-header-avatar">{getInitial(userName)}</div>
             )}

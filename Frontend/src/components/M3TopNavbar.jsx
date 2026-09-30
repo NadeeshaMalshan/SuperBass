@@ -98,39 +98,7 @@ export default function M3TopNavbar({
         </a>
       </div>
 
-      {/* Center: Search Pill ("Ask SuperBass" like "Ask Gmail") */}
-      {showSearch && (
-        <div className="m3-navbar-center">
-          <div className="m3-search-pill">
-            <div className="m3-search-leading-icon" title="Search">
-              <md-icon>search</md-icon>
-            </div>
-
-            <input
-              type="text"
-              className="m3-search-input"
-              placeholder={searchPlaceholder}
-              value={internalSearch}
-              onChange={handleInputChange}
-              onKeyDown={handleKeyDown}
-              onFocus={onSearchFocus}
-            />
-
-            {internalSearch && (
-              <button
-                type="button"
-                className="m3-search-clear-btn"
-                onClick={handleClear}
-                title="Clear search"
-                aria-label="Clear search"
-              >
-                <md-icon>close</md-icon>
-              </button>
-            )}
-          </div>
-          {searchDropdown}
-        </div>
-      )}
+      {/* Center: Search Pill Removed as per instructions */}
 
       {/* Right: Navigation Buttons & User Avatar */}
       <div className="m3-navbar-right">

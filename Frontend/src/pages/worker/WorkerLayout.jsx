@@ -70,16 +70,7 @@ export default function WorkerLayout({ children, activeTab = 'dashboard' }) {
 
   return (
     <div className="find-page-container community-page-wrapper" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#f7f7f7', fontFamily: "var(--font-heading, 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif)" }}>
-      {/* High-Contrast Pitch Black Top Navbar matching Community */}
-      <M3TopNavbar
-        theme="dark"
-        activePage="worker-dashboard"
-        showSearch={true}
-        searchPlaceholder="Search jobs, requests, or tools..."
-        showSidebarToggle={true}
-        isSidebarCollapsed={isSidebarCollapsed}
-        onToggleSidebar={() => setIsSidebarCollapsed(prev => !prev)}
-      />
+      {/* High-Contrast Pitch Black Top Navbar matching Community (Rendered Globally) */}
 
       {/* Main Content Area with Community-Themed Sidebar */}
       <div className="find-layout" style={{ flex: 1, display: 'flex' }}>
