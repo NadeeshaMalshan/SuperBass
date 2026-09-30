@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,7 +16,8 @@ namespace Workio.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [EnableCors("AllowFrontend")]
-    public class BookingsController : ControllerBase
+    [Authorize]
+public class BookingsController : ControllerBase
     {
         private readonly WorkioDbContext _context;
         private readonly ICommunicationRepository _communicationRepo;
@@ -228,7 +230,7 @@ namespace Workio.Controllers
 
         // GET: /api/bookings/{id}
         [HttpGet("{id:int}")]
-        public async Task<IActionResult> GetBookingById(int id)
+                public async Task<IActionResult> GetBookingById(int id)
         {
             var booking = await _context.Bookings
                 .Include(b => b.Resident)
@@ -239,18 +241,32 @@ namespace Workio.Controllers
             {
                 return NotFound(new { message = "Booking not found." });
             }
+            
+            var currentUser = GetCurrentUserEmail();
+            if (booking.Resident?.Email != currentUser && booking.Worker?.Email != currentUser)
+            {
+                return Forbid();
+            }
 
             return Ok(MapToDto(booking));
         }
 
         // GET: /api/bookings/resident?email=...
-        [HttpGet("resident")]
+                [HttpGet("resident")]
         public async Task<IActionResult> GetResidentBookings([FromQuery] string? email)
         {
-            var userEmail = email ?? GetCurrentUserEmail();
+            var currentUser = GetCurrentUserEmail();
+            var userEmail = email ?? currentUser;
+            
             if (string.IsNullOrWhiteSpace(userEmail))
             {
                 return BadRequest(new { message = "Resident email is required." });
+            }
+            
+            if (userEmail != currentUser)
+            {
+                return Forbid();
+            });
             }
 
             var bookings = await _context.Bookings
@@ -264,24 +280,21 @@ namespace Workio.Controllers
         }
 
         // GET: /api/bookings/worker?email=... or ?workerId=...
-        [HttpGet("worker")]
-        public async Task<IActionResult> GetWorkerBookings([FromQuery] string? email, [FromQuery] int? workerId)
+                [HttpGet("worker")]
+        public async Task<IActionResult> GetWorkerBookings([FromQuery] string? email)
         {
-            var query = _context.Bookings
-                .Include(b => b.Resident)
-                .Include(b => b.Worker)
-                .AsQueryable();
-
-            if (workerId.HasValue && workerId.Value > 0)
+            var currentUser = GetCurrentUserEmail();
+            var userEmail = email ?? currentUser;
+            
+            if (string.IsNullOrWhiteSpace(userEmail))
             {
-                query = query.Where(b => b.WorkerId == workerId.Value);
+                return BadRequest(new { message = "Worker email is required." });
             }
-            else
+            
+            if (userEmail != currentUser)
             {
-                var userEmail = email ?? GetCurrentUserEmail();
-                if (string.IsNullOrWhiteSpace(userEmail))
-                {
-                    return BadRequest(new { message = "Worker ID or email is required." });
+                return Forbid();
+            });
                 }
                 query = query.Where(b => b.Worker != null && (b.Worker.Email == userEmail || b.Worker.ResidentEmail == userEmail));
             }

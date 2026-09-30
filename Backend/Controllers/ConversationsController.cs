@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -14,7 +15,8 @@ namespace Workio.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class ConversationsController : ControllerBase
+    [Authorize]
+public class ConversationsController : ControllerBase
     {
         private readonly ICommunicationRepository _communicationRepo;
         private readonly IHubContext<ChatHub> _hubContext;

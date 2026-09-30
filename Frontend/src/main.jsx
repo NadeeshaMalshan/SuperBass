@@ -4,7 +4,7 @@ import './index.css'
 import App from './App.jsx'
 import M3TopNavbar from './components/M3TopNavbar.jsx'
 import Find from './Find.jsx'
-import { AuthProvider } from './AuthProvider.jsx'
+import { AuthProvider, useAuth } from './AuthProvider.jsx'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import { GOOGLE_CLIENT_ID } from './config.js'
 import Community from './Community.jsx'
@@ -81,6 +81,7 @@ class ErrorBoundary extends Component {
 
 function Router() {
   const [path, setPath] = useState(window.location.pathname);
+  const { isLoggedIn, login } = useAuth();
 
   useEffect(() => {
     const onPopState = () => setPath(window.location.pathname);
@@ -89,6 +90,7 @@ function Router() {
   }, []);
 
   const activeRole = localStorage.getItem('activeRole') || 'Resident';
+  const isLoggedIn = !!localStorage.getItem('token');
 
   // Role-based Theme: Switch yellow accents to Worker Blue except on landing and worker-detail
   useEffect(() => {
@@ -134,9 +136,23 @@ function Router() {
       return <Community />;
     }
     if (path === '/chats' || path === '/chats.jsx') {
+      if (!isLoggedIn) {
+        setTimeout(() => {
+          window.history.pushState({}, '', '/');
+          window.dispatchEvent(new PopStateEvent('popstate'));
+        }, 0);
+        return null;
+      }
       return <Chats />;
     }
     if (path === '/bookings' || path === '/bookings.jsx') {
+      if (!isLoggedIn) {
+        setTimeout(() => {
+          window.history.pushState({}, '', '/');
+          window.dispatchEvent(new PopStateEvent('popstate'));
+        }, 0);
+        return null;
+      }
       return <Bookings />;
     }
     if (path === '/onboarding' || path === '/onboarding.jsx') {
