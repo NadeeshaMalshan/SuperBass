@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useAuth } from './AuthProvider.jsx';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
 import './App.css';
@@ -16,6 +15,7 @@ import '@material/web/textfield/outlined-text-field.js';
 import '@material/web/select/outlined-select.js';
 import '@material/web/select/select-option.js';
 import Loader from './components/Loader.jsx';
+import M3TopNavbar from './components/M3TopNavbar.jsx';
 import M3DatePickerDialog from './components/M3DatePickerDialog.jsx';
 import M3TimePickerDialog from './components/M3TimePickerDialog.jsx';
 import './components/M3Navbar.css';
@@ -60,7 +60,6 @@ function ModalLocationMarker({ lat, lng, onSelect }) {
 
 
 export default function WorkerDetail() {
-  const { login } = useAuth();
   const urlParams = new URLSearchParams(window.location.search);
   const workerId = urlParams.get('id');
 
@@ -270,7 +269,7 @@ export default function WorkerDetail() {
     const userEmail = localStorage.getItem('email');
     if (!token) {
       alert('Please sign in or register to hire verified professionals.');
-      login();
+      navigate('/join');
       return;
     }
 
@@ -484,7 +483,13 @@ export default function WorkerDetail() {
   return (
     <div style={{ backgroundColor: '#f9fafb', minHeight: '100vh', color: '#111827', fontFamily: "var(--font-body, 'DM Sans', sans-serif)" }}>
       {/* Google Workspace / Material 3 Top Navbar */}
-      
+      <M3TopNavbar
+        activePage="services"
+        showSearch={true}
+        showSidebarToggle={false}
+        searchPlaceholder="Search services, skills, or workers..."
+      />
+
       {/* Main Container */}
       <main style={{ maxWidth: '1100px', margin: '0 auto', padding: '2rem 1rem' }}>
 

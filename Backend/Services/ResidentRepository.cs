@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
-using Workio.Models;
+using Superbass.Models;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Workio.Services
+namespace Superbass.Services
 {
     public interface IResidentRepository
     {
@@ -14,9 +14,9 @@ namespace Workio.Services
 
     public class EfResidentRepository : IResidentRepository
     {
-        private readonly WorkioDbContext _context;
+        private readonly SuperbassDbContext _context;
 
-        public EfResidentRepository(WorkioDbContext context)
+        public EfResidentRepository(SuperbassDbContext context)
         {
             _context = context;
         }
@@ -54,7 +54,7 @@ namespace Workio.Services
                 try 
                 {
                     using var client = new System.Net.Http.HttpClient();
-                    client.DefaultRequestHeaders.Add("User-Agent", "WorkioApp/1.0");
+                    client.DefaultRequestHeaders.Add("User-Agent", "SuperBassApp/1.0");
                     var url = $"https://nominatim.openstreetmap.org/search?q={System.Uri.EscapeDataString(updateDto.Address)}&format=json&limit=1";
                     var response = await client.GetAsync(url);
                     if (response.IsSuccessStatusCode)

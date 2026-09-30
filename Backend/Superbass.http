@@ -1,11 +1,11 @@
-@Workio_HostAddress = http://localhost:5237
+@Superbass_HostAddress = http://localhost:5237
 
 ### 1. Get User Conversations
-GET {{Workio_HostAddress}}/api/conversations?userEmail=resident@test.com
+GET {{Superbass_HostAddress}}/api/conversations?userEmail=resident@test.com
 Accept: application/json
 
 ### 2. Create or Get Conversation with Worker
-POST {{Workio_HostAddress}}/api/conversations
+POST {{Superbass_HostAddress}}/api/conversations
 Content-Type: application/json
 
 {
@@ -15,11 +15,11 @@ Content-Type: application/json
 }
 
 ### 3. Get Conversation Details by ID
-GET {{Workio_HostAddress}}/api/conversations/1?userEmail=resident@test.com
+GET {{Superbass_HostAddress}}/api/conversations/1?userEmail=resident@test.com
 Accept: application/json
 
 ### 4. Send Message in Conversation (Resident to Worker)
-POST {{Workio_HostAddress}}/api/conversations/1/messages
+POST {{Superbass_HostAddress}}/api/conversations/1/messages
 Content-Type: application/json
 
 {
@@ -30,7 +30,7 @@ Content-Type: application/json
 }
 
 ### 5. Send Message in Conversation (Worker to Resident)
-POST {{Workio_HostAddress}}/api/conversations/1/messages
+POST {{Superbass_HostAddress}}/api/conversations/1/messages
 Content-Type: application/json
 
 {
@@ -41,11 +41,11 @@ Content-Type: application/json
 }
 
 ### 6. Get Message History (Paged)
-GET {{Workio_HostAddress}}/api/conversations/1/messages?userEmail=resident@test.com&page=1&pageSize=50
+GET {{Superbass_HostAddress}}/api/conversations/1/messages?userEmail=resident@test.com&page=1&pageSize=50
 Accept: application/json
 
 ### 7. Mark Conversation Messages as Read
-PUT {{Workio_HostAddress}}/api/conversations/1/read
+PUT {{Superbass_HostAddress}}/api/conversations/1/read
 Content-Type: application/json
 
 {
@@ -53,5 +53,5 @@ Content-Type: application/json
 }
 
 ### 8. Get Total Unread Messages Count
-GET {{Workio_HostAddress}}/api/conversations/unread-count?userEmail=resident@test.com
+GET {{Superbass_HostAddress}}/api/conversations/unread-count?userEmail=resident@test.com
 Accept: application/json

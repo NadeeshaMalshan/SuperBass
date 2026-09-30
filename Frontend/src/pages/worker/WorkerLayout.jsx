@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import M3TopNavbar from '../../components/M3TopNavbar.jsx';
 import '../../App.css';
 import './worker.css';
 import { API_BASE_URL } from '../../config.js';
@@ -68,34 +69,39 @@ export default function WorkerLayout({ children, activeTab = 'dashboard' }) {
   };
 
   return (
-    <div className="find-page-container" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Google Workspace / Material 3 Top Navbar */}
-      
+    <div className="find-page-container community-page-wrapper" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#f7f7f7', fontFamily: "var(--font-heading, 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif)" }}>
+      {/* High-Contrast Pitch Black Top Navbar matching Community */}
+      <M3TopNavbar
+        theme="dark"
+        activePage="worker-dashboard"
+        showSearch={true}
+        searchPlaceholder="Search jobs, requests, or tools..."
+        showSidebarToggle={true}
+        isSidebarCollapsed={isSidebarCollapsed}
+        onToggleSidebar={() => setIsSidebarCollapsed(prev => !prev)}
+      />
 
-      {/* Main Content Area with Material 3 Sidebar */}
+      {/* Main Content Area with Community-Themed Sidebar */}
       <div className="find-layout" style={{ flex: 1, display: 'flex' }}>
         {/* Navigation Sidebar */}
-        <aside className={`find-sidebar m3-drawer ${isSidebarCollapsed ? 'minimized' : ''}`}>
-          <button className="sidebar-toggle-btn" onClick={() => setIsSidebarCollapsed(prev => !prev)} title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}>
-            <md-icon>{isSidebarCollapsed ? 'chevron_right' : 'chevron_left'}</md-icon>
-          </button>
-
+        <aside className={`find-sidebar m3-drawer ${isSidebarCollapsed ? 'minimized' : ''}`} style={{ backgroundColor: '#ffffff', borderRight: '1px solid #e5e5e5' }}>
           {/* Live Availability Status Card in Sidebar */}
           <div
             onClick={toggleStatus}
             style={{
               margin: '8px 12px 16px 12px',
               padding: isSidebarCollapsed ? '10px 6px' : '12px 14px',
-              backgroundColor: isOnline ? '#eff6ff' : '#f8fafc',
-              border: `1.5px solid ${isOnline ? '#bfdbfe' : '#e2e8f0'}`,
-              borderRadius: '16px',
+              backgroundColor: isOnline ? '#ffffff' : '#f5f5f5',
+              border: `1.5px solid ${isOnline ? '#22c55e' : '#e5e5e5'}`,
+              borderRadius: '14px',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: isSidebarCollapsed ? 'center' : 'space-between',
               gap: '10px',
-              transition: 'all 0.2s ease',
-              userSelect: 'none'
+              transition: 'all 0.15s ease',
+              userSelect: 'none',
+              boxShadow: isOnline ? '0 2px 8px rgba(34, 197, 94, 0.12)' : 'none'
             }}
             title="Click to toggle availability"
           >
@@ -104,16 +110,16 @@ export default function WorkerLayout({ children, activeTab = 'dashboard' }) {
                 width: '10px',
                 height: '10px',
                 borderRadius: '50%',
-                backgroundColor: isOnline ? '#16a34a' : '#94a3b8',
-                boxShadow: isOnline ? '0 0 0 3px rgba(22, 163, 74, 0.25)' : 'none',
+                backgroundColor: isOnline ? '#22c55e' : '#9ca3af',
+                boxShadow: isOnline ? '0 0 0 3px rgba(34, 197, 94, 0.25)' : 'none',
                 flexShrink: 0
               }} />
               {!isSidebarCollapsed && (
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontSize: '0.85rem', fontWeight: 800, color: isOnline ? '#1e40af' : '#475569' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 800, color: isOnline ? '#15803d' : '#525252' }}>
                     {isOnline ? 'Available for Work' : 'Currently Offline'}
                   </span>
-                  <span style={{ fontSize: '0.7rem', color: isOnline ? '#3b82f6' : '#94a3b8' }}>
+                  <span style={{ fontSize: '0.7rem', color: isOnline ? '#16a34a' : '#737373' }}>
                     {isOnline ? 'Ready for bookings' : 'Tap to go online'}
                   </span>
                 </div>
@@ -162,7 +168,17 @@ export default function WorkerLayout({ children, activeTab = 'dashboard' }) {
               </div>
             </div>
 
-            <div style={{ height: '1px', backgroundColor: '#e2e8f0', margin: '12px 16px' }} />
+            <div style={{ height: '1px', backgroundColor: '#e5e5e5', margin: '12px 16px' }} />
+
+            <div
+              className="m3-drawer-item"
+              onClick={() => navigate('/community')}
+            >
+              <div className="m3-drawer-item-left">
+                <md-icon className="m3-drawer-icon">forum</md-icon>
+                <span className="m3-drawer-label">Community Feed</span>
+              </div>
+            </div>
 
             <div
               className="m3-drawer-item"
@@ -177,7 +193,7 @@ export default function WorkerLayout({ children, activeTab = 'dashboard' }) {
         </aside>
 
         {/* Dynamic Page Content */}
-        <main className="find-main" style={{ flex: 1, minWidth: 0, padding: '28px 36px' }}>
+        <main className="find-main" style={{ flex: 1, minWidth: 0, padding: '28px 36px', backgroundColor: '#f7f7f7' }}>
           {children}
         </main>
       </div>

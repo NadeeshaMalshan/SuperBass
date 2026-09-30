@@ -4,17 +4,17 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
-using Workio.Models;
+using Superbass.Models;
 
-namespace Workio.Services
+namespace Superbass.Services
 {
     public class EfCommunityPostRepository : ICommunityPostRepository
     {
-        private readonly WorkioDbContext _context;
+        private readonly SuperbassDbContext _context;
         private readonly List<ServiceCategory> _categories = new();
         private static readonly InMemoryCommunityPostRepository _fallback = new();
 
-        public EfCommunityPostRepository(WorkioDbContext context)
+        public EfCommunityPostRepository(SuperbassDbContext context)
         {
             _context = context;
             LoadCategories();

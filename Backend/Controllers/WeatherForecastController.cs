@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 
-namespace Workio.Controllers;
+namespace Superbass.Controllers;
 
 [ApiController]
 [Route("[controller]")]

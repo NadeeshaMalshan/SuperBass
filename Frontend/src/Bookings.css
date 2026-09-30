@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Workio — Bookings Page (Monochrome Black & White Theme)
+   SuperBass — Bookings Page (Monochrome Black & White Theme)
    Pure High-Contrast Aesthetic: #000000, #ffffff, #18181b, #27272a, #f4f4f5
    ========================================================================== */
 
@@ -82,9 +82,6 @@
 
 /* Booking Card */
 .booking-card {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
   background-color: #ffffff;
   border-radius: 18px;
   padding: 24px;

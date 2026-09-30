@@ -5,13 +5,13 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
-using Workio.Models;
+using Superbass.Models;
 
 #nullable disable
 
-namespace Workio.Migrations
+namespace Superbass.Migrations
 {
-    [DbContext(typeof(WorkioDbContext))]
+    [DbContext(typeof(SuperbassDbContext))]
     [Migration("20260822160000_AddReceiverToChatMessages")]
     partial class AddReceiverToChatMessages
     {
@@ -25,7 +25,7 @@ namespace Workio.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Workio.Models.ChatMessage", b =>
+            modelBuilder.Entity("Superbass.Models.ChatMessage", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()

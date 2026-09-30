@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * Workio Unified Loading Spinner
+ * SuperBass Unified Loading Spinner
  * Matches the sleek, minimalist Community page Uber-spinner aesthetic.
  */
 export default function Loader({

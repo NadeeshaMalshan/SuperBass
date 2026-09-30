@@ -2,11 +2,8 @@ import { Component, StrictMode, useState, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
-import M3TopNavbar from './components/M3TopNavbar.jsx'
 import Find from './Find.jsx'
-import { AuthProvider } from './AuthProvider.jsx'
-import { GoogleOAuthProvider } from '@react-oauth/google'
-import { GOOGLE_CLIENT_ID } from './config.js'
+import Join from './Join.jsx'
 import Community from './Community.jsx'
 import Onboarding from './Onboarding.jsx'
 import Chats from './Chats.jsx'
@@ -35,7 +32,7 @@ class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('Workio Application Error:', error, errorInfo);
+    console.error('SuperBass Application Error:', error, errorInfo);
   }
 
   render() {
@@ -111,98 +108,73 @@ function Router() {
     return () => window.removeEventListener('storage', updateTheme);
   }, [path]);
 
-
-  const renderPage = () => {
-    // Role Guard: Active Worker trying to access Resident account profile
-    if (path === '/account' || path === '/account.jsx') {
-      if (activeRole === 'Worker') {
-        return <WorkerDashboard />;
-      }
-      return <ResidentProfile />;
-    }
-  
-    if (path === '/find' || path === '/find.jsx') {
-      return <Find />;
-    }
-    if (path === '/worker-detail' || path === '/worker-detail.jsx' || path.startsWith('/worker-detail')) {
-      return <WorkerDetail />;
-    }
-    if (path === '/ai/chat' || path === '/community/chat' || path === '/ai-chat' || path === '/agent') {
-      return <AiCommunityChat />;
-    }
-    if (path === '/community' || path === '/community.jsx') {
-      return <Community />;
-    }
-    if (path === '/chats' || path === '/chats.jsx') {
-      return <Chats />;
-    }
-    if (path === '/bookings' || path === '/bookings.jsx') {
-      return <Bookings />;
-    }
-    if (path === '/onboarding' || path === '/onboarding.jsx') {
-      return <Onboarding />;
-    }
-  
-    // Worker Routes Role Guard: Resident trying to access Worker pages
-    if (path.startsWith('/worker/')) {
-      if (activeRole !== 'Worker' && path !== '/worker/register' && path !== '/worker/login') {
-        return <ResidentProfile defaultTab="become-worker" />;
-      }
-    }
-  
-    // Worker Routes
-    if (path === '/worker/register' || path === '/worker/register.jsx') {
-      return <WorkerRegister />;
-    }
-    if (path === '/worker/login' || path === '/worker/login.jsx') {
-      return <WorkerLogin />;
-    }
-    if (path === '/worker/dashboard' || path === '/worker/dashboard.jsx') {
+  // Role Guard: Active Worker trying to access Resident account profile
+  if (path === '/account' || path === '/account.jsx') {
+    if (activeRole === 'Worker') {
       return <WorkerDashboard />;
     }
-    if (path === '/worker/jobs' || path === '/worker/jobs.jsx') {
-      return <WorkerJobs />;
-    }
-    if (path === '/worker/performance' || path === '/worker/performance.jsx') {
-      return <WorkerPerformance />;
-    }
-    if (path === '/worker/profile' || path === '/worker/profile.jsx') {
-      return <WorkerProfile />;
-    }
-  
-    return <App />;
-  
-  };
+    return <ResidentProfile />;
+  }
 
-  const noNavbarPaths = ['/worker/login', '/worker/register', '/worker/login.jsx', '/worker/register.jsx', '/onboarding', '/onboarding.jsx'];
-  const showNavbar = !noNavbarPaths.includes(path) && !path.startsWith('/onboarding');
-  
-  let activePage = '';
-  if (path.startsWith('/find')) activePage = 'find';
-  else if (path.startsWith('/community')) activePage = 'community';
-  else if (path.startsWith('/ai/chat') || path.startsWith('/ai-chat') || path === '/agent') activePage = 'ai';
-  else if (path.startsWith('/chats')) activePage = 'chats';
-  else if (path.startsWith('/bookings')) activePage = 'bookings';
+  if (path === '/find' || path === '/find.jsx') {
+    return <Find />;
+  }
+  if (path === '/worker-detail' || path === '/worker-detail.jsx' || path.startsWith('/worker-detail')) {
+    return <WorkerDetail />;
+  }
+  if (path === '/join' || path === '/join.jsx') {
+    return <Join />;
+  }
+  if (path === '/ai/chat' || path === '/community/chat' || path === '/ai-chat' || path === '/agent') {
+    return <AiCommunityChat />;
+  }
+  if (path === '/community' || path === '/community.jsx') {
+    return <Community />;
+  }
+  if (path === '/chats' || path === '/chats.jsx') {
+    return <Chats />;
+  }
+  if (path === '/bookings' || path === '/bookings.jsx') {
+    return <Bookings />;
+  }
+  if (path === '/onboarding' || path === '/onboarding.jsx') {
+    return <Onboarding />;
+  }
 
-  let theme = 'light';
-  if (path.startsWith('/community')) theme = 'dark';
+  // Worker Routes Role Guard: Resident trying to access Worker pages
+  if (path.startsWith('/worker/')) {
+    if (activeRole !== 'Worker' && path !== '/worker/register' && path !== '/worker/login') {
+      return <ResidentProfile defaultTab="become-worker" />;
+    }
+  }
 
-  return (
-    <>
-      {showNavbar && <M3TopNavbar activePage={activePage} theme={theme} />}
-      {renderPage()}
-    </>
-  );
+  // Worker Routes
+  if (path === '/worker/register' || path === '/worker/register.jsx') {
+    return <WorkerRegister />;
+  }
+  if (path === '/worker/login' || path === '/worker/login.jsx') {
+    return <WorkerLogin />;
+  }
+  if (path === '/worker/dashboard' || path === '/worker/dashboard.jsx') {
+    return <WorkerDashboard />;
+  }
+  if (path === '/worker/jobs' || path === '/worker/jobs.jsx') {
+    return <WorkerJobs />;
+  }
+  if (path === '/worker/performance' || path === '/worker/performance.jsx') {
+    return <WorkerPerformance />;
+  }
+  if (path === '/worker/profile' || path === '/worker/profile.jsx') {
+    return <WorkerProfile />;
+  }
+
+  return <App />;
 }
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-      <AuthProvider>
-        <ErrorBoundary>
-          <Router />
-        </ErrorBoundary>
-      </AuthProvider>
-    </GoogleOAuthProvider>
+    <ErrorBoundary>
+      <Router />
+    </ErrorBoundary>
   </StrictMode>,
 )

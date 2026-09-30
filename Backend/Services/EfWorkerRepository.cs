@@ -1,14 +1,14 @@
 using System;
 using Microsoft.EntityFrameworkCore;
-using Workio.Models;
+using Superbass.Models;
 
-namespace Workio.Services
+namespace Superbass.Services
 {
     public class EfWorkerRepository : WorkerRepository
     {
-        private readonly WorkioDbContext _context;
+        private readonly SuperbassDbContext _context;
 
-        public EfWorkerRepository(WorkioDbContext context)
+        public EfWorkerRepository(SuperbassDbContext context)
         {
             _context = context;
         }

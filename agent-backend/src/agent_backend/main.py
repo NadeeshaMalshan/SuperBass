@@ -1,5 +1,5 @@
 """
-Workio Agent Backend - FastAPI Server Entrypoint.
+SuperBass Agent Backend - FastAPI Server Entrypoint.
 Provides REST and chat endpoints for interacting with the LangGraph multi-agent system,
 with persistent conversation history in Neon PostgreSQL.
 """

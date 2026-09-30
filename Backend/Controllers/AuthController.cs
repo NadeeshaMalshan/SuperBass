@@ -12,9 +12,9 @@ using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
-using Workio.Models;
+using Superbass.Models;
 
-namespace Workio.Controllers
+namespace Superbass.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
@@ -22,9 +22,9 @@ namespace Workio.Controllers
     {
         private readonly IConfiguration _configuration;
         private readonly IHttpClientFactory _httpClientFactory;
-        private readonly WorkioDbContext _dbContext;
+        private readonly SuperbassDbContext _dbContext;
 
-        public AuthController(IConfiguration configuration, IHttpClientFactory httpClientFactory, WorkioDbContext dbContext)
+        public AuthController(IConfiguration configuration, IHttpClientFactory httpClientFactory, SuperbassDbContext dbContext)
         {
             _configuration = configuration;
             _httpClientFactory = httpClientFactory;

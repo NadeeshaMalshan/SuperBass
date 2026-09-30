@@ -1,11 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Workio.Models;
-using Workio.Services;
+using Superbass.Models;
+using Superbass.Services;
 using System.Security.Claims;
 using System.Threading.Tasks;
 
-namespace Workio.Controllers
+namespace Superbass.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]

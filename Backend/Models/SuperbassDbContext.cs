@@ -1,10 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 
-namespace Workio.Models
+namespace Superbass.Models
 {
-    public class WorkioDbContext : DbContext
+    public class SuperbassDbContext : DbContext
     {
-        public WorkioDbContext(DbContextOptions<WorkioDbContext> options)
+        public SuperbassDbContext(DbContextOptions<SuperbassDbContext> options)
             : base(options)
         {
         }

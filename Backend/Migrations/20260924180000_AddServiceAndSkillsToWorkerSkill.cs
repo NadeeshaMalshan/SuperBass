@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace Workio.Migrations
+namespace Superbass.Migrations
 {
     /// <inheritdoc />
     public partial class AddServiceAndSkillsToWorkerSkill : Migration

@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace Workio.Migrations
+namespace Superbass.Migrations
 {
     /// <inheritdoc />
     public partial class AddPasswordHashToWorker : Migration

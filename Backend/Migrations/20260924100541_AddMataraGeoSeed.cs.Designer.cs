@@ -6,13 +6,13 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
-using Workio.Models;
+using Superbass.Models;
 
 #nullable disable
 
-namespace Workio.Migrations
+namespace Superbass.Migrations
 {
-    [DbContext(typeof(WorkioDbContext))]
+    [DbContext(typeof(SuperbassDbContext))]
     [Migration("20260924100541_AddMataraGeoSeed.cs")]
     partial class AddMataraGeoSeedcs
     {
@@ -26,7 +26,7 @@ namespace Workio.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Workio.Models.Booking", b =>
+            modelBuilder.Entity("Superbass.Models.Booking", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -128,7 +128,7 @@ namespace Workio.Migrations
                     b.ToTable("Bookings");
                 });
 
-            modelBuilder.Entity("Workio.Models.ChatMessage", b =>
+            modelBuilder.Entity("Superbass.Models.ChatMessage", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -189,7 +189,7 @@ namespace Workio.Migrations
                     b.ToTable("ChatMessages");
                 });
 
-            modelBuilder.Entity("Workio.Models.CommunityComment", b =>
+            modelBuilder.Entity("Superbass.Models.CommunityComment", b =>
                 {
                     b.Property<int>("CommentId")
                         .ValueGeneratedOnAdd()
@@ -224,7 +224,7 @@ namespace Workio.Migrations
                     b.ToTable("CommunityComments");
                 });
 
-            modelBuilder.Entity("Workio.Models.CommunityPost", b =>
+            modelBuilder.Entity("Superbass.Models.CommunityPost", b =>
                 {
                     b.Property<int>("PostId")
                         .ValueGeneratedOnAdd()
@@ -296,7 +296,7 @@ namespace Workio.Migrations
                     b.ToTable("CommunityPosts");
                 });
 
-            modelBuilder.Entity("Workio.Models.CommunityReport", b =>
+            modelBuilder.Entity("Superbass.Models.CommunityReport", b =>
                 {
                     b.Property<int>("ReportId")
                         .ValueGeneratedOnAdd()
@@ -327,7 +327,7 @@ namespace Workio.Migrations
                     b.ToTable("CommunityReports");
                 });
 
-            modelBuilder.Entity("Workio.Models.Conversation", b =>
+            modelBuilder.Entity("Superbass.Models.Conversation", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -378,7 +378,7 @@ namespace Workio.Migrations
                     b.ToTable("Conversations");
                 });
 
-            modelBuilder.Entity("Workio.Models.Resident", b =>
+            modelBuilder.Entity("Superbass.Models.Resident", b =>
                 {
                     b.Property<string>("Email")
                         .HasColumnType("text");
@@ -406,7 +406,7 @@ namespace Workio.Migrations
                     b.ToTable("Residents");
                 });
 
-            modelBuilder.Entity("Workio.Models.Worker", b =>
+            modelBuilder.Entity("Superbass.Models.Worker", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -498,7 +498,7 @@ namespace Workio.Migrations
                     b.ToTable("Workers");
                 });
 
-            modelBuilder.Entity("Workio.Models.WorkerSkill", b =>
+            modelBuilder.Entity("Superbass.Models.WorkerSkill", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -523,20 +523,20 @@ namespace Workio.Migrations
                     b.ToTable("WorkerSkills");
                 });
 
-            modelBuilder.Entity("Workio.Models.Booking", b =>
+            modelBuilder.Entity("Superbass.Models.Booking", b =>
                 {
-                    b.HasOne("Workio.Models.Conversation", "Conversation")
+                    b.HasOne("Superbass.Models.Conversation", "Conversation")
                         .WithMany()
                         .HasForeignKey("ConversationId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("Workio.Models.Resident", "Resident")
+                    b.HasOne("Superbass.Models.Resident", "Resident")
                         .WithMany()
                         .HasForeignKey("ResidentEmail")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Workio.Models.Worker", "Worker")
+                    b.HasOne("Superbass.Models.Worker", "Worker")
                         .WithMany()
                         .HasForeignKey("WorkerId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -549,9 +549,9 @@ namespace Workio.Migrations
                     b.Navigation("Worker");
                 });
 
-            modelBuilder.Entity("Workio.Models.ChatMessage", b =>
+            modelBuilder.Entity("Superbass.Models.ChatMessage", b =>
                 {
-                    b.HasOne("Workio.Models.Conversation", "Conversation")
+                    b.HasOne("Superbass.Models.Conversation", "Conversation")
                         .WithMany("Messages")
                         .HasForeignKey("ConversationId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -560,15 +560,15 @@ namespace Workio.Migrations
                     b.Navigation("Conversation");
                 });
 
-            modelBuilder.Entity("Workio.Models.Conversation", b =>
+            modelBuilder.Entity("Superbass.Models.Conversation", b =>
                 {
-                    b.HasOne("Workio.Models.Resident", "Resident")
+                    b.HasOne("Superbass.Models.Resident", "Resident")
                         .WithMany()
                         .HasForeignKey("ResidentEmail")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Workio.Models.Worker", "Worker")
+                    b.HasOne("Superbass.Models.Worker", "Worker")
                         .WithMany()
                         .HasForeignKey("WorkerId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -579,37 +579,37 @@ namespace Workio.Migrations
                     b.Navigation("Worker");
                 });
 
-            modelBuilder.Entity("Workio.Models.Worker", b =>
+            modelBuilder.Entity("Superbass.Models.Worker", b =>
                 {
-                    b.HasOne("Workio.Models.Resident", "Resident")
+                    b.HasOne("Superbass.Models.Resident", "Resident")
                         .WithOne("WorkerProfile")
-                        .HasForeignKey("Workio.Models.Worker", "ResidentEmail")
+                        .HasForeignKey("Superbass.Models.Worker", "ResidentEmail")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Resident");
                 });
 
-            modelBuilder.Entity("Workio.Models.WorkerSkill", b =>
+            modelBuilder.Entity("Superbass.Models.WorkerSkill", b =>
                 {
-                    b.HasOne("Workio.Models.Worker", null)
+                    b.HasOne("Superbass.Models.Worker", null)
                         .WithMany("Skills")
                         .HasForeignKey("WorkerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Workio.Models.Conversation", b =>
+            modelBuilder.Entity("Superbass.Models.Conversation", b =>
                 {
                     b.Navigation("Messages");
                 });
 
-            modelBuilder.Entity("Workio.Models.Resident", b =>
+            modelBuilder.Entity("Superbass.Models.Resident", b =>
                 {
                     b.Navigation("WorkerProfile");
                 });
 
-            modelBuilder.Entity("Workio.Models.Worker", b =>
+            modelBuilder.Entity("Superbass.Models.Worker", b =>
                 {
                     b.Navigation("Skills");
                 });

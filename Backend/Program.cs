@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using Workio.Models;
-using Workio.Services;
+using Superbass.Models;
+using Superbass.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -34,7 +34,7 @@ else
 var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
     ?? builder.Configuration.GetConnectionString("DefaultConnection");
 
-builder.Services.AddDbContext<WorkioDbContext>(options =>
+builder.Services.AddDbContext<SuperbassDbContext>(options =>
     options.UseNpgsql(connectionString));
 
 builder.Services.AddControllers()
@@ -107,7 +107,7 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var services = scope.ServiceProvider;
-        var context = services.GetRequiredService<WorkioDbContext>();
+        var context = services.GetRequiredService<SuperbassDbContext>();
         context.Database.Migrate();
     }
     catch (Exception ex)

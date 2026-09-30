@@ -1,4 +1,4 @@
-# Workio Agent Backend Dependencies
+# SuperBass Agent Backend Dependencies
 
 # FastAPI & Web Server
 fastapi>=0.115.0

@@ -89,7 +89,7 @@ class _GoogleLogoPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// Join screen for Workio faithfully replicating Frontend/src/Join.jsx
+/// Join screen for SuperBass faithfully replicating Frontend/src/Join.jsx
 class JoinScreen extends StatefulWidget {
   const JoinScreen({super.key});
 
@@ -170,7 +170,7 @@ class _JoinScreenState extends State<JoinScreen> {
     try {
       final user = await _authService.devTestLogin(
         name: 'Nadeesha (Local)',
-        email: 'nadeesha@Workio.lk',
+        email: 'nadeesha@superbass.lk',
         role: role,
         isWorker: role == 'Worker',
       );

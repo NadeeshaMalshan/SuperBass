@@ -1,6 +1,6 @@
-# Workio Model Context Protocol (MCP) Server
+# SuperBass Model Context Protocol (MCP) Server
 
-An enterprise-ready implementation of the [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server that connects AI assistants (Claude Code, Claude Desktop, Antigravity, and custom LLM agents) directly to the **Workio Backend API**.
+An enterprise-ready implementation of the [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server that connects AI assistants (Claude Code, Claude Desktop, Antigravity, and custom LLM agents) directly to the **SuperBass Backend API**.
 
 ---
 
@@ -27,7 +27,7 @@ An enterprise-ready implementation of the [Model Context Protocol](https://model
 
 ## Overview
 
-The MCP Server translates standardized AI tool calls into HTTP REST requests to the Workio backend and returns structured JSON responses back to the model.
+The MCP Server translates standardized AI tool calls into HTTP REST requests to the SuperBass backend and returns structured JSON responses back to the model.
 
 - **Protocol Version**: `2024-11-05`
 - **Supported Transport**: Standard HTTP POST (JSON-RPC 2.0)
@@ -45,18 +45,18 @@ The MCP Server translates standardized AI tool calls into HTTP REST requests to 
                    │
        POST /api/chat  (User messages)
                    ▼
-[ Workio Agent Backend (FastAPI :8001) ]
+[ SuperBass Agent Backend (FastAPI :8001) ]
     LangGraph · OpenAI gpt-4o-mini
                    │
       MCP JSON-RPC 2.0 tools/call
                    ▼
-  [ Workio MCP Server (FastAPI :8000) ]
+  [ SuperBass MCP Server (FastAPI :8000) ]
                    │
        HTTP REST via httpx
                    ▼
-[ Workio Core Backend (.NET 8 :5237) ]
+[ SuperBass Core Backend (.NET 8 :5237) ]
                    │
-         [ Workio Database ]
+         [ SuperBass Database ]
 ```
 
 ---
@@ -65,15 +65,15 @@ The MCP Server translates standardized AI tool calls into HTTP REST requests to 
 
 ### Prerequisites
 - **Python 3.10+**
-- **Workio .NET Backend** (`dotnet run` in `backend/`) — required for all API calls
-- **Workio Agent Backend** (`uv run python main.py` in `agent-backend/`) — required if using with the AI chat UI
+- **SuperBass .NET Backend** (`dotnet run` in `backend/`) — required for all API calls
+- **SuperBass Agent Backend** (`uv run python main.py` in `agent-backend/`) — required if using with the AI chat UI
 - **`uv`** (recommended) or `pip` for Python package management
 
 ### Configuration (`.env`)
 The server automatically loads environment variables from `.env` in the `MCP/` directory:
 
 ```env
-# URL of the Workio backend API
+# URL of the SuperBass backend API
 BACKEND_BASE_URL=http://localhost:5237
 
 # MCP Server Port
@@ -99,7 +99,7 @@ Run all services in order:
 
 ### 1. Install Dependencies
 ```powershell
-cd d:\Projects_New\Workio\MCP
+cd d:\Projects_New\SuperBass\MCP
 pip install -r requirements.txt
 ```
 
@@ -128,7 +128,7 @@ You can verify and interact with all 16 tools using any of the four options belo
 Run the included automated test runner that executes discovery, worker tools, booking lifecycle, and community post lifecycle in sequence:
 
 ```powershell
-cd d:\Projects_New\Workio\MCP
+cd d:\Projects_New\SuperBass\MCP
 python run_tests.py
 ```
 
@@ -149,7 +149,7 @@ This tests:
 1. Open **Postman**.
 2. Click **Import** (top left).
 3. Select or drag & drop:
-   `d:\Projects_New\Workio\MCP\Workio_MCP.postman_collection.json`
+   `d:\Projects_New\SuperBass\MCP\SuperBass_MCP.postman_collection.json`
 4. All 16 tools and discovery endpoints are organized into folders with pre-configured variables:
    - `{{base_url}}`: `http://localhost:8000`
    - `{{worker_id}}`: `13`
@@ -192,9 +192,9 @@ To use these tools inside Claude Desktop, add the server to your `claude_desktop
 ```json
 {
   "mcpServers": {
-    "Workio": {
+    "superbass": {
       "command": "python",
-      "args": ["d:\\Projects_New\\Workio\\MCP\\main.py"]
+      "args": ["d:\\Projects_New\\SuperBass\\MCP\\main.py"]
     }
   }
 }
@@ -245,7 +245,7 @@ Create a new booking and automatically link/create a chat conversation.
 - **Backend Endpoint**: `POST /api/Bookings`
 - **Arguments**:
   - `workerId` *(string/integer, required)*: ID of the worker
-  - `residentId` *(string, required)*: Resident email or identifier (e.g., `"resident@Workio.lk"`)
+  - `residentId` *(string, required)*: Resident email or identifier (e.g., `"resident@superbass.lk"`)
   - `startTime` *(string ISO 8601, required)*: Scheduled booking time
   - `endTime` *(string ISO 8601, required)*: End time
   - `notes` *(string, optional)*: Service description or notes
@@ -367,7 +367,7 @@ Retrieve comprehensive user profile details (role, resident profile, contact inf
 
 ### 1. Backend Connection Issues
 If tool calls return `Backend error: 500` or connection refused:
-- Verify your Workio .NET backend is running (`dotnet run` in `backend/`).
+- Verify your SuperBass .NET backend is running (`dotnet run` in `backend/`).
 - Confirm the port matches `BACKEND_BASE_URL` in `MCP/.env` (default is `http://localhost:5237`).
 
 ### 2. Port 8000 Already in Use

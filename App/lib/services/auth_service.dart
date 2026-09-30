@@ -100,7 +100,7 @@ class AuthService {
     }
   }
 
-  /// Perform Google Sign-In and authenticate with the Workio backend
+  /// Perform Google Sign-In and authenticate with the SuperBass backend
   Future<AuthUser> signInWithGoogle() async {
     try {
       final GoogleSignInAccount? googleAccount = await _googleSignIn.signIn();

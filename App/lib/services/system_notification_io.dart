@@ -35,8 +35,8 @@ class PlatformSystemNotification {
           .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
       if (androidPlugin != null) {
         const channel = AndroidNotificationChannel(
-          'Workio_channel',
-          'Workio Notifications',
+          'superbass_channel',
+          'SuperBass Notifications',
           description: 'Notifications for bookings, messages, and community updates.',
           importance: Importance.high,
           enableVibration: true,
@@ -84,8 +84,8 @@ class PlatformSystemNotification {
   }) async {
     try {
       const androidDetails = AndroidNotificationDetails(
-        'Workio_channel',
-        'Workio Notifications',
+        'superbass_channel',
+        'SuperBass Notifications',
         channelDescription: 'Notifications for bookings, messages, and community updates.',
         importance: Importance.high,
         priority: Priority.high,

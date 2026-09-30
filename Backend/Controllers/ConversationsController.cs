@@ -7,10 +7,10 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
-using Workio.Models;
-using Workio.Services;
+using Superbass.Models;
+using Superbass.Services;
 
-namespace Workio.Controllers
+namespace Superbass.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
@@ -86,7 +86,7 @@ namespace Workio.Controllers
             var residentEmail = request.ResidentEmail ?? GetCurrentUserEmail();
             if (string.IsNullOrWhiteSpace(residentEmail))
             {
-                residentEmail = "resident@Workio.lk";
+                residentEmail = "resident@superbass.lk";
             }
 
             try
@@ -188,7 +188,7 @@ namespace Workio.Controllers
         [HttpPost("{id:int}/typing")]
         public async Task<IActionResult> ReportTyping(int id, [FromBody] TypingRequest? request)
         {
-            var userEmail = request?.UserEmail ?? GetCurrentUserEmail() ?? "user@Workio.lk";
+            var userEmail = request?.UserEmail ?? GetCurrentUserEmail() ?? "user@superbass.lk";
             var groupName = $"conversation_{id}";
             await _hubContext.Clients.Group(groupName).SendAsync("UserTyping", new 
             { 

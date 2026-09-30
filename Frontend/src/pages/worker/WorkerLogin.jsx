@@ -42,7 +42,7 @@ export default function WorkerLogin() {
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <img 
             src="/iconWithText-cropped.png" 
-            alt="Workio Logo" 
+            alt="SuperBass Logo" 
             style={{ height: '60px', cursor: 'pointer', marginBottom: '16px' }} 
             onClick={() => navigate('/')}
           />

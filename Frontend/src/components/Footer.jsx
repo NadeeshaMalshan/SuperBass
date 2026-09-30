@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
-import { useAuth } from '../AuthProvider.jsx';
 import './Footer.css';
 import workioLogoWhite from '../assets/Workio_Logo/Workio_Logo_White_With_Text.png';
 
 export default function Footer() {
-  const { login } = useAuth();
   const [selectedLanguage, setSelectedLanguage] = useState('English');
   const [isLangOpen, setIsLangOpen] = useState(false);
 
@@ -46,7 +44,7 @@ export default function Footer() {
               <li><a href="/community" onClick={(e) => { e.preventDefault(); navigate('/community'); }}>Community Hub</a></li>
               <li><a href="#trust" onClick={(e) => { e.preventDefault(); navigate('/community'); }}>Trust & Safety</a></li>
               <li><a href="#blog" onClick={(e) => { e.preventDefault(); navigate('/community'); }}>Newsroom & Blog</a></li>
-              <li><a href="/join" onClick={(e) => { e.preventDefault(); login(); }}>Careers at Workio</a></li>
+              <li><a href="/join" onClick={(e) => { e.preventDefault(); navigate('/join'); }}>Careers at Workio</a></li>
               <li><a href="/find" onClick={(e) => { e.preventDefault(); navigate('/find'); }}>Workio Pro</a></li>
             </ul>
           </div>
@@ -56,7 +54,7 @@ export default function Footer() {
             <h4 className="uber-footer-col-title">Services</h4>
             <ul className="uber-footer-links-list">
               <li><a href="/find" onClick={(e) => { e.preventDefault(); navigate('/find'); }}>Hire a Baas</a></li>
-              <li><a href="/join" onClick={(e) => { e.preventDefault(); login(); }}>Become a Baas / Pro</a></li>
+              <li><a href="/join" onClick={(e) => { e.preventDefault(); navigate('/join'); }}>Become a Baas / Pro</a></li>
               <li><a href="/find" onClick={(e) => { e.preventDefault(); navigate('/find'); }}>Trade Categories</a></li>
               <li><a href="/ai/chat" onClick={(e) => { e.preventDefault(); navigate('/ai/chat'); }}>Workio AI Diagnostic</a></li>
               <li><a href="/community" onClick={(e) => { e.preventDefault(); navigate('/community'); }}>Community Classifieds</a></li>

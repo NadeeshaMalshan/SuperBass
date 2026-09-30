@@ -3,15 +3,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using Workio.Models;
+using Superbass.Models;
 
-namespace Workio.Services
+namespace Superbass.Services
 {
     public class EfCommunicationRepository : ICommunicationRepository
     {
-        private readonly WorkioDbContext _context;
+        private readonly SuperbassDbContext _context;
 
-        public EfCommunicationRepository(WorkioDbContext context)
+        public EfCommunicationRepository(SuperbassDbContext context)
         {
             _context = context;
         }
@@ -46,7 +46,7 @@ namespace Workio.Services
                 // Ensure a Resident entry exists for the worker
                 var workerEmail = !string.IsNullOrWhiteSpace(request.WorkerEmail) 
                     ? request.WorkerEmail 
-                    : $"worker{DateTime.UtcNow.Ticks}@Workio.lk";
+                    : $"worker{DateTime.UtcNow.Ticks}@superbass.lk";
 
                 var workerResident = await _context.Residents.FindAsync(workerEmail);
                 if (workerResident == null)
@@ -54,7 +54,7 @@ namespace Workio.Services
                     workerResident = new Resident
                     {
                         Email = workerEmail,
-                        Name = request.WorkerName ?? "Workio Worker",
+                        Name = request.WorkerName ?? "SuperBass Worker",
                         PhoneNo = "0771234567"
                     };
                     _context.Residents.Add(workerResident);
@@ -340,7 +340,7 @@ namespace Workio.Services
             {
                 if (senderEmail.Equals(conversation.ResidentEmail, StringComparison.OrdinalIgnoreCase))
                 {
-                    receiverEmail = conversation.Worker?.Email ?? conversation.Worker?.ResidentEmail ?? "worker@Workio.lk";
+                    receiverEmail = conversation.Worker?.Email ?? conversation.Worker?.ResidentEmail ?? "worker@superbass.lk";
                     receiverRole = "Worker";
                 }
                 else

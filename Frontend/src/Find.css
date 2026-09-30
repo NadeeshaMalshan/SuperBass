@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Workio — Find Workers Page Stylesheet
+   SuperBass — Find Workers Page Stylesheet
    Pure High-Contrast & Modern Card Grid System
    ========================================================================== */
 
@@ -13,9 +13,9 @@
 .find-layout {
   display: flex;
   gap: 28px;
-  max-width: 100%;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 0 32px;
+  padding: 24px;
   box-sizing: border-box;
 }
 
@@ -1008,9 +1008,8 @@
    Find Page Community Theme Adaptations
    ========================================================================== */
 .find-layout-container {
-  max-width: 100% !important;
+  max-width: 1360px !important;
   margin: 0 auto;
-  padding: 0 32px;
 }
 
 /* Collapsed rail adjustments on desktop */

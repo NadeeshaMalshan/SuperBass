@@ -8,16 +8,16 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:google_fonts/google_fonts.dart';
-import 'package:Workio/main.dart';
+import 'package:superbass/main.dart';
 
 void main() {
   setUpAll(() {
     GoogleFonts.config.allowRuntimeFetching = false;
   });
 
-  testWidgets('WorkioApp smoke test', (WidgetTester tester) async {
+  testWidgets('SuperBassApp smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const WorkioApp());
+    await tester.pumpWidget(const SuperBassApp());
 
     // Verify that the brand and search exist
     expect(find.text('Workio'), findsWidgets);

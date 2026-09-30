@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Workio.Models;
+using Superbass.Models;
 
-namespace Workio.Services
+namespace Superbass.Services
 {
     public interface ICommunicationRepository
     {

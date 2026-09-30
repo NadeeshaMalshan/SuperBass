@@ -18,6 +18,7 @@ import '@material/web/list/list.js';
 import '@material/web/list/list-item.js';
 import Loader from './components/Loader.jsx';
 import UserMenu from './components/UserMenu.jsx';
+import M3TopNavbar from './components/M3TopNavbar.jsx';
 import { BACKEND_URL } from './config.js';
 import { chatSignalR } from './services/chatSignalR.js';
 
@@ -956,7 +957,27 @@ export default function Chats() {
     <>
       <div className="chats-page-container">
         {/* Google Workspace / Material 3 Top Navbar - Workers Finder */}
-        
+        <M3TopNavbar
+          activePage="chats"
+          searchValue={workerSearchQuery}
+          onSearchChange={(val) => {
+            setWorkerSearchQuery(val);
+            setIsWorkerDropdownOpen(Boolean(val && val.trim()));
+          }}
+          onSearchFocus={() => {
+            if (workerSearchQuery.trim()) {
+              setIsWorkerDropdownOpen(true);
+            }
+          }}
+          onSearchSubmit={(val) => {
+            setIsWorkerDropdownOpen(false);
+            if (val.trim()) {
+              navigate(`/find?q=${encodeURIComponent(val.trim())}`);
+            }
+          }}
+          searchPlaceholder="Search workers by name, skill, or service..."
+          searchDropdown={renderWorkerSearchDropdown()}
+        />
 
         {/* Messenger Body */}
         <div className={`chats-body ${selectedChat ? 'has-selected-chat' : ''}`}>

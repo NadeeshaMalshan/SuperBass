@@ -10,8 +10,6 @@ import 'worker_jobs_screen.dart';
 import 'worker_performance_screen.dart';
 import 'worker_profile_screen.dart';
 import '../community_screen.dart';
-import '../../main.dart'; // ChatsTabScreen
-import '../../services/chat_signalr_service.dart';
 
 class WorkerPortalScreen extends StatefulWidget {
   const WorkerPortalScreen({super.key});
@@ -118,9 +116,9 @@ class _WorkerPortalScreenState extends State<WorkerPortalScreen> {
         worker: _worker,
         onNavigateTab: (index) => setState(() => _currentIndex = index),
       ),
-      const CommunityScreen(isWorkerMode: true),
-      const ChatsTabScreen(),
       const WorkerJobsScreen(),
+      const CommunityScreen(isWorkerMode: true),
+      WorkerPerformanceScreen(worker: _worker),
       WorkerProfileScreen(
         worker: _worker,
         isOnline: _isOnline,
@@ -130,14 +128,11 @@ class _WorkerPortalScreenState extends State<WorkerPortalScreen> {
       ),
     ];
 
-    return ValueListenableBuilder<int>(
-      valueListenable: ChatSignalRService().unreadChatCountNotifier,
-      builder: (context, unreadChatCount, _) {
-        return Scaffold(
-          backgroundColor: WorkerColors.background,
-          appBar: _currentIndex == 1 // Community is now at index 1
-              ? null
-              : AppBar(
+    return Scaffold(
+      backgroundColor: WorkerColors.background,
+      appBar: _currentIndex == 2
+          ? null
+          : AppBar(
               backgroundColor: WorkerColors.surface,
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -245,7 +240,7 @@ class _WorkerPortalScreenState extends State<WorkerPortalScreen> {
                     ),
                   ),
                   content: Text(
-                    'Are you sure you want to log out of Workio?',
+                    'Are you sure you want to log out of SuperBass?',
                     style: GoogleFonts.dmSans(fontSize: 14),
                   ),
                   actions: [
@@ -302,36 +297,34 @@ class _WorkerPortalScreenState extends State<WorkerPortalScreen> {
             _currentIndex = index;
           });
         },
-        items: [
-          const M3BottomNavItem(
+        items: const [
+          M3BottomNavItem(
             label: 'Dashboard',
             icon: Icons.space_dashboard_outlined,
             selectedIcon: Icons.space_dashboard_rounded,
           ),
-          const M3BottomNavItem(
+          M3BottomNavItem(
+            label: 'My Jobs',
+            icon: Icons.work_outline_rounded,
+            selectedIcon: Icons.work_rounded,
+          ),
+          M3BottomNavItem(
             label: 'Community',
             icon: Icons.groups_outlined,
             selectedIcon: Icons.groups_rounded,
           ),
           M3BottomNavItem(
-            label: 'Chats',
-            icon: Icons.chat_bubble_outline_rounded,
-            selectedIcon: Icons.chat_bubble_rounded,
-            hasBadge: unreadChatCount > 0,
+            label: 'Performance',
+            icon: Icons.star_outline_rounded,
+            selectedIcon: Icons.star_rounded,
           ),
-          const M3BottomNavItem(
-            label: 'My Jobs',
-            icon: Icons.work_outline_rounded,
-            selectedIcon: Icons.work_rounded,
-          ),
-          const M3BottomNavItem(
-            label: 'Account',
+          M3BottomNavItem(
+            label: 'Profile',
             icon: Icons.manage_accounts_outlined,
             selectedIcon: Icons.manage_accounts_rounded,
           ),
         ],
       ),
     );
-  });
   }
 }

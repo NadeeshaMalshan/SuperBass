@@ -1,8 +1,8 @@
 {
   "info": {
     "_postman_id": "a5e9b89c-43f1-4db8-b570-9f9b5a7a8d01",
-    "name": "Workio MCP Server",
-    "description": "Postman Collection for testing all Model Context Protocol (MCP) endpoints and backend bridge tools in Workio MCP server.",
+    "name": "SuperBass MCP Server",
+    "description": "Postman Collection for testing all Model Context Protocol (MCP) endpoints and backend bridge tools in SuperBass MCP server.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [

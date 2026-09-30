@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:Workio/main.dart';
-import 'package:Workio/screens/join_screen.dart';
-import 'package:Workio/services/auth_service.dart';
+import 'package:superbass/main.dart';
+import 'package:superbass/screens/join_screen.dart';
+import 'package:superbass/services/auth_service.dart';
 
 void main() {
   setUpAll(() {

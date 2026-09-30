@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Design tokens mapped to Uber-inspired UI for Workio
+/// Design tokens mapped to Uber-inspired UI for SuperBass
 abstract class AppColors {
   // Brand Primary & Accents (Uber Black & Crisp Neutrals)
   static const Color brandBlack = Color(0xFF000000);

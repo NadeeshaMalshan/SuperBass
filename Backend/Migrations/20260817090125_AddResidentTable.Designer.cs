@@ -6,13 +6,13 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
-using Workio.Models;
+using Superbass.Models;
 
 #nullable disable
 
-namespace Workio.Migrations
+namespace Superbass.Migrations
 {
-    [DbContext(typeof(WorkioDbContext))]
+    [DbContext(typeof(SuperbassDbContext))]
     [Migration("20260817090125_AddResidentTable")]
     partial class AddResidentTable
     {
@@ -26,7 +26,7 @@ namespace Workio.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Workio.Models.CommunityComment", b =>
+            modelBuilder.Entity("Superbass.Models.CommunityComment", b =>
                 {
                     b.Property<int>("CommentId")
                         .ValueGeneratedOnAdd()
@@ -61,7 +61,7 @@ namespace Workio.Migrations
                     b.ToTable("CommunityComments");
                 });
 
-            modelBuilder.Entity("Workio.Models.CommunityPost", b =>
+            modelBuilder.Entity("Superbass.Models.CommunityPost", b =>
                 {
                     b.Property<int>("PostId")
                         .ValueGeneratedOnAdd()
@@ -133,7 +133,7 @@ namespace Workio.Migrations
                     b.ToTable("CommunityPosts");
                 });
 
-            modelBuilder.Entity("Workio.Models.CommunityReport", b =>
+            modelBuilder.Entity("Superbass.Models.CommunityReport", b =>
                 {
                     b.Property<int>("ReportId")
                         .ValueGeneratedOnAdd()
@@ -164,7 +164,7 @@ namespace Workio.Migrations
                     b.ToTable("CommunityReports");
                 });
 
-            modelBuilder.Entity("Workio.Models.Resident", b =>
+            modelBuilder.Entity("Superbass.Models.Resident", b =>
                 {
                     b.Property<string>("Email")
                         .HasColumnType("text");

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Workio.Models
+namespace Superbass.Models
 {
     public static class ServiceCategoryConstants
     {
