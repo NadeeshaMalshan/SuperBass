@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import WorkerLayout from './WorkerLayout.jsx';
 import axios from 'axios';
 import { API_BASE_URL } from '../../config.js';
+import VerificationForm from '../../components/VerificationForm.jsx';
+import VerifiedBadge from '../../components/VerifiedBadge.jsx';
 
 export default function WorkerProfile() {
   const [activeTab, setActiveTab] = useState('bio'); // 'bio' | 'skills' | 'location' | 'availability' | 'security'
@@ -15,7 +17,7 @@ export default function WorkerProfile() {
     location: '',
     experience: '',
     description: '',
-    isVerified: true
+    isVerified: false
   });
 
   // Skills & Pricing State
@@ -65,7 +67,7 @@ export default function WorkerProfile() {
             location: w.primaryServiceArea || '',
             experience: w.completedJobs > 0 ? `${w.completedJobs} Jobs Completed` : 'Registered Worker',
             description: w.description || '',
-            isVerified: true
+            isVerified: false
           });
           if (w.pricingModel) setPricingModel(w.pricingModel);
           if (w.hourlyRate != null) setHourlyRate(w.hourlyRate);
@@ -281,6 +283,16 @@ export default function WorkerProfile() {
         </button>
       </div>
 
+      {/* Tab: Verify Account */}
+      {activeTab === 'verify' && (
+        <div className="worker-card">
+          <VerificationForm 
+            isVerified={bio.isVerified}
+            onVerifySuccess={() => setBio({ ...bio, isVerified: true })}
+          />
+        </div>
+      )}
+
       {/* Tab 1: Personal Details & Bio */}
       {activeTab === 'bio' && (
         <div className="worker-card">
@@ -303,11 +315,7 @@ export default function WorkerProfile() {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#111111' }}>{bio.name || 'Worker Profile'}</h3>
-                {bio.isVerified && (
-                  <span className="badge badge-success" style={{ gap: '4px' }}>
-                    <i className="fa-solid fa-shield-check"></i> Verified Worker
-                  </span>
-                )}
+                {bio.isVerified && <VerifiedBadge />}
               </div>
               <p style={{ fontSize: '0.9rem', color: '#64748B', marginTop: '2px' }}>{bio.location || 'Location not set'} • Experience: {bio.experience || 'Verified Professional'}</p>
             </div>
