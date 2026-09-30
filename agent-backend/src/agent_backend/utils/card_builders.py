@@ -214,11 +214,15 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                 last_ai_content = extract_text_content(msg.content)
                 break
 
-    # Search for latest ToolMessage
+    # Search for latest ToolMessage in the CURRENT turn (must occur after the last user message)
     latest_tool: ToolMessage = None
     for msg in reversed(messages):
         if isinstance(msg, ToolMessage) or getattr(msg, "type", "") == "tool":
             latest_tool = msg
+            break
+        elif isinstance(msg, HumanMessage) or getattr(msg, "type", "") in ("human", "user"):
+            # Encountered user message before any tool message.
+            # This indicates the agent responded conversationally in this turn without running a tool.
             break
 
     if latest_tool:
@@ -258,11 +262,7 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                 authorId=data.get("userId") or email,
                 authorName=data.get("userName") or email.split("@")[0]
             )
-            clean_msg = _clean_card_intro_message(
-                last_ai_content,
-                f"Your community post '{card.title}' has been published successfully!",
-                "post_created"
-            )
+            clean_msg = f"Your community post '{card.title}' has been published successfully to the Workio community!"
             return AgentCardResponse(
                 response_type="post_created",
                 message=clean_msg,
@@ -272,12 +272,13 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
 
         # 2. get_community_posts / get_user_community_posts
         if tool_name in ["get_community_posts", "get_user_community_posts"]:
-            # Could be list or single item or dict
-            raw_posts = data if isinstance(data, list) else data.get("posts", data.get("items", []))
-            if isinstance(data, dict) and data.get("id") and not isinstance(raw_posts, list):
+            # Check if a single post was returned (dict containing "id" or "postId" without nested post list)
+            is_single_post = isinstance(data, dict) and bool(data.get("id") or data.get("postId")) and not ("posts" in data or "items" in data)
+            if is_single_post:
                 # Single post returned by ID
+                post_id_val = data.get("id") or data.get("postId")
                 card = PostDetailCard(
-                    id=data.get("id"),
+                    id=post_id_val,
                     title=data.get("title", ""),
                     content=data.get("content", ""),
                     communityId=data.get("serviceCategoryId") or data.get("communityId", "General"),
@@ -1041,21 +1042,28 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
         )
 
     # General text message fallback
-    suggestions = metadata.get("suggested_actions") or [
-        "Book a service technician",
-        "View recent community posts",
-        "Create a post for AC repair",
-        "Check my profile"
-    ]
+    suggestions = metadata.get("suggested_actions")
+    if not suggestions:
+        if any(k in lower_content for k in ["what would you like to change", "proposed edits", "edit", "change its title"]):
+            suggestions = ["Change the title", "Change the description", "Change the category", "Change the location"]
+        else:
+            suggestions = [
+                "Book a service technician",
+                "View recent community posts",
+                "Create a post for AC repair",
+                "Check my profile"
+            ]
+
     card = TextMessageCard(
         text=last_ai_content or "How can I assist you with Workio home services and community posts?",
         suggestions=suggestions
     )
+    active_agent = metadata.get("agent") or "community_agent"
     return AgentCardResponse(
         response_type="text_message",
         message=card.text,
         card_data=card.model_dump(),
-        metadata={"agent": "supervisor", "user_email": email}
+        metadata={"agent": active_agent, "user_email": email}
     )
 
 

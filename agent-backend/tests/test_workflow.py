@@ -736,6 +736,61 @@ def test_clean_card_intro_message_removes_bold_field_dumps():
     assert "I'll wait for your confirmation before posting." in cleaned
 
 
+def test_single_post_detail_card_built_from_get_community_posts():
+    """Verify that get_community_posts with single post dict creates PostDetailCard, not empty PostListCard."""
+    from agent_backend.utils.card_builders import _deterministic_card_builder
+
+    state = {
+        "messages": [
+            HumanMessage(content="Show details for post #20"),
+            ToolMessage(
+                content='{"id": 20, "title": "Car Repair Service Request", "content": "Engine inspection needed", "serviceCategoryId": "vehicle-repair-mechanic", "location": "Colombo", "userName": "Jayashan", "userEmail": "jayashan@workio.lk", "likesCount": 1, "commentsCount": 0}',
+                tool_call_id="call_show_20",
+                name="get_community_posts"
+            ),
+            AIMessage(content="Post #20 is active.")
+        ],
+        "email": "jayashan@workio.lk",
+        "user_type": "Resident",
+        "user_profile": {"displayName": "Jayashan"},
+        "next": None,
+        "structured_response": None,
+        "metadata": {}
+    }
+    card_resp = _deterministic_card_builder(state)
+    assert card_resp.response_type == "post_detail"
+    assert card_resp.card_data["id"] == 20
+    assert card_resp.card_data["title"] == "Car Repair Service Request"
+
+
+def test_conversational_turn_does_not_recycle_old_tools():
+    """Verify that a turn without tool execution (e.g. 'i need edit it') builds TextMessageCard and does not recycle previous tools."""
+    from agent_backend.utils.card_builders import _deterministic_card_builder
+
+    state = {
+        "messages": [
+            # Turn 1: Tool executed
+            HumanMessage(content="Show details for post #20"),
+            ToolMessage(content='{"id": 20, "title": "Car Repair Service Request"}', tool_call_id="call_20", name="get_community_posts"),
+            AIMessage(content="Post #20 details are above."),
+            # Turn 2: Follow-up question without tool execution
+            HumanMessage(content="i need edit it"),
+            AIMessage(content="What would you like to change—its title, description, category, or location?")
+        ],
+        "email": "jayashan@workio.lk",
+        "user_type": "Resident",
+        "user_profile": {"displayName": "Jayashan"},
+        "next": None,
+        "structured_response": None,
+        "metadata": {}
+    }
+    card_resp = _deterministic_card_builder(state)
+    assert card_resp.response_type == "text_message"
+    assert "What would you like to change" in card_resp.message
+    assert any("title" in str(s).lower() for s in card_resp.card_data.get("suggestions", []))
+
+
+
 
 if __name__ == "__main__":
     test_card_schemas()
