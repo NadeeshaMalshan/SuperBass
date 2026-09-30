@@ -10,6 +10,7 @@ import M3TopNavbar from './components/M3TopNavbar.jsx';
 import hero2Img from './assets/community.png';
 import sriLankaDistricts from './data/sriLankaDistricts.json';
 import { BACKEND_URL } from './config.js';
+import { useAuth } from './AuthProvider.jsx';
 
 const API_BASE_URL = `${BACKEND_URL}/api/community-posts`;
 
@@ -23,6 +24,7 @@ export default function Community() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const { login } = useAuth();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedProvince, setSelectedProvince] = useState('all');
@@ -391,7 +393,7 @@ export default function Community() {
   const handleOpenCreate = () => {
     if (!isLoggedIn) {
       alert("Please sign in with Google or your account to post in the community.");
-      navigate('/join');
+      login();
       return;
     }
     setIsCreateModalOpen(true);

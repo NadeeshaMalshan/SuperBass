@@ -1,7 +1,9 @@
 import React, { useEffect } from 'react';
+import { useAuth } from '../../AuthProvider.jsx';
 import './worker.css';
 
 export default function WorkerRegister() {
+  const { login } = useAuth();
   const navigate = (path) => {
     window.history.pushState({}, '', path);
     window.dispatchEvent(new PopStateEvent('popstate'));
@@ -70,7 +72,7 @@ export default function WorkerRegister() {
         </div>
 
         <button 
-          onClick={() => navigate('/join')}
+          onClick={() => login()}
           className="worker-btn-primary" 
           style={{ width: '100%', justifyContent: 'center', height: '52px', fontSize: '1rem', marginBottom: '16px' }}
         >
