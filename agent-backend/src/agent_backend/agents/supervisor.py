@@ -12,11 +12,33 @@ import logging
 from agent_backend.config import settings
 from agent_backend.state.state import AgentState
 from agent_backend.prompts.supervisor_prompts import SUPERVISOR_SYSTEM_PROMPT
-from agent_backend.tools.booking_tools import get_live_service_categories
+from agent_backend.schemas.card_models import AgentCardResponse, TextMessageCard
 from agent_backend.utils.sanitizer import sanitize_messages_for_llm, extract_text_content
-from agent_backend.utils.card_builders import build_supervisor_card
 
 logger = logging.getLogger("agent_backend.supervisor")
+
+
+def build_supervisor_card(
+    state: AgentState,
+    direct_response: Optional[str] = None,
+    suggested_actions: Optional[List[str]] = None
+) -> AgentCardResponse:
+    """Build structured AgentCardResponse for supervisor choice turns."""
+    email = state.get("email", "resident@workio.lk")
+    text = direct_response or "How would you like to proceed with Workio home services?"
+    suggestions = suggested_actions or ["Find a verified worker", "Create a community post"]
+    is_choice = True if any("1" in str(s) or "worker" in str(s).lower() for s in suggestions) else False
+    card = TextMessageCard(
+        text=text,
+        suggestions=suggestions,
+        is_choice=is_choice
+    )
+    return AgentCardResponse(
+        response_type="text_message",
+        message=card.text,
+        card_data=card.model_dump(),
+        metadata={"agent": "supervisor", "user_email": email, "is_choice": is_choice}
+    )
 
 
 
