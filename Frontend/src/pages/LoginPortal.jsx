@@ -150,22 +150,22 @@ function LoginPortalContent() {
           <div style={{
             position: 'relative',
             width: '100%',
-            maxHeight: '220px',
+            maxHeight: '260px',
             overflow: 'hidden',
             borderRadius: '16px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: '#000000'
+            backgroundColor: '#ffffff'
           }}>
             <img 
               src={loginBanner} 
               alt="Workio Portals" 
               style={{
                 width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                objectPosition: 'center 40%'
+                maxHeight: '260px',
+                objectFit: 'contain',
+                backgroundColor: '#ffffff'
               }}
             />
           </div>
