@@ -23,6 +23,7 @@ import WorkerJobs from './pages/worker/WorkerJobs.jsx'
 import WorkerPerformance from './pages/worker/WorkerPerformance.jsx'
 import WorkerProfile from './pages/worker/WorkerProfile.jsx'
 import WorkerCommunityPosts from './pages/worker/WorkerCommunityPosts.jsx'
+import WorkerOnboarding from './pages/worker/WorkerOnboarding.jsx'
 import ResidentProfile from './ResidentProfile.jsx'
 
 class ErrorBoundary extends Component {
@@ -167,7 +168,7 @@ function Router() {
 
     // Worker Routes Role Guard: Resident trying to access Worker pages
     if (path.startsWith('/worker/')) {
-      if (activeRole !== 'Worker' && path !== '/worker/register' && path !== '/worker/login') {
+      if (activeRole !== 'Worker' && path !== '/worker/register' && path !== '/worker/login' && path !== '/worker/onboarding') {
         return <ResidentProfile defaultTab="become-worker" />;
       }
     }
@@ -191,32 +192,15 @@ function Router() {
     if (path === '/worker/profile' || path === '/worker/profile.jsx') {
       return <WorkerProfile />;
     }
+    if (path === '/worker/onboarding' || path === '/worker/onboarding.jsx') {
+      return <WorkerOnboarding />;
+    }
+    if (path === '/worker/community-posts' || path === '/worker/community-posts.jsx') {
+      return <WorkerCommunityPosts />;
+    }
 
-  // Worker Routes
-  if (path === '/worker/register' || path === '/worker/register.jsx') {
-    return <WorkerRegister />;
-  }
-  if (path === '/worker/login' || path === '/worker/login.jsx') {
-    return <WorkerLogin />;
-  }
-  if (path === '/worker/dashboard' || path === '/worker/dashboard.jsx') {
-    return <WorkerDashboard />;
-  }
-  if (path === '/worker/jobs' || path === '/worker/jobs.jsx') {
-    return <WorkerJobs />;
-  }
-  if (path === '/worker/performance' || path === '/worker/performance.jsx') {
-    return <WorkerPerformance />;
-  }
-  if (path === '/worker/profile' || path === '/worker/profile.jsx') {
-    return <WorkerProfile />;
-  }
-  if (path === '/worker/community-posts' || path === '/worker/community-posts.jsx') {
-    return <WorkerCommunityPosts />;
-  }
-
-  return <App />;
-};
+    return <App />;
+  };
 
   return (
     <>

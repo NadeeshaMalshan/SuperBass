@@ -27,12 +27,6 @@ namespace Superbass.Models
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.Entity<Worker>()
-                .HasOne(w => w.Resident)
-                .WithOne(r => r.WorkerProfile)
-                .HasForeignKey<Worker>(w => w.ResidentEmail)
-                .OnDelete(DeleteBehavior.Cascade);
-
             modelBuilder.Entity<Conversation>()
                 .HasOne(c => c.Resident)
                 .WithMany()

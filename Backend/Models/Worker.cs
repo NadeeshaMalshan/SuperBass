@@ -8,11 +8,7 @@ namespace Superbass.Models
         [Key]
         public int Id { get; set; }
         
-        [Required]
-        public string ResidentEmail { get; set; } = null!;
-
-        [ForeignKey(nameof(ResidentEmail))]
-        public Resident? Resident { get; set; }
+        public string? ResidentEmail { get; set; }
 
         [Required]
         public string Name { get; set; } = null!;

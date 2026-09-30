@@ -6,6 +6,8 @@ using System.IdentityModel.Tokens.Jwt;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
+using Microsoft.EntityFrameworkCore;
+
 namespace Superbass.Controllers
 {
     [ApiController]
@@ -15,12 +17,18 @@ namespace Superbass.Controllers
         private readonly WorkerRepository _workerRepository;
         private readonly IConfiguration _configuration;
         private readonly IResidentRepository _residentRepository;
+        private readonly SuperbassDbContext _dbContext;
 
-        public WorkersController(WorkerRepository workerRepository, IConfiguration configuration, IResidentRepository residentRepository)
+        public WorkersController(
+            WorkerRepository workerRepository,
+            IConfiguration configuration,
+            IResidentRepository residentRepository,
+            SuperbassDbContext dbContext)
         {
             _workerRepository = workerRepository;
             _configuration = configuration;
             _residentRepository = residentRepository;
+            _dbContext = dbContext;
         }
 
         // GET: /api/workers
@@ -200,6 +208,119 @@ namespace Superbass.Controllers
             return Ok(new { worker, activeRole = "Worker" });
         }
 
+        // POST: /api/workers/onboarding
+        // Fully and atomically creates the Worker profile ONLY after all onboarding steps are finished.
+        [HttpPost("onboarding")]
+        public async Task<IActionResult> WorkerOnboarding([FromBody] WorkerOnboardingDto dto)
+        {
+            var targetEmail = dto.Email ?? GetEmailFromRequest();
+            if (string.IsNullOrEmpty(targetEmail))
+            {
+                return BadRequest(new { message = "Email is required in payload or Authorization header." });
+            }
+
+            var cleanEmail = targetEmail.Trim().ToLower();
+
+            // Strict rule: If this email is already registered as an active Resident (and not a worker)
+            var existingResident = await _dbContext.Residents.FirstOrDefaultAsync(r => r.Email.ToLower() == cleanEmail);
+            var existingWorker = await _dbContext.Workers.Include(w => w.Skills)
+                .FirstOrDefaultAsync(w => (w.ResidentEmail != null && w.ResidentEmail.ToLower() == cleanEmail) ||
+                                          (w.Email != null && w.Email.ToLower() == cleanEmail));
+
+            bool isFullyOnboardedWorker = existingWorker != null && existingWorker.Skills != null && existingWorker.Skills.Any();
+            if (existingResident != null && !isFullyOnboardedWorker && existingWorker == null)
+            {
+                return BadRequest(new { 
+                    message = "This email is registered as a Resident. You cannot register as a Worker with this email." 
+                });
+            }
+
+            if (dto.Skills == null || !dto.Skills.Any())
+            {
+                return BadRequest(new { message = "At least one skill category is required." });
+            }
+
+            // Category validation
+            foreach (var s in dto.Skills)
+            {
+                var rawService = !string.IsNullOrWhiteSpace(s.ServiceName) ? s.ServiceName : (!string.IsNullOrWhiteSpace(s.Service) ? s.Service : s.SkillName);
+                if (!ServiceCategoryConstants.IsValidCategory(rawService))
+                {
+                    return BadRequest(new
+                    {
+                        message = $"Invalid service category '{rawService}'. Workers can only select from the 21 official categories."
+                    });
+                }
+            }
+
+            var skills = dto.Skills.Select(s => {
+                var rawService = !string.IsNullOrWhiteSpace(s.ServiceName) ? s.ServiceName : (!string.IsNullOrWhiteSpace(s.Service) ? s.Service : s.SkillName);
+                var service = ServiceCategoryConstants.NormalizeCategoryName(rawService);
+                var subSkills = s.Skills != null && s.Skills.Count > 0 ? s.Skills : (!string.IsNullOrWhiteSpace(s.SkillName) && s.SkillName != service ? new List<string> { s.SkillName } : new List<string>());
+                return new WorkerSkill
+                {
+                    ServiceName = service,
+                    Skills = subSkills,
+                    ExperienceYears = s.ExperienceYears >= 0 ? s.ExperienceYears : 0,
+                    SkillName = service
+                };
+            }).ToList();
+
+            // Create or Update Worker profile atomically — Resident table is untouched!
+            if (existingWorker == null)
+            {
+                existingWorker = new Worker
+                {
+                    ResidentEmail = cleanEmail,
+                    Email = cleanEmail,
+                    Name = dto.Name ?? cleanEmail.Split('@')[0],
+                    PhoneNo = dto.PhoneNo,
+                    ProfileImage = dto.ProfileImage,
+                    Description = dto.Description,
+                    PrimaryServiceArea = dto.PrimaryServiceArea ?? "Colombo",
+                    LocationLat = dto.LocationLat,
+                    LocationLng = dto.LocationLng,
+                    CoverageRadiusKm = dto.CoverageRadiusKm > 0 ? dto.CoverageRadiusKm : 10.0,
+                    PricingModel = dto.PricingModel ?? "Hourly",
+                    HourlyRate = dto.HourlyRate,
+                    DailyRate = dto.DailyRate,
+                    IsAvailable = dto.IsAvailable,
+                    Skills = skills
+                };
+                _dbContext.Workers.Add(existingWorker);
+            }
+            else
+            {
+                existingWorker.Name = dto.Name ?? existingWorker.Name;
+                existingWorker.PhoneNo = dto.PhoneNo ?? existingWorker.PhoneNo;
+                if (!string.IsNullOrWhiteSpace(dto.ProfileImage)) existingWorker.ProfileImage = dto.ProfileImage;
+                existingWorker.Description = dto.Description ?? existingWorker.Description;
+                existingWorker.PrimaryServiceArea = dto.PrimaryServiceArea ?? existingWorker.PrimaryServiceArea;
+                if (dto.LocationLat.HasValue) existingWorker.LocationLat = dto.LocationLat;
+                if (dto.LocationLng.HasValue) existingWorker.LocationLng = dto.LocationLng;
+                if (dto.CoverageRadiusKm > 0) existingWorker.CoverageRadiusKm = dto.CoverageRadiusKm;
+                existingWorker.PricingModel = dto.PricingModel ?? existingWorker.PricingModel;
+                if (dto.HourlyRate.HasValue) existingWorker.HourlyRate = dto.HourlyRate;
+                if (dto.DailyRate.HasValue) existingWorker.DailyRate = dto.DailyRate;
+                existingWorker.IsAvailable = dto.IsAvailable;
+
+                if (existingWorker.Skills != null && existingWorker.Skills.Any())
+                {
+                    _dbContext.WorkerSkills.RemoveRange(existingWorker.Skills);
+                }
+                existingWorker.Skills = skills;
+            }
+
+            await _dbContext.SaveChangesAsync();
+
+            return Ok(new
+            {
+                worker = existingWorker,
+                activeRole = "Worker",
+                message = "Worker profile successfully created and onboarding completed!"
+            });
+        }
+
         // POST: /api/workers/become-worker
         [HttpPost("become-worker")]
         public async Task<IActionResult> BecomeWorker([FromBody] BecomeWorkerDto dto)
@@ -301,12 +422,6 @@ namespace Superbass.Controllers
                 await _workerRepository.DeleteWorkerAsync(worker.Id);
             }
 
-            var resident = await _residentRepository.GetResidentAsync(targetEmail);
-            if (resident != null)
-            {
-                await _residentRepository.DeleteResidentAsync(targetEmail);
-            }
-
             return Ok(new { message = "Worker account and all associated data permanently deleted." });
         }
 
@@ -390,6 +505,25 @@ namespace Superbass.Controllers
         public class PasswordUpdateDto
         {
             public string NewPassword { get; set; } = string.Empty;
+        }
+
+        public class WorkerOnboardingDto
+        {
+            public string? Name { get; set; }
+            public string? Email { get; set; }
+            public string? PhoneNo { get; set; }
+            public string? Address { get; set; }
+            public string? ProfileImage { get; set; }
+            public double? LocationLat { get; set; }
+            public double? LocationLng { get; set; }
+            public string? Description { get; set; }
+            public string? PrimaryServiceArea { get; set; } = "Colombo";
+            public double CoverageRadiusKm { get; set; } = 10.0;
+            public string PricingModel { get; set; } = "Hourly";
+            public decimal? HourlyRate { get; set; }
+            public decimal? DailyRate { get; set; }
+            public bool IsAvailable { get; set; } = true;
+            public List<WorkerSkillDto> Skills { get; set; } = new();
         }
     }
 }

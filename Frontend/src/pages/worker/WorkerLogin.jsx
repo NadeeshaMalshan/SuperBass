@@ -41,9 +41,9 @@ function WorkerLoginContent() {
         if (workerId) localStorage.setItem('workerId', workerId);
         localStorage.setItem('activeRole', 'Worker');
 
-        // Redirect to profile setup if new worker, else worker dashboard
+        // Redirect to onboarding if new worker, else worker dashboard
         if (isNewWorker) {
-          navigate('/worker/profile');
+          navigate('/worker/onboarding');
         } else {
           navigate('/worker/dashboard');
         }
