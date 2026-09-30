@@ -219,8 +219,7 @@ export default function App() {
 
   return (
     <div className="app-container">
-      {/* Material 3 Top Navigation Bar */}
-      <M3TopNavbar showSearch={false} activePage="home" theme="dark" />
+      {/* Material 3 Top Navigation Bar (Now rendered globally in main.jsx) */}
 
       {/* Main Top Hero Section Matching Screenshot */}
       <main className="landing-top-hero-section" id="home">

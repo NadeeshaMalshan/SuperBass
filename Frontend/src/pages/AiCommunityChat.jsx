@@ -379,15 +379,7 @@ export default function AiCommunityChat() {
 
   return (
     <div className="find-page-container ai-chat-uber-page">
-      {/* SuperBass Material 3 Top Navbar (Dark Theme matching Landing Page) */}
-      <M3TopNavbar
-        theme="dark"
-        activePage="ai"
-        showSidebarToggle={true}
-        isSidebarCollapsed={isSidebarCollapsed}
-        onToggleSidebar={() => setIsSidebarCollapsed((prev) => !prev)}
-        alwaysShowLinks={true}
-      />
+      {/* SuperBass Material 3 Top Navbar (Dark Theme matching Landing Page) (Rendered Globally) */}
 
       <div className="find-layout ai-chat-uber-layout">
         {/* Left Sidebar — Quick Actions, Emergency Services & Urgent Help */}
