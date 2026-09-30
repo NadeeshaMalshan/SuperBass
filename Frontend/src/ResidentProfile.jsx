@@ -11,6 +11,7 @@ import '@material/web/icon/icon.js';
 import '@material/web/progress/circular-progress.js';
 import '@material/web/textfield/filled-text-field.js';
 import Loader from './components/Loader.jsx';
+import MyCommunityPostsManager from './components/MyCommunityPostsManager.jsx';
 import { API_BASE_URL } from './config.js';
 
 export default function ResidentProfile({ defaultTab = 'overview' }) {
@@ -718,6 +719,26 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
             </div>
 
             <div
+              className={`m3-drawer-item ${activeTab === 'bookings' ? 'active' : ''}`}
+              onClick={() => setActiveTab('bookings')}
+            >
+              <div className="m3-drawer-item-left">
+                <md-icon className="m3-drawer-icon">calendar_month</md-icon>
+                <span className="m3-drawer-label">My Bookings</span>
+              </div>
+            </div>
+
+            <div
+              className={`m3-drawer-item ${activeTab === 'posts' ? 'active' : ''}`}
+              onClick={() => setActiveTab('posts')}
+            >
+              <div className="m3-drawer-item-left">
+                <md-icon className="m3-drawer-icon">dynamic_feed</md-icon>
+                <span className="m3-drawer-label">My Community Posts</span>
+              </div>
+            </div>
+
+            <div
               className={`m3-drawer-item ${activeTab === 'settings' ? 'active' : ''}`}
               onClick={() => setActiveTab('settings')}
             >
@@ -731,8 +752,16 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
         </aside>
 
         {/* Main Content Area */}
-        <main className="find-main" style={{ flex: 1, minWidth: 0, padding: '24px 32px' }}>
-          <div style={{ maxWidth: '900px', backgroundColor: '#ffffff', borderRadius: '16px', padding: '2rem', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+        <main className="find-main" style={{ flex: 1, minWidth: 0, padding: activeTab === 'posts' ? '24px 28px' : '24px 32px' }}>
+          <div style={{
+            maxWidth: activeTab === 'posts' ? '1280px' : '900px',
+            width: '100%',
+            backgroundColor: activeTab === 'posts' ? 'transparent' : '#ffffff',
+            borderRadius: '16px',
+            padding: activeTab === 'posts' ? '0' : '2rem',
+            boxShadow: activeTab === 'posts' ? 'none' : '0 2px 8px rgba(0,0,0,0.04)',
+            transition: 'all 0.2s ease'
+          }}>
 
           {/* TAB: Overview */}
           {activeTab === 'overview' && (
@@ -1103,195 +1132,14 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
             </div>
           )}
 
-          {/* TAB: My Community Posts (View, Edit, Delete, Create) */}
+          {/* TAB: My Community Posts (Full Search, Filters, Edit, Delete, Create) */}
           {activeTab === 'posts' && (
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '12px' }}>
-                <div>
-                  <h2 style={{ fontSize: '1.5rem', fontWeight: '800', margin: 0, color: '#111827' }}>My Community Posts</h2>
-                  <p style={{ color: '#6b7280', margin: '4px 0 0 0', fontSize: '0.9rem' }}>
-                    View, edit, or delete your active community posts and classified ads
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => setIsCreateModalOpen(true)}
-                  style={{
-                    backgroundColor: '#009688',
-                    color: '#ffffff',
-                    border: 'none',
-                    borderRadius: '24px',
-                    padding: '10px 20px',
-                    fontWeight: '700',
-                    fontSize: '0.9rem',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    boxShadow: '0 2px 8px rgba(0,150,136,0.3)'
-                  }}
-                >
-                  + Make New Post
-                </button>
-              </div>
-
-              {loadingPosts ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', color: '#6b7280' }}>
-                  <Loader />
-                  <p>Loading your community posts...</p>
-                </div>
-              ) : userPosts.length === 0 ? (
-                <div style={{ padding: '3rem', textAlign: 'center', backgroundColor: '#f9fafb', borderRadius: '12px', border: '1px dashed #d1d5db' }}>
-                  <p style={{ fontSize: '1.1rem', color: '#4b5563', marginBottom: '1.5rem' }}>You haven't authored any community posts yet.</p>
-                  <button
-                    onClick={() => setIsCreateModalOpen(true)}
-                    style={{
-                      backgroundColor: '#009688',
-                      color: '#ffffff',
-                      border: 'none',
-                      borderRadius: '24px',
-                      padding: '10px 24px',
-                      fontWeight: '700',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    + Create Your First Post
-                  </button>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                  {userPosts.map(post => (
-                    <div
-                      key={post.postId}
-                      style={{
-                        padding: '1.25rem',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '12px',
-                        backgroundColor: '#ffffff',
-                        display: 'flex',
-                        gap: '16px',
-                        alignItems: 'flex-start',
-                        boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
-                      }}
-                    >
-                      {/* Left Thumbnail Small Photo */}
-                      <div style={{
-                        width: '110px',
-                        height: '90px',
-                        minWidth: '110px',
-                        borderRadius: '8px',
-                        overflow: 'hidden',
-                        backgroundColor: '#f1f5f9',
-                        position: 'relative',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        border: '1px solid #e2e8f0'
-                      }}>
-                        {post.images && post.images.length > 0 ? (
-                          <>
-                            <img
-                              src={post.images[0]}
-                              alt={post.title}
-                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                              onError={(e) => {
-                                e.target.src = 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=500&auto=format&fit=crop';
-                              }}
-                            />
-                            {post.images.length > 1 && (
-                              <div style={{
-                                position: 'absolute', bottom: '4px', right: '4px',
-                                background: 'rgba(15,23,42,0.75)', color: '#fff',
-                                fontSize: '0.65rem', padding: '2px 5px', borderRadius: '4px', fontWeight: 'bold'
-                              }}>
-                                📷 {post.images.length}
-                              </div>
-                            )}
-                          </>
-                        ) : (
-                          <i className="fa-solid fa-image" style={{ fontSize: '1.5rem', color: '#94a3b8' }}></i>
-                        )}
-                      </div>
-
-                      {/* Right Details Column */}
-                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: '700', color: '#0f172a' }}>
-                            {post.title}
-                          </h3>
-                          <span style={{ backgroundColor: '#e0f2fe', color: '#0284c7', padding: '4px 10px', borderRadius: '16px', fontSize: '0.8rem', fontWeight: '700' }}>
-                            {post.serviceCategoryName || 'General'}
-                          </span>
-                        </div>
-
-                        <p style={{ margin: 0, color: '#475569', fontSize: '0.925rem', lineHeight: '1.5' }}>
-                          {post.content && post.content.length > 160 ? post.content.substring(0, 160) + '...' : post.content}
-                        </p>
-
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f1f5f9', paddingTop: '0.75rem', marginTop: '0.25rem' }}>
-                          <div style={{ display: 'flex', gap: '12px', fontSize: '0.85rem', color: '#64748b', fontWeight: '500' }}>
-                            <span>❤️ {post.likesCount || 0} Likes</span>
-                            <span>💬 {post.commentsCount || 0} Comments</span>
-                            <span>📍 {post.location || 'Colombo'}</span>
-                          </div>
-
-                          {/* Action Buttons: View, Edit, Delete */}
-                          <div style={{ display: 'flex', gap: '8px' }}>
-                            <button
-                              onClick={() => handleViewPost(post)}
-                              style={{
-                                backgroundColor: '#f1f5f9',
-                                color: '#334155',
-                                border: '1px solid #cbd5e1',
-                                padding: '6px 14px',
-                                borderRadius: '6px',
-                                fontWeight: '600',
-                                fontSize: '0.825rem',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              View
-                            </button>
-
-                            <button
-                              onClick={() => handleOpenEdit(post)}
-                              style={{
-                                backgroundColor: '#3b82f6',
-                                color: '#ffffff',
-                                border: 'none',
-                                padding: '6px 14px',
-                                borderRadius: '6px',
-                                fontWeight: '600',
-                                fontSize: '0.825rem',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              Edit
-                            </button>
-
-                            <button
-                              onClick={() => handleDeletePost(post.postId)}
-                              style={{
-                                backgroundColor: '#ef4444',
-                                color: '#ffffff',
-                                border: 'none',
-                                padding: '6px 14px',
-                                borderRadius: '6px',
-                                fontWeight: '600',
-                                fontSize: '0.825rem',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <MyCommunityPostsManager
+              userEmail={userEmail}
+              userName={userName || profile.name}
+              userPicture={userPicture}
+              role="Resident"
+            />
           )}
 
           {/* TAB: Settings */}
