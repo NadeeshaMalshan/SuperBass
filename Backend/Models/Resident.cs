@@ -12,7 +12,5 @@ namespace Superbass.Models
         public string? Address { get; set; }
         public double? LocationLat { get; set; }
         public double? LocationLng { get; set; }
-
-        public Worker? WorkerProfile { get; set; }
     }
 }
