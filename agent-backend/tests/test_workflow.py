@@ -790,6 +790,20 @@ def test_conversational_turn_does_not_recycle_old_tools():
     assert any("title" in str(s).lower() for s in card_resp.card_data.get("suggestions", []))
 
 
+def test_strips_leading_empty_brackets():
+    """Verify that leading '[]' empty citation/thought artifacts from Luna are stripped cleanly."""
+    from agent_backend.utils.sanitizer import extract_text_content
+    from agent_backend.utils.card_builders import _clean_card_intro_message
+
+    raw1 = "[]\nHere is your draft community post: Please review the details."
+    raw2 = "[] Post #20 currently has the title 'Car Repair'."
+    
+    assert extract_text_content(raw1) == "Here is your draft community post: Please review the details."
+    assert extract_text_content(raw2) == "Post #20 currently has the title 'Car Repair'."
+
+    cleaned = _clean_card_intro_message(raw1, "Default intro", "post_confirmation")
+    assert not cleaned.startswith("[]")
+    assert not cleaned.startswith("[")
 
 
 if __name__ == "__main__":

@@ -63,6 +63,7 @@ def _clean_card_intro_message(raw_msg: str, default_intro: str, card_type: str =
         return default_intro
 
     text = raw_msg.strip()
+    text = re.sub(r'^(?:\[\s*\]|\(\s*\))\s*', '', text).strip()
 
     # Detect if the text contains repetitive itemized card details (numbers/bullets followed by bold names, markdown images, tel links, etc.)
     has_dump = bool(
@@ -109,6 +110,7 @@ def _clean_card_intro_message(raw_msg: str, default_intro: str, card_type: str =
         else:
             cleaned = f"Here is your draft community post. {closing}".strip()
 
+        cleaned = re.sub(r'^(?:\[\s*\]|\(\s*\))\s*', '', cleaned)
         cleaned = re.sub(r'\s{2,}', ' ', cleaned)
         return cleaned
 

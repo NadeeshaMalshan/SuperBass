@@ -261,6 +261,10 @@ async def chat_endpoint(request: ChatRequest):
                 metadata={"agent": "system", "user_email": request.email}
             )
 
+        if card_response and card_response.message:
+            import re
+            card_response.message = re.sub(r'^(?:\[\s*\]|\(\s*\))\s*', '', card_response.message).strip()
+
         if card_response.metadata is None:
             card_response.metadata = {}
         card_response.metadata["token_usage"] = {
