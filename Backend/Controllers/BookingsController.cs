@@ -556,6 +556,11 @@ namespace Superbass.Controllers
                 .Include(b => b.Worker)
                 .FirstOrDefaultAsync(b => b.Id == id);
 
+            if (booking == null)
+            {
+                return NotFound(new { message = "Booking not found." });
+            }
+
             var rescheduleUtc = request.ScheduledDate.Kind == DateTimeKind.Utc
                 ? request.ScheduledDate
                 : DateTime.SpecifyKind(request.ScheduledDate, DateTimeKind.Utc);
