@@ -46,9 +46,9 @@ function LoginPortalContent() {
         localStorage.setItem('activeRole', 'Worker');
 
         if (isNewWorker) {
-          navigate('/worker/profile');
+          navigate('/worker/onboarding');
         } else {
-          navigate('/find');
+          navigate('/worker/dashboard');
         }
         return;
       }
