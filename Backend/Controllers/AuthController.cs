@@ -120,73 +120,58 @@ namespace Superbass.Controllers
             var jwtHash = Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(jwt)));
 
             var existingResident = await _dbContext.Residents.FirstOrDefaultAsync(r => r.Email.ToLower() == email);
-            var existingWorker = await _dbContext.Workers.FirstOrDefaultAsync(w => 
-                (w.ResidentEmail != null && w.ResidentEmail.ToLower() == email) || 
-                (w.Email != null && w.Email.ToLower() == email));
+            var existingWorker = await _dbContext.Workers
+                .Include(w => w.Skills)
+                .FirstOrDefaultAsync(w => 
+                    (w.ResidentEmail != null && w.ResidentEmail.ToLower() == email) || 
+                    (w.Email != null && w.Email.ToLower() == email));
+
+            bool isFullyOnboardedWorker = existingWorker != null && existingWorker.Skills != null && existingWorker.Skills.Any();
 
             if (string.Equals(request.IntendedRole, "Worker", StringComparison.OrdinalIgnoreCase))
             {
                 // Strict rule: If email is already registered as Resident, it cannot become or login as a Worker
-                if (existingResident != null && existingWorker == null)
+                if (existingResident != null && !isFullyOnboardedWorker)
                 {
                     return BadRequest(new { 
                         message = "This email is registered as a Resident. You cannot log in or sign up as a Worker with this email. To switch roles, you must first delete your Resident account in the restricted Danger Zone."
                     });
                 }
 
-                // If not existing worker yet, register as new worker
-                bool isNewWorker = false;
-                if (existingWorker == null)
+                if (isFullyOnboardedWorker)
                 {
-                    isNewWorker = true;
-                    if (existingResident == null)
-                    {
-                        existingResident = new Resident
-                        {
-                            Email = email,
-                            Name = name ?? email,
-                            PasswordHash = jwtHash,
-                            PhoneNo = request.PhoneNo,
-                            Address = request.Address
-                        };
-                        _dbContext.Residents.Add(existingResident);
-                        await _dbContext.SaveChangesAsync();
-                    }
-
-                    existingWorker = new Worker
-                    {
-                        ResidentEmail = email,
-                        Email = email,
-                        Name = name ?? email,
-                        ProfileImage = picture,
-                        PhoneNo = request.PhoneNo,
-                        Description = "Verified Community Service Professional",
-                        PrimaryServiceArea = "Colombo",
-                        CoverageRadiusKm = 15.0,
-                        PricingModel = "Hourly",
-                        IsAvailable = true
-                    };
-                    _dbContext.Workers.Add(existingWorker);
-                    await _dbContext.SaveChangesAsync();
+                    return Ok(new { 
+                        token = jwt, 
+                        email = email, 
+                        name = existingWorker!.Name ?? name ?? email, 
+                        picture = existingWorker.ProfileImage ?? picture, 
+                        isNewUser = false,
+                        isWorker = true,
+                        isNewWorker = false,
+                        activeRole = "Worker",
+                        workerId = existingWorker.Id
+                    });
                 }
 
+                // If not fully onboarded yet: Do NOT insert worker or resident into DB yet.
+                // The worker profile will only be created when they complete the entire onboarding wizard.
                 return Ok(new { 
                     token = jwt, 
                     email = email, 
                     name = name ?? email, 
                     picture = picture, 
-                    isNewUser = isNewWorker,
-                    isWorker = true,
-                    isNewWorker = isNewWorker,
+                    isNewUser = true,
+                    isWorker = false,
+                    isNewWorker = true,
                     activeRole = "Worker",
-                    workerId = existingWorker.Id
+                    workerId = (int?)null
                 });
             }
             else
             {
                 // IntendedRole is "Resident"
-                // Strict rule: If email is already registered as Worker, it cannot log in or sign up as a Resident
-                if (existingWorker != null)
+                // Strict rule: If email is already registered as an onboarded Worker, it cannot log in or sign up as a Resident
+                if (isFullyOnboardedWorker)
                 {
                     return BadRequest(new { 
                         message = "This email is registered as a Worker. You cannot log in or sign up as a Resident with this email. To switch roles, you must first delete your Worker account in the restricted Danger Zone."
