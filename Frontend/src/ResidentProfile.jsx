@@ -687,8 +687,9 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
             )}
             {!isSidebarCollapsed && (
               <div style={{ overflow: 'hidden', minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#111827', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#111827', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   {profile.name || 'User'}
+                    {isVerified && <VerifiedBadge />}
                   {isVerified && <VerifiedBadge />}
                 </div>
                 <div style={{ fontSize: '0.75rem', color: '#64748b', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
@@ -713,6 +714,16 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                 <span className="m3-drawer-label">Profile Overview</span>
               </div>
             </div>
+
+              <div
+                className={`m3-drawer-item ${activeTab === 'verify' ? 'active' : ''}`}
+                onClick={() => setActiveTab('verify')}
+              >
+                <div className="m3-drawer-item-left">
+                  <md-icon className="m3-drawer-icon">verified_user</md-icon>
+                  <span className="m3-drawer-label">Verify Account</span>
+                </div>
+              </div>
 
             <div
               className={`m3-drawer-item ${activeTab === 'edit' ? 'active' : ''}`}
@@ -768,6 +779,16 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
             boxShadow: activeTab === 'posts' ? 'none' : '0 2px 8px rgba(0,0,0,0.04)',
             transition: 'all 0.2s ease'
           }}>
+
+            {/* TAB: Verify Account */}
+            {activeTab === 'verify' && (
+              <div>
+                <VerificationForm 
+                  isVerified={isVerified}
+                  onVerifySuccess={() => setIsVerified(true)}
+                />
+              </div>
+            )}
 
           {/* TAB: Overview */}
           {activeTab === 'overview' && (
