@@ -1,17 +1,10 @@
 import { parseNIC, validateNIC } from '@sliit-foss/lk-nic';
 
-/**
- * Validates and extracts data from a Sri Lankan NIC (National Identity Card).
- * Supports both old (9 digits + V/X) and new (12 digits) formats.
- * 
- * @param {string} nicString - The NIC string to validate.
- * @returns {Object} An object containing the validation boolean, errors (if any), and parsed data.
- */
 export const validateAndParseNIC = (nicString) => {
   if (!nicString || typeof nicString !== 'string' || nicString.trim() === '') {
     return {
       isValid: false,
-      errors: [{ code: 'EMPTY_INPUT', message: 'NIC string cannot be empty.' }],
+      errors: [{ code: 'EMPTY_INPUT', message: 'NIC cannot be empty.' }],
       data: null
     };
   }
@@ -33,7 +26,6 @@ export const validateAndParseNIC = (nicString) => {
     };
   }
 
-  // If invalid, fetch specific validation errors to provide detailed feedback
   const validation = validateNIC(nicString);
   return {
     isValid: false,
@@ -41,23 +33,3 @@ export const validateAndParseNIC = (nicString) => {
     data: null
   };
 };
-
-/**
- * Example usage in a React Form or API Controller:
- * 
- * import { validateAndParseNIC } from './utils/nic-validation';
- * 
- * const handleFormSubmit = (nicInput) => {
- *   const result = validateAndParseNIC(nicInput);
- *   
- *   if (!result.isValid) {
- *     // Display errors to the user
- *     console.error('Validation failed:', result.errors);
- *     return;
- *   }
- *   
- *   // Proceed with the extracted data
- *   console.log('Date of Birth:', result.data.dateOfBirth);
- *   console.log('Gender:', result.data.gender);
- * }
- */
