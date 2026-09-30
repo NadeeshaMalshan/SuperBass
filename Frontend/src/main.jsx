@@ -22,6 +22,7 @@ import WorkerDashboard from './pages/worker/WorkerDashboard.jsx'
 import WorkerJobs from './pages/worker/WorkerJobs.jsx'
 import WorkerPerformance from './pages/worker/WorkerPerformance.jsx'
 import WorkerProfile from './pages/worker/WorkerProfile.jsx'
+import WorkerCommunityPosts from './pages/worker/WorkerCommunityPosts.jsx'
 import ResidentProfile from './ResidentProfile.jsx'
 
 class ErrorBoundary extends Component {
@@ -191,8 +192,31 @@ function Router() {
       return <WorkerProfile />;
     }
 
-    return <App />;
-  };
+  // Worker Routes
+  if (path === '/worker/register' || path === '/worker/register.jsx') {
+    return <WorkerRegister />;
+  }
+  if (path === '/worker/login' || path === '/worker/login.jsx') {
+    return <WorkerLogin />;
+  }
+  if (path === '/worker/dashboard' || path === '/worker/dashboard.jsx') {
+    return <WorkerDashboard />;
+  }
+  if (path === '/worker/jobs' || path === '/worker/jobs.jsx') {
+    return <WorkerJobs />;
+  }
+  if (path === '/worker/performance' || path === '/worker/performance.jsx') {
+    return <WorkerPerformance />;
+  }
+  if (path === '/worker/profile' || path === '/worker/profile.jsx') {
+    return <WorkerProfile />;
+  }
+  if (path === '/worker/community-posts' || path === '/worker/community-posts.jsx') {
+    return <WorkerCommunityPosts />;
+  }
+
+  return <App />;
+};
 
   return (
     <>

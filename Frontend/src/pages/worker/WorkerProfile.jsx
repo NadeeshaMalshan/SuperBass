@@ -4,6 +4,8 @@ import axios from 'axios';
 import { API_BASE_URL } from '../../config.js';
 import { WORKER_SERVICES_CATALOG, getSkillsForService, getCategoryByName } from '../../data/workerServicesCatalog.js';
 import sriLankaDistricts from '../../data/sriLankaDistricts.json';
+import VerificationForm from '../../components/VerificationForm.jsx';
+import VerifiedBadge from '../../components/VerifiedBadge.jsx';
 
 export default function WorkerProfile({ defaultTab = 'bio' }) {
   const urlParams = new URLSearchParams(window.location.search);
@@ -31,7 +33,7 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
     location: '',
     experience: '',
     description: '',
-    isVerified: true
+    isVerified: false
   });
 
   // Services & Skills State (hierarchical list matching backend & mobile app)
@@ -69,6 +71,8 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
   });
 
   const [currentWorkerId, setCurrentWorkerId] = useState(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const userEmail = localStorage.getItem('workerEmail') || localStorage.getItem('email');
   const token = localStorage.getItem('token');
 
@@ -89,7 +93,7 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
             location: w.primaryServiceArea || '',
             experience: w.completedJobs > 0 ? `${w.completedJobs} Jobs Completed` : 'Registered Worker',
             description: w.description || '',
-            isVerified: true
+            isVerified: false
           });
           if (w.pricingModel) setPricingModel(w.pricingModel);
           if (w.hourlyRate != null) setHourlyRate(w.hourlyRate);
@@ -349,22 +353,31 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
     }
   };
 
-  const handleRevertToResident = async () => {
-    if (!window.confirm("Are you sure you want to revert back to a Resident? Your worker profile will be deleted and you will return to being a resident.")) {
+  const handleDeleteWorkerAccount = async () => {
+    if (deleteConfirmText !== 'DELETE') {
+      alert("Please type DELETE in capital letters to confirm permanent account deletion.");
+      return;
+    }
+
+    if (!window.confirm("FINAL WARNING: Are you absolutely certain you want to permanently delete your Worker account? All your craftsman profile data, skills, bookings, and reviews will be permanently erased. Your email will be freed up.")) {
       return;
     }
 
     try {
-      await axios.delete(`${API_BASE_URL}/workers/revert-to-resident?email=${encodeURIComponent(userEmail)}`, {
+      setIsDeletingAccount(true);
+      await axios.delete(`${API_BASE_URL}/workers/delete-account?email=${encodeURIComponent(userEmail)}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
-      localStorage.setItem('activeRole', 'Resident');
-      alert("Successfully reverted to Resident role.");
-      window.history.pushState({}, '', '/account');
+      alert("Your Worker account has been permanently deleted. Your email is now freed up to register as either Resident or Worker.");
+      localStorage.clear();
+      sessionStorage.clear();
+      window.history.pushState({}, '', '/');
       window.dispatchEvent(new PopStateEvent('popstate'));
     } catch (err) {
-      console.error('Failed to revert to resident role:', err);
-      alert('Failed to revert role. Please try again.');
+      console.error('Failed to delete worker account:', err);
+      alert(err.response?.data?.message || 'Failed to delete worker account.');
+    } finally {
+      setIsDeletingAccount(false);
     }
   };
 
@@ -448,6 +461,14 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
       {/* Profile Top Tab Navigation (Uber Pill Style) */}
       <div className="profile-tabs-nav">
         <button 
+          className={`profile-tab-btn ${activeTab === 'verify' ? 'active' : ''}`}
+          onClick={() => setActiveTab('verify')}
+        >
+          <i className="fa-solid fa-user-check"></i>
+          Verify Account
+        </button>
+        
+        <button 
           className={`profile-tab-btn ${activeTab === 'bio' ? 'active' : ''}`}
           onClick={() => setActiveTab('bio')}
         >
@@ -488,6 +509,16 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
         </button>
       </div>
 
+      {/* Tab: Verify Account */}
+      {activeTab === 'verify' && (
+        <div className="worker-card">
+          <VerificationForm 
+            isVerified={bio.isVerified}
+            onVerifySuccess={() => setBio({ ...bio, isVerified: true })}
+          />
+        </div>
+      )}
+
       {/* Tab 1: Personal Details & Bio */}
       {activeTab === 'bio' && (
         <div className="worker-card" style={{ padding: '30px', borderRadius: '18px' }}>
@@ -514,22 +545,7 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
                 <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#000000', margin: 0, letterSpacing: '-0.02em' }}>
                   {bio.name || 'Worker Profile'}
                 </h3>
-                {bio.isVerified && (
-                  <span style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    fontSize: '0.74rem',
-                    fontWeight: 700,
-                    color: '#16a34a',
-                    backgroundColor: '#f0fdf4',
-                    border: '1px solid #bbf7d0',
-                    borderRadius: '9999px',
-                    padding: '3px 10px'
-                  }}>
-                    <i className="fa-solid fa-shield-check"></i> Verified Worker
-                  </span>
-                )}
+                {bio.isVerified && <VerifiedBadge />}
               </div>
               <p style={{ fontSize: '0.88rem', color: '#737373', marginTop: '4px', margin: 0 }}>
                 {bio.location || 'Location not set'} • Experience: {bio.experience || 'Verified Professional'}
@@ -1046,30 +1062,83 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
 
           <hr style={{ margin: '32px 0 24px 0', borderColor: '#e5e5e5' }} />
 
-          {/* Danger Zone: Revert to Resident */}
-          <div style={{ backgroundColor: '#FEF2F2', padding: '24px', borderRadius: '16px', border: '1px solid #FCA5A5' }}>
-            <h4 style={{ color: '#991B1B', margin: '0 0 8px 0', fontSize: '1rem', fontWeight: 800 }}>
-              <i className="fa-solid fa-triangle-exclamation" style={{ marginRight: '8px' }}></i>
-              Return to Resident Status
-            </h4>
-            <p style={{ color: '#7F1D1D', fontSize: '0.875rem', margin: '0 0 16px 0', lineHeight: 1.5 }}>
-              Once you revert to being a resident, your worker profile will be deactivated, and you will regain standard resident privileges.
-            </p>
-            <button 
-              type="button" 
-              onClick={handleRevertToResident}
+          {/* RESTRICTED AREA — DANGER ZONE */}
+          <div style={{
+            marginTop: '2rem',
+            border: '2px solid #dc2626',
+            borderRadius: '16px',
+            backgroundColor: '#fef2f2',
+            padding: '24px',
+            boxShadow: '0 4px 16px rgba(220, 38, 38, 0.08)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+              <span style={{ fontSize: '1.4rem' }}>🚨</span>
+              <div>
+                <h4 style={{ margin: 0, color: '#991b1b', fontWeight: 800, fontSize: '1.15rem', letterSpacing: '-0.01em' }}>
+                  RESTRICTED AREA — DANGER ZONE
+                </h4>
+                <p style={{ margin: '2px 0 0 0', color: '#b91c1c', fontSize: '0.825rem', fontWeight: 600 }}>
+                  Permanent Worker Account Erasure & Role Liberation
+                </p>
+              </div>
+            </div>
+
+            <div style={{ backgroundColor: '#ffffff', borderRadius: '10px', padding: '16px', border: '1px solid #fecaca', marginBottom: '18px' }}>
+              <p style={{ margin: '0 0 8px 0', fontSize: '0.88rem', color: '#7f1d1d', lineHeight: 1.5 }}>
+                <strong>Warning:</strong> Deleting your account will permanently wipe your craftsman listing, services catalog, pricing rates, reviews, ratings, active jobs, and chat messages. This action is irreversible.
+              </p>
+              <p style={{ margin: 0, fontSize: '0.88rem', color: '#991b1b', lineHeight: 1.5 }}>
+                <strong>Role Exclusivity:</strong> An email can only be registered as either a Worker or a Resident. If you wish to switch roles and become a Resident, you must permanently delete this Worker account first. Once deleted, this email address is released to register as a Resident.
+              </p>
+            </div>
+
+            <div style={{ marginBottom: '18px' }}>
+              <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', color: '#7f1d1d', marginBottom: '6px' }}>
+                To confirm permanent deletion, please type <code style={{ backgroundColor: '#fee2e2', padding: '2px 6px', borderRadius: '4px', color: '#991b1b', fontWeight: 800 }}>DELETE</code> below:
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="Type DELETE to confirm"
+                style={{
+                  width: '100%',
+                  maxWidth: '360px',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  border: deleteConfirmText === 'DELETE' ? '2px solid #dc2626' : '1.5px solid #fca5a5',
+                  fontSize: '0.95rem',
+                  fontFamily: 'monospace',
+                  fontWeight: 700,
+                  outline: 'none',
+                  backgroundColor: '#ffffff',
+                  color: '#991b1b'
+                }}
+              />
+            </div>
+
+            <button
+              type="button"
+              disabled={deleteConfirmText !== 'DELETE' || isDeletingAccount}
+              onClick={handleDeleteWorkerAccount}
               style={{
-                backgroundColor: '#DC2626',
-                color: '#FFFFFF',
+                backgroundColor: deleteConfirmText === 'DELETE' ? '#dc2626' : '#f87171',
+                color: '#ffffff',
                 border: 'none',
-                padding: '10px 22px',
-                borderRadius: '9999px',
-                fontWeight: 700,
-                fontSize: '0.88rem',
-                cursor: 'pointer'
+                padding: '12px 24px',
+                borderRadius: '8px',
+                fontWeight: 800,
+                fontSize: '0.92rem',
+                cursor: deleteConfirmText === 'DELETE' ? 'pointer' : 'not-allowed',
+                opacity: deleteConfirmText === 'DELETE' ? 1 : 0.6,
+                transition: 'all 0.2s ease',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px'
               }}
             >
-              Revert to Resident Role
+              <span>🗑️</span>
+              <span>{isDeletingAccount ? 'Deleting Account...' : 'Permanently Delete Worker Account'}</span>
             </button>
           </div>
         </div>

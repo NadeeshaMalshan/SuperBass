@@ -86,22 +86,55 @@ namespace Superbass.Services
 
         public async Task<bool> DeleteResidentAsync(string email)
         {
-            var resident = await _context.Residents.FindAsync(email);
+            if (string.IsNullOrWhiteSpace(email)) return false;
+            var cleanEmail = email.Trim().ToLower();
+            var resident = await _context.Residents.FirstOrDefaultAsync(r => r.Email.ToLower() == cleanEmail);
             if (resident == null) return false;
 
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
+                // Find worker associated with this resident/email if any
+                var worker = await _context.Workers.FirstOrDefaultAsync(w => 
+                    (w.ResidentEmail != null && w.ResidentEmail.ToLower() == cleanEmail) || 
+                    (w.Email != null && w.Email.ToLower() == cleanEmail));
+
+                var workerId = worker?.Id;
+
+                // 1. Delete Chat Messages & Conversations
+                var conversationIds = await _context.Conversations
+                    .Where(c => c.ResidentEmail.ToLower() == cleanEmail || (workerId.HasValue && c.WorkerId == workerId.Value))
+                    .Select(c => c.Id)
+                    .ToListAsync();
+
+                if (conversationIds.Any())
+                {
+                    await _context.ChatMessages
+                        .Where(m => conversationIds.Contains(m.ConversationId))
+                        .ExecuteDeleteAsync();
+
+                    await _context.Conversations
+                        .Where(c => conversationIds.Contains(c.Id))
+                        .ExecuteDeleteAsync();
+                }
+
+                // 2. Delete Bookings
+                await _context.Bookings
+                    .Where(b => b.ResidentEmail.ToLower() == cleanEmail || (workerId.HasValue && b.WorkerId == workerId.Value))
+                    .ExecuteDeleteAsync();
+
+                // 3. Delete Community Comments & Reports by this user
                 await _context.CommunityComments
-                    .Where(c => c.UserId == email)
+                    .Where(c => c.UserId.ToLower() == cleanEmail)
                     .ExecuteDeleteAsync();
 
                 await _context.CommunityReports
-                    .Where(r => r.ReporterUserId == email)
+                    .Where(r => r.ReporterUserId.ToLower() == cleanEmail)
                     .ExecuteDeleteAsync();
 
+                // 4. Delete Community Posts by this user
                 var userPostIds = await _context.CommunityPosts
-                    .Where(p => p.UserId == email)
+                    .Where(p => p.UserId.ToLower() == cleanEmail)
                     .Select(p => p.PostId)
                     .ToListAsync();
 
@@ -120,6 +153,18 @@ namespace Superbass.Services
                         .ExecuteDeleteAsync();
                 }
 
+                // 5. Delete Worker & WorkerSkills if present
+                if (worker != null)
+                {
+                    await _context.WorkerSkills
+                        .Where(s => s.WorkerId == worker.Id)
+                        .ExecuteDeleteAsync();
+
+                    _context.Workers.Remove(worker);
+                    await _context.SaveChangesAsync();
+                }
+
+                // 6. Delete Resident
                 _context.Residents.Remove(resident);
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();

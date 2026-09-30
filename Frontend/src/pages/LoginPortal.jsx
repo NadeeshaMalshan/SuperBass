@@ -33,45 +33,8 @@ function LoginPortalContent() {
 
       // When logging in as Worker (Sign In / Sign Up)
       if (intendedRole === 'Worker') {
-        let isWorker = data.isWorker;
-        let workerId = data.workerId;
-        let isNewWorker = data.isNewWorker;
-
-        // Auto-register as worker if not existing yet (Sign Up)
-        if (!isWorker) {
-          try {
-            const checkRes = await axios.get(`${API_BASE_URL}/workers/me`, {
-              params: { email }
-            });
-            if (checkRes.data && checkRes.data.worker) {
-              isWorker = true;
-              workerId = checkRes.data.worker.id;
-            } else {
-              const becomeRes = await axios.post(`${API_BASE_URL}/workers/become-worker`, {
-                email: email,
-                description: 'Verified Community Service Professional',
-                primaryServiceArea: 'Colombo',
-                coverageRadiusKm: 15,
-                pricingModel: 'Hourly',
-                skills: [{
-                  serviceName: 'Handyman Services',
-                  skills: ['General Maintenance & Repairs'],
-                  experienceYears: 1
-                }]
-              }, {
-                headers: { Authorization: `Bearer ${data.token}` }
-              });
-
-              if (becomeRes.data && becomeRes.data.worker) {
-                isWorker = true;
-                workerId = becomeRes.data.worker.id;
-                isNewWorker = true;
-              }
-            }
-          } catch (e) {
-            console.error('Worker registration fallback:', e);
-          }
-        }
+        const workerId = data.workerId;
+        const isNewWorker = data.isNewWorker;
 
         localStorage.setItem('token', data.token);
         localStorage.setItem('workerAuth', 'true');
@@ -150,22 +113,22 @@ function LoginPortalContent() {
           <div style={{
             position: 'relative',
             width: '100%',
-            maxHeight: '220px',
+            maxHeight: '260px',
             overflow: 'hidden',
             borderRadius: '16px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: '#000000'
+            backgroundColor: '#ffffff'
           }}>
             <img 
               src={loginBanner} 
               alt="Workio Portals" 
               style={{
                 width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                objectPosition: 'center 40%'
+                maxHeight: '260px',
+                objectFit: 'contain',
+                backgroundColor: '#ffffff'
               }}
             />
           </div>

@@ -159,6 +159,16 @@ export default function WorkerLayout({ children, activeTab = 'dashboard' }) {
               </div>
             </div>
 
+            <div
+              className={`m3-drawer-item ${activeTab === 'community-posts' ? 'active' : ''}`}
+              onClick={() => navigate('/worker/community-posts')}
+            >
+              <div className="m3-drawer-item-left">
+                <md-icon className="m3-drawer-icon">dynamic_feed</md-icon>
+                <span className="m3-drawer-label">My Community Posts</span>
+              </div>
+            </div>
+
             <div style={{ height: '1px', backgroundColor: '#e5e5e5', margin: '12px 16px' }} />
 
             <div
