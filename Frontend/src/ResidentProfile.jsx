@@ -716,7 +716,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
               </div>
             </div>
 
-            {isWorker ? (
+            {isWorker && (
               <div
                 className="m3-drawer-item"
                 onClick={() => {
@@ -728,17 +728,6 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                 <div className="m3-drawer-item-left">
                   <md-icon className="m3-drawer-icon" style={{ color: '#2563eb' }}>engineering</md-icon>
                   <span className="m3-drawer-label" style={{ color: '#2563eb', fontWeight: 700 }}>Worker Portal</span>
-                </div>
-              </div>
-            ) : (
-              <div
-                className={`m3-drawer-item ${activeTab === 'become-worker' ? 'active' : ''}`}
-                onClick={() => setActiveTab('become-worker')}
-                style={{ marginTop: '8px' }}
-              >
-                <div className="m3-drawer-item-left">
-                  <md-icon className="m3-drawer-icon" style={{ color: '#2563eb' }}>handyman</md-icon>
-                  <span className="m3-drawer-label" style={{ color: '#2563eb', fontWeight: 700 }}>Join as Worker</span>
                 </div>
               </div>
             )}
