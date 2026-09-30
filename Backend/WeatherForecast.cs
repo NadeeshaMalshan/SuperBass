@@ -1,4 +1,4 @@
-namespace Superbass;
+namespace Workio;
 
 public class WeatherForecast
 {

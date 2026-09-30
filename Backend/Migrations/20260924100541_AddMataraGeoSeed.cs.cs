@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace Superbass.Migrations
+namespace Workio.Migrations
 {
     /// <inheritdoc />
     public partial class AddMataraGeoSeedcs : Migration

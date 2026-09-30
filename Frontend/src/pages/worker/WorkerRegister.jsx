@@ -41,7 +41,7 @@ export default function WorkerRegister() {
         <div style={{ marginBottom: '24px' }}>
           <img 
             src="/iconWithText-cropped.png" 
-            alt="SuperBass Logo" 
+            alt="Workio Logo" 
             style={{ height: '60px', cursor: 'pointer', marginBottom: '16px' }} 
             onClick={() => navigate('/')}
           />

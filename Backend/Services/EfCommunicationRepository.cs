@@ -3,15 +3,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using Superbass.Models;
+using Workio.Models;
 
-namespace Superbass.Services
+namespace Workio.Services
 {
     public class EfCommunicationRepository : ICommunicationRepository
     {
-        private readonly SuperbassDbContext _context;
+        private readonly WorkioDbContext _context;
 
-        public EfCommunicationRepository(SuperbassDbContext context)
+        public EfCommunicationRepository(WorkioDbContext context)
         {
             _context = context;
         }
@@ -46,7 +46,7 @@ namespace Superbass.Services
                 // Ensure a Resident entry exists for the worker
                 var workerEmail = !string.IsNullOrWhiteSpace(request.WorkerEmail) 
                     ? request.WorkerEmail 
-                    : $"worker{DateTime.UtcNow.Ticks}@superbass.lk";
+                    : $"worker{DateTime.UtcNow.Ticks}@Workio.lk";
 
                 var workerResident = await _context.Residents.FindAsync(workerEmail);
                 if (workerResident == null)
@@ -54,7 +54,7 @@ namespace Superbass.Services
                     workerResident = new Resident
                     {
                         Email = workerEmail,
-                        Name = request.WorkerName ?? "SuperBass Worker",
+                        Name = request.WorkerName ?? "Workio Worker",
                         PhoneNo = "0771234567"
                     };
                     _context.Residents.Add(workerResident);
@@ -340,7 +340,7 @@ namespace Superbass.Services
             {
                 if (senderEmail.Equals(conversation.ResidentEmail, StringComparison.OrdinalIgnoreCase))
                 {
-                    receiverEmail = conversation.Worker?.Email ?? conversation.Worker?.ResidentEmail ?? "worker@superbass.lk";
+                    receiverEmail = conversation.Worker?.Email ?? conversation.Worker?.ResidentEmail ?? "worker@Workio.lk";
                     receiverRole = "Worker";
                 }
                 else

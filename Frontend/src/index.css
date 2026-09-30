@@ -1,4 +1,4 @@
-/* Material Design 3 & Unified Design Tokens for SuperBass (Black, White & Grays) */
+/* Material Design 3 & Unified Design Tokens for Workio (Black, White & Grays) */
 :root {
   --md-sys-color-primary: #000000;
   --md-sys-color-on-primary: #ffffff;
@@ -191,4 +191,4 @@ md-select-option, md-menu-item {
   100% {
     transform: rotate(360deg);
   }
-}
+}

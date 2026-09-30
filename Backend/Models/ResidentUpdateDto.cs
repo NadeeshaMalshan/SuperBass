@@ -1,4 +1,4 @@
-namespace Superbass.Models
+namespace Workio.Models
 {
     public class ResidentUpdateDto
     {

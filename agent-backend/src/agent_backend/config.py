@@ -1,5 +1,5 @@
 """
-Configuration settings for SuperBass Agent Backend.
+Configuration settings for Workio Agent Backend.
 Uses pydantic-settings to load configuration from environment variables and .env file.
 """
 

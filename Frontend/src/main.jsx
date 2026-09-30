@@ -32,7 +32,7 @@ class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('SuperBass Application Error:', error, errorInfo);
+    console.error('Workio Application Error:', error, errorInfo);
   }
 
   render() {

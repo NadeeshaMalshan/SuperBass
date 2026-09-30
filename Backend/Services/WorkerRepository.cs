@@ -1,6 +1,6 @@
-using Superbass.Models;
+using Workio.Models;
 
-namespace Superbass.Services
+namespace Workio.Services
 {
     public interface WorkerRepository
     {
