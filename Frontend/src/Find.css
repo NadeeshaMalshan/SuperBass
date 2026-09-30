@@ -13,9 +13,9 @@
 .find-layout {
   display: flex;
   gap: 28px;
-  max-width: 1400px;
+  max-width: 100%;
   margin: 0 auto;
-  padding: 24px;
+  padding: 0 32px;
   box-sizing: border-box;
 }
 
@@ -1087,4 +1087,9 @@
 
 .worker-status-section .uber-sidebar-item.active .uber-sidebar-badge {
   font-weight: 500 !important;
+}
+
+.find-sidebar.m3-drawer {
+  height: calc(100vh - 64px - 48px) !important;
+  top: 88px !important;
 }

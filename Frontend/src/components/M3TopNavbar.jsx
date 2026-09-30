@@ -78,17 +78,7 @@ export default function M3TopNavbar({
     <header className={`m3-top-navbar ${theme === 'dark' ? 'dark-theme' : ''}`}>
       {/* Left: App Logo & Name with Optional Hamburger Toggle */}
       <div className="m3-navbar-brand-group">
-        {showSidebarToggle && (
-          <button
-            type="button"
-            className="m3-hamburger-btn"
-            onClick={onToggleSidebar}
-            title={isSidebarCollapsed ? "Expand panel" : "Collapse panel"}
-            aria-label="Toggle navigation drawer"
-          >
-            <md-icon>menu</md-icon>
-          </button>
-        )}
+
 
         <a
           href="/"

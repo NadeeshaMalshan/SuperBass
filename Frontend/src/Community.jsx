@@ -558,6 +558,10 @@ export default function Community() {
       <div className="community-layout-container">
         {/* Left Sidebar Navigation (Uber Style) */}
         <aside className={`community-sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+          <button className="sidebar-toggle-btn" onClick={() => setIsSidebarCollapsed(prev => !prev)} title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}>
+            <md-icon>{isSidebarCollapsed ? 'chevron_right' : 'chevron_left'}</md-icon>
+          </button>
+
 
           {/* Location Filter Section: Two Separate Fields (Province and District) */}
           <div className="uber-sidebar-section">
