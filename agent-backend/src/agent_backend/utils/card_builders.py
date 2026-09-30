@@ -12,6 +12,7 @@ from langchain_core.messages import SystemMessage, ToolMessage, HumanMessage, AI
 from langchain_openai import ChatOpenAI
 from agent_backend.config import settings
 from agent_backend.state.state import AgentState
+from agent_backend.utils.sanitizer import extract_text_content
 from agent_backend.schemas.card_models import (
     AgentCardResponse,
     PostConfirmationCard,
@@ -123,8 +124,14 @@ async def format_specialist_structured_message(
     If the response contains repetitive bullet lists, card dumps, or markdown images,
     enforces a clean, friendly 1-2 sentence message via SpecialistConversationalOutput.
     """
-    raw_content = getattr(response, "content", "")
-    if not isinstance(raw_content, str) or not raw_content:
+    raw_content = extract_text_content(getattr(response, "content", ""))
+    if isinstance(getattr(response, "content", None), list):
+        response = AIMessage(
+            content=raw_content,
+            additional_kwargs=getattr(response, "additional_kwargs", {}),
+            response_metadata=getattr(response, "response_metadata", {})
+        )
+    if not raw_content:
         return response
 
     # Check if the message contains repetitive card-like dumps
@@ -169,11 +176,11 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
 
     last_ai_content = ""
     if ai_message and hasattr(ai_message, "content") and ai_message.content:
-        last_ai_content = ai_message.content
+        last_ai_content = extract_text_content(ai_message.content)
     else:
         for msg in reversed(messages):
             if getattr(msg, "type", "") == "ai" and msg.content:
-                last_ai_content = msg.content
+                last_ai_content = extract_text_content(msg.content)
                 break
 
     # Search for latest ToolMessage
@@ -363,7 +370,7 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
             user_msg_content = ""
             for msg in reversed(messages):
                 if getattr(msg, "type", "") in ("human", "user"):
-                    user_msg_content = getattr(msg, "content", "") or ""
+                    user_msg_content = extract_text_content(getattr(msg, "content", "") or "")
                     break
 
             lower_user = user_msg_content.lower()
@@ -473,7 +480,7 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
             if max_budget is None:
                 for msg in reversed(messages):
                     if isinstance(msg, HumanMessage) or getattr(msg, "type", "") == "human":
-                        user_txt = msg.content if isinstance(msg.content, str) else str(msg.content)
+                        user_txt = extract_text_content(msg.content)
                         m = re.search(r'(?:below|under|less than|max(?:imum)?|rate of|budget of)\s*(?:rs\.?|lkr)?\s*(\d+)', user_txt, re.IGNORECASE)
                         if m:
                             try:

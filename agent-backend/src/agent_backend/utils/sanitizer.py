@@ -13,6 +13,35 @@ from langchain_core.messages import BaseMessage
 BASE64_IMAGE_REGEX = re.compile(r"data:image\/[a-zA-Z0-9.+_-]+;base64,[A-Za-z0-9+/=]+", re.IGNORECASE)
 
 
+def extract_text_content(content: Any) -> str:
+    """
+    Safely normalizes string or list-based content (e.g. from multimodal or reasoning models like o1/Luna)
+    into a plain string.
+    """
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for block in content:
+            if isinstance(block, str):
+                parts.append(block)
+            elif isinstance(block, dict):
+                if block.get("type") == "text":
+                    parts.append(block.get("text", ""))
+                elif "text" in block:
+                    parts.append(str(block["text"]))
+                elif "content" in block:
+                    parts.append(str(block["content"]))
+                else:
+                    parts.append(str(block))
+            else:
+                parts.append(str(block))
+        return "\n".join(filter(None, parts)).strip()
+    if content is None:
+        return ""
+    return str(content)
+
+
 def sanitize_text(text: str, max_chars: int = 4000) -> str:
     """Strip base64 data URLs from text and truncate if excessively long."""
     if not isinstance(text, str):
@@ -22,6 +51,7 @@ def sanitize_text(text: str, max_chars: int = 4000) -> str:
     if len(text) > max_chars:
         text = text[:max_chars] + "... [truncated]"
     return text
+
 
 
 def sanitize_dict_or_list(obj: Any, depth: int = 0) -> Any:

@@ -22,7 +22,7 @@ from agent_backend.tools.mcp_client import mcp_client
 from agent_backend.db.database import init_db
 from agent_backend.db.chat_repository import chat_repository
 from agent_backend.tools.community_tools import current_post_images
-from agent_backend.utils.sanitizer import sanitize_text
+from agent_backend.utils.sanitizer import sanitize_text, extract_text_content
 from agent_backend.utils.turn_tracker import TurnUsageLogger
 
 # Configure logging to both console and dedicated ai_chat.log file
@@ -253,7 +253,7 @@ async def chat_endpoint(request: ChatRequest):
         if not card_response:
             # Fallback text card
             messages = final_state.get("messages", [])
-            last_text = messages[-1].content if messages else "No response generated."
+            last_text = extract_text_content(messages[-1].content) if messages else "No response generated."
             card_response = AgentCardResponse(
                 response_type="text_message",
                 message=last_text,

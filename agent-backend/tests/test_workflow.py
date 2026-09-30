@@ -677,6 +677,40 @@ async def test_architecture_a_direct_structured_responses():
         assert s_res["structured_response"].response_type == "text_message"
 
 
+@pytest.mark.asyncio
+async def test_card_builder_with_list_content_blocks():
+    """Verify handling of list-based content blocks (from reasoning models like Luna/o1) without 'list has no lower' error."""
+    from agent_backend.utils.card_builders import _deterministic_card_builder, build_community_card, format_specialist_structured_message
+    from agent_backend.utils.sanitizer import extract_text_content
+
+    # 1. extract_text_content unit tests
+    assert extract_text_content("hello") == "hello"
+    assert extract_text_content([{"type": "text", "text": "chunk1"}, {"type": "text", "text": "chunk2"}]) == "chunk1\nchunk2"
+    assert extract_text_content(["simple", "list"]) == "simple\nlist"
+
+    # 2. State with list-based AIMessage content
+    state = {
+        "messages": [
+            HumanMessage(content=[{"type": "text", "text": "I need help with my garden"}]),
+            ToolMessage(content='{"categories": ["Gardening"]}', tool_call_id="call_test", name="get_service_categories"),
+            AIMessage(content=[{"type": "text", "text": "Here are the gardening details."}])
+        ],
+        "email": "resident@workio.lk",
+        "user_type": "Resident",
+        "user_profile": {"displayName": "John Doe", "address": "Colombo"},
+        "next": None,
+        "structured_response": None,
+        "metadata": {}
+    }
+    card_resp = build_community_card(state, ai_message=state["messages"][-1])
+    assert card_resp is not None
+    assert isinstance(card_resp.message, str)
+
+    # 3. format_specialist_structured_message with list-based AIMessage
+    list_ai = AIMessage(content=[{"type": "text", "text": "A simple list message"}])
+    res_ai = await format_specialist_structured_message([], list_ai)
+    assert isinstance(res_ai.content, str)
+    assert res_ai.content == "A simple list message"
 
 
 if __name__ == "__main__":
