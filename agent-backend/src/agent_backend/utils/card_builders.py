@@ -1007,8 +1007,23 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                 idx = draft_content.lower().find(trail)
                 draft_content = draft_content[:idx].strip().rstrip(". ")
 
-        if not draft_content:
-            draft_content = last_ai_content
+        # Ensure draft content is meaningful and never the AI's announcement or draft card message
+        if not draft_content or any(p in draft_content.lower() for p in [
+            "here is your draft", "draft community post", "review the details", "draft card", "you can edit them"
+        ]):
+            user_problem_txt = ""
+            for msg in reversed(messages):
+                if getattr(msg, "type", "") in ("human", "user"):
+                    content_str = extract_text_content(getattr(msg, "content", ""))
+                    if len(content_str) > 8 and not any(kw in content_str.lower() for kw in [
+                        "confirm", "publish", "create a post", "post on community", "1", "2"
+                    ]):
+                        user_problem_txt = content_str
+                        break
+            if user_problem_txt:
+                draft_content = user_problem_txt
+            else:
+                draft_content = f"Looking for professional service assistance with {draft_title} in {draft_location}."
 
         if not draft_category or draft_category.lower() == "general":
             if metadata.get("inferred_category"):
@@ -1046,7 +1061,11 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
     # General text message fallback
     suggestions = metadata.get("suggested_actions")
     if not suggestions:
-        if any(k in lower_content for k in ["what would you like to change", "proposed edits", "edit", "change its title"]):
+        if any(k in lower_content for k in ["new title", "what would you like the new title", "title to be"]):
+            suggestions = ["Keep current title", "Change description instead", "Cancel update"]
+        elif any(k in lower_content for k in ["new description", "new content", "what would you like the description"]):
+            suggestions = ["Keep current description", "Change title instead", "Cancel update"]
+        elif any(k in lower_content for k in ["what would you like to change", "proposed edits", "proposed update", "edit", "update", "change its title"]):
             suggestions = ["Change the title", "Change the description", "Change the category", "Change the location"]
         else:
             suggestions = [

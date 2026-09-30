@@ -806,6 +806,51 @@ def test_strips_leading_empty_brackets():
     assert not cleaned.startswith("[")
 
 
+def test_draft_content_never_uses_ai_announcement():
+    """Verify draft_content uses user's problem description, never 'Here is your draft...'"""
+    from agent_backend.utils.card_builders import _deterministic_card_builder
+
+    state = {
+        "messages": [
+            HumanMessage(content="My washroom tap is leaking heavily and flooding the floor"),
+            AIMessage(content="Here is your draft community post: Please review the details in the draft card. You can edit them, attach photos, and publish when ready.")
+        ],
+        "email": "jayashan@workio.lk",
+        "user_type": "Resident",
+        "user_profile": {"displayName": "Jayashan", "address": "Colombo"},
+        "next": None,
+        "structured_response": None,
+        "metadata": {"inferred_category": "Plumbing"}
+    }
+    card_resp = _deterministic_card_builder(state)
+    assert card_resp.response_type == "post_confirmation"
+    assert "Here is your draft" not in card_resp.card_data["content"]
+    assert "tap is leaking" in card_resp.card_data["content"]
+
+
+def test_title_update_suggestions():
+    """Verify that asking for a new title shows relevant suggestions, not technician/booking buttons."""
+    from agent_backend.utils.card_builders import _deterministic_card_builder
+
+    state = {
+        "messages": [
+            HumanMessage(content="Change the title"),
+            AIMessage(content="What would you like the new title to be? Once you provide it, I'll show you the proposed update for confirmation.")
+        ],
+        "email": "jayashan@workio.lk",
+        "user_type": "Resident",
+        "user_profile": {"displayName": "Jayashan"},
+        "next": None,
+        "structured_response": None,
+        "metadata": {}
+    }
+    card_resp = _deterministic_card_builder(state)
+    assert card_resp.response_type == "text_message"
+    suggestions = [str(s).lower() for s in card_resp.card_data.get("suggestions", [])]
+    assert any("title" in s or "cancel" in s for s in suggestions)
+    assert not any("book a service technician" in s for s in suggestions)
+
+
 if __name__ == "__main__":
     test_card_schemas()
     test_langgraph_compilation()
