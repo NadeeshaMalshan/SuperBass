@@ -461,6 +461,14 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
       {/* Profile Top Tab Navigation (Uber Pill Style) */}
       <div className="profile-tabs-nav">
         <button 
+          className={`profile-tab-btn ${activeTab === 'verify' ? 'active' : ''}`}
+          onClick={() => setActiveTab('verify')}
+        >
+          <i className="fa-solid fa-user-check"></i>
+          Verify Account
+        </button>
+        
+        <button 
           className={`profile-tab-btn ${activeTab === 'bio' ? 'active' : ''}`}
           onClick={() => setActiveTab('bio')}
         >
@@ -537,22 +545,7 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
                 <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#000000', margin: 0, letterSpacing: '-0.02em' }}>
                   {bio.name || 'Worker Profile'}
                 </h3>
-                {bio.isVerified && (
-                  <span style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    fontSize: '0.74rem',
-                    fontWeight: 700,
-                    color: '#16a34a',
-                    backgroundColor: '#f0fdf4',
-                    border: '1px solid #bbf7d0',
-                    borderRadius: '9999px',
-                    padding: '3px 10px'
-                  }}>
-                    <i className="fa-solid fa-shield-check"></i> Verified Worker
-                  </span>
-                )}
+                {bio.isVerified && <VerifiedBadge />}
               </div>
               <p style={{ fontSize: '0.88rem', color: '#737373', marginTop: '4px', margin: 0 }}>
                 {bio.location || 'Location not set'} • Experience: {bio.experience || 'Verified Professional'}
