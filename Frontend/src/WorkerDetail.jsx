@@ -261,7 +261,7 @@ export default function WorkerDetail() {
       alert('Workers cannot initiate direct chats with other workers. Chatting is only available between residents and workers.');
       return;
     }
-    navigate('/chats');
+    navigate(`/chats?workerId=${workerId}`);
   };
 
   const handleOpenHireModal = async () => {

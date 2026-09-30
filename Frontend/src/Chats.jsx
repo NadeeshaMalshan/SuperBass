@@ -805,6 +805,21 @@ export default function Chats() {
     }
   };
 
+  // Auto-start chat from URL parameter
+  useEffect(() => {
+    if (!isDataLoaded || workersList.length === 0) return;
+    const params = new URLSearchParams(window.location.search);
+    const workerIdParam = params.get('workerId');
+    if (workerIdParam && !selectedChatRef.current) {
+      const workerIdNum = parseInt(workerIdParam, 10);
+      const worker = workersList.find(w => w.id === workerIdNum);
+      if (worker) {
+        handleStartChatWithWorker(worker);
+        window.history.replaceState({}, '', '/chats');
+      }
+    }
+  }, [isDataLoaded, workersList]);
+
   // Render Worker Search Results Dropdown inside Top Navbar
   const renderWorkerSearchDropdown = () => {
     if (!isWorkerDropdownOpen || !workerSearchQuery.trim()) return null;
