@@ -133,9 +133,17 @@ function Router() {
     return <Community />;
   }
   if (path === '/chats' || path === '/chats.jsx') {
+    if (!localStorage.getItem('token')) {
+      window.history.replaceState({}, '', '/login');
+      return <LoginPortal />;
+    }
     return <Chats />;
   }
   if (path === '/bookings' || path === '/bookings.jsx') {
+    if (!localStorage.getItem('token')) {
+      window.history.replaceState({}, '', '/login');
+      return <LoginPortal />;
+    }
     return <Bookings />;
   }
   if (path === '/onboarding' || path === '/onboarding.jsx') {
