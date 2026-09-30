@@ -43,7 +43,6 @@ async def support_review_agent_node(state: AgentState) -> Dict[str, Any]:
         logger.info(f"⭐ [Support & Review Agent] Executing LLM with tools for '{email}'")
         llm = ChatOpenAI(
             model=settings.openai_model,
-            temperature=0.2,
             api_key=settings.openai_api_key
         ).bind_tools(SUPPORT_REVIEW_TOOLS)
 

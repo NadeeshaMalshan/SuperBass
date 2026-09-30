@@ -222,6 +222,73 @@ def test_deterministic_card_builder_for_service_categories():
     assert len(card_resp.card_data["categories"]) == 4
 
 
+def test_deterministic_card_builder_ignores_service_categories_during_draft_post():
+    """Verify card formatter builds post_confirmation card when drafting a post, even if get_service_categories tool was called."""
+    tool_content = '{"categories": ["Plumbing", "Electrical", "Carpentry", "Masonry"]}'
+    draft_ai_message = (
+        "Here is your draft community post:\n"
+        "• Title: Emergency Water Leak Repair\n"
+        "• Category: Plumbing\n"
+        "• Location: Colombo\n"
+        "• Content: I have an emergency water leak at my property in Colombo causing ongoing water overflow. "
+        "I need an experienced plumber to attend immediately.\n"
+        "Would you like to publish this post now? Reply 'confirm' or 'publish' to proceed."
+    )
+    state = {
+        "messages": [
+            HumanMessage(content="Create a community post for emergency plumber for water leak"),
+            AIMessage(content="Checking categories..."),
+            ToolMessage(content=tool_content, tool_call_id="call_cat_draft", name="get_service_categories"),
+            AIMessage(content=draft_ai_message)
+        ],
+        "email": "resident@workio.lk",
+        "user_type": "Resident",
+        "user_profile": {"displayName": "John Doe", "address": "Colombo"},
+        "next": None,
+        "structured_response": None,
+        "metadata": {}
+    }
+    card_resp = _deterministic_card_builder(state)
+    assert card_resp.response_type == "post_confirmation"
+    assert card_resp.card_data["title"] == "Emergency Water Leak Repair"
+    assert card_resp.card_data["communityId"] == "Plumbing"
+    assert card_resp.card_data["location"] == "Colombo"
+    assert "emergency water leak" in card_resp.card_data["content"]
+
+
+def test_deterministic_card_builder_ignores_service_categories_during_choice_turn():
+    """Verify card formatter builds choice turn text card (Worker vs Community) instead of dumping 22 categories."""
+    tool_content = '{"categories": ["Plumbing", "Electrical", "Carpentry", "Masonry"]}'
+    choice_ai_message = (
+        "I understand you are facing an emergency water leak and need an emergency plumber. "
+        "Would you like to: 1) Find a Verified Worker — search and book a rated plumber now, "
+        "or 2) Create a Community Post — publish your emergency service request on the community board for workers to contact you? "
+        "Please reply with '1' (Find a Worker) or '2' (Create a Community Post)."
+    )
+    state = {
+        "messages": [
+            HumanMessage(content="Emergency plumber for water leak"),
+            AIMessage(content="Checking categories..."),
+            ToolMessage(content=tool_content, tool_call_id="call_cat_choice", name="get_service_categories"),
+            AIMessage(content=choice_ai_message)
+        ],
+        "email": "resident@workio.lk",
+        "user_type": "Resident",
+        "user_profile": {"displayName": "John Doe", "address": "Colombo"},
+        "next": None,
+        "structured_response": None,
+        "metadata": {}
+    }
+    card_resp = _deterministic_card_builder(state)
+    assert card_resp.response_type == "text_message"
+    assert card_resp.card_data.get("is_choice") is True
+    suggestion_texts = [s["text"] if isinstance(s, dict) else str(s) for s in card_resp.card_data.get("suggestions", [])]
+    assert any("worker" in s.lower() for s in suggestion_texts)
+    assert any("community" in s.lower() for s in suggestion_texts)
+
+
+
+
 def test_community_tools_count():
     """Verify all 7 community MCP tools are registered."""
     assert len(COMMUNITY_TOOLS) == 7
@@ -610,6 +677,178 @@ async def test_architecture_a_direct_structured_responses():
         assert s_res["structured_response"].response_type == "text_message"
 
 
+@pytest.mark.asyncio
+async def test_card_builder_with_list_content_blocks():
+    """Verify handling of list-based content blocks (from reasoning models like Luna/o1) without 'list has no lower' error."""
+    from agent_backend.utils.card_builders import _deterministic_card_builder, build_community_card, format_specialist_structured_message
+    from agent_backend.utils.sanitizer import extract_text_content
+
+    # 1. extract_text_content unit tests
+    assert extract_text_content("hello") == "hello"
+    assert extract_text_content([{"type": "text", "text": "chunk1"}, {"type": "text", "text": "chunk2"}]) == "chunk1\nchunk2"
+    assert extract_text_content(["simple", "list"]) == "simple\nlist"
+
+    # 2. State with list-based AIMessage content
+    state = {
+        "messages": [
+            HumanMessage(content=[{"type": "text", "text": "I need help with my garden"}]),
+            ToolMessage(content='{"categories": ["Gardening"]}', tool_call_id="call_test", name="get_service_categories"),
+            AIMessage(content=[{"type": "text", "text": "Here are the gardening details."}])
+        ],
+        "email": "resident@workio.lk",
+        "user_type": "Resident",
+        "user_profile": {"displayName": "John Doe", "address": "Colombo"},
+        "next": None,
+        "structured_response": None,
+        "metadata": {}
+    }
+    card_resp = build_community_card(state, ai_message=state["messages"][-1])
+    assert card_resp is not None
+    assert isinstance(card_resp.message, str)
+
+    # 3. format_specialist_structured_message with list-based AIMessage
+    list_ai = AIMessage(content=[{"type": "text", "text": "A simple list message"}])
+    res_ai = await format_specialist_structured_message([], list_ai)
+    assert isinstance(res_ai.content, str)
+    assert res_ai.content == "A simple list message"
+
+
+def test_clean_card_intro_message_removes_bold_field_dumps():
+    """Verify that bold field dumps like **Title:** and • **Category:** are completely stripped from chat messages."""
+    from agent_backend.utils.card_builders import _clean_card_intro_message
+
+    raw = (
+        "Here is your draft community post: • **Title:** Car Repair Service Request • "
+        "**Category:** Vehicle Repair & Mechanic • **Location:** Colombo • "
+        "**Content:** My car has broken down and needs professional inspection and repair. "
+        "Please review the details above. You can edit them or attach photos before publishing. "
+        "I'll wait for your confirmation before posting."
+    )
+    cleaned = _clean_card_intro_message(raw, "Please review your draft below:", "post_confirmation")
+    assert "**Title:**" not in cleaned
+    assert "**Category:**" not in cleaned
+    assert "**Location:**" not in cleaned
+    assert "**Content:**" not in cleaned
+    assert "•" not in cleaned
+    assert "Car Repair Service Request" not in cleaned
+    assert "Here is your draft community post:" in cleaned
+    assert "Please review the details below." in cleaned
+    assert "I'll wait for your confirmation before posting." in cleaned
+
+
+def test_single_post_detail_card_built_from_get_community_posts():
+    """Verify that get_community_posts with single post dict creates PostDetailCard, not empty PostListCard."""
+    from agent_backend.utils.card_builders import _deterministic_card_builder
+
+    state = {
+        "messages": [
+            HumanMessage(content="Show details for post #20"),
+            ToolMessage(
+                content='{"id": 20, "title": "Car Repair Service Request", "content": "Engine inspection needed", "serviceCategoryId": "vehicle-repair-mechanic", "location": "Colombo", "userName": "Jayashan", "userEmail": "jayashan@workio.lk", "likesCount": 1, "commentsCount": 0}',
+                tool_call_id="call_show_20",
+                name="get_community_posts"
+            ),
+            AIMessage(content="Post #20 is active.")
+        ],
+        "email": "jayashan@workio.lk",
+        "user_type": "Resident",
+        "user_profile": {"displayName": "Jayashan"},
+        "next": None,
+        "structured_response": None,
+        "metadata": {}
+    }
+    card_resp = _deterministic_card_builder(state)
+    assert card_resp.response_type == "post_detail"
+    assert card_resp.card_data["id"] == 20
+    assert card_resp.card_data["title"] == "Car Repair Service Request"
+
+
+def test_conversational_turn_does_not_recycle_old_tools():
+    """Verify that a turn without tool execution (e.g. 'i need edit it') builds TextMessageCard and does not recycle previous tools."""
+    from agent_backend.utils.card_builders import _deterministic_card_builder
+
+    state = {
+        "messages": [
+            # Turn 1: Tool executed
+            HumanMessage(content="Show details for post #20"),
+            ToolMessage(content='{"id": 20, "title": "Car Repair Service Request"}', tool_call_id="call_20", name="get_community_posts"),
+            AIMessage(content="Post #20 details are above."),
+            # Turn 2: Follow-up question without tool execution
+            HumanMessage(content="i need edit it"),
+            AIMessage(content="What would you like to change—its title, description, category, or location?")
+        ],
+        "email": "jayashan@workio.lk",
+        "user_type": "Resident",
+        "user_profile": {"displayName": "Jayashan"},
+        "next": None,
+        "structured_response": None,
+        "metadata": {}
+    }
+    card_resp = _deterministic_card_builder(state)
+    assert card_resp.response_type == "text_message"
+    assert "What would you like to change" in card_resp.message
+    assert any("title" in str(s).lower() for s in card_resp.card_data.get("suggestions", []))
+
+
+def test_strips_leading_empty_brackets():
+    """Verify that leading '[]' empty citation/thought artifacts from Luna are stripped cleanly."""
+    from agent_backend.utils.sanitizer import extract_text_content
+    from agent_backend.utils.card_builders import _clean_card_intro_message
+
+    raw1 = "[]\nHere is your draft community post: Please review the details."
+    raw2 = "[] Post #20 currently has the title 'Car Repair'."
+    
+    assert extract_text_content(raw1) == "Here is your draft community post: Please review the details."
+    assert extract_text_content(raw2) == "Post #20 currently has the title 'Car Repair'."
+
+    cleaned = _clean_card_intro_message(raw1, "Default intro", "post_confirmation")
+    assert not cleaned.startswith("[]")
+    assert not cleaned.startswith("[")
+
+
+def test_draft_content_never_uses_ai_announcement():
+    """Verify draft_content uses user's problem description, never 'Here is your draft...'"""
+    from agent_backend.utils.card_builders import _deterministic_card_builder
+
+    state = {
+        "messages": [
+            HumanMessage(content="My washroom tap is leaking heavily and flooding the floor"),
+            AIMessage(content="Here is your draft community post: Please review the details in the draft card. You can edit them, attach photos, and publish when ready.")
+        ],
+        "email": "jayashan@workio.lk",
+        "user_type": "Resident",
+        "user_profile": {"displayName": "Jayashan", "address": "Colombo"},
+        "next": None,
+        "structured_response": None,
+        "metadata": {"inferred_category": "Plumbing"}
+    }
+    card_resp = _deterministic_card_builder(state)
+    assert card_resp.response_type == "post_confirmation"
+    assert "Here is your draft" not in card_resp.card_data["content"]
+    assert "tap is leaking" in card_resp.card_data["content"]
+
+
+def test_title_update_suggestions():
+    """Verify that asking for a new title shows relevant suggestions, not technician/booking buttons."""
+    from agent_backend.utils.card_builders import _deterministic_card_builder
+
+    state = {
+        "messages": [
+            HumanMessage(content="Change the title"),
+            AIMessage(content="What would you like the new title to be? Once you provide it, I'll show you the proposed update for confirmation.")
+        ],
+        "email": "jayashan@workio.lk",
+        "user_type": "Resident",
+        "user_profile": {"displayName": "Jayashan"},
+        "next": None,
+        "structured_response": None,
+        "metadata": {}
+    }
+    card_resp = _deterministic_card_builder(state)
+    assert card_resp.response_type == "text_message"
+    suggestions = [str(s).lower() for s in card_resp.card_data.get("suggestions", [])]
+    assert any("title" in s or "cancel" in s for s in suggestions)
+    assert not any("book a service technician" in s for s in suggestions)
 
 
 if __name__ == "__main__":

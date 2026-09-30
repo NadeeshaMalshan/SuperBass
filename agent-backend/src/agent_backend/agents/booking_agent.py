@@ -69,7 +69,6 @@ async def booking_agent_node(state: AgentState) -> Dict[str, Any]:
         logger.info(f"🛠️ [Booking Agent] Executing LLM with tools for '{email}' (location: {location_info})")
         llm = ChatOpenAI(
             model=settings.openai_model,
-            temperature=0.2, # Low temperature for accurate slot filling
             api_key=settings.openai_api_key
         ).bind_tools(BOOKING_TOOLS)
 
