@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import categoriesData from './data/categories.json';
 import sriLankaDistricts from './data/sriLankaDistricts.json';
+import { WORKER_SERVICES_CATALOG, getSkillsForService, getCategoryByName } from './data/workerServicesCatalog.js';
 import M3TopNavbar from './components/M3TopNavbar.jsx';
 import UserMenu from './components/UserMenu.jsx';
 import '@material/web/button/filled-button.js';
@@ -36,12 +37,19 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
   // Become worker form state
   const [workerForm, setWorkerForm] = useState({
     description: '',
-    primaryServiceArea: '',
+    primaryServiceArea: 'Colombo',
     coverageRadiusKm: 10,
     pricingModel: 'Hourly',
     hourlyRate: '',
     dailyRate: '',
-    skills: [{ skillName: categoriesData[0]?.name || 'Plumbing', experienceYears: 1 }]
+    skills: [
+      {
+        serviceName: WORKER_SERVICES_CATALOG[0]?.name || 'Plumbing',
+        skills: (WORKER_SERVICES_CATALOG[0]?.defaultSkills || []).slice(0, 2),
+        experienceYears: 2,
+        customSkillInput: ''
+      }
+    ]
   });
   const [submittingWorker, setSubmittingWorker] = useState(false);
   const [workerError, setWorkerError] = useState(null);
@@ -264,23 +272,82 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     }
   };
 
-  // Skill management handlers
-  const handleAddSkill = () => {
-    setWorkerForm({
-      ...workerForm,
-      skills: [...workerForm.skills, { skillName: categoriesData[0]?.name || 'Plumbing', experienceYears: 1 }]
-    });
+  // Skill & Service management handlers (matching Mobile App become_worker_sheet)
+  const handleAddService = () => {
+    const usedCategories = workerForm.skills.map(s => s.serviceName.toLowerCase());
+    const nextCat = WORKER_SERVICES_CATALOG.find(c => !usedCategories.includes(c.name.toLowerCase())) || WORKER_SERVICES_CATALOG[0];
+
+    setWorkerForm(prev => ({
+      ...prev,
+      skills: [
+        ...prev.skills,
+        {
+          serviceName: nextCat.name,
+          skills: nextCat.defaultSkills.slice(0, 2),
+          experienceYears: 2,
+          customSkillInput: ''
+        }
+      ]
+    }));
   };
 
-  const handleRemoveSkill = (index) => {
+  const handleRemoveService = (index) => {
+    if (workerForm.skills.length <= 1) {
+      alert("You must keep at least one trade service.");
+      return;
+    }
     const updated = workerForm.skills.filter((_, i) => i !== index);
-    setWorkerForm({ ...workerForm, skills: updated });
+    setWorkerForm(prev => ({ ...prev, skills: updated }));
   };
 
-  const handleSkillChange = (index, field, value) => {
+  const handleServiceCategoryChange = (index, newServiceName) => {
+    const catDef = getCategoryByName(newServiceName) || WORKER_SERVICES_CATALOG[0];
     const updated = [...workerForm.skills];
-    updated[index][field] = value;
-    setWorkerForm({ ...workerForm, skills: updated });
+    updated[index] = {
+      ...updated[index],
+      serviceName: catDef.name,
+      skills: catDef.defaultSkills.slice(0, 2),
+      customSkillInput: ''
+    };
+    setWorkerForm(prev => ({ ...prev, skills: updated }));
+  };
+
+  const handleExperienceChange = (index, years) => {
+    const updated = [...workerForm.skills];
+    updated[index].experienceYears = parseInt(years, 10);
+    setWorkerForm(prev => ({ ...prev, skills: updated }));
+  };
+
+  const handleToggleSubSkill = (serviceIndex, skillName) => {
+    const updated = [...workerForm.skills];
+    const currentSkills = updated[serviceIndex].skills;
+    if (currentSkills.includes(skillName)) {
+      if (currentSkills.length <= 1) {
+        alert("Each service must have at least one specialization skill.");
+        return;
+      }
+      updated[serviceIndex].skills = currentSkills.filter(s => s !== skillName);
+    } else {
+      updated[serviceIndex].skills = [...currentSkills, skillName];
+    }
+    setWorkerForm(prev => ({ ...prev, skills: updated }));
+  };
+
+  const handleAddCustomSubSkill = (serviceIndex) => {
+    const updated = [...workerForm.skills];
+    const targetService = updated[serviceIndex];
+    const trimmed = (targetService.customSkillInput || '').trim();
+    if (trimmed && !targetService.skills.includes(trimmed)) {
+      targetService.skills = [...targetService.skills, trimmed];
+      targetService.customSkillInput = '';
+      setWorkerForm(prev => ({ ...prev, skills: updated }));
+    }
+  };
+
+  const handleCustomSkillInputChange = (serviceIndex, val) => {
+    const updated = [...workerForm.skills];
+    updated[serviceIndex].customSkillInput = val;
+    setWorkerForm(prev => ({ ...prev, skills: updated }));
   };
 
   // Submit worker upgrade
@@ -290,11 +357,23 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     setWorkerError(null);
 
     try {
+      // Validate that every service has at least one skill
+      for (const s of workerForm.skills) {
+        if (!s.skills || s.skills.length === 0) {
+          setWorkerError(`Please select at least one specialization skill for ${s.serviceName}.`);
+          setSubmittingWorker(false);
+          return;
+        }
+      }
+
       const validSkills = workerForm.skills
-        .filter(s => s.skillName.trim() !== '')
+        .filter(s => s.serviceName && s.serviceName.trim() !== '')
         .map(s => ({
-          skillName: s.skillName.trim(),
-          experienceYears: parseInt(s.experienceYears) || 1
+          serviceName: s.serviceName.trim(),
+          service: s.serviceName.trim(),
+          skills: s.skills,
+          experienceYears: isNaN(parseInt(s.experienceYears, 10)) ? 1 : Math.max(0, parseInt(s.experienceYears, 10)),
+          skillName: s.serviceName.trim()
         }));
 
       const activeEmail = userEmail || profile?.email || localStorage.getItem('email');
@@ -307,7 +386,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
       const payload = {
         email: activeEmail,
         description: workerForm.description,
-        primaryServiceArea: workerForm.primaryServiceArea || 'Default Area',
+        primaryServiceArea: workerForm.primaryServiceArea || 'Colombo',
         coverageRadiusKm: parseFloat(workerForm.coverageRadiusKm) || 10,
         pricingModel: workerForm.pricingModel,
         hourlyRate: workerForm.hourlyRate ? parseFloat(workerForm.hourlyRate) : null,
@@ -1314,15 +1393,22 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      <label style={{ fontWeight: '600', fontSize: '0.9rem', color: '#374151' }}>Primary Service Area / City *</label>
-                      <input
-                        type="text"
+                      <label style={{ fontWeight: '600', fontSize: '0.9rem', color: '#374151' }}>Primary Service Area *</label>
+                      <select
                         required
-                        placeholder="e.g. Colombo, Kandy, Galle"
-                        value={workerForm.primaryServiceArea}
+                        value={workerForm.primaryServiceArea || 'Colombo'}
                         onChange={(e) => setWorkerForm({ ...workerForm, primaryServiceArea: e.target.value })}
-                        style={{ padding: '12px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '0.95rem' }}
-                      />
+                        style={{ padding: '12px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '0.95rem', backgroundColor: '#FFFFFF', color: '#111827' }}
+                      >
+                        <option value="" disabled>Select Primary Service Area</option>
+                        {Object.entries(sriLankaDistricts).map(([province, districts]) => (
+                          <optgroup key={province} label={province}>
+                            {districts.map(d => (
+                              <option key={d} value={d}>{d}</option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -1375,55 +1461,274 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                     </div>
                   </div>
 
-                  {/* Skills Section */}
+                  {/* Skills Section - Hierarchical Services & Specialization Sub-Skills (Matching Mobile App) */}
                   <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: '1.5rem', marginTop: '0.5rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                      <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '700', color: '#111827' }}>Skills & Trade Specialization</h4>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '10px' }}>
+                      <div>
+                        <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '700', color: '#111827' }}>
+                          Skills & Trade Specialization
+                        </h4>
+                        <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#6B7280' }}>
+                          Select your trade services, experience levels, and tap sub-skill chips to customize your specializations.
+                        </p>
+                      </div>
                       <button
                         type="button"
-                        onClick={handleAddSkill}
-                        style={{ padding: '6px 14px', borderRadius: '6px', border: '1px solid #2563EB', backgroundColor: '#EFF6FF', color: '#2563EB', fontWeight: '600', cursor: 'pointer', fontSize: '0.85rem' }}
+                        onClick={handleAddService}
+                        style={{
+                          padding: '8px 16px',
+                          borderRadius: '8px',
+                          border: '1.5px solid #2563EB',
+                          backgroundColor: '#EFF6FF',
+                          color: '#2563EB',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          fontSize: '0.85rem',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          transition: 'all 0.2s ease'
+                        }}
                       >
-                        + Add Skill
+                        <i className="fa-solid fa-plus" style={{ fontSize: '0.8rem' }}></i>
+                        Add Another Service
                       </button>
                     </div>
 
-                    {workerForm.skills.map((skill, index) => (
-                      <div key={index} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '0.75rem' }}>
-                        <select
-                          value={skill.skillName}
-                          onChange={(e) => handleSkillChange(index, 'skillName', e.target.value)}
-                          style={{ flex: 2, padding: '10px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '0.9rem', backgroundColor: '#FFFFFF', color: '#111827' }}
-                          required
-                        >
-                          <option value="" disabled>Select Service Category</option>
-                          {categoriesData.map(cat => (
-                            <option key={cat.id} value={cat.name}>
-                              {cat.name}
-                            </option>
-                          ))}
-                        </select>
-                        <input
-                          type="number"
-                          min="0"
-                          max="50"
-                          placeholder="Years Exp."
-                          value={skill.experienceYears}
-                          onChange={(e) => handleSkillChange(index, 'experienceYears', e.target.value)}
-                          style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '0.9rem' }}
-                        />
-                        {workerForm.skills.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveSkill(index)}
-                            style={{ border: 'none', background: 'none', color: '#EF4444', fontWeight: 'bold', cursor: 'pointer', fontSize: '1.1rem', padding: '0 8px' }}
-                            title="Remove Skill"
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      {workerForm.skills.map((serviceItem, sIdx) => {
+                        const suggestedSkills = getSkillsForService(serviceItem.serviceName);
+
+                        return (
+                          <div
+                            key={sIdx}
+                            style={{
+                              backgroundColor: '#F8FAFC',
+                              border: '1.5px solid #E2E8F0',
+                              borderRadius: '16px',
+                              padding: '18px 20px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '14px',
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+                            }}
                           >
-                            ✕
-                          </button>
-                        )}
-                      </div>
-                    ))}
+                            {/* Card Top Row: Category Dropdown & Experience Dropdown */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                              <div style={{ flex: '1 1 300px' }}>
+                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px' }}>
+                                  Service Category
+                                </label>
+                                <select
+                                  value={serviceItem.serviceName}
+                                  onChange={(e) => handleServiceCategoryChange(sIdx, e.target.value)}
+                                  style={{
+                                    width: '100%',
+                                    padding: '8px 12px',
+                                    borderRadius: '8px',
+                                    border: '1.5px solid #CBD5E1',
+                                    fontSize: '0.92rem',
+                                    fontWeight: 600,
+                                    backgroundColor: '#FFFFFF',
+                                    color: '#0F172A',
+                                    outline: 'none'
+                                  }}
+                                >
+                                  {WORKER_SERVICES_CATALOG.map((cat) => (
+                                    <option key={cat.name} value={cat.name}>
+                                      {cat.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px' }}>
+                                    Experience
+                                  </label>
+                                  <select
+                                    value={serviceItem.experienceYears}
+                                    onChange={(e) => handleExperienceChange(sIdx, e.target.value)}
+                                    style={{
+                                      padding: '8px 12px',
+                                      borderRadius: '8px',
+                                      border: '1.5px solid #CBD5E1',
+                                      fontSize: '0.9rem',
+                                      backgroundColor: '#FFFFFF',
+                                      color: '#0F172A',
+                                      outline: 'none',
+                                      fontWeight: 500
+                                    }}
+                                  >
+                                    <option value={0}>&lt; 1 Year Exp.</option>
+                                    <option value={1}>1 Year Exp.</option>
+                                    <option value={2}>2 Years Exp.</option>
+                                    <option value={3}>3 Years Exp.</option>
+                                    <option value={5}>5+ Years Exp.</option>
+                                    <option value={10}>10+ Years Exp.</option>
+                                  </select>
+                                </div>
+
+                                {workerForm.skills.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveService(sIdx)}
+                                    title="Remove this service"
+                                    style={{
+                                      marginTop: '16px',
+                                      padding: '8px 12px',
+                                      borderRadius: '8px',
+                                      border: '1px solid #FCA5A5',
+                                      backgroundColor: '#FEF2F2',
+                                      color: '#DC2626',
+                                      cursor: 'pointer',
+                                      fontSize: '0.85rem',
+                                      fontWeight: 600,
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px'
+                                    }}
+                                  >
+                                    <i className="fa-solid fa-trash-can" style={{ fontSize: '0.8rem' }}></i>
+                                    Remove
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Sub-skills Section */}
+                            <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: '12px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155' }}>
+                                  Specialization Sub-Skills in <span style={{ color: '#2563EB' }}>{serviceItem.serviceName}</span>:
+                                </label>
+                                <span style={{ fontSize: '0.78rem', color: '#64748B', fontWeight: 500 }}>
+                                  {serviceItem.skills.length} selected (tap chips to toggle)
+                                </span>
+                              </div>
+
+                              {/* Suggested skill chips */}
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+                                {suggestedSkills.map((subSkill) => {
+                                  const isSelected = serviceItem.skills.includes(subSkill);
+                                  return (
+                                    <button
+                                      key={subSkill}
+                                      type="button"
+                                      onClick={() => handleToggleSubSkill(sIdx, subSkill)}
+                                      style={{
+                                        padding: '6px 14px',
+                                        borderRadius: '20px',
+                                        border: isSelected ? '1.5px solid #2563EB' : '1.5px solid #E2E8F0',
+                                        backgroundColor: isSelected ? '#EFF6FF' : '#FFFFFF',
+                                        color: isSelected ? '#1D4ED8' : '#334155',
+                                        fontWeight: isSelected ? 600 : 500,
+                                        fontSize: '0.82rem',
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        transition: 'all 0.15s ease'
+                                      }}
+                                    >
+                                      {isSelected ? (
+                                        <i className="fa-solid fa-check" style={{ fontSize: '0.75rem', color: '#2563EB' }}></i>
+                                      ) : (
+                                        <i className="fa-solid fa-plus" style={{ fontSize: '0.7rem', color: '#94A3B8' }}></i>
+                                      )}
+                                      {subSkill}
+                                    </button>
+                                  );
+                                })}
+
+                                {/* Custom added skills that aren't in suggestedSkills */}
+                                {serviceItem.skills
+                                  .filter(s => !suggestedSkills.includes(s))
+                                  .map((customSkill) => (
+                                    <span
+                                      key={customSkill}
+                                      style={{
+                                        padding: '6px 12px',
+                                        borderRadius: '20px',
+                                        border: '1.5px solid #2563EB',
+                                        backgroundColor: '#EFF6FF',
+                                        color: '#1D4ED8',
+                                        fontWeight: 600,
+                                        fontSize: '0.82rem',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '6px'
+                                      }}
+                                    >
+                                      <i className="fa-solid fa-star" style={{ fontSize: '0.7rem', color: '#F59E0B' }}></i>
+                                      {customSkill}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleToggleSubSkill(sIdx, customSkill)}
+                                        style={{
+                                          border: 'none',
+                                          background: 'none',
+                                          color: '#DC2626',
+                                          cursor: 'pointer',
+                                          padding: 0,
+                                          fontSize: '0.85rem',
+                                          lineHeight: 1
+                                        }}
+                                        title={`Remove ${customSkill}`}
+                                      >
+                                        ✕
+                                      </button>
+                                    </span>
+                                  ))}
+                              </div>
+
+                              {/* Custom sub-skill input */}
+                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                <input
+                                  type="text"
+                                  placeholder={`Add specialized skill to ${serviceItem.serviceName}...`}
+                                  value={serviceItem.customSkillInput || ''}
+                                  onChange={(e) => handleCustomSkillInputChange(sIdx, e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      handleAddCustomSubSkill(sIdx);
+                                    }
+                                  }}
+                                  style={{
+                                    flex: 1,
+                                    padding: '8px 12px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #CBD5E1',
+                                    fontSize: '0.85rem',
+                                    backgroundColor: '#FFFFFF',
+                                    outline: 'none'
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleAddCustomSubSkill(sIdx)}
+                                  style={{
+                                    padding: '8px 14px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #2563EB',
+                                    backgroundColor: '#2563EB',
+                                    color: '#FFFFFF',
+                                    fontWeight: 600,
+                                    fontSize: '0.85rem',
+                                    cursor: 'pointer',
+                                    whiteSpace: 'nowrap'
+                                  }}
+                                >
+                                  + Add Skill
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   <div style={{ marginTop: '1rem' }}>
