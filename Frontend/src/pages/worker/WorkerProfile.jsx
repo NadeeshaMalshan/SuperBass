@@ -5,9 +5,23 @@ import { API_BASE_URL } from '../../config.js';
 import { WORKER_SERVICES_CATALOG, getSkillsForService, getCategoryByName } from '../../data/workerServicesCatalog.js';
 import sriLankaDistricts from '../../data/sriLankaDistricts.json';
 
-export default function WorkerProfile() {
-  const [activeTab, setActiveTab] = useState('bio'); // 'bio' | 'skills' | 'location' | 'availability' | 'security'
+export default function WorkerProfile({ defaultTab = 'bio' }) {
+  const urlParams = new URLSearchParams(window.location.search);
+  const tabParam = urlParams.get('tab');
+  const [activeTab, setActiveTab] = useState(tabParam || defaultTab || 'bio');
   const [saveStatus, setSaveStatus] = useState(null);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      if (tab) {
+        setActiveTab(tab);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Profile Form States
   const [bio, setBio] = useState({
@@ -356,18 +370,82 @@ export default function WorkerProfile() {
 
   return (
     <WorkerLayout activeTab="profile">
-      <div className="page-title-block">
-        <h1 className="page-title">Worker Profile & Settings</h1>
-        <p className="page-subtitle">Manage your personal bio, trade skills, rates, coverage area, working hours, and password.</p>
+      {/* Top Hero Showcase Banner (Uber Pitch Black Aesthetic) */}
+      <div style={{
+        backgroundColor: '#000000',
+        borderRadius: '20px',
+        padding: '36px 36px 40px',
+        marginBottom: '28px',
+        border: '1px solid #1f1f1f',
+        position: 'relative',
+        overflow: 'hidden',
+        boxShadow: '0 8px 30px rgba(0, 0, 0, 0.12)'
+      }}>
+        {/* Subtle decorative glow overlay */}
+        <div style={{
+          position: 'absolute',
+          top: '-40%',
+          right: '-10%',
+          width: '450px',
+          height: '450px',
+          background: 'radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, rgba(0, 0, 0, 0) 70%)',
+          pointerEvents: 'none'
+        }} />
+
+        <div style={{ position: 'relative', zIndex: 1, maxWidth: '900px' }}>
+          <span style={{
+            display: 'inline-block',
+            fontSize: '0.78rem',
+            fontWeight: 800,
+            letterSpacing: '0.08em',
+            color: '#a3a3a3',
+            textTransform: 'uppercase',
+            marginBottom: '10px'
+          }}>
+            WORKIO PRO NETWORK • PROFILE & SETTINGS
+          </span>
+          <h1 style={{
+            fontSize: 'clamp(1.8rem, 3vw, 2.5rem)',
+            fontWeight: 800,
+            color: '#ffffff',
+            letterSpacing: '-0.03em',
+            lineHeight: 1.15,
+            margin: '0 0 12px 0'
+          }}>
+            Worker Profile & Settings
+          </h1>
+          <p style={{
+            fontSize: '0.98rem',
+            color: '#a3a3a3',
+            lineHeight: 1.5,
+            margin: 0,
+            maxWidth: '680px'
+          }}>
+            Manage your personal bio, trade skills, rates, coverage area, working hours, and password.
+          </p>
+        </div>
       </div>
 
       {saveStatus && (
-        <div className="badge badge-success" style={{ width: '100%', padding: '12px', borderRadius: '10px', marginBottom: '20px', justifyContent: 'center' }}>
-          {saveStatus}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          padding: '12px 20px',
+          backgroundColor: '#000000',
+          color: '#ffffff',
+          borderRadius: '12px',
+          marginBottom: '24px',
+          fontSize: '0.9rem',
+          fontWeight: 600,
+          boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)'
+        }}>
+          <i className="fa-solid fa-circle-check" style={{ color: '#4ade80' }}></i>
+          <span>{saveStatus}</span>
         </div>
       )}
 
-      {/* Profile Top Tab Navigation */}
+      {/* Profile Top Tab Navigation (Uber Pill Style) */}
       <div className="profile-tabs-nav">
         <button 
           className={`profile-tab-btn ${activeTab === 'bio' ? 'active' : ''}`}
@@ -412,37 +490,54 @@ export default function WorkerProfile() {
 
       {/* Tab 1: Personal Details & Bio */}
       {activeTab === 'bio' && (
-        <div className="worker-card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '24px', paddingBottom: '20px', borderBottom: '1px solid #E2E8F0' }}>
+        <div className="worker-card" style={{ padding: '30px', borderRadius: '18px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '24px', paddingBottom: '20px', borderBottom: '1px solid #e5e5e5' }}>
             <div style={{
               width: '72px',
               height: '72px',
               borderRadius: '50%',
-              backgroundColor: '#2563EB',
+              backgroundColor: '#000000',
               color: '#FFFFFF',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               fontSize: '2rem',
-              fontWeight: 800
+              fontWeight: 800,
+              border: '2px solid #e5e5e5',
+              flexShrink: 0
             }}>
               {bio.name ? bio.name.charAt(0).toUpperCase() : 'W'}
             </div>
 
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#111111' }}>{bio.name || 'Worker Profile'}</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#000000', margin: 0, letterSpacing: '-0.02em' }}>
+                  {bio.name || 'Worker Profile'}
+                </h3>
                 {bio.isVerified && (
-                  <span className="badge badge-success" style={{ gap: '4px' }}>
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '0.74rem',
+                    fontWeight: 700,
+                    color: '#16a34a',
+                    backgroundColor: '#f0fdf4',
+                    border: '1px solid #bbf7d0',
+                    borderRadius: '9999px',
+                    padding: '3px 10px'
+                  }}>
                     <i className="fa-solid fa-shield-check"></i> Verified Worker
                   </span>
                 )}
               </div>
-              <p style={{ fontSize: '0.9rem', color: '#64748B', marginTop: '2px' }}>{bio.location || 'Location not set'} • Experience: {bio.experience || 'Verified Professional'}</p>
+              <p style={{ fontSize: '0.88rem', color: '#737373', marginTop: '4px', margin: 0 }}>
+                {bio.location || 'Location not set'} • Experience: {bio.experience || 'Verified Professional'}
+              </p>
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
             <div className="worker-input-group">
               <label className="worker-label">Full Name</label>
               <input type="text" className="worker-input" value={bio.name} onChange={(e) => setBio({ ...bio, name: e.target.value })} />
@@ -464,7 +559,7 @@ export default function WorkerProfile() {
                 onChange={(e) => setBio({ ...bio, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })} 
               />
               {bio.phone && !/^0\d{9}$/.test(bio.phone) && (
-                <span style={{ fontSize: '0.8rem', color: '#dc2626', marginTop: '4px' }}>
+                <span style={{ fontSize: '0.8rem', color: '#dc2626', marginTop: '4px', display: 'block' }}>
                   Must be exactly 10 digits starting with 0
                 </span>
               )}
@@ -486,9 +581,11 @@ export default function WorkerProfile() {
             onClick={() => {
               if (bio.phone && !/^0\d{9}$/.test(bio.phone)) {
                 setSaveStatus('Phone number must be exactly 10 digits starting with 0.');
+                setTimeout(() => setSaveStatus(null), 3000);
                 return;
               }
               setSaveStatus('Bio details updated successfully!');
+              setTimeout(() => setSaveStatus(null), 3000);
             }}
           >
             Save Bio Changes
@@ -498,13 +595,13 @@ export default function WorkerProfile() {
 
       {/* Tab 2: Services, Skills & Rates */}
       {activeTab === 'skills' && (
-        <div className="worker-card">
+        <div className="worker-card" style={{ padding: '30px', borderRadius: '18px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
             <div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', margin: '0 0 6px 0' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#000000', margin: '0 0 6px 0', letterSpacing: '-0.02em' }}>
                 Services, Skills & Rates
               </h3>
-              <p style={{ color: '#64748B', fontSize: '0.9rem', margin: 0 }}>
+              <p style={{ color: '#737373', fontSize: '0.88rem', margin: 0 }}>
                 Manage your official trade categories, specialization sub-skills, experience, and pricing.
               </p>
             </div>
@@ -512,7 +609,7 @@ export default function WorkerProfile() {
               type="button"
               className="worker-btn-primary"
               onClick={handleOpenAddServiceModal}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: '12px' }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 22px', borderRadius: '9999px' }}
             >
               <i className="fa-solid fa-plus"></i>
               Add Service
@@ -529,8 +626,8 @@ export default function WorkerProfile() {
 
             {services.length === 0 ? (
               <div style={{
-                backgroundColor: '#F8FAFC',
-                border: '2px dashed #E2E8F0',
+                backgroundColor: '#f9f9f9',
+                border: '1px dashed #d4d4d4',
                 borderRadius: '16px',
                 padding: '40px 24px',
                 textAlign: 'center'
@@ -539,20 +636,20 @@ export default function WorkerProfile() {
                   width: '56px',
                   height: '56px',
                   borderRadius: '50%',
-                  backgroundColor: '#EFF6FF',
-                  color: '#2563EB',
+                  backgroundColor: '#000000',
+                  color: '#ffffff',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '1.6rem',
+                  fontSize: '1.5rem',
                   margin: '0 auto 16px auto'
                 }}>
                   <i className="fa-solid fa-screwdriver-wrench"></i>
                 </div>
-                <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0F172A', margin: '0 0 6px 0' }}>
+                <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#000000', margin: '0 0 6px 0' }}>
                   No trade services added yet
                 </h4>
-                <p style={{ fontSize: '0.9rem', color: '#64748B', maxWidth: '420px', margin: '0 auto 20px auto', lineHeight: '1.5' }}>
+                <p style={{ fontSize: '0.9rem', color: '#737373', maxWidth: '420px', margin: '0 auto 20px auto', lineHeight: '1.5' }}>
                   Add your trade specializations and skills so residents can find your profile and request your services.
                 </p>
                 <button
@@ -579,25 +676,26 @@ export default function WorkerProfile() {
                       key={item.id || idx}
                       style={{
                         backgroundColor: '#FFFFFF',
-                        border: '1.5px solid #E2E8F0',
+                        border: '1px solid #e5e5e5',
                         borderRadius: '16px',
-                        padding: '18px 20px',
+                        padding: '20px 22px',
                         display: 'flex',
                         flexDirection: 'column',
                         justifyContent: 'space-between',
-                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.03)',
-                        transition: 'border-color 0.2s'
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
+                        transition: 'all 0.2s ease'
                       }}
                     >
                       <div>
                         {/* Header Row */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '14px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                             <div style={{
                               width: '44px',
                               height: '44px',
                               borderRadius: '12px',
-                              backgroundColor: '#EFF6FF',
+                              backgroundColor: '#f5f5f5',
+                              border: '1px solid #e5e5e5',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -606,10 +704,10 @@ export default function WorkerProfile() {
                               {iconEmoji}
                             </div>
                             <div>
-                              <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#0F172A' }}>
+                              <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#000000' }}>
                                 {item.serviceName}
                               </h4>
-                              <span style={{ fontSize: '0.8rem', color: '#64748B', fontWeight: 600 }}>
+                              <span style={{ fontSize: '0.8rem', color: '#737373', fontWeight: 600 }}>
                                 {expText}
                               </span>
                             </div>
@@ -622,7 +720,7 @@ export default function WorkerProfile() {
                             style={{
                               background: 'none',
                               border: 'none',
-                              color: '#94A3B8',
+                              color: '#a3a3a3',
                               cursor: 'pointer',
                               padding: '6px',
                               borderRadius: '8px',
@@ -630,7 +728,7 @@ export default function WorkerProfile() {
                               transition: 'color 0.2s, background-color 0.2s'
                             }}
                             onMouseEnter={(e) => { e.currentTarget.style.color = '#EF4444'; e.currentTarget.style.backgroundColor = '#FEF2F2'; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.color = '#94A3B8'; e.currentTarget.style.backgroundColor = 'transparent'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.color = '#a3a3a3'; e.currentTarget.style.backgroundColor = 'transparent'; }}
                           >
                             <i className="fa-regular fa-trash-can"></i>
                           </button>
@@ -638,17 +736,17 @@ export default function WorkerProfile() {
 
                         {/* Sub-Skills Chips */}
                         {item.skills && item.skills.length > 0 ? (
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', paddingTop: '10px', borderTop: '1px dashed #F1F5F9' }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', paddingTop: '12px', borderTop: '1px dashed #e5e5e5' }}>
                             {item.skills.map((sub, sIdx) => (
                               <span
                                 key={sIdx}
                                 style={{
-                                  backgroundColor: '#F8FAFC',
-                                  color: '#334155',
-                                  border: '1px solid #CBD5E1',
-                                  padding: '4px 10px',
-                                  borderRadius: '8px',
-                                  fontSize: '0.8rem',
+                                  backgroundColor: '#f5f5f5',
+                                  color: '#171717',
+                                  border: '1px solid #e5e5e5',
+                                  padding: '4px 12px',
+                                  borderRadius: '9999px',
+                                  fontSize: '0.78rem',
                                   fontWeight: 600
                                 }}
                               >
@@ -657,7 +755,7 @@ export default function WorkerProfile() {
                             ))}
                           </div>
                         ) : (
-                          <div style={{ paddingTop: '8px', borderTop: '1px dashed #F1F5F9', fontSize: '0.82rem', color: '#94A3B8', fontStyle: 'italic' }}>
+                          <div style={{ paddingTop: '10px', borderTop: '1px dashed #e5e5e5', fontSize: '0.82rem', color: '#737373', fontStyle: 'italic' }}>
                             All general repairs & trade tasks
                           </div>
                         )}
@@ -669,10 +767,10 @@ export default function WorkerProfile() {
             )}
           </div>
 
-          <hr style={{ border: 'none', borderTop: '1px solid #E2E8F0', margin: '32px 0' }} />
+          <hr style={{ border: 'none', borderTop: '1px solid #e5e5e5', margin: '32px 0' }} />
 
           {/* Pricing & Rates Setup */}
-          <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#111111', marginBottom: '16px' }}>
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#000000', marginBottom: '16px', letterSpacing: '-0.02em' }}>
             Pricing & Rates Setup
           </h3>
 
@@ -685,7 +783,7 @@ export default function WorkerProfile() {
             </select>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', maxWidth: '500px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', maxWidth: '500px' }}>
             <div className="worker-input-group">
               <label className="worker-label">Hourly Rate (LKR)</label>
               <input 
@@ -715,8 +813,8 @@ export default function WorkerProfile() {
 
       {/* Tab 3: Service Area */}
       {activeTab === 'location' && (
-        <div className="worker-card">
-          <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#111111', marginBottom: '16px' }}>
+        <div className="worker-card" style={{ padding: '30px', borderRadius: '18px' }}>
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#000000', marginBottom: '16px', letterSpacing: '-0.02em' }}>
             Service Location & Coverage Radius
           </h3>
 
@@ -739,9 +837,21 @@ export default function WorkerProfile() {
           </div>
 
           <div className="worker-input-group" style={{ marginTop: '24px' }}>
-            <label className="worker-label">
-              Travel Coverage Radius: <strong style={{ color: '#2563EB', fontSize: '1.1rem' }}>{radiusKm} km</strong>
-            </label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <label className="worker-label" style={{ margin: 0 }}>
+                Travel Coverage Radius
+              </label>
+              <span style={{
+                backgroundColor: '#000000',
+                color: '#ffffff',
+                padding: '4px 14px',
+                borderRadius: '9999px',
+                fontSize: '0.85rem',
+                fontWeight: 800
+              }}>
+                {radiusKm} km
+              </span>
+            </div>
             <input 
               type="range" 
               min="2" 
@@ -752,7 +862,7 @@ export default function WorkerProfile() {
               value={radiusKm} 
               onChange={(e) => setRadiusKm(e.target.value)}
             />
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#64748B', marginTop: '6px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#737373', marginTop: '6px' }}>
               <span>2 km (Local district)</span>
               <span>25 km (Citywide)</span>
               <span>50 km (Provincewide)</span>
@@ -767,8 +877,8 @@ export default function WorkerProfile() {
 
       {/* Tab 4: Availability & Schedule */}
       {activeTab === 'availability' && (
-        <div className="worker-card">
-          <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#111111', marginBottom: '16px' }}>
+        <div className="worker-card" style={{ padding: '30px', borderRadius: '18px' }}>
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#000000', marginBottom: '16px', letterSpacing: '-0.02em' }}>
             Working Days & Operational Hours
           </h3>
 
@@ -780,43 +890,45 @@ export default function WorkerProfile() {
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '12px',
+                gap: '14px',
                 cursor: 'pointer',
-                padding: '12px 18px',
-                borderRadius: '12px',
-                border: `2px solid ${availability.isAvailable ? '#2563EB' : '#E2E8F0'}`,
-                backgroundColor: availability.isAvailable ? '#EFF6FF' : '#F8FAFC',
+                padding: '12px 20px',
+                borderRadius: '16px',
+                border: `1.5px solid ${availability.isAvailable ? '#000000' : '#e5e5e5'}`,
+                backgroundColor: availability.isAvailable ? '#000000' : '#ffffff',
+                color: availability.isAvailable ? '#ffffff' : '#000000',
                 transition: 'all 0.2s ease',
-                userSelect: 'none'
+                userSelect: 'none',
+                boxShadow: availability.isAvailable ? '0 4px 16px rgba(0,0,0,0.15)' : 'none'
               }}
             >
               {/* Toggle pill */}
               <div style={{
                 position: 'relative',
-                width: '44px',
+                width: '46px',
                 height: '24px',
-                borderRadius: '12px',
-                backgroundColor: availability.isAvailable ? '#2563EB' : '#CBD5E1',
+                borderRadius: '9999px',
+                backgroundColor: availability.isAvailable ? '#ffffff' : '#e5e5e5',
                 transition: 'background-color 0.2s ease',
                 flexShrink: 0
               }}>
                 <div style={{
                   position: 'absolute',
                   top: '3px',
-                  left: availability.isAvailable ? '23px' : '3px',
+                  left: availability.isAvailable ? '25px' : '3px',
                   width: '18px',
                   height: '18px',
                   borderRadius: '50%',
-                  backgroundColor: '#FFFFFF',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                  backgroundColor: availability.isAvailable ? '#000000' : '#ffffff',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
                   transition: 'left 0.2s ease'
                 }} />
               </div>
               <div>
-                <div style={{ fontWeight: 700, fontSize: '0.95rem', color: availability.isAvailable ? '#1D4ED8' : '#64748B' }}>
+                <div style={{ fontWeight: 800, fontSize: '0.95rem', color: availability.isAvailable ? '#ffffff' : '#000000' }}>
                   {availability.isAvailable ? '🟢 Available for Work' : '⚫ Currently Offline'}
                 </div>
-                <div style={{ fontSize: '0.78rem', color: '#94A3B8', marginTop: '2px' }}>
+                <div style={{ fontSize: '0.78rem', color: availability.isAvailable ? '#a3a3a3' : '#737373', marginTop: '2px' }}>
                   {availability.isAvailable ? 'You are visible to residents and can receive bookings' : 'You are hidden from search results'}
                 </div>
               </div>
@@ -825,21 +937,22 @@ export default function WorkerProfile() {
 
           <div className="worker-input-group">
             <label className="worker-label">Active Working Days</label>
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               {Object.keys(availability.workDays).map((day) => (
                 <button
                   key={day}
                   type="button"
                   style={{
-                    padding: '10px 18px',
-                    borderRadius: '10px',
+                    padding: '9px 18px',
+                    borderRadius: '9999px',
                     fontWeight: 700,
-                    fontSize: '0.9rem',
+                    fontSize: '0.88rem',
                     cursor: 'pointer',
-                    border: '1px solid',
-                    backgroundColor: availability.workDays[day] ? '#2563EB' : '#FFFFFF',
-                    color: availability.workDays[day] ? '#FFFFFF' : '#64748B',
-                    borderColor: availability.workDays[day] ? '#2563EB' : '#E2E8F0'
+                    border: '1.5px solid',
+                    backgroundColor: availability.workDays[day] ? '#000000' : '#ffffff',
+                    color: availability.workDays[day] ? '#ffffff' : '#525252',
+                    borderColor: availability.workDays[day] ? '#000000' : '#e5e5e5',
+                    transition: 'all 0.15s ease'
                   }}
                   onClick={() => {
                     setAvailability({
@@ -854,7 +967,7 @@ export default function WorkerProfile() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', maxWidth: '400px', marginTop: '24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '20px', maxWidth: '400px', marginTop: '24px' }}>
             <div className="worker-input-group">
               <label className="worker-label">Start Time</label>
               <input 
@@ -884,8 +997,8 @@ export default function WorkerProfile() {
 
       {/* Tab 5: Security & Password */}
       {activeTab === 'security' && (
-        <div className="worker-card">
-          <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#111111', marginBottom: '16px' }}>
+        <div className="worker-card" style={{ padding: '30px', borderRadius: '18px' }}>
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#000000', marginBottom: '16px', letterSpacing: '-0.02em' }}>
             Account Security & Change Password
           </h3>
 
@@ -931,15 +1044,15 @@ export default function WorkerProfile() {
             </button>
           </form>
 
-          <hr style={{ margin: '32px 0 24px 0', borderColor: '#E2E8F0' }} />
+          <hr style={{ margin: '32px 0 24px 0', borderColor: '#e5e5e5' }} />
 
           {/* Danger Zone: Revert to Resident */}
-          <div style={{ backgroundColor: '#FEF2F2', padding: '20px', borderRadius: '12px', border: '1px solid #FCA5A5' }}>
-            <h4 style={{ color: '#991B1B', margin: '0 0 8px 0', fontSize: '1rem', fontWeight: 700 }}>
+          <div style={{ backgroundColor: '#FEF2F2', padding: '24px', borderRadius: '16px', border: '1px solid #FCA5A5' }}>
+            <h4 style={{ color: '#991B1B', margin: '0 0 8px 0', fontSize: '1rem', fontWeight: 800 }}>
               <i className="fa-solid fa-triangle-exclamation" style={{ marginRight: '8px' }}></i>
               Return to Resident Status
             </h4>
-            <p style={{ color: '#7F1D1D', fontSize: '0.875rem', margin: '0 0 16px 0' }}>
+            <p style={{ color: '#7F1D1D', fontSize: '0.875rem', margin: '0 0 16px 0', lineHeight: 1.5 }}>
               Once you revert to being a resident, your worker profile will be deactivated, and you will regain standard resident privileges.
             </p>
             <button 
@@ -949,9 +1062,10 @@ export default function WorkerProfile() {
                 backgroundColor: '#DC2626',
                 color: '#FFFFFF',
                 border: 'none',
-                padding: '10px 20px',
-                borderRadius: '8px',
-                fontWeight: 600,
+                padding: '10px 22px',
+                borderRadius: '9999px',
+                fontWeight: 700,
+                fontSize: '0.88rem',
                 cursor: 'pointer'
               }}
             >
@@ -961,7 +1075,7 @@ export default function WorkerProfile() {
         </div>
       )}
 
-      {/* Add Service & Specialization Modal (matching Flutter Worker App) */}
+      {/* Add Service & Specialization Modal (matching Flutter Worker App & Uber Design) */}
       {isAddServiceModalOpen && (
         <div style={{
           position: 'fixed',
@@ -969,8 +1083,8 @@ export default function WorkerProfile() {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(15, 23, 42, 0.65)',
-          backdropFilter: 'blur(4px)',
+          backgroundColor: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(5px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -985,24 +1099,24 @@ export default function WorkerProfile() {
             maxHeight: '90vh',
             display: 'flex',
             flexDirection: 'column',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
             overflow: 'hidden',
-            border: '1px solid #E2E8F0'
+            border: '1px solid #e5e5e5'
           }}>
             {/* Modal Header */}
             <div style={{
-              padding: '20px 24px',
-              borderBottom: '1px solid #E2E8F0',
+              padding: '22px 26px',
+              borderBottom: '1px solid #e5e5e5',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
               backgroundColor: '#FFFFFF'
             }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#0F172A' }}>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#000000', letterSpacing: '-0.02em' }}>
                   Add Service & Specialization
                 </h3>
-                <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#64748B' }}>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#737373' }}>
                   Select an official trade category, experience, and specialization skills.
                 </p>
               </div>
@@ -1013,7 +1127,7 @@ export default function WorkerProfile() {
                   background: 'none',
                   border: 'none',
                   fontSize: '1.4rem',
-                  color: '#94A3B8',
+                  color: '#737373',
                   cursor: 'pointer',
                   padding: '4px 8px',
                   borderRadius: '8px'
@@ -1024,7 +1138,7 @@ export default function WorkerProfile() {
             </div>
 
             {/* Modal Scrollable Body */}
-            <div style={{ padding: '24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div style={{ padding: '24px 26px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
               {serviceError && (
                 <div style={{
                   padding: '12px 16px',
@@ -1082,11 +1196,11 @@ export default function WorkerProfile() {
                   <label className="worker-label" style={{ margin: 0 }}>
                     Skills for {selectedCategory.name}
                   </label>
-                  <span style={{ fontSize: '0.8rem', color: '#64748B' }}>
+                  <span style={{ fontSize: '0.8rem', color: '#737373', fontWeight: 600 }}>
                     {selectedSkills.length} selected
                   </span>
                 </div>
-                <p style={{ fontSize: '0.82rem', color: '#64748B', margin: '0 0 10px 0' }}>
+                <p style={{ fontSize: '0.82rem', color: '#737373', margin: '0 0 10px 0' }}>
                   Click to select or unselect skills:
                 </p>
 
@@ -1106,9 +1220,9 @@ export default function WorkerProfile() {
                           borderRadius: '9999px',
                           fontSize: '0.85rem',
                           fontWeight: isSelected ? 700 : 500,
-                          backgroundColor: isSelected ? '#EFF6FF' : '#F8FAFC',
-                          color: isSelected ? '#2563EB' : '#334155',
-                          border: isSelected ? '1.5px solid #2563EB' : '1px solid #CBD5E1',
+                          backgroundColor: isSelected ? '#000000' : '#f5f5f5',
+                          color: isSelected ? '#ffffff' : '#171717',
+                          border: isSelected ? '1.5px solid #000000' : '1px solid #e5e5e5',
                           cursor: 'pointer',
                           transition: 'all 0.15s ease'
                         }}
@@ -1140,7 +1254,7 @@ export default function WorkerProfile() {
                     type="button"
                     className="worker-btn-primary"
                     onClick={handleAddCustomSkill}
-                    style={{ padding: '0 18px', whiteSpace: 'nowrap', borderRadius: '10px' }}
+                    style={{ padding: '0 18px', whiteSpace: 'nowrap', borderRadius: '12px' }}
                   >
                     Add
                   </button>
@@ -1149,8 +1263,8 @@ export default function WorkerProfile() {
 
               {/* 4. Selected Skills Summary Tags */}
               {selectedSkills.length > 0 && (
-                <div style={{ backgroundColor: '#F8FAFC', padding: '14px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>
+                <div style={{ backgroundColor: '#f9f9f9', padding: '14px', borderRadius: '12px', border: '1px solid #e5e5e5' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#000000', display: 'block', marginBottom: '8px' }}>
                     Currently Selected Specializations ({selectedSkills.length}):
                   </span>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
@@ -1158,11 +1272,11 @@ export default function WorkerProfile() {
                       <span
                         key={sk}
                         style={{
-                          backgroundColor: '#EFF6FF',
-                          color: '#1D4ED8',
-                          border: '1px solid #BFDBFE',
-                          padding: '3px 10px',
-                          borderRadius: '8px',
+                          backgroundColor: '#000000',
+                          color: '#ffffff',
+                          border: '1px solid #000000',
+                          padding: '3px 12px',
+                          borderRadius: '9999px',
                           fontSize: '0.8rem',
                           fontWeight: 600,
                           display: 'inline-flex',
@@ -1173,7 +1287,7 @@ export default function WorkerProfile() {
                         {sk}
                         <i
                           className="fa-solid fa-xmark"
-                          style={{ cursor: 'pointer', opacity: 0.7 }}
+                          style={{ cursor: 'pointer', opacity: 0.8 }}
                           onClick={() => handleRemoveSkillChip(sk)}
                           title="Remove"
                         ></i>
@@ -1186,8 +1300,8 @@ export default function WorkerProfile() {
 
             {/* Modal Actions Footer */}
             <div style={{
-              padding: '16px 24px',
-              borderTop: '1px solid #E2E8F0',
+              padding: '16px 26px',
+              borderTop: '1px solid #e5e5e5',
               display: 'flex',
               justifyContent: 'flex-end',
               gap: '12px',
