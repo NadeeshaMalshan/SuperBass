@@ -20,6 +20,7 @@ import WorkerDashboard from './pages/worker/WorkerDashboard.jsx'
 import WorkerJobs from './pages/worker/WorkerJobs.jsx'
 import WorkerPerformance from './pages/worker/WorkerPerformance.jsx'
 import WorkerProfile from './pages/worker/WorkerProfile.jsx'
+import WorkerCommunityPosts from './pages/worker/WorkerCommunityPosts.jsx'
 import ResidentProfile from './ResidentProfile.jsx'
 
 class ErrorBoundary extends Component {
@@ -175,6 +176,9 @@ function Router() {
   }
   if (path === '/worker/profile' || path === '/worker/profile.jsx') {
     return <WorkerProfile />;
+  }
+  if (path === '/worker/community-posts' || path === '/worker/community-posts.jsx') {
+    return <WorkerCommunityPosts />;
   }
 
   return <App />;
