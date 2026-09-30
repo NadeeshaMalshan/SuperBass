@@ -60,7 +60,6 @@ async def supervisor_node(state: AgentState) -> Dict[str, Any]:
         try:
             llm = ChatOpenAI(
                 model=settings.openai_model,
-                temperature=settings.openai_temperature,
                 api_key=settings.openai_api_key
             )
             structured_router = llm.with_structured_output(SupervisorDecision, method="function_calling")

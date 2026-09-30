@@ -48,7 +48,6 @@ async def community_agent_node(state: AgentState) -> Dict[str, Any]:
             logger.info(f"📢 [Community Agent] Executing LLM with tools for user '{email}' ({user_type})")
             llm = ChatOpenAI(
                 model=settings.openai_model,
-                temperature=settings.openai_temperature,
                 api_key=settings.openai_api_key
             )
             llm_with_tools = llm.bind_tools(COMMUNITY_TOOLS)

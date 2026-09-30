@@ -143,7 +143,6 @@ async def format_specialist_structured_message(
             if not active_llm:
                 active_llm = ChatOpenAI(
                     model=settings.openai_model,
-                    temperature=0.2,
                     api_key=settings.openai_api_key
                 )
             structured_llm = active_llm.with_structured_output(SpecialistConversationalOutput)
