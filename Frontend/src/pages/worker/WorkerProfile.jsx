@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import WorkerLayout from './WorkerLayout.jsx';
 import axios from 'axios';
 import { API_BASE_URL } from '../../config.js';
+import { WORKER_SERVICES_CATALOG, getSkillsForService, getCategoryByName } from '../../data/workerServicesCatalog.js';
+import sriLankaDistricts from '../../data/sriLankaDistricts.json';
 
 export default function WorkerProfile() {
   const [activeTab, setActiveTab] = useState('bio'); // 'bio' | 'skills' | 'location' | 'availability' | 'security'
@@ -18,9 +20,17 @@ export default function WorkerProfile() {
     isVerified: true
   });
 
-  // Skills & Pricing State
-  const [skills, setSkills] = useState([]);
-  const [newSkill, setNewSkill] = useState('');
+  // Services & Skills State (hierarchical list matching backend & mobile app)
+  const [services, setServices] = useState([]);
+  const [isAddServiceModalOpen, setIsAddServiceModalOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState(WORKER_SERVICES_CATALOG[0]);
+  const [selectedSkills, setSelectedSkills] = useState(WORKER_SERVICES_CATALOG[0].defaultSkills.slice(0, 2));
+  const [experienceYears, setExperienceYears] = useState(2);
+  const [customSkill, setCustomSkill] = useState('');
+  const [savingService, setSavingService] = useState(false);
+  const [serviceError, setServiceError] = useState(null);
+
+  // Pricing State
   const [pricingModel, setPricingModel] = useState('Hourly');
   const [hourlyRate, setHourlyRate] = useState('');
   const [dailyRate, setDailyRate] = useState('');
@@ -72,9 +82,33 @@ export default function WorkerProfile() {
           if (w.dailyRate != null) setDailyRate(w.dailyRate);
           if (w.primaryServiceArea) setServiceArea(w.primaryServiceArea);
           if (w.coverageRadiusKm) setRadiusKm(w.coverageRadiusKm);
+
+          // Parse hierarchical skills & services list
           if (w.skills && Array.isArray(w.skills)) {
-            setSkills(w.skills.map(s => s.skillName));
+            const parsedServices = w.skills.map(s => {
+              let subSkillsList = [];
+              if (Array.isArray(s.skills)) {
+                subSkillsList = s.skills.filter(Boolean);
+              } else if (typeof s.skills === 'string' && s.skills.trim()) {
+                try {
+                  const parsed = JSON.parse(s.skills);
+                  if (Array.isArray(parsed)) subSkillsList = parsed;
+                  else subSkillsList = s.skills.split(',').map(x => x.trim()).filter(Boolean);
+                } catch {
+                  subSkillsList = s.skills.split(',').map(x => x.trim()).filter(Boolean);
+                }
+              }
+              return {
+                id: s.id,
+                serviceName: s.serviceName || s.skillName || 'General',
+                skills: subSkillsList,
+                experienceYears: s.experienceYears != null ? s.experienceYears : 1,
+                skillName: s.skillName || s.serviceName
+              };
+            });
+            setServices(parsedServices);
           }
+
           // Load saved availability schedule
           if (w.availabilityScheduleJson) {
             try {
@@ -105,22 +139,117 @@ export default function WorkerProfile() {
     return () => window.removeEventListener('workerAvailabilityChanged', handleNavbarToggle);
   }, []);
 
-  const handleAddSkill = () => {
-    if (newSkill.trim() && !skills.includes(newSkill.trim())) {
-      const updated = [...skills, newSkill.trim()];
-      setSkills(updated);
-      setNewSkill('');
+  // Modal Handlers for Services & Skills (identical to Flutter Worker App)
+  const handleOpenAddServiceModal = () => {
+    const defaultCat = WORKER_SERVICES_CATALOG[0];
+    setSelectedCategory(defaultCat);
+    setSelectedSkills(defaultCat.defaultSkills.slice(0, 2));
+    setExperienceYears(2);
+    setCustomSkill('');
+    setServiceError(null);
+    setIsAddServiceModalOpen(true);
+  };
 
-      if (currentWorkerId) {
-        axios.post(`${API_BASE_URL}/workers/${currentWorkerId}/skills`, { skillName: newSkill.trim() }, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {}
-        }).catch(err => console.log('Skill saved locally'));
-      }
+  const handleCategorySelect = (categoryName) => {
+    const cat = WORKER_SERVICES_CATALOG.find(c => c.name === categoryName) || WORKER_SERVICES_CATALOG[0];
+    setSelectedCategory(cat);
+    // Pre-select first 2 suggested skills for convenience
+    setSelectedSkills(cat.defaultSkills.slice(0, 2));
+    setServiceError(null);
+  };
+
+  const handleToggleSkillChip = (skillName) => {
+    if (selectedSkills.includes(skillName)) {
+      setSelectedSkills(selectedSkills.filter(s => s !== skillName));
+    } else {
+      setSelectedSkills([...selectedSkills, skillName]);
     }
   };
 
-  const handleRemoveSkill = (skillToRemove) => {
-    setSkills(skills.filter(s => s !== skillToRemove));
+  const handleAddCustomSkill = (e) => {
+    if (e) e.preventDefault();
+    const trimmed = customSkill.trim();
+    if (trimmed && !selectedSkills.includes(trimmed)) {
+      setSelectedSkills([...selectedSkills, trimmed]);
+      setCustomSkill('');
+    }
+  };
+
+  const handleRemoveSkillChip = (skillName) => {
+    setSelectedSkills(selectedSkills.filter(s => s !== skillName));
+  };
+
+  const handleSaveService = async () => {
+    if (!currentWorkerId) {
+      setServiceError('Worker session not loaded. Please refresh.');
+      return;
+    }
+
+    if (selectedSkills.length === 0) {
+      setServiceError('Please select or add at least one specialization skill for this service.');
+      return;
+    }
+
+    // Check if worker already has this service added
+    const alreadyExists = services.some(
+      s => s.serviceName.trim().toLowerCase() === selectedCategory.name.trim().toLowerCase()
+    );
+    if (alreadyExists) {
+      setServiceError(`You already have "${selectedCategory.name}" in your profile. Remove or update the existing service.`);
+      return;
+    }
+
+    try {
+      setSavingService(true);
+      setServiceError(null);
+      const res = await axios.post(`${API_BASE_URL}/workers/${currentWorkerId}/skills`, {
+        serviceName: selectedCategory.name,
+        service: selectedCategory.name,
+        skills: selectedSkills,
+        experienceYears: parseInt(experienceYears, 10) || 1
+      }, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+
+      const newSkillRecord = {
+        id: res.data?.id || Date.now(),
+        serviceName: res.data?.serviceName || selectedCategory.name,
+        skills: res.data?.skills || selectedSkills,
+        experienceYears: res.data?.experienceYears != null ? res.data.experienceYears : experienceYears,
+        skillName: res.data?.skillName || selectedCategory.name
+      };
+
+      setServices(prev => [...prev, newSkillRecord]);
+      setIsAddServiceModalOpen(false);
+      setSaveStatus(`✓ Added "${selectedCategory.name}" with ${selectedSkills.length} specialization skills!`);
+      setTimeout(() => setSaveStatus(null), 3500);
+    } catch (err) {
+      console.error('Failed to add service:', err);
+      setServiceError(err.response?.data?.message || 'Failed to add service. Please try again.');
+    } finally {
+      setSavingService(false);
+    }
+  };
+
+  const handleRemoveService = async (serviceItem) => {
+    if (!window.confirm(`Are you sure you want to remove "${serviceItem.serviceName}" from your profile?`)) {
+      return;
+    }
+
+    try {
+      if (serviceItem.id && currentWorkerId) {
+        await axios.delete(`${API_BASE_URL}/workers/${currentWorkerId}/skills/${serviceItem.id}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+      }
+      setServices(prev => prev.filter(s => s.id !== serviceItem.id));
+      setSaveStatus(`Removed "${serviceItem.serviceName}" from your trade profile.`);
+      setTimeout(() => setSaveStatus(null), 3000);
+    } catch (err) {
+      console.error('Failed to delete service:', err);
+      setSaveStatus('Failed to remove service. Please try again.');
+      setTimeout(() => setSaveStatus(null), 3000);
+    }
   };
 
   const handleSavePricing = async () => {
@@ -367,55 +496,182 @@ export default function WorkerProfile() {
         </div>
       )}
 
-      {/* Tab 2: Skills & Rates */}
+      {/* Tab 2: Services, Skills & Rates */}
       {activeTab === 'skills' && (
         <div className="worker-card">
-          <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#111111', marginBottom: '16px' }}>
-            Trade Skills & Services Offered
-          </h3>
-
-          <div className="worker-input-group">
-            <label className="worker-label">Active Skills</label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
-              {skills.map((skill, index) => (
-                <span key={index} style={{
-                  backgroundColor: '#EFF6FF',
-                  color: '#2563EB',
-                  padding: '6px 14px',
-                  borderRadius: '9999px',
-                  fontSize: '0.9rem',
-                  fontWeight: 700,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  border: '1px solid #BFDBFE'
-                }}>
-                  {skill}
-                  <i 
-                    className="fa-solid fa-xmark" 
-                    style={{ cursor: 'pointer', opacity: 0.7 }}
-                    onClick={() => handleRemoveSkill(skill)}
-                  ></i>
-                </span>
-              ))}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
+            <div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', margin: '0 0 6px 0' }}>
+                Services, Skills & Rates
+              </h3>
+              <p style={{ color: '#64748B', fontSize: '0.9rem', margin: 0 }}>
+                Manage your official trade categories, specialization sub-skills, experience, and pricing.
+              </p>
             </div>
-
-            <div style={{ display: 'flex', gap: '10px', maxWidth: '400px' }}>
-              <input 
-                type="text" 
-                className="worker-input" 
-                placeholder="e.g. Masonry, Roofing, Painting" 
-                value={newSkill} 
-                onChange={(e) => setNewSkill(e.target.value)}
-              />
-              <button className="worker-btn-primary" style={{ padding: '0 20px', whiteSpace: 'nowrap' }} onClick={handleAddSkill}>
-                Add Skill
-              </button>
-            </div>
+            <button
+              type="button"
+              className="worker-btn-primary"
+              onClick={handleOpenAddServiceModal}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: '12px' }}
+            >
+              <i className="fa-solid fa-plus"></i>
+              Add Service
+            </button>
           </div>
 
-          <hr style={{ border: 'none', borderTop: '1px solid #E2E8F0', margin: '28px 0' }} />
+          {/* Active Services Cards */}
+          <div style={{ marginBottom: '32px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <label className="worker-label" style={{ margin: 0, fontSize: '0.95rem' }}>
+                Active Services & Specializations ({services.length})
+              </label>
+            </div>
 
+            {services.length === 0 ? (
+              <div style={{
+                backgroundColor: '#F8FAFC',
+                border: '2px dashed #E2E8F0',
+                borderRadius: '16px',
+                padding: '40px 24px',
+                textAlign: 'center'
+              }}>
+                <div style={{
+                  width: '56px',
+                  height: '56px',
+                  borderRadius: '50%',
+                  backgroundColor: '#EFF6FF',
+                  color: '#2563EB',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.6rem',
+                  margin: '0 auto 16px auto'
+                }}>
+                  <i className="fa-solid fa-screwdriver-wrench"></i>
+                </div>
+                <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0F172A', margin: '0 0 6px 0' }}>
+                  No trade services added yet
+                </h4>
+                <p style={{ fontSize: '0.9rem', color: '#64748B', maxWidth: '420px', margin: '0 auto 20px auto', lineHeight: '1.5' }}>
+                  Add your trade specializations and skills so residents can find your profile and request your services.
+                </p>
+                <button
+                  type="button"
+                  className="worker-btn-primary"
+                  onClick={handleOpenAddServiceModal}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                >
+                  <i className="fa-solid fa-plus"></i>
+                  Add Your First Service
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+                {services.map((item, idx) => {
+                  const catDef = getCategoryByName(item.serviceName);
+                  const iconEmoji = catDef?.icon || '🧰';
+                  const expText = item.experienceYears <= 0
+                    ? 'Less than 1 Year Experience'
+                    : (item.experienceYears === 1 ? '1 Year Experience' : `${item.experienceYears}+ Years Experience`);
+
+                  return (
+                    <div
+                      key={item.id || idx}
+                      style={{
+                        backgroundColor: '#FFFFFF',
+                        border: '1.5px solid #E2E8F0',
+                        borderRadius: '16px',
+                        padding: '18px 20px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.03)',
+                        transition: 'border-color 0.2s'
+                      }}
+                    >
+                      <div>
+                        {/* Header Row */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '12px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{
+                              width: '44px',
+                              height: '44px',
+                              borderRadius: '12px',
+                              backgroundColor: '#EFF6FF',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '1.35rem'
+                            }}>
+                              {iconEmoji}
+                            </div>
+                            <div>
+                              <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#0F172A' }}>
+                                {item.serviceName}
+                              </h4>
+                              <span style={{ fontSize: '0.8rem', color: '#64748B', fontWeight: 600 }}>
+                                {expText}
+                              </span>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveService(item)}
+                            title="Remove service"
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#94A3B8',
+                              cursor: 'pointer',
+                              padding: '6px',
+                              borderRadius: '8px',
+                              fontSize: '1rem',
+                              transition: 'color 0.2s, background-color 0.2s'
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.color = '#EF4444'; e.currentTarget.style.backgroundColor = '#FEF2F2'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.color = '#94A3B8'; e.currentTarget.style.backgroundColor = 'transparent'; }}
+                          >
+                            <i className="fa-regular fa-trash-can"></i>
+                          </button>
+                        </div>
+
+                        {/* Sub-Skills Chips */}
+                        {item.skills && item.skills.length > 0 ? (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', paddingTop: '10px', borderTop: '1px dashed #F1F5F9' }}>
+                            {item.skills.map((sub, sIdx) => (
+                              <span
+                                key={sIdx}
+                                style={{
+                                  backgroundColor: '#F8FAFC',
+                                  color: '#334155',
+                                  border: '1px solid #CBD5E1',
+                                  padding: '4px 10px',
+                                  borderRadius: '8px',
+                                  fontSize: '0.8rem',
+                                  fontWeight: 600
+                                }}
+                              >
+                                {sub}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <div style={{ paddingTop: '8px', borderTop: '1px dashed #F1F5F9', fontSize: '0.82rem', color: '#94A3B8', fontStyle: 'italic' }}>
+                            All general repairs & trade tasks
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <hr style={{ border: 'none', borderTop: '1px solid #E2E8F0', margin: '32px 0' }} />
+
+          {/* Pricing & Rates Setup */}
           <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#111111', marginBottom: '16px' }}>
             Pricing & Rates Setup
           </h3>
@@ -452,7 +708,7 @@ export default function WorkerProfile() {
           </div>
 
           <button className="worker-btn-primary" onClick={handleSavePricing}>
-            Save Skills & Rates
+            Save Pricing Rates
           </button>
         </div>
       )}
@@ -465,14 +721,21 @@ export default function WorkerProfile() {
           </h3>
 
           <div className="worker-input-group">
-            <label className="worker-label">Primary Location / District</label>
-            <input 
-              type="text" 
-              className="worker-input" 
-              value={serviceArea} 
+            <label className="worker-label">Primary Service Area</label>
+            <select 
+              className="worker-select" 
+              value={serviceArea || 'Colombo'} 
               onChange={(e) => setServiceArea(e.target.value)}
-              placeholder="e.g. Colombo, Dehiwala, Nugegoda"
-            />
+            >
+              <option value="" disabled>Select Primary Service Area</option>
+              {Object.entries(sriLankaDistricts).map(([province, districts]) => (
+                <optgroup key={province} label={province}>
+                  {districts.map(d => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
           </div>
 
           <div className="worker-input-group" style={{ marginTop: '24px' }}>
@@ -694,6 +957,270 @@ export default function WorkerProfile() {
             >
               Revert to Resident Role
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Add Service & Specialization Modal (matching Flutter Worker App) */}
+      {isAddServiceModalOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '20px'
+        }}>
+          <div style={{
+            backgroundColor: '#FFFFFF',
+            borderRadius: '20px',
+            maxWidth: '580px',
+            width: '100%',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            overflow: 'hidden',
+            border: '1px solid #E2E8F0'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              padding: '20px 24px',
+              borderBottom: '1px solid #E2E8F0',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              backgroundColor: '#FFFFFF'
+            }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#0F172A' }}>
+                  Add Service & Specialization
+                </h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#64748B' }}>
+                  Select an official trade category, experience, and specialization skills.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddServiceModalOpen(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.4rem',
+                  color: '#94A3B8',
+                  cursor: 'pointer',
+                  padding: '4px 8px',
+                  borderRadius: '8px'
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Modal Scrollable Body */}
+            <div style={{ padding: '24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {serviceError && (
+                <div style={{
+                  padding: '12px 16px',
+                  backgroundColor: '#FEF2F2',
+                  border: '1px solid #FCA5A5',
+                  borderRadius: '10px',
+                  color: '#991B1B',
+                  fontSize: '0.875rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <i className="fa-solid fa-circle-exclamation"></i>
+                  <span>{serviceError}</span>
+                </div>
+              )}
+
+              {/* 1. Service Category */}
+              <div>
+                <label className="worker-label" style={{ marginBottom: '6px' }}>Select Service Category *</label>
+                <select
+                  className="worker-select"
+                  value={selectedCategory.name}
+                  onChange={(e) => handleCategorySelect(e.target.value)}
+                  style={{ fontSize: '0.95rem', fontWeight: 600 }}
+                >
+                  {WORKER_SERVICES_CATALOG.map(c => (
+                    <option key={c.id} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 2. Experience Level */}
+              <div>
+                <label className="worker-label" style={{ marginBottom: '6px' }}>Years of Experience</label>
+                <select
+                  className="worker-select"
+                  value={experienceYears}
+                  onChange={(e) => setExperienceYears(parseInt(e.target.value, 10))}
+                >
+                  <option value={0}>Less than 1 Year Experience</option>
+                  <option value={1}>1 Year Experience</option>
+                  <option value={2}>2 Years Experience</option>
+                  <option value={3}>3 Years Experience</option>
+                  <option value={5}>5+ Years Experience</option>
+                  <option value={10}>10+ Years Experience</option>
+                </select>
+              </div>
+
+              {/* 3. Skills for Selected Category */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <label className="worker-label" style={{ margin: 0 }}>
+                    Skills for {selectedCategory.name}
+                  </label>
+                  <span style={{ fontSize: '0.8rem', color: '#64748B' }}>
+                    {selectedSkills.length} selected
+                  </span>
+                </div>
+                <p style={{ fontSize: '0.82rem', color: '#64748B', margin: '0 0 10px 0' }}>
+                  Click to select or unselect skills:
+                </p>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '14px' }}>
+                  {selectedCategory.defaultSkills.map((sk) => {
+                    const isSelected = selectedSkills.includes(sk);
+                    return (
+                      <button
+                        key={sk}
+                        type="button"
+                        onClick={() => handleToggleSkillChip(sk)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '6px 14px',
+                          borderRadius: '9999px',
+                          fontSize: '0.85rem',
+                          fontWeight: isSelected ? 700 : 500,
+                          backgroundColor: isSelected ? '#EFF6FF' : '#F8FAFC',
+                          color: isSelected ? '#2563EB' : '#334155',
+                          border: isSelected ? '1.5px solid #2563EB' : '1px solid #CBD5E1',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        {isSelected && <i className="fa-solid fa-check" style={{ fontSize: '0.75rem' }}></i>}
+                        {sk}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Custom Sub-skill input */}
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    className="worker-input"
+                    placeholder={`Add custom skill to ${selectedCategory.name}...`}
+                    value={customSkill}
+                    onChange={(e) => setCustomSkill(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddCustomSkill();
+                      }
+                    }}
+                    style={{ fontSize: '0.9rem' }}
+                  />
+                  <button
+                    type="button"
+                    className="worker-btn-primary"
+                    onClick={handleAddCustomSkill}
+                    style={{ padding: '0 18px', whiteSpace: 'nowrap', borderRadius: '10px' }}
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+
+              {/* 4. Selected Skills Summary Tags */}
+              {selectedSkills.length > 0 && (
+                <div style={{ backgroundColor: '#F8FAFC', padding: '14px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '8px' }}>
+                    Currently Selected Specializations ({selectedSkills.length}):
+                  </span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {selectedSkills.map((sk) => (
+                      <span
+                        key={sk}
+                        style={{
+                          backgroundColor: '#EFF6FF',
+                          color: '#1D4ED8',
+                          border: '1px solid #BFDBFE',
+                          padding: '3px 10px',
+                          borderRadius: '8px',
+                          fontSize: '0.8rem',
+                          fontWeight: 600,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        {sk}
+                        <i
+                          className="fa-solid fa-xmark"
+                          style={{ cursor: 'pointer', opacity: 0.7 }}
+                          onClick={() => handleRemoveSkillChip(sk)}
+                          title="Remove"
+                        ></i>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Actions Footer */}
+            <div style={{
+              padding: '16px 24px',
+              borderTop: '1px solid #E2E8F0',
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '12px',
+              backgroundColor: '#FFFFFF'
+            }}>
+              <button
+                type="button"
+                className="worker-btn-outlined"
+                onClick={() => setIsAddServiceModalOpen(false)}
+                disabled={savingService}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="worker-btn-primary"
+                onClick={handleSaveService}
+                disabled={savingService || selectedSkills.length === 0}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+              >
+                {savingService ? (
+                  <>
+                    <i className="fa-solid fa-spinner fa-spin"></i>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <i className="fa-solid fa-check"></i>
+                    Save Service & Skills
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
