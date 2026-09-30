@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import categoriesData from './data/categories.json';
 import sriLankaDistricts from './data/sriLankaDistricts.json';
+import { WORKER_SERVICES_CATALOG, getSkillsForService, getCategoryByName } from './data/workerServicesCatalog.js';
 import M3TopNavbar from './components/M3TopNavbar.jsx';
 import UserMenu from './components/UserMenu.jsx';
 import '@material/web/button/filled-button.js';
@@ -10,6 +11,7 @@ import '@material/web/icon/icon.js';
 import '@material/web/progress/circular-progress.js';
 import '@material/web/textfield/filled-text-field.js';
 import Loader from './components/Loader.jsx';
+import MyCommunityPostsManager from './components/MyCommunityPostsManager.jsx';
 import { API_BASE_URL } from './config.js';
 import VerificationForm from './components/VerificationForm.jsx';
 import VerifiedBadge from './components/VerifiedBadge.jsx';
@@ -41,12 +43,19 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
   // Become worker form state
   const [workerForm, setWorkerForm] = useState({
     description: '',
-    primaryServiceArea: '',
+    primaryServiceArea: 'Colombo',
     coverageRadiusKm: 10,
     pricingModel: 'Hourly',
     hourlyRate: '',
     dailyRate: '',
-    skills: [{ skillName: categoriesData[0]?.name || 'Plumbing', experienceYears: 1 }]
+    skills: [
+      {
+        serviceName: WORKER_SERVICES_CATALOG[0]?.name || 'Plumbing',
+        skills: (WORKER_SERVICES_CATALOG[0]?.defaultSkills || []).slice(0, 2),
+        experienceYears: 2,
+        customSkillInput: ''
+      }
+    ]
   });
   const [submittingWorker, setSubmittingWorker] = useState(false);
   const [workerError, setWorkerError] = useState(null);
@@ -88,6 +97,8 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     comment: ''
   });
   const [submittingReview, setSubmittingReview] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   let userEmail = localStorage.getItem('email');
   const token = localStorage.getItem('token');
@@ -269,23 +280,82 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     }
   };
 
-  // Skill management handlers
-  const handleAddSkill = () => {
-    setWorkerForm({
-      ...workerForm,
-      skills: [...workerForm.skills, { skillName: categoriesData[0]?.name || 'Plumbing', experienceYears: 1 }]
-    });
+  // Skill & Service management handlers (matching Mobile App become_worker_sheet)
+  const handleAddService = () => {
+    const usedCategories = workerForm.skills.map(s => s.serviceName.toLowerCase());
+    const nextCat = WORKER_SERVICES_CATALOG.find(c => !usedCategories.includes(c.name.toLowerCase())) || WORKER_SERVICES_CATALOG[0];
+
+    setWorkerForm(prev => ({
+      ...prev,
+      skills: [
+        ...prev.skills,
+        {
+          serviceName: nextCat.name,
+          skills: nextCat.defaultSkills.slice(0, 2),
+          experienceYears: 2,
+          customSkillInput: ''
+        }
+      ]
+    }));
   };
 
-  const handleRemoveSkill = (index) => {
+  const handleRemoveService = (index) => {
+    if (workerForm.skills.length <= 1) {
+      alert("You must keep at least one trade service.");
+      return;
+    }
     const updated = workerForm.skills.filter((_, i) => i !== index);
-    setWorkerForm({ ...workerForm, skills: updated });
+    setWorkerForm(prev => ({ ...prev, skills: updated }));
   };
 
-  const handleSkillChange = (index, field, value) => {
+  const handleServiceCategoryChange = (index, newServiceName) => {
+    const catDef = getCategoryByName(newServiceName) || WORKER_SERVICES_CATALOG[0];
     const updated = [...workerForm.skills];
-    updated[index][field] = value;
-    setWorkerForm({ ...workerForm, skills: updated });
+    updated[index] = {
+      ...updated[index],
+      serviceName: catDef.name,
+      skills: catDef.defaultSkills.slice(0, 2),
+      customSkillInput: ''
+    };
+    setWorkerForm(prev => ({ ...prev, skills: updated }));
+  };
+
+  const handleExperienceChange = (index, years) => {
+    const updated = [...workerForm.skills];
+    updated[index].experienceYears = parseInt(years, 10);
+    setWorkerForm(prev => ({ ...prev, skills: updated }));
+  };
+
+  const handleToggleSubSkill = (serviceIndex, skillName) => {
+    const updated = [...workerForm.skills];
+    const currentSkills = updated[serviceIndex].skills;
+    if (currentSkills.includes(skillName)) {
+      if (currentSkills.length <= 1) {
+        alert("Each service must have at least one specialization skill.");
+        return;
+      }
+      updated[serviceIndex].skills = currentSkills.filter(s => s !== skillName);
+    } else {
+      updated[serviceIndex].skills = [...currentSkills, skillName];
+    }
+    setWorkerForm(prev => ({ ...prev, skills: updated }));
+  };
+
+  const handleAddCustomSubSkill = (serviceIndex) => {
+    const updated = [...workerForm.skills];
+    const targetService = updated[serviceIndex];
+    const trimmed = (targetService.customSkillInput || '').trim();
+    if (trimmed && !targetService.skills.includes(trimmed)) {
+      targetService.skills = [...targetService.skills, trimmed];
+      targetService.customSkillInput = '';
+      setWorkerForm(prev => ({ ...prev, skills: updated }));
+    }
+  };
+
+  const handleCustomSkillInputChange = (serviceIndex, val) => {
+    const updated = [...workerForm.skills];
+    updated[serviceIndex].customSkillInput = val;
+    setWorkerForm(prev => ({ ...prev, skills: updated }));
   };
 
   // Submit worker upgrade
@@ -295,11 +365,23 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     setWorkerError(null);
 
     try {
+      // Validate that every service has at least one skill
+      for (const s of workerForm.skills) {
+        if (!s.skills || s.skills.length === 0) {
+          setWorkerError(`Please select at least one specialization skill for ${s.serviceName}.`);
+          setSubmittingWorker(false);
+          return;
+        }
+      }
+
       const validSkills = workerForm.skills
-        .filter(s => s.skillName.trim() !== '')
+        .filter(s => s.serviceName && s.serviceName.trim() !== '')
         .map(s => ({
-          skillName: s.skillName.trim(),
-          experienceYears: parseInt(s.experienceYears) || 1
+          serviceName: s.serviceName.trim(),
+          service: s.serviceName.trim(),
+          skills: s.skills,
+          experienceYears: isNaN(parseInt(s.experienceYears, 10)) ? 1 : Math.max(0, parseInt(s.experienceYears, 10)),
+          skillName: s.serviceName.trim()
         }));
 
       const activeEmail = userEmail || profile?.email || localStorage.getItem('email');
@@ -312,7 +394,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
       const payload = {
         email: activeEmail,
         description: workerForm.description,
-        primaryServiceArea: workerForm.primaryServiceArea || 'Default Area',
+        primaryServiceArea: workerForm.primaryServiceArea || 'Colombo',
         coverageRadiusKm: parseFloat(workerForm.coverageRadiusKm) || 10,
         pricingModel: workerForm.pricingModel,
         hourlyRate: workerForm.hourlyRate ? parseFloat(workerForm.hourlyRate) : null,
@@ -362,18 +444,27 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
   };
 
   const handleDeleteAccount = async () => {
-    if (!window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
+    if (deleteConfirmText !== 'DELETE') {
+      alert("Please type DELETE in capital letters to confirm permanent account deletion.");
+      return;
+    }
+
+    if (!window.confirm("FINAL WARNING: Are you absolutely certain you want to permanently delete your Resident account? All your bookings, community posts, and data will be permanently wiped. Your email will be freed up.")) {
       return;
     }
 
     try {
+      setIsDeletingAccount(true);
       await axios.delete(`${API_BASE_URL}/residents/${encodeURIComponent(userEmail)}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
+      alert("Your Resident account has been permanently deleted. Your email is now freed up to register as either Resident or Worker.");
       handleLogout();
     } catch (err) {
       console.error(err);
-      alert('Failed to delete account.');
+      alert(err.response?.data?.message || 'Failed to delete account.');
+    } finally {
+      setIsDeletingAccount(false);
     }
   };
 
@@ -596,7 +687,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
             )}
             {!isSidebarCollapsed && (
               <div style={{ overflow: 'hidden', minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#111827', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#111827', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
                   {profile.name || 'User'}
                   {isVerified && <VerifiedBadge />}
                 </div>
@@ -624,22 +715,32 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
             </div>
 
             <div
-              className={`m3-drawer-item ${activeTab === 'verify' ? 'active' : ''}`}
-              onClick={() => setActiveTab('verify')}
-            >
-              <div className="m3-drawer-item-left">
-                <md-icon className="m3-drawer-icon">verified_user</md-icon>
-                <span className="m3-drawer-label">Verify Account</span>
-              </div>
-            </div>
-
-            <div
               className={`m3-drawer-item ${activeTab === 'edit' ? 'active' : ''}`}
               onClick={() => setActiveTab('edit')}
             >
               <div className="m3-drawer-item-left">
                 <md-icon className="m3-drawer-icon">edit</md-icon>
                 <span className="m3-drawer-label">Edit Profile</span>
+              </div>
+            </div>
+
+            <div
+              className={`m3-drawer-item ${activeTab === 'bookings' ? 'active' : ''}`}
+              onClick={() => setActiveTab('bookings')}
+            >
+              <div className="m3-drawer-item-left">
+                <md-icon className="m3-drawer-icon">calendar_month</md-icon>
+                <span className="m3-drawer-label">My Bookings</span>
+              </div>
+            </div>
+
+            <div
+              className={`m3-drawer-item ${activeTab === 'posts' ? 'active' : ''}`}
+              onClick={() => setActiveTab('posts')}
+            >
+              <div className="m3-drawer-item-left">
+                <md-icon className="m3-drawer-icon">dynamic_feed</md-icon>
+                <span className="m3-drawer-label">My Community Posts</span>
               </div>
             </div>
 
@@ -653,48 +754,20 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
               </div>
             </div>
 
-            {isWorker ? (
-              <div
-                className="m3-drawer-item"
-                onClick={() => {
-                  localStorage.setItem('activeRole', 'Worker');
-                  navigateTo('/worker/dashboard');
-                }}
-                style={{ marginTop: '8px' }}
-              >
-                <div className="m3-drawer-item-left">
-                  <md-icon className="m3-drawer-icon" style={{ color: '#2563eb' }}>engineering</md-icon>
-                  <span className="m3-drawer-label" style={{ color: '#2563eb', fontWeight: 700 }}>Worker Portal</span>
-                </div>
-              </div>
-            ) : (
-              <div
-                className={`m3-drawer-item ${activeTab === 'become-worker' ? 'active' : ''}`}
-                onClick={() => setActiveTab('become-worker')}
-                style={{ marginTop: '8px' }}
-              >
-                <div className="m3-drawer-item-left">
-                  <md-icon className="m3-drawer-icon" style={{ color: '#2563eb' }}>handyman</md-icon>
-                  <span className="m3-drawer-label" style={{ color: '#2563eb', fontWeight: 700 }}>Join as Worker</span>
-                </div>
-              </div>
-            )}
           </nav>
         </aside>
 
         {/* Main Content Area */}
-        <main className="find-main" style={{ flex: 1, minWidth: 0, padding: '24px 32px' }}>
-          <div style={{ maxWidth: '900px', backgroundColor: '#ffffff', borderRadius: '16px', padding: '2rem', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-
-                    {/* TAB: Verify Account */}
-          {activeTab === 'verify' && (
-            <div>
-              <VerificationForm 
-                isVerified={isVerified}
-                onVerifySuccess={() => setIsVerified(true)}
-              />
-            </div>
-          )}
+        <main className="find-main" style={{ flex: 1, minWidth: 0, padding: activeTab === 'posts' ? '24px 28px' : '24px 32px' }}>
+          <div style={{
+            maxWidth: activeTab === 'posts' ? '1280px' : '900px',
+            width: '100%',
+            backgroundColor: activeTab === 'posts' ? 'transparent' : '#ffffff',
+            borderRadius: '16px',
+            padding: activeTab === 'posts' ? '0' : '2rem',
+            boxShadow: activeTab === 'posts' ? 'none' : '0 2px 8px rgba(0,0,0,0.04)',
+            transition: 'all 0.2s ease'
+          }}>
 
           {/* TAB: Overview */}
           {activeTab === 'overview' && (
@@ -1065,195 +1138,14 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
             </div>
           )}
 
-          {/* TAB: My Community Posts (View, Edit, Delete, Create) */}
+          {/* TAB: My Community Posts (Full Search, Filters, Edit, Delete, Create) */}
           {activeTab === 'posts' && (
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '12px' }}>
-                <div>
-                  <h2 style={{ fontSize: '1.5rem', fontWeight: '800', margin: 0, color: '#111827' }}>My Community Posts</h2>
-                  <p style={{ color: '#6b7280', margin: '4px 0 0 0', fontSize: '0.9rem' }}>
-                    View, edit, or delete your active community posts and classified ads
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => setIsCreateModalOpen(true)}
-                  style={{
-                    backgroundColor: '#009688',
-                    color: '#ffffff',
-                    border: 'none',
-                    borderRadius: '24px',
-                    padding: '10px 20px',
-                    fontWeight: '700',
-                    fontSize: '0.9rem',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    boxShadow: '0 2px 8px rgba(0,150,136,0.3)'
-                  }}
-                >
-                  + Make New Post
-                </button>
-              </div>
-
-              {loadingPosts ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', color: '#6b7280' }}>
-                  <Loader />
-                  <p>Loading your community posts...</p>
-                </div>
-              ) : userPosts.length === 0 ? (
-                <div style={{ padding: '3rem', textAlign: 'center', backgroundColor: '#f9fafb', borderRadius: '12px', border: '1px dashed #d1d5db' }}>
-                  <p style={{ fontSize: '1.1rem', color: '#4b5563', marginBottom: '1.5rem' }}>You haven't authored any community posts yet.</p>
-                  <button
-                    onClick={() => setIsCreateModalOpen(true)}
-                    style={{
-                      backgroundColor: '#009688',
-                      color: '#ffffff',
-                      border: 'none',
-                      borderRadius: '24px',
-                      padding: '10px 24px',
-                      fontWeight: '700',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    + Create Your First Post
-                  </button>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                  {userPosts.map(post => (
-                    <div
-                      key={post.postId}
-                      style={{
-                        padding: '1.25rem',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '12px',
-                        backgroundColor: '#ffffff',
-                        display: 'flex',
-                        gap: '16px',
-                        alignItems: 'flex-start',
-                        boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
-                      }}
-                    >
-                      {/* Left Thumbnail Small Photo */}
-                      <div style={{
-                        width: '110px',
-                        height: '90px',
-                        minWidth: '110px',
-                        borderRadius: '8px',
-                        overflow: 'hidden',
-                        backgroundColor: '#f1f5f9',
-                        position: 'relative',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        border: '1px solid #e2e8f0'
-                      }}>
-                        {post.images && post.images.length > 0 ? (
-                          <>
-                            <img
-                              src={post.images[0]}
-                              alt={post.title}
-                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                              onError={(e) => {
-                                e.target.src = 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=500&auto=format&fit=crop';
-                              }}
-                            />
-                            {post.images.length > 1 && (
-                              <div style={{
-                                position: 'absolute', bottom: '4px', right: '4px',
-                                background: 'rgba(15,23,42,0.75)', color: '#fff',
-                                fontSize: '0.65rem', padding: '2px 5px', borderRadius: '4px', fontWeight: 'bold'
-                              }}>
-                                📷 {post.images.length}
-                              </div>
-                            )}
-                          </>
-                        ) : (
-                          <i className="fa-solid fa-image" style={{ fontSize: '1.5rem', color: '#94a3b8' }}></i>
-                        )}
-                      </div>
-
-                      {/* Right Details Column */}
-                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: '700', color: '#0f172a' }}>
-                            {post.title}
-                          </h3>
-                          <span style={{ backgroundColor: '#e0f2fe', color: '#0284c7', padding: '4px 10px', borderRadius: '16px', fontSize: '0.8rem', fontWeight: '700' }}>
-                            {post.serviceCategoryName || 'General'}
-                          </span>
-                        </div>
-
-                        <p style={{ margin: 0, color: '#475569', fontSize: '0.925rem', lineHeight: '1.5' }}>
-                          {post.content && post.content.length > 160 ? post.content.substring(0, 160) + '...' : post.content}
-                        </p>
-
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f1f5f9', paddingTop: '0.75rem', marginTop: '0.25rem' }}>
-                          <div style={{ display: 'flex', gap: '12px', fontSize: '0.85rem', color: '#64748b', fontWeight: '500' }}>
-                            <span>❤️ {post.likesCount || 0} Likes</span>
-                            <span>💬 {post.commentsCount || 0} Comments</span>
-                            <span>📍 {post.location || 'Colombo'}</span>
-                          </div>
-
-                          {/* Action Buttons: View, Edit, Delete */}
-                          <div style={{ display: 'flex', gap: '8px' }}>
-                            <button
-                              onClick={() => handleViewPost(post)}
-                              style={{
-                                backgroundColor: '#f1f5f9',
-                                color: '#334155',
-                                border: '1px solid #cbd5e1',
-                                padding: '6px 14px',
-                                borderRadius: '6px',
-                                fontWeight: '600',
-                                fontSize: '0.825rem',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              View
-                            </button>
-
-                            <button
-                              onClick={() => handleOpenEdit(post)}
-                              style={{
-                                backgroundColor: '#3b82f6',
-                                color: '#ffffff',
-                                border: 'none',
-                                padding: '6px 14px',
-                                borderRadius: '6px',
-                                fontWeight: '600',
-                                fontSize: '0.825rem',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              Edit
-                            </button>
-
-                            <button
-                              onClick={() => handleDeletePost(post.postId)}
-                              style={{
-                                backgroundColor: '#ef4444',
-                                color: '#ffffff',
-                                border: 'none',
-                                padding: '6px 14px',
-                                borderRadius: '6px',
-                                fontWeight: '600',
-                                fontSize: '0.825rem',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <MyCommunityPostsManager
+              userEmail={userEmail}
+              userName={userName || profile.name}
+              userPicture={userPicture}
+              role="Resident"
+            />
           )}
 
           {/* TAB: Settings */}
@@ -1273,26 +1165,90 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                 </md-outlined-button>
               </div>
 
-              <div style={{ padding: '1.5rem', border: '1px solid #ef4444', borderRadius: '12px', backgroundColor: '#fef2f2' }}>
-                <h3 style={{ color: '#ef4444', marginTop: 0, fontWeight: '800', fontSize: '1.2rem' }}>Danger Zone</h3>
-                <p style={{ color: '#7f1d1d', marginBottom: '1.5rem', fontSize: '0.95rem' }}>Once you delete your account, there is no going back. All of your profile data will be permanently removed.</p>
-                <md-filled-button
+              {/* RESTRICTED DANGER ZONE */}
+              <div style={{
+                marginTop: '2rem',
+                border: '2px solid #dc2626',
+                borderRadius: '16px',
+                backgroundColor: '#fef2f2',
+                padding: '24px',
+                boxShadow: '0 4px 16px rgba(220, 38, 38, 0.08)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '1.4rem' }}>🚨</span>
+                  <div>
+                    <h3 style={{ margin: 0, color: '#991b1b', fontWeight: 800, fontSize: '1.15rem', letterSpacing: '-0.01em' }}>
+                      RESTRICTED AREA — DANGER ZONE
+                    </h3>
+                    <p style={{ margin: '2px 0 0 0', color: '#b91c1c', fontSize: '0.825rem', fontWeight: 600 }}>
+                      Permanent Resident Account Erasure & Role Liberation
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ backgroundColor: '#ffffff', borderRadius: '10px', padding: '16px', border: '1px solid #fecaca', marginBottom: '18px' }}>
+                  <p style={{ margin: '0 0 8px 0', fontSize: '0.88rem', color: '#7f1d1d', lineHeight: 1.5 }}>
+                    <strong>Warning:</strong> Deleting your account will permanently wipe your profile, service bookings, community posts, comments, and messages. This action is irreversible.
+                  </p>
+                  <p style={{ margin: 0, fontSize: '0.88rem', color: '#991b1b', lineHeight: 1.5 }}>
+                    <strong>Role Exclusivity:</strong> An email can only be registered as either a Resident or a Worker. If you wish to switch roles and become a Worker, you must permanently delete this Resident account first. Once deleted, this email address is released to register as a Worker.
+                  </p>
+                </div>
+
+                <div style={{ marginBottom: '18px' }}>
+                  <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', color: '#7f1d1d', marginBottom: '6px' }}>
+                    To confirm permanent deletion, please type <code style={{ backgroundColor: '#fee2e2', padding: '2px 6px', borderRadius: '4px', color: '#991b1b', fontWeight: 800 }}>DELETE</code> below:
+                  </label>
+                  <input
+                    type="text"
+                    value={deleteConfirmText}
+                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                    placeholder="Type DELETE to confirm"
+                    style={{
+                      width: '100%',
+                      maxWidth: '360px',
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      border: deleteConfirmText === 'DELETE' ? '2px solid #dc2626' : '1.5px solid #fca5a5',
+                      fontSize: '0.95rem',
+                      fontFamily: 'monospace',
+                      fontWeight: 700,
+                      outline: 'none',
+                      backgroundColor: '#ffffff',
+                      color: '#991b1b'
+                    }}
+                  />
+                </div>
+
+                <button
                   type="button"
+                  disabled={deleteConfirmText !== 'DELETE' || isDeletingAccount}
                   onClick={handleDeleteAccount}
                   style={{
-                    '--md-sys-color-primary': '#ef4444',
-                    '--md-sys-color-on-primary': '#ffffff',
-                    '--md-filled-button-container-shape': '8px',
+                    backgroundColor: deleteConfirmText === 'DELETE' ? '#dc2626' : '#f87171',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '12px 24px',
+                    borderRadius: '8px',
+                    fontWeight: 800,
+                    fontSize: '0.92rem',
+                    cursor: deleteConfirmText === 'DELETE' ? 'pointer' : 'not-allowed',
+                    opacity: deleteConfirmText === 'DELETE' ? 1 : 0.6,
+                    transition: 'all 0.2s ease',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px'
                   }}
                 >
-                  Delete Account
-                </md-filled-button>
+                  <span>🗑️</span>
+                  <span>{isDeletingAccount ? 'Deleting Account...' : 'Permanently Delete Resident Account'}</span>
+                </button>
               </div>
             </div>
           )}
 
-          {/* TAB: Become Worker */}
-          {activeTab === 'become-worker' && (
+          {/* TAB: Become Worker (Disabled - account must be deleted to switch roles) */}
+          {false && (
             <div>
               <div style={{ marginBottom: '1.5rem' }}>
                 <h2 style={{ fontSize: '1.5rem', fontWeight: '800', margin: 0, color: '#111827' }}>Upgrade to Worker Profile</h2>
@@ -1340,15 +1296,22 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      <label style={{ fontWeight: '600', fontSize: '0.9rem', color: '#374151' }}>Primary Service Area / City *</label>
-                      <input
-                        type="text"
+                      <label style={{ fontWeight: '600', fontSize: '0.9rem', color: '#374151' }}>Primary Service Area *</label>
+                      <select
                         required
-                        placeholder="e.g. Colombo, Kandy, Galle"
-                        value={workerForm.primaryServiceArea}
+                        value={workerForm.primaryServiceArea || 'Colombo'}
                         onChange={(e) => setWorkerForm({ ...workerForm, primaryServiceArea: e.target.value })}
-                        style={{ padding: '12px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '0.95rem' }}
-                      />
+                        style={{ padding: '12px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '0.95rem', backgroundColor: '#FFFFFF', color: '#111827' }}
+                      >
+                        <option value="" disabled>Select Primary Service Area</option>
+                        {Object.entries(sriLankaDistricts).map(([province, districts]) => (
+                          <optgroup key={province} label={province}>
+                            {districts.map(d => (
+                              <option key={d} value={d}>{d}</option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -1401,55 +1364,274 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                     </div>
                   </div>
 
-                  {/* Skills Section */}
+                  {/* Skills Section - Hierarchical Services & Specialization Sub-Skills (Matching Mobile App) */}
                   <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: '1.5rem', marginTop: '0.5rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                      <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '700', color: '#111827' }}>Skills & Trade Specialization</h4>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '10px' }}>
+                      <div>
+                        <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '700', color: '#111827' }}>
+                          Skills & Trade Specialization
+                        </h4>
+                        <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#6B7280' }}>
+                          Select your trade services, experience levels, and tap sub-skill chips to customize your specializations.
+                        </p>
+                      </div>
                       <button
                         type="button"
-                        onClick={handleAddSkill}
-                        style={{ padding: '6px 14px', borderRadius: '6px', border: '1px solid #2563EB', backgroundColor: '#EFF6FF', color: '#2563EB', fontWeight: '600', cursor: 'pointer', fontSize: '0.85rem' }}
+                        onClick={handleAddService}
+                        style={{
+                          padding: '8px 16px',
+                          borderRadius: '8px',
+                          border: '1.5px solid #2563EB',
+                          backgroundColor: '#EFF6FF',
+                          color: '#2563EB',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          fontSize: '0.85rem',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          transition: 'all 0.2s ease'
+                        }}
                       >
-                        + Add Skill
+                        <i className="fa-solid fa-plus" style={{ fontSize: '0.8rem' }}></i>
+                        Add Another Service
                       </button>
                     </div>
 
-                    {workerForm.skills.map((skill, index) => (
-                      <div key={index} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '0.75rem' }}>
-                        <select
-                          value={skill.skillName}
-                          onChange={(e) => handleSkillChange(index, 'skillName', e.target.value)}
-                          style={{ flex: 2, padding: '10px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '0.9rem', backgroundColor: '#FFFFFF', color: '#111827' }}
-                          required
-                        >
-                          <option value="" disabled>Select Service Category</option>
-                          {categoriesData.map(cat => (
-                            <option key={cat.id} value={cat.name}>
-                              {cat.name}
-                            </option>
-                          ))}
-                        </select>
-                        <input
-                          type="number"
-                          min="0"
-                          max="50"
-                          placeholder="Years Exp."
-                          value={skill.experienceYears}
-                          onChange={(e) => handleSkillChange(index, 'experienceYears', e.target.value)}
-                          style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '0.9rem' }}
-                        />
-                        {workerForm.skills.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveSkill(index)}
-                            style={{ border: 'none', background: 'none', color: '#EF4444', fontWeight: 'bold', cursor: 'pointer', fontSize: '1.1rem', padding: '0 8px' }}
-                            title="Remove Skill"
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      {workerForm.skills.map((serviceItem, sIdx) => {
+                        const suggestedSkills = getSkillsForService(serviceItem.serviceName);
+
+                        return (
+                          <div
+                            key={sIdx}
+                            style={{
+                              backgroundColor: '#F8FAFC',
+                              border: '1.5px solid #E2E8F0',
+                              borderRadius: '16px',
+                              padding: '18px 20px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '14px',
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+                            }}
                           >
-                            ✕
-                          </button>
-                        )}
-                      </div>
-                    ))}
+                            {/* Card Top Row: Category Dropdown & Experience Dropdown */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                              <div style={{ flex: '1 1 300px' }}>
+                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px' }}>
+                                  Service Category
+                                </label>
+                                <select
+                                  value={serviceItem.serviceName}
+                                  onChange={(e) => handleServiceCategoryChange(sIdx, e.target.value)}
+                                  style={{
+                                    width: '100%',
+                                    padding: '8px 12px',
+                                    borderRadius: '8px',
+                                    border: '1.5px solid #CBD5E1',
+                                    fontSize: '0.92rem',
+                                    fontWeight: 600,
+                                    backgroundColor: '#FFFFFF',
+                                    color: '#0F172A',
+                                    outline: 'none'
+                                  }}
+                                >
+                                  {WORKER_SERVICES_CATALOG.map((cat) => (
+                                    <option key={cat.name} value={cat.name}>
+                                      {cat.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <div>
+                                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px' }}>
+                                    Experience
+                                  </label>
+                                  <select
+                                    value={serviceItem.experienceYears}
+                                    onChange={(e) => handleExperienceChange(sIdx, e.target.value)}
+                                    style={{
+                                      padding: '8px 12px',
+                                      borderRadius: '8px',
+                                      border: '1.5px solid #CBD5E1',
+                                      fontSize: '0.9rem',
+                                      backgroundColor: '#FFFFFF',
+                                      color: '#0F172A',
+                                      outline: 'none',
+                                      fontWeight: 500
+                                    }}
+                                  >
+                                    <option value={0}>&lt; 1 Year Exp.</option>
+                                    <option value={1}>1 Year Exp.</option>
+                                    <option value={2}>2 Years Exp.</option>
+                                    <option value={3}>3 Years Exp.</option>
+                                    <option value={5}>5+ Years Exp.</option>
+                                    <option value={10}>10+ Years Exp.</option>
+                                  </select>
+                                </div>
+
+                                {workerForm.skills.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveService(sIdx)}
+                                    title="Remove this service"
+                                    style={{
+                                      marginTop: '16px',
+                                      padding: '8px 12px',
+                                      borderRadius: '8px',
+                                      border: '1px solid #FCA5A5',
+                                      backgroundColor: '#FEF2F2',
+                                      color: '#DC2626',
+                                      cursor: 'pointer',
+                                      fontSize: '0.85rem',
+                                      fontWeight: 600,
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px'
+                                    }}
+                                  >
+                                    <i className="fa-solid fa-trash-can" style={{ fontSize: '0.8rem' }}></i>
+                                    Remove
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Sub-skills Section */}
+                            <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: '12px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155' }}>
+                                  Specialization Sub-Skills in <span style={{ color: '#2563EB' }}>{serviceItem.serviceName}</span>:
+                                </label>
+                                <span style={{ fontSize: '0.78rem', color: '#64748B', fontWeight: 500 }}>
+                                  {serviceItem.skills.length} selected (tap chips to toggle)
+                                </span>
+                              </div>
+
+                              {/* Suggested skill chips */}
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+                                {suggestedSkills.map((subSkill) => {
+                                  const isSelected = serviceItem.skills.includes(subSkill);
+                                  return (
+                                    <button
+                                      key={subSkill}
+                                      type="button"
+                                      onClick={() => handleToggleSubSkill(sIdx, subSkill)}
+                                      style={{
+                                        padding: '6px 14px',
+                                        borderRadius: '20px',
+                                        border: isSelected ? '1.5px solid #2563EB' : '1.5px solid #E2E8F0',
+                                        backgroundColor: isSelected ? '#EFF6FF' : '#FFFFFF',
+                                        color: isSelected ? '#1D4ED8' : '#334155',
+                                        fontWeight: isSelected ? 600 : 500,
+                                        fontSize: '0.82rem',
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        transition: 'all 0.15s ease'
+                                      }}
+                                    >
+                                      {isSelected ? (
+                                        <i className="fa-solid fa-check" style={{ fontSize: '0.75rem', color: '#2563EB' }}></i>
+                                      ) : (
+                                        <i className="fa-solid fa-plus" style={{ fontSize: '0.7rem', color: '#94A3B8' }}></i>
+                                      )}
+                                      {subSkill}
+                                    </button>
+                                  );
+                                })}
+
+                                {/* Custom added skills that aren't in suggestedSkills */}
+                                {serviceItem.skills
+                                  .filter(s => !suggestedSkills.includes(s))
+                                  .map((customSkill) => (
+                                    <span
+                                      key={customSkill}
+                                      style={{
+                                        padding: '6px 12px',
+                                        borderRadius: '20px',
+                                        border: '1.5px solid #2563EB',
+                                        backgroundColor: '#EFF6FF',
+                                        color: '#1D4ED8',
+                                        fontWeight: 600,
+                                        fontSize: '0.82rem',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '6px'
+                                      }}
+                                    >
+                                      <i className="fa-solid fa-star" style={{ fontSize: '0.7rem', color: '#F59E0B' }}></i>
+                                      {customSkill}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleToggleSubSkill(sIdx, customSkill)}
+                                        style={{
+                                          border: 'none',
+                                          background: 'none',
+                                          color: '#DC2626',
+                                          cursor: 'pointer',
+                                          padding: 0,
+                                          fontSize: '0.85rem',
+                                          lineHeight: 1
+                                        }}
+                                        title={`Remove ${customSkill}`}
+                                      >
+                                        ✕
+                                      </button>
+                                    </span>
+                                  ))}
+                              </div>
+
+                              {/* Custom sub-skill input */}
+                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                <input
+                                  type="text"
+                                  placeholder={`Add specialized skill to ${serviceItem.serviceName}...`}
+                                  value={serviceItem.customSkillInput || ''}
+                                  onChange={(e) => handleCustomSkillInputChange(sIdx, e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      handleAddCustomSubSkill(sIdx);
+                                    }
+                                  }}
+                                  style={{
+                                    flex: 1,
+                                    padding: '8px 12px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #CBD5E1',
+                                    fontSize: '0.85rem',
+                                    backgroundColor: '#FFFFFF',
+                                    outline: 'none'
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleAddCustomSubSkill(sIdx)}
+                                  style={{
+                                    padding: '8px 14px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #2563EB',
+                                    backgroundColor: '#2563EB',
+                                    color: '#FFFFFF',
+                                    fontWeight: 600,
+                                    fontSize: '0.85rem',
+                                    cursor: 'pointer',
+                                    whiteSpace: 'nowrap'
+                                  }}
+                                >
+                                  + Add Skill
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   <div style={{ marginTop: '1rem' }}>

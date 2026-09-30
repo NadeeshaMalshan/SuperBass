@@ -9,6 +9,7 @@ import Onboarding from './Onboarding.jsx'
 import Chats from './Chats.jsx'
 import Bookings from './Bookings.jsx'
 import AiCommunityChat from './pages/AiCommunityChat.jsx'
+import LoginPortal from './pages/LoginPortal.jsx'
 
 import WorkerDetail from './WorkerDetail.jsx'
 
@@ -19,6 +20,7 @@ import WorkerDashboard from './pages/worker/WorkerDashboard.jsx'
 import WorkerJobs from './pages/worker/WorkerJobs.jsx'
 import WorkerPerformance from './pages/worker/WorkerPerformance.jsx'
 import WorkerProfile from './pages/worker/WorkerProfile.jsx'
+import WorkerCommunityPosts from './pages/worker/WorkerCommunityPosts.jsx'
 import ResidentProfile from './ResidentProfile.jsx'
 
 class ErrorBoundary extends Component {
@@ -122,8 +124,8 @@ function Router() {
   if (path === '/worker-detail' || path === '/worker-detail.jsx' || path.startsWith('/worker-detail')) {
     return <WorkerDetail />;
   }
-  if (path === '/join' || path === '/join.jsx') {
-    return <Join />;
+  if (path === '/join' || path === '/join.jsx' || path === '/login' || path === '/login.jsx') {
+    return <LoginPortal />;
   }
   if (path === '/ai/chat' || path === '/community/chat' || path === '/ai-chat' || path === '/agent') {
     return <AiCommunityChat />;
@@ -132,9 +134,17 @@ function Router() {
     return <Community />;
   }
   if (path === '/chats' || path === '/chats.jsx') {
+    if (!localStorage.getItem('token')) {
+      window.history.replaceState({}, '', '/login');
+      return <LoginPortal />;
+    }
     return <Chats />;
   }
   if (path === '/bookings' || path === '/bookings.jsx') {
+    if (!localStorage.getItem('token')) {
+      window.history.replaceState({}, '', '/login');
+      return <LoginPortal />;
+    }
     return <Bookings />;
   }
   if (path === '/onboarding' || path === '/onboarding.jsx') {
@@ -166,6 +176,9 @@ function Router() {
   }
   if (path === '/worker/profile' || path === '/worker/profile.jsx') {
     return <WorkerProfile />;
+  }
+  if (path === '/worker/community-posts' || path === '/worker/community-posts.jsx') {
+    return <WorkerCommunityPosts />;
   }
 
   return <App />;

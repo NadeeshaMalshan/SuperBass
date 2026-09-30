@@ -14,11 +14,13 @@ namespace Superbass.Controllers
     {
         private readonly WorkerRepository _workerRepository;
         private readonly IConfiguration _configuration;
+        private readonly IResidentRepository _residentRepository;
 
-        public WorkersController(WorkerRepository workerRepository, IConfiguration configuration)
+        public WorkersController(WorkerRepository workerRepository, IConfiguration configuration, IResidentRepository residentRepository)
         {
             _workerRepository = workerRepository;
             _configuration = configuration;
+            _residentRepository = residentRepository;
         }
 
         // GET: /api/workers
@@ -281,6 +283,31 @@ namespace Superbass.Controllers
             }
 
             return Ok(new { message = "Worker profile deleted successfully. User reverted to Resident.", activeRole = "Resident" });
+        }
+
+        // DELETE: /api/workers/delete-account
+        [HttpDelete("delete-account")]
+        public async Task<IActionResult> DeleteWorkerAccount([FromQuery] string? email)
+        {
+            var targetEmail = email ?? GetEmailFromRequest();
+            if (string.IsNullOrEmpty(targetEmail))
+            {
+                return BadRequest(new { message = "Email is required or must be provided in Authorization header." });
+            }
+
+            var worker = await _workerRepository.GetWorkerByEmailAsync(targetEmail);
+            if (worker != null)
+            {
+                await _workerRepository.DeleteWorkerAsync(worker.Id);
+            }
+
+            var resident = await _residentRepository.GetResidentAsync(targetEmail);
+            if (resident != null)
+            {
+                await _residentRepository.DeleteResidentAsync(targetEmail);
+            }
+
+            return Ok(new { message = "Worker account and all associated data permanently deleted." });
         }
 
         private string? GetEmailFromRequest()

@@ -1,0 +1,51 @@
+/* ==========================================================================
+   MyCommunityPostsManager.css - Community Theme Wrapper for Dashboards
+   Uber Design System (Black, White, Gray)
+   ========================================================================== */
+
+.community-posts-theme-container {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  font-family: var(--font-heading, 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+  color: #000000;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Ensure Hero Banner is contained nicely within dashboard */
+.community-posts-theme-container .community-hero-banner {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  border: 1px solid #1f1f1f;
+}
+
+/* Ensure Search Card looks clean and integrated */
+.community-posts-theme-container .uber-search-card {
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+}
+
+/* Responsive adjustments */
+@media (max-width: 900px) {
+  .community-posts-theme-container .community-hero-banner {
+    padding: 24px 20px !important;
+  }
+
+  .community-posts-theme-container .community-hero-actions {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 12px;
+  }
+
+  .community-posts-theme-container .uber-toolbar-actions {
+    width: 100%;
+  }
+
+  .community-posts-theme-container .uber-sort-select {
+    flex: 1 1 calc(50% - 10px);
+  }
+}
+
+@media (max-width: 600px) {
+  .community-posts-theme-container .uber-sort-select {
+    flex: 1 1 100%;
+  }
+}

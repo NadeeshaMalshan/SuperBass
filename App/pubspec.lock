@@ -725,14 +725,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.10.2"
-  sri_lanka_nic:
-    dependency: "direct main"
-    description:
-      name: sri_lanka_nic
-      sha256: "6b190348a5a94a23fc9a0cb2d82b80d3699b7835637892b2a80d34ed947fefbd"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.1.0"
   sse:
     dependency: transitive
     description:

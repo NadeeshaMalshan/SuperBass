@@ -9,11 +9,13 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Superbass.Models;
 using Superbass.Services;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Superbass.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class ConversationsController : ControllerBase
     {
         private readonly ICommunicationRepository _communicationRepo;

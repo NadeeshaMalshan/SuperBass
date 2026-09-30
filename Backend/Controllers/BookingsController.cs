@@ -9,12 +9,14 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Superbass.Models;
 using Superbass.Services;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Superbass.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
     [EnableCors("AllowFrontend")]
+    [Authorize]
     public class BookingsController : ControllerBase
     {
         private readonly SuperbassDbContext _context;
@@ -555,6 +557,11 @@ namespace Superbass.Controllers
                 .Include(b => b.Resident)
                 .Include(b => b.Worker)
                 .FirstOrDefaultAsync(b => b.Id == id);
+
+            if (booking == null)
+            {
+                return NotFound(new { message = "Booking not found." });
+            }
 
             var rescheduleUtc = request.ScheduledDate.Kind == DateTimeKind.Utc
                 ? request.ScheduledDate
