@@ -9,6 +9,7 @@ import Onboarding from './Onboarding.jsx'
 import Chats from './Chats.jsx'
 import Bookings from './Bookings.jsx'
 import AiCommunityChat from './pages/AiCommunityChat.jsx'
+import LoginPortal from './pages/LoginPortal.jsx'
 
 import WorkerDetail from './WorkerDetail.jsx'
 
@@ -122,8 +123,8 @@ function Router() {
   if (path === '/worker-detail' || path === '/worker-detail.jsx' || path.startsWith('/worker-detail')) {
     return <WorkerDetail />;
   }
-  if (path === '/join' || path === '/join.jsx') {
-    return <Join />;
+  if (path === '/join' || path === '/join.jsx' || path === '/login' || path === '/login.jsx') {
+    return <LoginPortal />;
   }
   if (path === '/ai/chat' || path === '/community/chat' || path === '/ai-chat' || path === '/agent') {
     return <AiCommunityChat />;

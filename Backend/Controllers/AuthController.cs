@@ -146,7 +146,41 @@ namespace Superbass.Controllers
 
             var worker = await _dbContext.Workers.FirstOrDefaultAsync(w => w.ResidentEmail == email || w.Email == email);
             bool isWorker = worker != null;
-            string activeRole = isWorker ? "Worker" : "Resident";
+            bool isNewWorker = false;
+            string activeRole = "Resident";
+
+            if (string.Equals(request.IntendedRole, "Worker", StringComparison.OrdinalIgnoreCase))
+            {
+                if (worker == null)
+                {
+                    isNewWorker = true;
+                    worker = new Worker
+                    {
+                        ResidentEmail = email,
+                        Email = email,
+                        Name = name ?? email,
+                        ProfileImage = picture,
+                        PhoneNo = request.PhoneNo,
+                        Description = "Verified Community Service Professional",
+                        PrimaryServiceArea = "Colombo",
+                        CoverageRadiusKm = 15.0,
+                        PricingModel = "Hourly",
+                        IsAvailable = true
+                    };
+                    _dbContext.Workers.Add(worker);
+                    await _dbContext.SaveChangesAsync();
+                }
+                isWorker = true;
+                activeRole = "Worker";
+            }
+            else if (string.Equals(request.IntendedRole, "Resident", StringComparison.OrdinalIgnoreCase))
+            {
+                activeRole = "Resident";
+            }
+            else
+            {
+                activeRole = isWorker ? "Worker" : "Resident";
+            }
 
             return Ok(new { 
                 token = jwt, 
@@ -155,8 +189,69 @@ namespace Superbass.Controllers
                 picture = picture, 
                 isNewUser = isNewUser,
                 isWorker = isWorker,
+                isNewWorker = isNewWorker,
                 activeRole = activeRole,
                 workerId = worker?.Id
+            });
+        }
+
+        [HttpPost("worker-login")]
+        public async Task<IActionResult> WorkerLogin([FromBody] WorkerLoginRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.Email))
+            {
+                return BadRequest(new { message = "Email is required." });
+            }
+
+            var cleanEmail = request.Email.Trim().ToLower();
+            var worker = await _dbContext.Workers
+                .Include(w => w.Skills)
+                .FirstOrDefaultAsync(w => (w.Email != null && w.Email.ToLower() == cleanEmail) || 
+                                          (w.ResidentEmail != null && w.ResidentEmail.ToLower() == cleanEmail));
+
+            if (worker == null)
+            {
+                return BadRequest(new { 
+                    message = "No worker account found for this email. Please register as a worker first or sign in as a resident." 
+                });
+            }
+
+            // If worker has a password set, validate it
+            if (!string.IsNullOrWhiteSpace(worker.PasswordHash))
+            {
+                if (string.IsNullOrWhiteSpace(request.Password) || worker.PasswordHash != request.Password)
+                {
+                    return Unauthorized(new { message = "Incorrect password for this worker account." });
+                }
+            }
+
+            // Generate JWT for worker
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var key = Encoding.ASCII.GetBytes(_configuration["Authentication:Jwt:Secret"] ?? "super_secret_key_that_must_be_long_enough_12345");
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(new[]
+                {
+                    new Claim(ClaimTypes.NameIdentifier, worker.Id.ToString()),
+                    new Claim(ClaimTypes.Email, worker.Email ?? worker.ResidentEmail),
+                    new Claim(ClaimTypes.Name, worker.Name ?? "Worker"),
+                    new Claim(ClaimTypes.Role, "Worker")
+                }),
+                Expires = DateTime.UtcNow.AddDays(7),
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+            };
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+            var jwt = tokenHandler.WriteToken(token);
+
+            return Ok(new
+            {
+                token = jwt,
+                email = worker.Email ?? worker.ResidentEmail,
+                name = worker.Name,
+                picture = worker.ProfileImage,
+                isWorker = true,
+                activeRole = "Worker",
+                workerId = worker.Id
             });
         }
 
@@ -214,6 +309,13 @@ namespace Superbass.Controllers
         public string? Address { get; set; }
         public double? LocationLat { get; set; }
         public double? LocationLng { get; set; }
+        public string? IntendedRole { get; set; }
+    }
+
+    public class WorkerLoginRequest
+    {
+        public string Email { get; set; } = string.Empty;
+        public string? Password { get; set; }
     }
 
     public class OnboardingRequest
