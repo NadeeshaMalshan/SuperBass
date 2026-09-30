@@ -1,7 +1,9 @@
 import React, { useEffect } from 'react';
+import { useAuth } from '../../AuthProvider.jsx';
 import './worker.css';
 
 export default function WorkerRegister() {
+  const { login } = useAuth();
   const navigate = (path) => {
     window.history.pushState({}, '', path);
     window.dispatchEvent(new PopStateEvent('popstate'));
@@ -41,7 +43,7 @@ export default function WorkerRegister() {
         <div style={{ marginBottom: '24px' }}>
           <img 
             src="/iconWithText-cropped.png" 
-            alt="SuperBass Logo" 
+            alt="Workio Logo" 
             style={{ height: '60px', cursor: 'pointer', marginBottom: '16px' }} 
             onClick={() => navigate('/')}
           />
@@ -70,7 +72,7 @@ export default function WorkerRegister() {
         </div>
 
         <button 
-          onClick={() => navigate('/join')}
+          onClick={() => login()}
           className="worker-btn-primary" 
           style={{ width: '100%', justifyContent: 'center', height: '52px', fontSize: '1rem', marginBottom: '16px' }}
         >

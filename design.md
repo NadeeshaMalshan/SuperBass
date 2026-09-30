@@ -1,6 +1,6 @@
-# Frontend UI/UX Design & Architecture Guide — superබාස්
+# Frontend UI/UX Design & Architecture Guide — Workio
 
-This document outlines the UI/UX architecture, design systems, styling principles, component libraries, typography, color palettes, and assets used in the **superබාස් (SuperBass)** frontend.
+This document outlines the UI/UX architecture, design systems, styling principles, component libraries, typography, color palettes, and assets used in the **Workio (Workio)** frontend.
 
 ---
 

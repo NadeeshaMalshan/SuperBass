@@ -6,13 +6,13 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
-using Superbass.Models;
+using Workio.Models;
 
 #nullable disable
 
-namespace Superbass.Migrations
+namespace Workio.Migrations
 {
-    [DbContext(typeof(SuperbassDbContext))]
+    [DbContext(typeof(WorkioDbContext))]
     [Migration("20260817081009_InitialCreate")]
     partial class InitialCreate
     {
@@ -26,7 +26,7 @@ namespace Superbass.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Superbass.Models.CommunityComment", b =>
+            modelBuilder.Entity("Workio.Models.CommunityComment", b =>
                 {
                     b.Property<int>("CommentId")
                         .ValueGeneratedOnAdd()
@@ -61,7 +61,7 @@ namespace Superbass.Migrations
                     b.ToTable("CommunityComments");
                 });
 
-            modelBuilder.Entity("Superbass.Models.CommunityPost", b =>
+            modelBuilder.Entity("Workio.Models.CommunityPost", b =>
                 {
                     b.Property<int>("PostId")
                         .ValueGeneratedOnAdd()
@@ -133,7 +133,7 @@ namespace Superbass.Migrations
                     b.ToTable("CommunityPosts");
                 });
 
-            modelBuilder.Entity("Superbass.Models.CommunityReport", b =>
+            modelBuilder.Entity("Workio.Models.CommunityReport", b =>
                 {
                     b.Property<int>("ReportId")
                         .ValueGeneratedOnAdd()

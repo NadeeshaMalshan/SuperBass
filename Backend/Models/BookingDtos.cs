@@ -1,6 +1,6 @@
 using System;
 
-namespace Superbass.Models
+namespace Workio.Models
 {
     public class CreateBookingRequest
     {

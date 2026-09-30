@@ -420,7 +420,7 @@ class ApiService {
     double? locationLng,
   }) async {
     try {
-      final residentEmail = AuthService().currentUser?.email ?? 'resident@superbass.lk';
+      final residentEmail = AuthService().currentUser?.email ?? 'resident@Workio.lk';
       final uri = Uri.parse('${ApiConfig.baseUrl}/api/bookings');
 
       final body = jsonEncode({

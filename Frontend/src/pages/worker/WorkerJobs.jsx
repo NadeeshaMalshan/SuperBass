@@ -95,6 +95,25 @@ export default function WorkerJobs() {
     }
   };
 
+  const handleCancelBooking = async (id) => {
+    const reason = window.prompt('Please enter a reason for cancelling this booking (optional):', 'Worker schedule unavailable');
+    if (reason === null) return; // User cancelled prompt
+
+    try {
+      setActionLoading(true);
+      const res = await axios.post(`${API_BASE_URL}/bookings/${id}/cancel`, { reason }, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      alert('Booking has been cancelled.');
+      setBookings(prev => prev.map(b => b.id === id ? res.data : b));
+    } catch (err) {
+      console.error('Error cancelling booking:', err);
+      alert(err.response?.data?.message || 'Failed to cancel booking.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   // 3. Start Job -> InProgress
   const handleStartJob = async (id) => {
     try {
@@ -469,6 +488,16 @@ export default function WorkerJobs() {
                     >
                       💬 Chat Resident
                     </button>
+
+                    {job.status === 'Confirmed' && (
+                      <button 
+                        disabled={actionLoading}
+                        onClick={() => handleCancelBooking(job.id)}
+                        style={{ width: '100%', padding: '8px 14px', background: '#fef2f2', color: '#ef4444', border: '1px solid #fca5a5', borderRadius: '10px', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem' }}
+                      >
+                        ✕ Cancel Booking
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

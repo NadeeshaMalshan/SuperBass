@@ -640,17 +640,15 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     <div className="find-page-container">
 
       {/* Google Workspace / Material 3 Top Navbar */}
-      <M3TopNavbar
-        activePage="account"
-        showSearch={false}
-        showSidebarToggle={true}
-        isSidebarCollapsed={isSidebarCollapsed}
-        onToggleSidebar={() => setIsSidebarCollapsed(prev => !prev)}
-      />
+      
 
       <div className="find-layout">
         {/* Left Sidebar Navigation Drawer */}
         <aside className={`find-sidebar m3-drawer ${isSidebarCollapsed ? 'minimized' : ''}`}>
+          <button className="sidebar-toggle-btn" onClick={() => setIsSidebarCollapsed(prev => !prev)} title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}>
+            <md-icon>{isSidebarCollapsed ? 'chevron_right' : 'chevron_left'}</md-icon>
+          </button>
+
           {/* User Profile Info Mini Header */}
           <div style={{
             display: 'flex',

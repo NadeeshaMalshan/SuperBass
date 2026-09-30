@@ -4,7 +4,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace Superbass.Migrations
+namespace Workio.Migrations
 {
     /// <inheritdoc />
     public partial class AddBookingTable : Migration

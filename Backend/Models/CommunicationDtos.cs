@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Superbass.Models
+namespace Workio.Models
 {
     public class CreateConversationRequest
     {

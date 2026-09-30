@@ -1,6 +1,6 @@
-# superබාස් — Landing Page Information Architecture (`landing.md`)
+# Workio — Landing Page Information Architecture (`landing.md`)
 
-> **Platform:** superබාස් (SuperBass) — AI-Powered Community Home Service Platform  
+> **Platform:** Workio (Workio) — AI-Powered Community Home Service Platform  
 > **Target Audience:** Homeowners & Residents, Professional Service Providers (Baas / Pros)  
 > **Design Framework:** Google Material Design 3 (M3) Web Specification  
 
@@ -18,7 +18,7 @@
 | :--- | :--- | :--- |
 | **Services** | `/find` | Direct link to explore and filter verified service craftsmen by location, skill, and rating. |
 | **Community** | `/community` | Community hub for home maintenance discussions, tips, and neighborhood help requests. |
-| **AI Assistant** | `/ai-chat` | Highlighted with ✨ amber sparkle icon (`#f59e0b`), direct access to SuperBass AI Home Diagnostician. |
+| **AI Assistant** | `/ai-chat` | Highlighted with ✨ amber sparkle icon (`#f59e0b`), direct access to Workio AI Home Diagnostician. |
 | **How it Works** | `#how-it-works` | Explanatory section on requesting, confirming, and managing home repair services. |
 | **For Baas / Pros** | `/join` | Onboarding portal for craftsmen and verified service technicians to register their profile. |
 
@@ -50,7 +50,7 @@
 - **Primary CTA Button:**
   - **"See available workers"** (Navigates directly to `/find` with prefilled query and location filters).
 - **Secondary Action:**
-  - **"Ask SuperBass AI"** button for instant AI-assisted troubleshooting.
+  - **"Ask Workio AI"** button for instant AI-assisted troubleshooting.
 
 ### 2.3 Right Column: Hero Artwork
 - **Image Card:** Clean rounded artwork container (`border-radius: 16px`, `box-shadow: 0 10px 30px rgba(0,0,0,0.06)`).
@@ -99,16 +99,16 @@
 
 ### 4.3 Visual Showcase
 - **Layout:** Responsive 2-column layout mirroring Hero aesthetics.
-- **Artwork Asset:** `/hero/hero2.png` (SuperBass Craftsman consulting with a neighborhood family at sunset).
+- **Artwork Asset:** `/hero/hero2.png` (Workio Craftsman consulting with a neighborhood family at sunset).
 - **Container Styling:** 16px border-radius, clean border outline, and soft elevation shadow (`box-shadow: 0 12px 36px rgba(0,0,0,0.08)`).
 
 ---
 
-## 5. SuperBass AI Feature Section (Redesigned Hero Style)
+## 5. Workio AI Feature Section (Redesigned Hero Style)
 
 ### 5.1 Section Title & Key Message
 - **Headline:**
-  > **"Now, you can manage your work with SuperBass AI"**
+  > **"Now, you can manage your work with Workio AI"**
 - **Core Concept:**
   > Residents can describe their repair or maintenance problem in simple words. The AI understands the context, matches the most qualified verified local craftsmen, and streamlines the booking & review process.
 
@@ -118,11 +118,11 @@
   - ✅ Instantly find & match verified local workers tailored to your job
   - ✅ Book trusted craftsmen directly, manage requests, and leave ratings & reviews
 - **Primary CTA Button:**
-  - **"Try SuperBass AI"** (Routes to `/community/chat`).
+  - **"Try Workio AI"** (Routes to `/community/chat`).
 
 ### 5.3 Visual Showcase
 - **Layout:** Responsive 2-column layout with image on the **LEFT** and content on the **RIGHT**.
-- **Artwork Asset:** `/hero/hero3.png` (SuperBass AI intelligent robot assisting a family and craftsmen in the home).
+- **Artwork Asset:** `/hero/hero3.png` (Workio AI intelligent robot assisting a family and craftsmen in the home).
 - **Container Styling:** 16px border-radius, clean border outline, and soft elevation shadow (`box-shadow: 0 12px 36px rgba(0,0,0,0.08)`).
 
 ---

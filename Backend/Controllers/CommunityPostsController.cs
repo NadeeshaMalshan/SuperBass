@@ -2,10 +2,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using System.Collections.Generic;
 using System.Security.Claims;
-using Superbass.Models;
-using Superbass.Services;
+using Workio.Models;
+using Workio.Services;
 
-namespace Superbass.Controllers
+namespace Workio.Controllers
 {
     [Route("api/community-posts")]
     [ApiController]

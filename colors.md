@@ -1,6 +1,6 @@
-# SuperBass Design System — Color Palette & Tokens Guide (`colors.md`)
+# Workio Design System — Color Palette & Tokens Guide (`colors.md`)
 
-> **Platform:** superබාස් — AI-Powered Community Home Service Platform  
+> **Platform:** Workio — AI-Powered Community Home Service Platform  
 > **Design Standard:** Modern High-Contrast Monochrome (Pitch Black, Pure White & Sleek Grays)  
 > **Aesthetic Inspiration:** Uber & Apple Clean Minimalist Design Language  
 > **Scope:** Entire Project & Universal Component System
@@ -9,7 +9,7 @@
 
 ## 1. Project-Wide Monochrome Design System Architecture
 
-SuperBass has transitioned across the entire project to a **Unified High-Contrast Black & White Design System** inspired by the Community showcase experience. 
+Workio has transitioned across the entire project to a **Unified High-Contrast Black & White Design System** inspired by the Community showcase experience. 
 
 This design system replaces saturated dual-color accents with a timeless, high-contrast, typographic-first aesthetic:
 - **Pitch Black (`#000000`)**: Anchors primary CTAs, active states, key headings, hero banners, and high-emphasis pills.
@@ -19,7 +19,7 @@ This design system replaces saturated dual-color accents with a timeless, high-c
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│              SUPERBASS UNIFIED BLACK & WHITE DESIGN SYSTEM              │
+│              Workio UNIFIED BLACK & WHITE DESIGN SYSTEM              │
 │                                                                         │
 │   Primary Accent: #000000 (Pitch Black)      Canvas BG: #f7f7f7         │
 │   Contrast Surface: #ffffff (Pure White)     Hero BG:   #000000         │

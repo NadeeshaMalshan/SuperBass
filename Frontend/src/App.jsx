@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import UserMenu from './components/UserMenu.jsx';
-import M3TopNavbar from './components/M3TopNavbar.jsx';
 import AiAssistantWidget from './components/AiAssistantWidget.jsx';
 import ServiceCategories from './components/ServiceCategories.jsx';
 import Footer from './components/Footer.jsx';
@@ -220,8 +219,7 @@ export default function App() {
   return (
     <div className="app-container">
       {/* Material 3 Top Navigation Bar */}
-      <M3TopNavbar showSearch={false} activePage="home" theme="dark" />
-
+      
       {/* Main Top Hero Section Matching Screenshot */}
       <main className="landing-top-hero-section" id="home">
         <div className="landing-top-hero-container">

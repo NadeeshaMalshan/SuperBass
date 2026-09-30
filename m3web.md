@@ -184,7 +184,7 @@ import {
 } from '@material/material-color-utilities';
 
 // 1. Convert your brand HEX to ARGB
-const seedColor = argbFromHex('#FDC101'); // SuperBass brand yellow
+const seedColor = argbFromHex('#FDC101'); // Workio brand yellow
 
 // 2. Generate complete M3 theme
 const theme = themeFromSourceColor(seedColor);

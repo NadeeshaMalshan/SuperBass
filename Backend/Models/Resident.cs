@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Superbass.Models
+namespace Workio.Models
 {
     public class Resident
     {

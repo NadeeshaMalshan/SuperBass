@@ -4,6 +4,7 @@ import UserMenu from './UserMenu.jsx';
 import '@material/web/icon/icon.js';
 import workioLogoWhite from '../assets/Workio_Logo/Workio_Logo_White_With_Text.png';
 import workioLogoBlack from '../assets/Workio_Logo/Workio_Logo_Black_With_Text.png';
+import { useAuth } from '../AuthProvider.jsx';
 
 export default function M3TopNavbar({
   activePage = '',
@@ -22,6 +23,7 @@ export default function M3TopNavbar({
 }) {
   const [internalSearch, setInternalSearch] = useState(searchValue || '');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { login } = useAuth();
 
   useEffect(() => {
     const checkAuth = () => {
@@ -76,17 +78,7 @@ export default function M3TopNavbar({
     <header className={`m3-top-navbar ${theme === 'dark' ? 'dark-theme' : ''}`}>
       {/* Left: App Logo & Name with Optional Hamburger Toggle */}
       <div className="m3-navbar-brand-group">
-        {showSidebarToggle && (
-          <button
-            type="button"
-            className="m3-hamburger-btn"
-            onClick={onToggleSidebar}
-            title={isSidebarCollapsed ? "Expand panel" : "Collapse panel"}
-            aria-label="Toggle navigation drawer"
-          >
-            <md-icon>menu</md-icon>
-          </button>
-        )}
+
 
         <a
           href="/"
@@ -98,39 +90,7 @@ export default function M3TopNavbar({
         </a>
       </div>
 
-      {/* Center: Search Pill ("Ask SuperBass" like "Ask Gmail") */}
-      {showSearch && (
-        <div className="m3-navbar-center">
-          <div className="m3-search-pill">
-            <div className="m3-search-leading-icon" title="Search">
-              <md-icon>search</md-icon>
-            </div>
-
-            <input
-              type="text"
-              className="m3-search-input"
-              placeholder={searchPlaceholder}
-              value={internalSearch}
-              onChange={handleInputChange}
-              onKeyDown={handleKeyDown}
-              onFocus={onSearchFocus}
-            />
-
-            {internalSearch && (
-              <button
-                type="button"
-                className="m3-search-clear-btn"
-                onClick={handleClear}
-                title="Clear search"
-                aria-label="Clear search"
-              >
-                <md-icon>close</md-icon>
-              </button>
-            )}
-          </div>
-          {searchDropdown}
-        </div>
-      )}
+      {/* Center: Search Pill Removed as per user request */}
 
       {/* Right: Navigation Buttons & User Avatar */}
       <div className="m3-navbar-right">
@@ -171,7 +131,7 @@ export default function M3TopNavbar({
           <button
             type="button"
             className={`m3-nav-btn ${activePage === 'chats' ? 'active' : ''}`}
-            onClick={() => navigate(isLoggedIn ? '/chats' : '/join')}
+            onClick={() => isLoggedIn ? navigate('/chats') : login()}
             title="Direct Messages"
           >
             <md-icon>chat</md-icon>
@@ -184,7 +144,7 @@ export default function M3TopNavbar({
           <button
             type="button"
             className={`m3-nav-btn ${activePage === 'bookings' ? 'active' : ''}`}
-            onClick={() => navigate(isLoggedIn ? '/bookings' : '/join')}
+            onClick={() => isLoggedIn ? navigate('/bookings') : login()}
             title="My Bookings"
           >
             <md-icon>calendar_today</md-icon>
@@ -199,7 +159,7 @@ export default function M3TopNavbar({
           <button
             type="button"
             className="m3-signin-btn"
-            onClick={() => navigate('/join')}
+            onClick={() => login()}
             title="Sign in to Workio"
           >
             Sign in
