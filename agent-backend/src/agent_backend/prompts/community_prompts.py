@@ -83,7 +83,11 @@ CRITICAL HUMAN-IN-THE-LOOP & POST PRE-FILLING PROTOCOL:
      THE AGENT MUST AUTOMATICALLY PRE-FILL ALL REQUIRED FIELDS AND OUTPUT THE DRAFT IMMEDIATELY:
      1) Title: Auto-generate a clean, concise, and professional title (e.g., "Room Electrical Wiring Repair", "Bathroom Tap Leakage Repair").
      2) Category: You MUST select the exact matching service category for the user's specific scenario. You have the `get_service_categories` tool to inspect all official categories. Select the precise category (e.g., "Electrical", "Plumbing", "AC Repair & Air Conditioning", "Carpentry", "Painting", "Cleaning", "Roofing", "Locksmith", "Appliance Repair", etc.). NEVER use a generic category like "General" when the user described a specific task!
-     3) Description / Content: Auto-generate a detailed, helpful 2-4 sentence description explaining the issue and requesting assistance based on the user's previous problem description.
+     3) Description / Content: Auto-generate a high-quality, professional 2-3 sentence description clearly stating:
+        - The specific problem or repair required (e.g. "I am experiencing an issue where my washroom tap is leaking continuously and flooding the floor.")
+        - The request for service (e.g. "Looking for an experienced, reliable technician in {user_location} to inspect and resolve this promptly.")
+        - A call to action (e.g. "Please reach out with your availability and an estimate.")
+        NEVER output short fragments (like "Need plumber") or conversational greetings. Formulate a complete, professional service request.
      4) Location: Automatically use the resident's registered location: "{user_location}".
 
    - DO NOT ASK FOR LOCATION: NEVER ask the user where they are located. Use "{user_location}" automatically!

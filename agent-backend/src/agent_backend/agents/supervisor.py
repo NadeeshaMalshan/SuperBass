@@ -13,7 +13,7 @@ from agent_backend.config import settings
 from agent_backend.state.state import AgentState
 from agent_backend.prompts.supervisor_prompts import SUPERVISOR_SYSTEM_PROMPT
 from agent_backend.tools.booking_tools import get_live_service_categories
-from agent_backend.utils.sanitizer import sanitize_messages_for_llm
+from agent_backend.utils.sanitizer import sanitize_messages_for_llm, extract_text_content
 from agent_backend.utils.card_builders import build_supervisor_card
 
 logger = logging.getLogger("agent_backend.supervisor")
@@ -60,7 +60,6 @@ async def supervisor_node(state: AgentState) -> Dict[str, Any]:
         try:
             llm = ChatOpenAI(
                 model=settings.openai_model,
-                temperature=settings.openai_temperature,
                 api_key=settings.openai_api_key
             )
             structured_router = llm.with_structured_output(SupervisorDecision, method="function_calling")
@@ -87,8 +86,8 @@ async def supervisor_node(state: AgentState) -> Dict[str, Any]:
             if decision.suggested_actions:
                 # Strictly filter out tips, DIY, tutorials, and advice
                 clean_actions = [
-                    a for a in decision.suggested_actions
-                    if not any(t in a.lower() for t in ["tip", "diy", "myself", "advice", "tutorial", "guide"])
+                    str(a) for a in decision.suggested_actions
+                    if isinstance(a, str) and not any(t in a.lower() for t in ["tip", "diy", "myself", "advice", "tutorial", "guide"])
                 ]
                 metadata["suggested_actions"] = clean_actions
             if decision.inferred_category:
@@ -110,7 +109,7 @@ async def supervisor_node(state: AgentState) -> Dict[str, Any]:
             logger.warning(f"Supervisor LLM router error: {e}. Using offline fallback.")
 
     # Generic offline fallback
-    raw_text = messages[-1].content if messages[-1].content else ""
+    raw_text = extract_text_content(messages[-1].content) if (messages and messages[-1].content) else ""
     lower_text = raw_text.lower()
 
     if any(w in lower_text for w in ["review", "rate", "star", "feedback", "complain", "dispute", "support", "billing", "cancel policy"]):

@@ -130,6 +130,18 @@ using (var scope = app.Services.CreateScope())
     {
         Console.WriteLine($"Database migration status/warning: {ex.Message}");
     }
+    
+    // Fallback: manually ensure ProfileImage exists since migrations are broken
+    try 
+    {
+        var context = scope.ServiceProvider.GetRequiredService<SuperbassDbContext>();
+        context.Database.ExecuteSqlRaw("ALTER TABLE \"Residents\" ADD COLUMN \"ProfileImage\" text;");
+        Console.WriteLine("Added ProfileImage column manually.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Manual column add status: {ex.Message}");
+    }
 }
 
 // Configure the HTTP request pipeline.

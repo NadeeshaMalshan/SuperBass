@@ -133,6 +133,10 @@ class TextMessageCard(BaseModel):
         default=None,
         description="Quick action suggestions/chips for user to click"
     )
+    is_choice: Optional[bool] = Field(
+        default=None,
+        description="Whether this card represents an interactive choice turn"
+    )
 
 
 class ErrorCard(BaseModel):

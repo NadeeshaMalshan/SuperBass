@@ -7,7 +7,7 @@
 .chats-page-container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  flex: 1;
   background-color: #f7f7f7;
   font-family: var(--font-body, 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
   color: #000000;

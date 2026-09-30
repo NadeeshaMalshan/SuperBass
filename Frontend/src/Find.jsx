@@ -641,12 +641,14 @@ export default function Find() {
         <div className="m3-card-horizontal-wrap">
           {/* Left: Rounded Profile Photo / Avatar */}
           <div className="m3-card-avatar-wrap">
-            {worker.profilePicture || worker.profileImage ? (
+            {(worker.profilePicture || worker.profileImage) && !failedWorkerAvatars[worker.id] ? (
               <img
                 src={worker.profilePicture || worker.profileImage}
                 alt={worker.name}
                 className="m3-card-avatar-img"
                 loading="lazy"
+                onError={() => setFailedWorkerAvatars(prev => ({ ...prev, [worker.id]: true }))}
+                referrerPolicy="no-referrer"
               />
             ) : (
               <div className="m3-card-avatar-fallback">
@@ -908,10 +910,7 @@ export default function Find() {
   return (
     <div className="community-page-wrapper">
       {/* Sleek Dark Top Navbar (Uber Pitch Black Aesthetic) */}
-      <M3TopNavbar
-        theme="dark"
-        activePage="find"
-      />
+      
 
       {/* 1. Craftsmen Hero Showcase Banner (Uber Pitch Black Aesthetic) */}
       {isHeroBannerVisible && (

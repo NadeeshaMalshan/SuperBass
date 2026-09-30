@@ -45,6 +45,7 @@ const EMOJI_CATEGORIES = {
 export default function Chats() {
   const [conversations, setConversations] = useState([]);
   const [selectedChat, setSelectedChat] = useState(null);
+  const [failedImages, setFailedImages] = useState({});
   const [workersMap, setWorkersMap] = useState({});
   const [workersList, setWorkersList] = useState([]);
   const [workerSearchQuery, setWorkerSearchQuery] = useState('');
@@ -805,6 +806,21 @@ export default function Chats() {
     }
   };
 
+  // Auto-start chat from URL parameter
+  useEffect(() => {
+    if (!isDataLoaded || workersList.length === 0) return;
+    const params = new URLSearchParams(window.location.search);
+    const workerIdParam = params.get('workerId');
+    if (workerIdParam && !selectedChatRef.current) {
+      const workerIdNum = parseInt(workerIdParam, 10);
+      const worker = workersList.find(w => w.id === workerIdNum);
+      if (worker) {
+        handleStartChatWithWorker(worker);
+        window.history.replaceState({}, '', '/chats');
+      }
+    }
+  }, [isDataLoaded, workersList]);
+
   // Render Worker Search Results Dropdown inside Top Navbar
   const renderWorkerSearchDropdown = () => {
     if (!isWorkerDropdownOpen || !workerSearchQuery.trim()) return null;
@@ -956,28 +972,7 @@ export default function Chats() {
   return (
     <>
       <div className="chats-page-container">
-        {/* Google Workspace / Material 3 Top Navbar - Workers Finder */}
-        <M3TopNavbar
-          activePage="chats"
-          searchValue={workerSearchQuery}
-          onSearchChange={(val) => {
-            setWorkerSearchQuery(val);
-            setIsWorkerDropdownOpen(Boolean(val && val.trim()));
-          }}
-          onSearchFocus={() => {
-            if (workerSearchQuery.trim()) {
-              setIsWorkerDropdownOpen(true);
-            }
-          }}
-          onSearchSubmit={(val) => {
-            setIsWorkerDropdownOpen(false);
-            if (val.trim()) {
-              navigate(`/find?q=${encodeURIComponent(val.trim())}`);
-            }
-          }}
-          searchPlaceholder="Search workers by name, skill, or service..."
-          searchDropdown={renderWorkerSearchDropdown()}
-        />
+        {/* Google Workspace / Material 3 Top Navbar - Workers Finder (Rendered Globally) */}
 
         {/* Messenger Body */}
         <div className={`chats-body ${selectedChat ? 'has-selected-chat' : ''}`}>
@@ -1070,12 +1065,13 @@ export default function Chats() {
                         tabIndex={0}
                       >
                         <div className="chat-item-avatar-wrapper">
-                          {party.avatarUrl ? (
+                          {(party.avatarUrl && !failedImages[party.avatarUrl]) ? (
                             <img
                               src={party.avatarUrl}
                               alt={party.displayName}
                               className="chat-item-avatar"
-                              onError={(e) => { e.target.style.display = 'none'; }}
+                              referrerPolicy="no-referrer"
+                              onError={() => setFailedImages(prev => ({ ...prev, [party.avatarUrl]: true }))}
                             />
                           ) : (
                             <div className={`chat-item-avatar ${party.isUserWorker ? 'avatar-resident' : 'avatar-worker'}`}>
@@ -1139,12 +1135,13 @@ export default function Chats() {
                       <md-icon>arrow_back</md-icon>
                     </button>
                     <div className="chats-header-avatar-wrapper">
-                      {activeParty.avatarUrl ? (
+                      {(activeParty.avatarUrl && !failedImages[activeParty.avatarUrl]) ? (
                         <img
                           src={activeParty.avatarUrl}
                           alt={activeParty.displayName}
                           className="chats-header-avatar"
-                          onError={(e) => { e.target.style.display = 'none'; }}
+                          referrerPolicy="no-referrer"
+                          onError={() => setFailedImages(prev => ({ ...prev, [activeParty.avatarUrl]: true }))}
                         />
                       ) : (
                         <div className={`chats-header-avatar ${activeParty.isUserWorker ? 'avatar-resident' : 'avatar-worker'}`}>

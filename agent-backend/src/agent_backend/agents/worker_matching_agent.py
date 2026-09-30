@@ -79,7 +79,6 @@ async def worker_matching_agent_node(state: AgentState) -> Dict[str, Any]:
         logger.info(f"🔍 [Worker Matching Agent] Executing LLM with tools for '{email}'")
         llm = ChatOpenAI(
             model=settings.openai_model,
-            temperature=0.3,
             api_key=settings.openai_api_key
         ).bind_tools(WORKER_MATCHING_TOOLS)
 
