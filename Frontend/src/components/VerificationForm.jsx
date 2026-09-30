@@ -1,8 +1,5 @@
 import React, { useState } from 'react';
 import { validateAndParseNIC } from '../utils/nic-validation.js';
-import '@material/web/textfield/filled-text-field.js';
-import '@material/web/button/filled-button.js';
-import '@material/web/icon/icon.js';
 
 export default function VerificationForm({ isVerified, onVerifySuccess }) {
   const [verifyForm, setVerifyForm] = useState({
@@ -37,7 +34,9 @@ export default function VerificationForm({ isVerified, onVerifySuccess }) {
       
       {isVerified ? (
         <div style={{ padding: '2rem', backgroundColor: '#f0fdf4', borderRadius: '12px', border: '1px solid #bbf7d0', textAlign: 'center' }}>
-          <md-icon style={{ fontSize: '48px', width: '48px', height: '48px', color: '#16a34a', marginBottom: '1rem' }}>check_circle</md-icon>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#16a34a" width="48" height="48" style={{ marginBottom: '1rem' }}>
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+          </svg>
           <h3 style={{ margin: '0 0 0.5rem 0', color: '#166534', fontSize: '1.25rem' }}>Account Verified</h3>
           <p style={{ margin: 0, color: '#15803d' }}>Your official identity has been successfully verified.</p>
         </div>
@@ -47,13 +46,25 @@ export default function VerificationForm({ isVerified, onVerifySuccess }) {
             <p style={{ margin: '0 0 1.5rem 0', color: '#4b5563' }}>Please enter your official NIC details to verify your account.</p>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <md-filled-text-field
-                label="National Identity Card (NIC)"
-                type="text"
-                value={verifyForm.nic}
-                onInput={(e) => setVerifyForm({...verifyForm, nic: e.target.value})}
-                required
-              ></md-filled-text-field>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '0.85rem', color: '#4b5563', paddingLeft: '16px' }}>National Identity Card (NIC)</label>
+                <input
+                  type="text"
+                  style={{
+                    padding: '16px',
+                    border: 'none',
+                    borderBottom: '1px solid #111827',
+                    backgroundColor: '#f3f4f6',
+                    borderRadius: '4px 4px 0 0',
+                    fontFamily: 'inherit',
+                    fontSize: '1rem',
+                    outline: 'none'
+                  }}
+                  value={verifyForm.nic}
+                  onChange={(e) => setVerifyForm({...verifyForm, nic: e.target.value})}
+                  required
+                />
+              </div>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <label style={{ fontSize: '0.85rem', color: '#4b5563', paddingLeft: '16px' }}>Date of Birth</label>
@@ -106,12 +117,12 @@ export default function VerificationForm({ isVerified, onVerifySuccess }) {
           </div>
 
           <div>
-            <md-filled-button
+            <button
               type="submit"
-              style={{ '--md-sys-color-primary': '#2563eb', '--md-sys-color-on-primary': '#ffffff', '--md-filled-button-container-shape': '8px' }}
+              style={{ padding: '12px 24px', backgroundColor: '#2563eb', color: '#ffffff', border: 'none', borderRadius: '8px', fontSize: '1rem', fontWeight: '600', cursor: 'pointer' }}
             >
               Verify Now
-            </md-filled-button>
+            </button>
           </div>
         </form>
       )}
