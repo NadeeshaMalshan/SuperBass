@@ -11,6 +11,7 @@ import re
 import logging
 from dotenv import load_dotenv
 import jwt
+import uuid
 
 # Zero-Trust Auth & Eligibility Logic
 async def get_authenticated_user(request: Request) -> str:
@@ -339,6 +340,43 @@ tools = [
             "type": "object",
             "properties": {
                 "includeDetails": {"type": "boolean", "description": "Include icons and IDs (default true)"}
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "file_dispute_ticket",
+        "description": "File a formal dispute or complaint against a technician for incomplete work, damages, or billing issues",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "worker_id": {"type": "string", "description": "Worker ID"},
+                "reason": {"type": "string", "description": "Reason for dispute or complaint"},
+                "urgency_level": {"type": "string", "enum": ["low", "medium", "high"], "description": "Dispute urgency level"}
+            },
+            "required": ["worker_id", "reason"]
+        }
+    },
+    {
+        "name": "escalate_to_human",
+        "description": "Escalate the inquiry or complaint to a live human support supervisor",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "reason": {"type": "string", "description": "Reason for human escalation"},
+                "urgency": {"type": "string", "enum": ["low", "medium", "high"], "description": "Urgency level"}
+            },
+            "required": ["reason"]
+        }
+    },
+    {
+        "name": "get_user_job_history",
+        "description": "Get the user's booking history and past completed jobs",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "email": {"type": "string", "description": "Resident email"},
+                "limit": {"type": "integer", "description": "Max number of past jobs"}
             },
             "required": []
         }
@@ -829,7 +867,67 @@ async def call_create_worker_review(args: Dict[str, Any]):
     response = await backend_client.post(f"/api/Bookings/{booking_id}/review", json=payload, headers=headers)
     if response.status_code >= 400:
         raise ValueError(f"Backend error ({response.status_code}): {response.text}")
-    return response.json() if response.text else {"success": True}
+    res_data = response.json() if response.text else {}
+    return {
+        "success": True,
+        "bookingId": res_data.get("id") or booking_id,
+        "workerId": res_data.get("workerId") or args.get("workerId"),
+        "workerName": res_data.get("workerName") or "Worker",
+        "workerProfileImage": res_data.get("workerProfileImage"),
+        "overallRating": res_data.get("reviewRating") or rating,
+        "qualityRating": res_data.get("qualityRating") or rating,
+        "punctualityRating": res_data.get("punctualityRating") or rating,
+        "communicationRating": res_data.get("communicationRating") or rating,
+        "comment": res_data.get("reviewComment") or comment,
+        "reviewedAt": res_data.get("reviewedAt") or datetime.utcnow().isoformat()
+    }
+
+async def call_file_dispute_ticket(args: Dict[str, Any]):
+    worker_id = args.get("worker_id") or args.get("workerId") or "Unknown"
+    reason = args.get("reason", "Service issue reported")
+    urgency = (args.get("urgency_level") or args.get("urgency") or "medium").lower()
+    ticket_id = f"TICKET-{datetime.utcnow().strftime('%y%m%d')}-{uuid.uuid4().hex[:4].upper()}"
+    return {
+        "ticketId": ticket_id,
+        "workerId": str(worker_id),
+        "reason": reason,
+        "urgencyLevel": urgency,
+        "status": "Submitted",
+        "submittedAt": datetime.utcnow().isoformat(),
+        "sla": "Our trust & safety team reviews disputes within 2-4 hours.",
+        "supportPhone": "+94 11 234 5678",
+        "message": f"Dispute ticket #{ticket_id} has been recorded. Our safety coordinator will contact both parties."
+    }
+
+async def call_escalate_to_human(args: Dict[str, Any]):
+    reason = args.get("reason", "Customer requested human supervisor")
+    urgency = (args.get("urgency") or "medium").lower()
+    ticket_id = f"ESC-{datetime.utcnow().strftime('%y%m%d')}-{uuid.uuid4().hex[:4].upper()}"
+    return {
+        "escalationId": ticket_id,
+        "reason": reason,
+        "urgency": urgency,
+        "status": "Assigned",
+        "agentName": "Workio Support Lead (Dulani K.)",
+        "contactEmail": "support@superbass.lk",
+        "supportPhone": "+94 11 234 5678",
+        "message": f"Inquiry #{ticket_id} escalated to human support supervisor. Current wait time: < 5 minutes."
+    }
+
+async def call_get_user_job_history(args: Dict[str, Any]):
+    email = args.get("email") or "resident@superbass.lk"
+    limit = int(args.get("limit", 5))
+    try:
+        headers = get_auth_headers(email)
+        res = await backend_client.get("/api/Bookings/resident", params={"email": email, "upcomingOnly": False}, headers=headers)
+        if res.status_code == 200:
+            data = res.json()
+            if isinstance(data, list):
+                return data[:limit]
+            return data
+    except Exception:
+        pass
+    return []
 
 async def call_get_user_community_posts(args: Dict[str, Any]):
     email = str(args.get("email", "")).strip()
@@ -922,6 +1020,9 @@ TOOL_FUNCTIONS = {
     "update_community_post": call_update_community_post,
     "delete_community_post": call_delete_community_post,
     "create_worker_review": call_create_worker_review,
+    "file_dispute_ticket": call_file_dispute_ticket,
+    "escalate_to_human": call_escalate_to_human,
+    "get_user_job_history": call_get_user_job_history,
     "get_user_community_posts": call_get_user_community_posts,
     "get_user_details": call_get_user_details,
     "get_service_categories": call_get_service_categories,

@@ -14,6 +14,9 @@ import WorkerListCard from './WorkerListCard.jsx';
 import BookingFormCard from './BookingFormCard.jsx';
 import BookingConfirmedCard from './BookingConfirmedCard.jsx';
 import BookingListCard from './BookingListCard.jsx';
+import ReviewFormCard from './ReviewFormCard.jsx';
+import ReviewSubmittedCard from './ReviewSubmittedCard.jsx';
+import DisputeTicketCard from './DisputeTicketCard.jsx';
 import InitialWelcomeCard from './InitialWelcomeCard.jsx';
 
 /**
@@ -59,6 +62,12 @@ export default function AgentCardDispatcher({ response, onAction }) {
       return <BookingConfirmedCard data={card_data} onAction={onAction} />;
     case 'booking_list':
       return <BookingListCard data={card_data} onAction={onAction} />;
+    case 'review_form':
+      return <ReviewFormCard data={card_data} onAction={onAction} />;
+    case 'review_submitted':
+      return <ReviewSubmittedCard data={card_data} onAction={onAction} />;
+    case 'dispute_ticket':
+      return <DisputeTicketCard data={card_data} onAction={onAction} />;
     case 'error':
       return <ErrorCard data={card_data} onAction={onAction} />;
     case 'text_message':

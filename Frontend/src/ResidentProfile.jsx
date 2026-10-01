@@ -26,12 +26,13 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
 
   const [isVerified, setIsVerified] = useState(false);
 
-
   const [profile, setProfile] = useState({
     name: '',
     phoneNo: '',
     address: '',
-    profileImage: ''
+    profileImage: '',
+    isVerified: false,
+    nicNumber: ''
   });
   const [loading, setLoading] = useState(true);
 
@@ -143,8 +144,11 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
           name: response.data.name || (userEmail ? userEmail.split('@')[0] : ''),
           phoneNo: response.data.phoneNo || '',
           address: response.data.address || '',
-          profileImage: response.data.profileImage || ''
+          profileImage: response.data.profileImage || '',
+          isVerified: !!response.data.isVerified,
+          nicNumber: response.data.nicNumber || ''
         });
+        setIsVerified(!!response.data.isVerified);
 
         if (response.data.address) {
           const detectedCity = extractCityFromAddress(response.data.address);
@@ -465,6 +469,42 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
     } catch (err) {
       console.error(err);
       alert('Failed to update profile.');
+    }
+  };
+
+  const handleVerifySuccess = async (data) => {
+    try {
+      if (userEmail) {
+        await axios.post(`${API_BASE_URL}/residents/${encodeURIComponent(userEmail)}/verify`, {
+          nicNumber: data?.nic || '',
+          dateOfBirth: data?.dateOfBirth || '',
+          gender: data?.gender || ''
+        }, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+      }
+      setIsVerified(true);
+      setProfile(prev => ({ ...prev, isVerified: true, nicNumber: data?.nic || prev.nicNumber }));
+      showToast('Identity verified and saved successfully!');
+    } catch (err) {
+      console.error('Error saving resident verification status:', err);
+      try {
+        // Fallback update via PUT /api/residents/{id}
+        await axios.put(`${API_BASE_URL}/residents/${encodeURIComponent(userEmail)}`, {
+          ...profile,
+          isVerified: true,
+          nicNumber: data?.nic || ''
+        }, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        setIsVerified(true);
+        setProfile(prev => ({ ...prev, isVerified: true, nicNumber: data?.nic || prev.nicNumber }));
+        showToast('Identity verified and saved successfully!');
+      } catch (putErr) {
+        console.error('Error updating resident with verification status:', putErr);
+        setIsVerified(true);
+        showToast('Identity verified locally! (Note: Could not update server)');
+      }
     }
   };
 
@@ -797,7 +837,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
               <div>
                 <VerificationForm 
                   isVerified={isVerified}
-                  onVerifySuccess={() => setIsVerified(true)}
+                  onVerifySuccess={handleVerifySuccess}
                 />
               </div>
             )}
@@ -827,6 +867,28 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                   <dt className="text-[14px] font-medium text-[#6B6B6B]">Physical Address</dt>
                   <dd className="text-[16px] text-gray-900 m-0">{profile.address || <span className="text-gray-400 italic font-normal">Not provided</span>}</dd>
                 </div>
+                <div className="py-5 flex flex-col gap-1">
+                  <dt className="text-[14px] font-medium text-[#6B6B6B]">Identity Verification</dt>
+                  <dd className="text-[16px] text-gray-900 m-0 flex items-center gap-2">
+                    {isVerified ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-green-50 text-green-700 rounded-full text-[13px] font-semibold">
+                        <span className="material-symbols-outlined text-[16px]">verified</span>
+                        Verified Resident
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 rounded-full text-[13px] font-medium">
+                        <span className="material-symbols-outlined text-[16px]">info</span>
+                        Not Verified
+                      </span>
+                    )}
+                  </dd>
+                </div>
+                {profile.nicNumber && (
+                  <div className="py-5 flex flex-col gap-1">
+                    <dt className="text-[14px] font-medium text-[#6B6B6B]">National Identity Card (NIC)</dt>
+                    <dd className="text-[16px] text-gray-900 m-0 font-mono">{profile.nicNumber}</dd>
+                  </div>
+                )}
               </dl>
             </div>
           )}

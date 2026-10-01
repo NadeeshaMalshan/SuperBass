@@ -248,6 +248,52 @@ class BookingListCard(BaseModel):
     bookings: List[BookingSummary] = Field(default_factory=list, description="List of bookings")
 
 
+class ReviewFormCard(BaseModel):
+    """UI Card rendered when prompting the resident to review a completed service."""
+    bookingId: Union[int, str] = Field(description="ID of the associated booking")
+    workerId: Union[int, str] = Field(description="Worker ID")
+    workerName: str = Field(default="Verified Technician", description="Technician display name")
+    workerAvatar: Optional[str] = Field(default=None, description="Worker avatar URL")
+    jobTitle: str = Field(default="Completed Service Appointment", description="Service job title")
+    defaultQuality: int = Field(default=5, description="Initial quality star rating (1-5)")
+    defaultPunctuality: int = Field(default=5, description="Initial punctuality star rating (1-5)")
+    defaultCommunication: int = Field(default=5, description="Initial communication star rating (1-5)")
+    suggestedComments: List[str] = Field(
+        default_factory=lambda: [
+            "Punctual, professional, and resolved the issue quickly!",
+            "Great workmanship and left the work area clean.",
+            "Polite communication and fair pricing. Highly recommended!"
+        ],
+        description="Quick pre-fill review template suggestions"
+    )
+
+
+class ReviewSubmittedCard(BaseModel):
+    """UI Card rendered after a worker review is successfully recorded."""
+    bookingId: Union[int, str] = Field(description="Booking ID")
+    workerId: Union[int, str] = Field(description="Worker ID")
+    workerName: str = Field(default="Verified Technician", description="Worker display name")
+    overallRating: float = Field(default=5.0, description="Overall star rating given (1.0 - 5.0)")
+    qualityRating: Optional[int] = Field(default=5, description="Quality rating")
+    punctualityRating: Optional[int] = Field(default=5, description="Punctuality rating")
+    communicationRating: Optional[int] = Field(default=5, description="Communication rating")
+    comment: Optional[str] = Field(default=None, description="Review comment published")
+    submittedAt: Optional[str] = Field(default=None, description="Formatted submission timestamp")
+
+
+class DisputeTicketCard(BaseModel):
+    """UI Card rendered when a support dispute ticket or complaint is opened."""
+    ticketId: str = Field(description="Generated Support Ticket ID (e.g., TICKET-9481)")
+    workerId: Optional[Union[int, str]] = Field(default=None, description="Target worker ID if applicable")
+    workerName: Optional[str] = Field(default=None, description="Target worker name")
+    bookingId: Optional[Union[int, str]] = Field(default=None, description="Associated booking ID if applicable")
+    reason: str = Field(description="Summary of the issue / dispute description")
+    urgencyLevel: str = Field(default="Medium", description="'Low', 'Medium', 'High', 'Critical'")
+    status: str = Field(default="Open", description="Ticket status: 'Open', 'In Review', 'Resolved'")
+    resolutionSla: str = Field(default="Support team responds within 2 hours", description="Expected response SLA")
+    supportHotline: str = Field(default="+94 11 234 5678", description="Emergency platform support contact")
+
+
 ResponseTypeLiteral = Literal[
     "create_community_post",
     "edit_community_post",
@@ -263,6 +309,9 @@ ResponseTypeLiteral = Literal[
     "booking_form",
     "booking_confirmed",
     "booking_list",
+    "review_form",
+    "review_submitted",
+    "dispute_ticket",
     "text_message",
     "error"
 ]

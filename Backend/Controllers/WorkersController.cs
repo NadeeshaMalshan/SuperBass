@@ -80,9 +80,10 @@ namespace Superbass.Controllers
             [FromQuery] double? residentLat,
             [FromQuery] double? residentLng,
             [FromQuery] decimal? maxHourlyRate = null,
-            [FromQuery] decimal? minHourlyRate = null)
+            [FromQuery] decimal? minHourlyRate = null,
+            [FromQuery] bool onlyVerified = true)
         {
-            var results = await _workerRepository.SearchWorkersAsync(skill, location, null, residentLat, residentLng, maxHourlyRate, minHourlyRate, province, district);
+            var results = await _workerRepository.SearchWorkersAsync(skill, location, null, residentLat, residentLng, maxHourlyRate, minHourlyRate, province, district, onlyVerified);
             foreach (var w in results)
             {
                 w.PhoneNo = null; // Privacy: Worker contact is hidden on public search
@@ -212,6 +213,22 @@ namespace Superbass.Controllers
             if (!string.IsNullOrWhiteSpace(dto.NicNumber))
             {
                 worker.NicNumber = dto.NicNumber.Trim();
+            }
+
+            // Sync to resident account if exists
+            var targetEmail = !string.IsNullOrEmpty(worker.ResidentEmail) ? worker.ResidentEmail : worker.Email;
+            if (!string.IsNullOrEmpty(targetEmail))
+            {
+                var cleanEmail = targetEmail.Trim().ToLower();
+                var resident = await _dbContext.Residents.FirstOrDefaultAsync(r => r.Email.ToLower() == cleanEmail);
+                if (resident != null)
+                {
+                    resident.IsVerified = true;
+                    if (!string.IsNullOrWhiteSpace(dto.NicNumber))
+                    {
+                        resident.NicNumber = dto.NicNumber.Trim();
+                    }
+                }
             }
 
             await _dbContext.SaveChangesAsync();

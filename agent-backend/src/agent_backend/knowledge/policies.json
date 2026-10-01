@@ -1,0 +1,50 @@
+[
+  {
+    "id": "policy_cancellation_rescheduling",
+    "category": "Cancellation & Rescheduling",
+    "title": "Cancellation and Rescheduling Rules",
+    "summary": "Free cancellation or rescheduling up to 2 hours before the appointment. Late cancellations incur a Rs. 500 fee.",
+    "content": "Workio allows flexible cancellations and appointment rescheduling. Free Cancellations: Residents can cancel or reschedule any confirmed booking for free up to 2 hours before the scheduled appointment start time directly via the app or AI assistant. Late Cancellations: Cancellations requested within 2 hours of the scheduled start time incur a standard technician dispatch fee of LKR 500 to compensate the traveling professional. Technician No-Show: If a technician fails to arrive within 30 minutes of the scheduled time without prior communication, the booking is cancelled free of charge, and the resident receives a LKR 1,000 service credit toward their next booking.",
+    "tags": ["cancel", "cancellation", "reschedule", "rescheduling", "change date", "change time", "fee", "late cancellation", "no show", "refund"]
+  },
+  {
+    "id": "policy_workmanship_warranty",
+    "category": "Warranties & Guarantees",
+    "title": "7-Day Workmanship Guarantee",
+    "summary": "Every service includes a free 7-day workmanship warranty. If an issue recurs within 7 days, re-inspection and repair is free.",
+    "content": "All completed home services on Workio come with our official 7-Day Workmanship Guarantee. Scope: If a repaired plumbing leak, electrical fix, carpentry adjustment, or AC servicing fails or recurs within 7 calendar days of completion, Workio will arrange a warranty follow-up at zero labor charge. Coverage: Labor costs for re-fixing the exact reported issue are 100% free. If new hardware or spare parts are required that were not part of the original repair, the resident pays only the direct cost of the replacement parts. Exclusions: Damage caused by external incidents, third-party tampering, power surges, or misuse after the service is completed is not covered.",
+    "tags": ["warranty", "guarantee", "re-repair", "free repair", "recur", "leak again", "broken again", "7 days", "quality assurance"]
+  },
+  {
+    "id": "policy_pricing_and_payments",
+    "category": "Pricing & Payments",
+    "title": "Pricing Models, Invoicing & Payment Methods",
+    "summary": "Zero advance payments required. Residents pay only upon satisfactory job completion via Cash or Online Card.",
+    "content": "Workio maintains transparent and competitive pricing across Sri Lanka. Pricing Models: Technicians offer either hourly rates (standard rates range between LKR 2,000 - 3,500/hr depending on specialization) or a fixed price quote provided after on-site inspection. Zero Advance Payments: Residents are never required to pay advance fees for standard service appointments. Payment is released only after the resident inspects the work and confirms satisfactory completion. Accepted Payment Methods: Direct Cash payment to the technician upon job sign-off, or instant online credit/debit card payment via the Workio app. Invoices: An official digital e-receipt and breakdown is automatically generated and sent to the resident's registered email.",
+    "tags": ["pricing", "price", "hourly rate", "cost", "fee", "advance payment", "deposit", "payment methods", "cash", "credit card", "invoice", "receipt"]
+  },
+  {
+    "id": "policy_technician_vetting_safety",
+    "category": "Safety & Worker Vetting",
+    "title": "Technician Vetting, Verification & Safety Standards",
+    "summary": "Every technician undergoes National Identity Card (NIC) verification, Police background clearance, and practical trade skill assessment.",
+    "content": "Trust and safety are the core foundation of Workio. Background Verification: Every technician registered on Workio undergoes strict verification including National Identity Card (NIC), permanent residence proof, and police background clearance certificate. Skill Assessment: Workers must demonstrate practical trade experience (e.g., NVQ certifications or verified apprenticeships) and pass our technical screening. Ongoing Quality Standards: Workers must maintain a minimum 4.0 community star rating. Workers falling below 4.0 stars or receiving safety complaints are immediately deactivated from the platform. Verified Badge: Look for the green shield badge on technician profiles indicating fully vetted status.",
+    "tags": ["safety", "vetting", "background check", "police clearance", "nic", "verification", "trust", "certified", "licensed", "safe"]
+  },
+  {
+    "id": "policy_property_damage_protection",
+    "category": "Damage Protection & Claims",
+    "title": "Workio Property Damage Protection Guarantee",
+    "summary": "Accidental property damage caused during service is protected up to LKR 50,000 under our Trust & Safety cover.",
+    "content": "Workio protects residents against accidental damages occurring during verified appointments. Coverage Limit: Up to LKR 50,000 for verified accidental damages directly caused by a technician's negligence while performing the scheduled service. How to Claim: 1. File a dispute ticket immediately via the AI Assistant or platform support. 2. Provide photographic evidence of the damage within 24 hours of the incident. 3. Workio's Safety Claims Coordinator inspects the report and liaises with an approved insurance assessor within 48 hours. Reimbursement is credited directly to the resident or paid to authorized repair contractors.",
+    "tags": ["damage", "broken pipe", "property damage", "insurance", "compensation", "protection", "accident", "claim", "reimbursement"]
+  },
+  {
+    "id": "policy_disputes_and_escalations",
+    "category": "Dispute Resolution & Support SLA",
+    "title": "Dispute Resolution Process and Emergency Escalation",
+    "summary": "Formal dispute resolution with guaranteed 2-hour response SLA and live human supervisor escalation.",
+    "content": "Workio provides a dedicated resolution pathway for service conflicts, overcharging, or unsatisfactory workmanship. Filing a Ticket: Residents can request a dispute ticket (#TICKET-XXXX) directly through chat or support. Response SLA: Our Trust & Safety team guarantees an initial response within 2 hours for standard disputes, and within 30 minutes for critical issues (such as water leaks or electrical hazards). Human Escalation: Residents can request human supervisor escalation (#ESC-XXXX) at any time, connecting to a live supervisor with an average wait time under 5 minutes. Support Hotline: Call +94 11 234 5678 available daily from 8:00 AM to 10:00 PM.",
+    "tags": ["dispute", "complaint", "escalate", "supervisor", "human agent", "support phone", "hotline", "sla", "resolution", "ticket", "emergency"]
+  }
+]

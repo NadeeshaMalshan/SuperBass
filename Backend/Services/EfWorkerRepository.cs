@@ -37,9 +37,15 @@ namespace Superbass.Services
             decimal? maxHourlyRate = null,
             decimal? minHourlyRate = null,
             string? province = null,
-            string? district = null)
+            string? district = null,
+            bool onlyVerified = true)
         {
             var query = _context.Workers.Include(w => w.Skills).AsQueryable();
+
+            if (onlyVerified)
+            {
+                query = query.Where(w => w.IsVerified);
+            }
 
             if (!string.IsNullOrWhiteSpace(skill))
             {
@@ -333,6 +339,10 @@ namespace Superbass.Services
                 return existingWorker;
             }
 
+            var resident = await _context.Residents.FirstOrDefaultAsync(r => r.Email.ToLower() == residentEmail.ToLower());
+            var isResidentVerified = resident?.IsVerified ?? false;
+            var residentNic = resident?.NicNumber;
+
             var worker = new Worker
             {
                 ResidentEmail = residentEmail,
@@ -345,6 +355,8 @@ namespace Superbass.Services
                 HourlyRate = hourlyRate,
                 DailyRate = dailyRate,
                 IsAvailable = true,
+                IsVerified = isResidentVerified,
+                NicNumber = residentNic,
                 Skills = skills ?? new List<WorkerSkill>()
             };
 

@@ -10,6 +10,7 @@ namespace Superbass.Services
         Task<Resident?> GetResidentAsync(string email);
         Task<bool> UpdateResidentAsync(string email, ResidentUpdateDto updateDto);
         Task<bool> DeleteResidentAsync(string email);
+        Task<bool> VerifyResidentAsync(string email, string? nicNumber);
     }
 
     public class EfResidentRepository : IResidentRepository
@@ -37,7 +38,9 @@ namespace Superbass.Services
                     Name = updateDto.Name ?? (email.Contains("@") ? email.Split('@')[0] : email),
                     PhoneNo = updateDto.PhoneNo ?? "",
                     Address = updateDto.Address ?? "",
-                    ProfileImage = updateDto.ProfileImage
+                    ProfileImage = updateDto.ProfileImage,
+                    IsVerified = updateDto.IsVerified ?? false,
+                    NicNumber = updateDto.NicNumber
                 };
                 _context.Residents.Add(resident);
             }
@@ -49,6 +52,8 @@ namespace Superbass.Services
                 if (updateDto.LocationLat != null) resident.LocationLat = updateDto.LocationLat;
                 if (updateDto.LocationLng != null) resident.LocationLng = updateDto.LocationLng;
                 if (updateDto.ProfileImage != null) resident.ProfileImage = updateDto.ProfileImage;
+                if (updateDto.IsVerified.HasValue) resident.IsVerified = updateDto.IsVerified.Value;
+                if (updateDto.NicNumber != null) resident.NicNumber = updateDto.NicNumber;
             }
 
             if (updateDto.Address != null && updateDto.LocationLat == null && updateDto.LocationLng == null)
@@ -78,6 +83,50 @@ namespace Superbass.Services
                     }
                 }
                 catch { /* Ignore geocoding errors */ }
+            }
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> VerifyResidentAsync(string email, string? nicNumber)
+        {
+            if (string.IsNullOrWhiteSpace(email)) return false;
+            var cleanEmail = email.Trim().ToLower();
+            var resident = await _context.Residents.FirstOrDefaultAsync(r => r.Email.ToLower() == cleanEmail);
+            if (resident == null)
+            {
+                resident = new Resident
+                {
+                    Email = email,
+                    Name = email.Contains("@") ? email.Split('@')[0] : email,
+                    PhoneNo = "",
+                    Address = "",
+                    IsVerified = true,
+                    NicNumber = !string.IsNullOrWhiteSpace(nicNumber) ? nicNumber.Trim() : null
+                };
+                _context.Residents.Add(resident);
+            }
+            else
+            {
+                resident.IsVerified = true;
+                if (!string.IsNullOrWhiteSpace(nicNumber))
+                {
+                    resident.NicNumber = nicNumber.Trim();
+                }
+            }
+
+            // Sync to worker profile if exists for this resident email
+            var worker = await _context.Workers.FirstOrDefaultAsync(w => 
+                (w.ResidentEmail != null && w.ResidentEmail.ToLower() == cleanEmail) || 
+                w.Email.ToLower() == cleanEmail);
+            if (worker != null)
+            {
+                worker.IsVerified = true;
+                if (!string.IsNullOrWhiteSpace(nicNumber))
+                {
+                    worker.NicNumber = nicNumber.Trim();
+                }
             }
 
             await _context.SaveChangesAsync();
