@@ -258,6 +258,9 @@ export default function AiCommunityChat() {
       if (textToSend.bookingData) {
         extraMeta.booking_data = textToSend.bookingData;
       }
+      if (textToSend.reviewData) {
+        extraMeta.review_data = textToSend.reviewData;
+      }
     } else {
       prompt = (textToSend || inputText).trim();
     }
@@ -389,7 +392,26 @@ export default function AiCommunityChat() {
         },
       };
       setMessages((prev) => [...prev, bookingCardMsg]);
-    } else if (actionType === 'send_prompt' || actionType === 'confirm_post' || actionType === 'confirm_update' || actionType === 'cancel_post') {
+    } else if (actionType === 'review_worker' || actionType === 'open_review_form') {
+      const reviewPayload = payload || {};
+      const reviewCardMsg = {
+        id: 'asst-rev-' + Date.now(),
+        sender: 'assistant',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        cardResponse: {
+          response_type: 'review_form',
+          message: `Please share your rating and review for ${reviewPayload.workerName || 'the technician'}:`,
+          card_data: {
+            bookingId: reviewPayload.bookingId || reviewPayload.id || '8',
+            workerId: reviewPayload.workerId || '44',
+            workerName: reviewPayload.workerName || 'Verified Technician',
+            workerAvatar: reviewPayload.workerProfileImage || reviewPayload.workerAvatar,
+            jobTitle: reviewPayload.jobTitle || 'Completed Service Appointment'
+          }
+        }
+      };
+      setMessages((prev) => [...prev, reviewCardMsg]);
+    } else if (actionType === 'send_prompt' || actionType === 'confirm_post' || actionType === 'confirm_update' || actionType === 'cancel_post' || actionType === 'submit_review') {
       handleSendMessage(payload);
     } else if (actionType === 'view_community') {
       navigate(`/community${payload?.id ? `?post=${payload.id}` : ''}`);

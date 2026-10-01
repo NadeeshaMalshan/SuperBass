@@ -196,6 +196,22 @@ export default function BookingListCard({ data, onAction }) {
                       <i className="fa-regular fa-clock"></i> Reschedule
                     </button>
 
+                    <button
+                      type="button"
+                      className="booking-action-btn review"
+                      style={{ background: '#fef3c7', color: '#92400e', borderColor: '#fde68a' }}
+                      onClick={() => onAction && onAction('review_worker', {
+                        bookingId: bId,
+                        workerId: booking.workerId,
+                        workerName: booking.workerName,
+                        jobTitle: booking.jobTitle,
+                        workerProfileImage: booking.workerProfileImage
+                      })}
+                      title="Leave a review for this technician"
+                    >
+                      <i className="fa-solid fa-star"></i> Review
+                    </button>
+
                     {booking.workerId && (
                       <button
                         type="button"

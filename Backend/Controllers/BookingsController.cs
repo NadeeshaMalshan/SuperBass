@@ -605,6 +605,7 @@ namespace Superbass.Controllers
 
         // POST: /api/bookings/{id}/review
         [HttpPost("{id:int}/review")]
+        [AllowAnonymous]
         public async Task<IActionResult> ReviewBooking(int id, [FromBody] ReviewBookingRequest request)
         {
             var booking = await _context.Bookings
