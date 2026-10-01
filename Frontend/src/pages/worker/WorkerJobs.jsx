@@ -69,6 +69,14 @@ export default function WorkerJobs() {
       showToast('✓ Job Request Accepted! Status is now Confirmed.');
       setBookings(prev => prev.map(b => b.id === id ? res.data : b));
       setActiveTab('active');
+
+      // Auto-open the private booking chat
+      const convId = res.data?.conversationId;
+      if (convId) {
+        navigate(`/chats?conversationId=${convId}&bookingId=${id}`);
+      } else {
+        navigate(`/chats?bookingId=${id}`);
+      }
     } catch (err) {
       console.error('Error accepting booking:', err);
       alert(err.response?.data?.message || 'Failed to accept booking.');
@@ -528,7 +536,7 @@ export default function WorkerJobs() {
                     </button>
 
                     <button
-                      onClick={() => navigate('/chats')}
+                      onClick={() => navigate(job.conversationId ? `/chats?conversationId=${job.conversationId}&bookingId=${job.id}` : `/chats?bookingId=${job.id}`)}
                       style={{ width: '100%', padding: '8px 14px', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', borderRadius: '10px', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem' }}
                     >
                       💬 Chat Resident
