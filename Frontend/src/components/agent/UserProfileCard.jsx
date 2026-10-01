@@ -29,7 +29,7 @@ export default function UserProfileCard({ data, onAction }) {
         </div>
 
         <div className="agent-card-meta" style={{ marginTop: '4px' }}>
-          {phoneNo && <span><i className="fa-solid fa-phone"></i> {phoneNo}</span>}
+          {phoneNo && !isWorker && <span><i className="fa-solid fa-phone"></i> {phoneNo}</span>}
           {address && <span><i className="fa-solid fa-location-dot"></i> {address}</span>}
           {workerRating && (
             <span><i className="fa-solid fa-star" style={{ color: '#000000' }}></i> {workerRating} / 5.0</span>
