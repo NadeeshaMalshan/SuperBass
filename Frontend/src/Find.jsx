@@ -382,11 +382,12 @@ export default function Find() {
     navigate('/find');
   };
 
-  const starredCount = Object.values(favorites).filter(Boolean).length;
-  const availableCount = workers.filter(w => w.isAvailable).length;
-  const topRatedCount = workers.filter(w => (w.overallRating ?? 0) >= 4.5).length;
-  const verifiedCount = workers.filter(w => w.isVerified || w.verified).length;
-  const topCraftsmanCount = workers.filter(w => (w.overallRating ?? 0) >= 4.8).length;
+  const verifiedWorkers = workers.filter(w => w.isVerified || w.verified);
+  const starredCount = Object.keys(favorites).filter(id => favorites[id] && verifiedWorkers.some(w => w.id === Number(id))).length;
+  const availableCount = verifiedWorkers.filter(w => w.isAvailable).length;
+  const topRatedCount = verifiedWorkers.filter(w => (w.overallRating ?? 0) >= 4.5).length;
+  const verifiedCount = verifiedWorkers.length;
+  const topCraftsmanCount = verifiedWorkers.filter(w => (w.overallRating ?? 0) >= 4.8).length;
 
   const toggleCategory = (catId) => {
     if (selectedCategories.includes(catId)) {
@@ -433,6 +434,7 @@ export default function Find() {
   // Category counts calculation
   const getCategoryCount = (catId) => {
     return workers.filter(w => {
+      if (!w.isVerified && !w.verified) return false;
       if (w.skills && w.skills.length > 0) {
         return w.skills.some(s => s.skillName.toLowerCase().includes(catId.toLowerCase()));
       }
@@ -442,6 +444,9 @@ export default function Find() {
 
   // Filtering Logic
   const filteredWorkers = workers.filter(w => {
+    // Only display workers who are verified to residents
+    if (!w.isVerified && !w.verified) return false;
+
     // 1. Search Query (Skills, sub-skills, service names, craftsman name, description)
     if (appliedSearchQuery.trim() !== '') {
       const q = appliedSearchQuery.toLowerCase();
@@ -813,7 +818,9 @@ export default function Find() {
             <div className="m3-card-header-line">
               <div className="m3-card-title-group">
                 <h3 className="m3-card-worker-name">{worker.name}</h3>
-                <md-icon className="m3-verified-badge" title="Verified Home Craftsman">verified</md-icon>
+                {(worker.isVerified || worker.verified) && (
+                  <md-icon className="m3-verified-badge" title="Verified Home Craftsman">verified</md-icon>
+                )}
               </div>
 
               <button
@@ -904,6 +911,7 @@ export default function Find() {
 
     // The dropdown uses the live searchQuery, not the appliedSearchQuery
     const dropdownWorkers = workers.filter(w => {
+      if (!w.isVerified && !w.verified) return false;
       const q = searchQuery.toLowerCase();
       const nameMatch = w.name && w.name.toLowerCase().includes(q);
       const locMatch = w.primaryServiceArea && w.primaryServiceArea.toLowerCase().includes(q);
@@ -982,7 +990,9 @@ export default function Find() {
                   <div className="m3-navbar-worker-info">
                     <div className="m3-navbar-worker-header">
                       <span className="m3-navbar-worker-name">{w.name}</span>
-                      <md-icon className="m3-navbar-verified-icon">verified</md-icon>
+                      {(w.isVerified || w.verified) && (
+                        <md-icon className="m3-navbar-verified-icon">verified</md-icon>
+                      )}
                       {primarySkill && (
                         <span className="m3-navbar-trade-tag">
                           <md-icon>handyman</md-icon>
@@ -1283,7 +1293,12 @@ export default function Find() {
                           </div>
                         )}
                         <div className="popup-details">
-                          <h4 className="popup-name">{selectedMapWorker.name}</h4>
+                          <h4 className="popup-name" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            {selectedMapWorker.name}
+                            {(selectedMapWorker.isVerified || selectedMapWorker.verified) && (
+                              <md-icon style={{ fontSize: '16px', color: '#000000' }}>verified</md-icon>
+                            )}
+                          </h4>
                           <p className="popup-skill">
                             ★ {selectedMapWorker.overallRating ? selectedMapWorker.overallRating.toFixed(1) : '5.0'} • {selectedMapWorker.skills && selectedMapWorker.skills.length > 0 ? selectedMapWorker.skills[0].skillName : 'Worker'}
                           </p>
@@ -1333,7 +1348,7 @@ export default function Find() {
                   <md-icon>engineering</md-icon>
                   <span>All Baas</span>
                 </div>
-                <span className="uber-sidebar-badge">{workers.length}</span>
+                <span className="uber-sidebar-badge">{verifiedWorkers.length}</span>
               </div>
 
               {/* Verified Workers */}
@@ -1419,7 +1434,7 @@ export default function Find() {
                   <md-icon>grid_view</md-icon>
                   <span>All Categories</span>
                 </div>
-                <span className="uber-sidebar-badge">{workers.length}</span>
+                <span className="uber-sidebar-badge">{verifiedWorkers.length}</span>
               </div>
 
               {categories.map((cat) => {
