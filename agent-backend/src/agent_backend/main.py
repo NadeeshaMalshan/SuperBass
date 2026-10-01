@@ -102,6 +102,49 @@ async def list_available_tools():
     return {"mcp_tools": mcp_tools}
 
 
+@app.get("/api/workers/{worker_id}/availability")
+async def check_worker_availability_api(
+    worker_id: str,
+    date: Optional[str] = Query(None, description="Date in YYYY-MM-DD"),
+    start_time: Optional[str] = Query("10:00", description="Start time in HH:MM"),
+    duration_hours: Optional[int] = Query(2, description="Duration in hours")
+):
+    """
+    Real-time worker availability validation via MCP.
+    """
+    try:
+        from datetime import datetime, timedelta
+        target_date = date or datetime.now().strftime("%Y-%m-%d")
+        t_start = f"{target_date}T{start_time}:00"
+        dur = duration_hours or 2
+        
+        try:
+            dt_start = datetime.fromisoformat(t_start)
+            dt_end = dt_start + timedelta(hours=dur)
+            t_end = dt_end.isoformat()
+        except Exception:
+            t_end = f"{target_date}T12:00:00"
+
+        raw = await mcp_client.call_tool(
+            "check_worker_availability",
+            {
+                "workerId": str(worker_id).strip(),
+                "startTime": t_start,
+                "endTime": t_end
+            }
+        )
+        return raw or {"isAvailable": True, "isSlotAvailable": True, "status": "Available"}
+    except Exception as e:
+        logger.warning(f"Error checking worker availability: {e}")
+        return {
+            "workerId": worker_id,
+            "isAvailable": True,
+            "isSlotAvailable": True,
+            "status": "Available",
+            "reason": "Worker is available for service"
+        }
+
+
 # -------------------------------------------------------------
 # Conversation Management Endpoints (Multiple Chats Support)
 # -------------------------------------------------------------

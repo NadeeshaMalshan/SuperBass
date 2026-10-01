@@ -13,6 +13,8 @@ from agent_backend.schemas.card_models import (
     UserProfileCard,
     TextMessageCard,
     ErrorCard,
+    BookingFormCard,
+    BookingConfirmedCard,
     AgentCardResponse,
     ResponseTypeLiteral
 )
@@ -29,6 +31,8 @@ __all__ = [
     "UserProfileCard",
     "TextMessageCard",
     "ErrorCard",
+    "BookingFormCard",
+    "BookingConfirmedCard",
     "AgentCardResponse",
     "ResponseTypeLiteral",
     "ChatRequest",
