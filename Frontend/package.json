@@ -15,7 +15,6 @@
     "@microsoft/signalr": "^10.0.11",
     "@react-oauth/google": "^0.12.2",
     "@sliit-foss/lk-nic": "^1.1.1",
-    "@tailwindcss/vite": "^4.3.3",
     "axios": "^1.19.0",
     "emoji-picker-react": "^4.22.2",
     "leaflet": "^1.9.4",
@@ -24,6 +23,7 @@
     "react-leaflet": "^5.0.0"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.4",
