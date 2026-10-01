@@ -19,6 +19,7 @@ import '@material/web/list/list-item.js';
 import Loader from './components/Loader.jsx';
 import UserMenu from './components/UserMenu.jsx';
 import M3TopNavbar from './components/M3TopNavbar.jsx';
+import { showToast } from './utils/toast.js';
 import { BACKEND_URL } from './config.js';
 import { chatSignalR } from './services/chatSignalR.js';
 
@@ -54,6 +55,7 @@ export default function Chats() {
   const [inputText, setInputText] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [isSharingContact, setIsSharingContact] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
@@ -94,8 +96,8 @@ export default function Chats() {
     setDialogConfig({ isOpen: true, title, message, type: 'alert', onConfirm: null });
   };
 
-  const showConfirm = (title, message, onConfirm) => {
-    setDialogConfig({ isOpen: true, title, message, type: 'confirm', onConfirm });
+  const showConfirm = (title, message, onConfirm, confirmText = 'OKAY', isDestructive = false) => {
+    setDialogConfig({ isOpen: true, title, message, type: 'confirm', onConfirm, confirmText, isDestructive });
   };
 
   // New UI states for Search and Menu
@@ -345,6 +347,44 @@ export default function Chats() {
     return () => clearInterval(interval);
   }, [currentUserEmail]);
 
+  // Handle auto-opening private booking chat from URL query parameters
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const targetConvId = params.get('conversationId');
+    const targetBookingId = params.get('bookingId');
+
+    if (!targetConvId && !targetBookingId) return;
+
+    if (conversations.length > 0) {
+      let found = null;
+      if (targetConvId) {
+        found = conversations.find(c => String(c.id) === String(targetConvId));
+      }
+      if (!found && targetBookingId) {
+        found = conversations.find(c => String(c.bookingId) === String(targetBookingId));
+      }
+      if (found && (!selectedChat || selectedChat.id !== found.id)) {
+        setSelectedChat(found);
+        return;
+      }
+    }
+
+    if (targetConvId && (!selectedChat || String(selectedChat.id) !== String(targetConvId)) && currentUserEmail) {
+      axios.get(`${API_BASE_URL}/${targetConvId}`, {
+        params: { userEmail: currentUserEmail },
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      }).then(res => {
+        if (res.data) {
+          setSelectedChat(res.data);
+          setConversations(prev => {
+            if (prev.some(c => c.id === res.data.id)) return prev;
+            return [res.data, ...prev];
+          });
+        }
+      }).catch(err => console.warn('Could not auto-open target conversation:', err.message));
+    }
+  }, [conversations, currentUserEmail]);
+
   // Fetch workers directory to resolve profile images & real names for residents/workers
   useEffect(() => {
     const fetchWorkersDirectory = async () => {
@@ -464,6 +504,41 @@ export default function Chats() {
   const handleSelectConversation = (conv) => {
     setSelectedChat(conv);
     setShowEmojiPicker(false);
+  };
+
+  const handleShareContactClick = () => {
+    if (!selectedChat) return;
+    showConfirm(
+      'Share Verified Contact',
+      'Share your verified phone number with this resident? Your verified phone number stored in your worker profile will be sent as an official contact card in this chat.',
+      executeShareContact,
+      'OKAY',
+      false
+    );
+  };
+
+  const executeShareContact = async () => {
+    if (!selectedChat) return;
+    try {
+      setIsSharingContact(true);
+      const res = await axios.post(`${API_BASE_URL}/${selectedChat.id}/share-contact`, {}, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+
+      if (res.data?.chatMessage) {
+        setMessages(prev => {
+          if (prev.some(m => m.id === res.data.chatMessage.id)) return prev;
+          return [...prev, res.data.chatMessage];
+        });
+      }
+      showToast('✓ Verified contact shared with resident!');
+    } catch (err) {
+      console.error('Error sharing contact:', err);
+      const errMsg = err.response?.data?.message || 'Failed to share contact.';
+      showAlert('Share Contact', errMsg);
+    } finally {
+      setIsSharingContact(false);
+    }
   };
 
   const handleSendMessage = async () => {
@@ -707,7 +782,7 @@ export default function Chats() {
         console.error('Error deleting messages:', err);
         showAlert("Error", err.response?.data?.message || 'Failed to delete messages.');
       }
-    });
+    }, 'Delete', true);
   };
 
   const handleDeleteChat = () => {
@@ -722,7 +797,7 @@ export default function Chats() {
         console.error('Error deleting chat:', error);
         showAlert("Error", "Failed to delete chat.");
       }
-    });
+    }, 'Delete', true);
   };
 
   // Filter conversations by search term
@@ -1171,6 +1246,22 @@ export default function Chats() {
                   </div>
 
                   <div style={{ display: 'flex', gap: '8px', position: 'relative', alignItems: 'center' }}>
+                    {/* Share Contact Option for Worker */}
+                    {selectedChat && (
+                      (selectedChat.workerEmail?.toLowerCase() === currentUserEmail.toLowerCase()) ||
+                      isWorker
+                    ) && (
+                      <button
+                        type="button"
+                        className="chats-share-contact-header-btn"
+                        onClick={handleShareContactClick}
+                        disabled={isSharingContact}
+                        title="Share your verified phone number with this resident"
+                      >
+                        <i className="fa-solid fa-address-card"></i>
+                        <span>{isSharingContact ? 'Sharing...' : 'Share Contact'}</span>
+                      </button>
+                    )}
                     {isSearchActive ? (
                       <div className="chats-search-header">
                         <input
@@ -1319,32 +1410,111 @@ export default function Chats() {
                               )}
 
                               <div className="chats-msg-wrapper">
-                                <div className={`chats-bubble ${isOutgoing ? 'resident' : 'worker'}`}>
-                                  {msg.content && <div>{msg.content}</div>}
-                                  {msg.content && msg.content.includes('📋 Booking Requested #') && selectedChat.workerEmail?.toLowerCase() === currentUserEmail.toLowerCase() && (
-                                    <div style={{ marginTop: '10px', display: 'flex', gap: '8px' }}>
-                                      <button onClick={() => window.location.href = '/bookings'} style={{ backgroundColor: '#ffffff', color: '#000', padding: '6px 12px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
-                                        View in Bookings
-                                      </button>
+                                {msg.messageType === 'ContactCard' ? (() => {
+                                  let card = null;
+                                  try {
+                                    card = typeof msg.content === 'string' ? JSON.parse(msg.content) : msg.content;
+                                  } catch (e) {
+                                    card = { phoneNo: msg.content, workerName: 'Verified Worker' };
+                                  }
+                                  const phone = card?.phoneNo || card?.PhoneNo || '';
+                                  const workerName = card?.workerName || card?.WorkerName || activeParty.displayName || 'Service Worker';
+                                  const avatar = card?.avatar || card?.Avatar || activeParty.avatarUrl;
+                                  const service = card?.service || card?.jobTitle || 'Verified Professional';
+
+                                  return (
+                                    <div className="worker-contact-card">
+                                      <div className="worker-contact-card-badge">
+                                        <i className="fa-solid fa-shield-check"></i>
+                                        <span>Verified Worker Contact</span>
+                                      </div>
+
+                                      <div className="worker-contact-card-profile">
+                                        {avatar ? (
+                                          <img src={avatar} alt={workerName} className="worker-contact-card-avatar" onError={(e) => { e.target.style.display = 'none'; }} />
+                                        ) : (
+                                          <div className="worker-contact-card-avatar-fallback">
+                                            {getInitial(workerName)}
+                                          </div>
+                                        )}
+                                        <div className="worker-contact-card-info">
+                                          <div className="worker-contact-card-name">
+                                            {workerName}
+                                            <span className="worker-contact-verified-icon" title="Verified Phone & Identity">
+                                              <i className="fa-solid fa-circle-check"></i>
+                                            </span>
+                                          </div>
+                                          <div className="worker-contact-card-title">{service}</div>
+                                        </div>
+                                      </div>
+
+                                      <div className="worker-contact-card-phone-section">
+                                        <div className="worker-contact-phone-label">Direct Phone Number</div>
+                                        <div className="worker-contact-phone-val">
+                                          <i className="fa-solid fa-phone"></i>
+                                          <span>{phone}</span>
+                                        </div>
+                                      </div>
+
+                                      <div className="worker-contact-card-actions">
+                                        <a
+                                          href={`tel:${phone}`}
+                                          className="worker-contact-call-action"
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          <i className="fa-solid fa-phone-volume"></i>
+                                          <span>Call Now</span>
+                                        </a>
+                                        <button
+                                          type="button"
+                                          className="worker-contact-copy-action"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (phone) {
+                                              navigator.clipboard.writeText(phone);
+                                              showToast('✓ Phone number copied to clipboard!');
+                                            }
+                                          }}
+                                        >
+                                          <i className="fa-regular fa-copy"></i>
+                                          <span>Copy</span>
+                                        </button>
+                                      </div>
+
+                                      <div className="worker-contact-card-footnote">
+                                        <i className="fa-solid fa-lock"></i>
+                                        <span>Verified number shared for this booking</span>
+                                      </div>
                                     </div>
-                                  )}
-                                  {msg.attachmentUrl && (
-                                    <div
-                                      className="chats-msg-image-wrap"
-                                      title="Click to view full screen"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setFullScreenImage(msg.attachmentUrl);
-                                      }}
-                                    >
-                                      <img
-                                        src={msg.attachmentUrl}
-                                        alt="Shared attachment"
-                                        className="chats-msg-image"
-                                      />
-                                    </div>
-                                  )}
-                                </div>
+                                  );
+                                })() : (
+                                  <div className={`chats-bubble ${isOutgoing ? 'resident' : 'worker'}`}>
+                                    {msg.content && <div>{msg.content}</div>}
+                                    {msg.content && msg.content.includes('📋 Booking Requested #') && selectedChat.workerEmail?.toLowerCase() === currentUserEmail.toLowerCase() && (
+                                      <div style={{ marginTop: '10px', display: 'flex', gap: '8px' }}>
+                                        <button onClick={() => window.location.href = '/bookings'} style={{ backgroundColor: '#ffffff', color: '#000', padding: '6px 12px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+                                          View in Bookings
+                                        </button>
+                                      </div>
+                                    )}
+                                    {msg.attachmentUrl && (
+                                      <div
+                                        className="chats-msg-image-wrap"
+                                        title="Click to view full screen"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setFullScreenImage(msg.attachmentUrl);
+                                        }}
+                                      >
+                                        <img
+                                          src={msg.attachmentUrl}
+                                          alt="Shared attachment"
+                                          className="chats-msg-image"
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                                 <span className="chats-msg-time">
                                   {formatMessageTime(msg.createdAt)}
                                   {isOutgoing && (
@@ -1505,9 +1675,14 @@ export default function Chats() {
                 setDialogConfig(prev => ({ ...prev, isOpen: false }));
                 if (dialogConfig.onConfirm) dialogConfig.onConfirm();
               }}
-              style={{ '--md-sys-color-primary': '#000000', '--md-sys-color-on-primary': '#ffffff', padding: '0 24px', minWidth: '100px' }}
+              style={{
+                '--md-sys-color-primary': dialogConfig.isDestructive ? '#ef4444' : '#000000',
+                '--md-sys-color-on-primary': '#ffffff',
+                padding: '0 24px',
+                minWidth: '100px'
+              }}
             >
-              {dialogConfig.type === 'confirm' ? 'Delete' : 'OK'}
+              {dialogConfig.confirmText || (dialogConfig.type === 'confirm' ? 'OKAY' : 'OK')}
             </md-filled-button>
           </div>
         </md-dialog>,
