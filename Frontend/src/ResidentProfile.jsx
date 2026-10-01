@@ -700,73 +700,73 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
           <nav className="flex-1 flex flex-col gap-1 w-full relative">
             <button
               onClick={() => setActiveTab('overview')}
-              className={`flex items-center w-full text-left h-11 px-3 rounded-xl transition-colors ${activeTab === 'overview' ? 'bg-[#F0F0F2] text-black font-semibold shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium'}`}
+              className={`flex items-center gap-3 h-[44px] px-3 rounded-xl transition-colors ${activeTab === 'overview' ? 'bg-[#F0F0F2] text-black font-semibold shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium'}`}
             >
-              <div className="w-5 flex justify-center shrink-0">
-                <span className="material-symbols-rounded text-[20px]">{activeTab === 'overview' ? 'person' : 'person'}</span>
+              <div className="w-[20px] h-[20px] shrink-0 flex items-center justify-center">
+                <span className="material-symbols-outlined text-[20px]">person</span>
               </div>
-              {!isSidebarCollapsed && <span className="ml-3 text-[15px]">Profile Overview</span>}
+              {!isSidebarCollapsed && <span className="text-[15px] whitespace-nowrap overflow-hidden text-ellipsis">Profile Overview</span>}
             </button>
 
             <button
               onClick={() => setActiveTab('verify')}
-              className={`flex items-center w-full text-left h-11 px-3 rounded-xl transition-colors ${activeTab === 'verify' ? 'bg-[#F0F0F2] text-black font-semibold shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium'}`}
+              className={`flex items-center gap-3 h-[44px] px-3 rounded-xl transition-colors ${activeTab === 'verify' ? 'bg-[#F0F0F2] text-black font-semibold shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium'}`}
             >
-              <div className="w-5 flex justify-center shrink-0">
-                <span className="material-symbols-rounded text-[20px]">{activeTab === 'verify' ? 'verified_user' : 'verified_user'}</span>
+              <div className="w-[20px] h-[20px] shrink-0 flex items-center justify-center">
+                <span className="material-symbols-outlined text-[20px]">verified_user</span>
               </div>
               {!isSidebarCollapsed && (
-                <div className="ml-3 flex items-center justify-between w-full">
-                  <span className="text-[15px]">Verify Account</span>
+                <>
+                  <span className="text-[15px] whitespace-nowrap overflow-hidden text-ellipsis">Verify Account</span>
                   {isVerified ? (
-                    <span className="bg-green-100 text-green-700 w-5 h-5 rounded-full flex items-center justify-center text-[10px]">
-                      <span className="material-symbols-rounded text-[14px]">check</span>
+                    <span className="bg-green-100 text-green-700 w-5 h-5 rounded-full flex items-center justify-center text-[10px] ml-auto shrink-0">
+                      <span className="material-symbols-outlined text-[14px]">check</span>
                     </span>
                   ) : (
-                    <span className="bg-red-100 text-red-600 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold">!</span>
+                    <span className="bg-red-100 text-red-600 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ml-auto shrink-0">!</span>
                   )}
-                </div>
+                </>
               )}
             </button>
 
             <button
               onClick={() => setActiveTab('edit')}
-              className={`flex items-center w-full text-left h-11 px-3 rounded-xl transition-colors ${activeTab === 'edit' ? 'bg-[#F0F0F2] text-black font-semibold shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium'}`}
+              className={`flex items-center gap-3 h-[44px] px-3 rounded-xl transition-colors ${activeTab === 'edit' ? 'bg-[#F0F0F2] text-black font-semibold shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium'}`}
             >
-              <div className="w-5 flex justify-center shrink-0">
-                <span className="material-symbols-rounded text-[20px]">{activeTab === 'edit' ? 'edit' : 'edit'}</span>
+              <div className="w-[20px] h-[20px] shrink-0 flex items-center justify-center">
+                <span className="material-symbols-outlined text-[20px]">edit</span>
               </div>
-              {!isSidebarCollapsed && <span className="ml-3 text-[15px]">Edit Profile</span>}
+              {!isSidebarCollapsed && <span className="text-[15px] whitespace-nowrap overflow-hidden text-ellipsis">Edit Profile</span>}
             </button>
 
             <button
               onClick={() => setActiveTab('bookings')}
-              className={`flex items-center w-full text-left h-11 px-3 rounded-xl transition-colors ${activeTab === 'bookings' ? 'bg-[#F0F0F2] text-black font-semibold shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium'}`}
+              className={`flex items-center gap-3 h-[44px] px-3 rounded-xl transition-colors ${activeTab === 'bookings' ? 'bg-[#F0F0F2] text-black font-semibold shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium'}`}
             >
-              <div className="w-5 flex justify-center shrink-0">
-                <span className="material-symbols-rounded text-[20px]">{activeTab === 'bookings' ? 'event_note' : 'event_note'}</span>
+              <div className="w-[20px] h-[20px] shrink-0 flex items-center justify-center">
+                <span className="material-symbols-outlined text-[20px]">event_note</span>
               </div>
-              {!isSidebarCollapsed && <span className="ml-3 text-[15px]">My Bookings</span>}
+              {!isSidebarCollapsed && <span className="text-[15px] whitespace-nowrap overflow-hidden text-ellipsis">My Bookings</span>}
             </button>
             
             <button
               onClick={() => setActiveTab('posts')}
-              className={`flex items-center w-full text-left h-11 px-3 rounded-xl transition-colors ${activeTab === 'posts' ? 'bg-[#F0F0F2] text-black font-semibold shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium'}`}
+              className={`flex items-center gap-3 h-[44px] px-3 rounded-xl transition-colors ${activeTab === 'posts' ? 'bg-[#F0F0F2] text-black font-semibold shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium'}`}
             >
-              <div className="w-5 flex justify-center shrink-0">
-                <span className="material-symbols-rounded text-[20px]">{activeTab === 'posts' ? 'forum' : 'forum'}</span>
+              <div className="w-[20px] h-[20px] shrink-0 flex items-center justify-center">
+                <span className="material-symbols-outlined text-[20px]">forum</span>
               </div>
-              {!isSidebarCollapsed && <span className="ml-3 text-[15px]">My Community Posts</span>}
+              {!isSidebarCollapsed && <span className="text-[15px] whitespace-nowrap overflow-hidden text-ellipsis">My Community Posts</span>}
             </button>
 
             <button
               onClick={() => setActiveTab('settings')}
-              className={`flex items-center w-full text-left h-11 px-3 rounded-xl transition-colors mt-auto ${activeTab === 'settings' ? 'bg-red-50 text-red-600 font-semibold shadow-sm' : 'text-gray-600 hover:bg-red-50 hover:text-red-600 font-medium'}`}
+              className={`flex items-center gap-3 h-[44px] px-3 rounded-xl transition-colors mt-auto ${activeTab === 'settings' ? 'bg-red-50 text-red-600 font-semibold shadow-sm' : 'text-gray-600 hover:bg-red-50 hover:text-red-600 font-medium'}`}
             >
-              <div className="w-5 flex justify-center shrink-0">
-                <span className="material-symbols-rounded text-[20px]">{activeTab === 'settings' ? 'settings' : 'settings'}</span>
+              <div className="w-[20px] h-[20px] shrink-0 flex items-center justify-center">
+                <span className="material-symbols-outlined text-[20px]">settings</span>
               </div>
-              {!isSidebarCollapsed && <span className="ml-3 text-[15px]">Settings</span>}
+              {!isSidebarCollapsed && <span className="text-[15px] whitespace-nowrap overflow-hidden text-ellipsis">Settings</span>}
             </button>
           </nav>
         </aside>
