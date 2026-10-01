@@ -2230,6 +2230,14 @@ class _FindTabScreenState extends State<FindTabScreen> {
                     ),
                   ),
                 );
+              } else if (n.type == NotificationType.communityLike || n.type == NotificationType.communityComment) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const Scaffold(
+                      body: SafeArea(child: CommunityScreen()),
+                    ),
+                  ),
+                );
               }
             },
           ),
@@ -3633,6 +3641,14 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                       conversationId: n.referenceId!,
                       name: n.metadata?['name']?.toString() ?? 'Conversation',
                       profileImage: n.metadata?['profileImage']?.toString(),
+                    ),
+                  ),
+                );
+              } else if (n.type == NotificationType.communityLike || n.type == NotificationType.communityComment) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const Scaffold(
+                      body: SafeArea(child: CommunityScreen()),
                     ),
                   ),
                 );
