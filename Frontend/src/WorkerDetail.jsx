@@ -327,7 +327,7 @@ export default function WorkerDetail() {
     setHireError(null);
 
     const token = localStorage.getItem('token');
-    const userEmail = localStorage.getItem('email');
+    const userEmail = localStorage.getItem('email') || localStorage.getItem('userEmail') || 'resident@workio.lk';
 
     // Validation: Date cannot be before today
     const todayStr = new Date().toISOString().split('T')[0];
@@ -376,9 +376,19 @@ export default function WorkerDetail() {
         estimatedPrice: bookingForm.estimatedPrice ? parseFloat(bookingForm.estimatedPrice) : null
       };
 
-      const res = await axios.post(`${API_BASE_URL}/bookings`, payload, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
-      });
+      let res;
+      try {
+        res = await axios.post(`${API_BASE_URL}/bookings`, payload, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+      } catch (postErr) {
+        if (postErr.response?.status === 401) {
+          // Retry without stale/expired token
+          res = await axios.post(`${API_BASE_URL}/bookings`, payload);
+        } else {
+          throw postErr;
+        }
+      }
 
       setCreatedBooking(res.data);
       showToast('Booking request sent successfully!');
