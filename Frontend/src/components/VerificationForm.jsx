@@ -29,97 +29,70 @@ export default function VerificationForm({ isVerified, onVerifySuccess }) {
   };
 
   return (
-    <div>
-      <h2 style={{ fontSize: '1.5rem', fontWeight: '800', marginTop: 0, marginBottom: '1.5rem', color: '#111827' }}>Verify Account</h2>
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <h2 className="text-[28px] font-semibold text-black m-0 mb-2 leading-tight">Verify Account</h2>
       
       {isVerified ? (
-        <div style={{ padding: '2rem', backgroundColor: '#f0fdf4', borderRadius: '12px', border: '1px solid #bbf7d0', textAlign: 'center' }}>
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#16a34a" width="48" height="48" style={{ marginBottom: '1rem' }}>
+        <div className="p-10 bg-gray-50 rounded-2xl flex flex-col items-center text-center mt-8">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#000000" width="64" height="64" className="mb-6">
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
           </svg>
-          <h3 style={{ margin: '0 0 0.5rem 0', color: '#166534', fontSize: '1.25rem' }}>Account Verified</h3>
-          <p style={{ margin: 0, color: '#15803d' }}>Your official identity has been successfully verified.</p>
+          <h3 className="text-xl font-bold text-black mb-2">Account Verified</h3>
+          <p className="text-[15px] text-[#6B6B6B]">Your official identity has been successfully verified.</p>
         </div>
       ) : (
-        <form onSubmit={handleVerifySubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div style={{ padding: '1.5rem', backgroundColor: '#f9fafb', borderRadius: '12px', border: '1px solid #f3f4f6' }}>
-            <p style={{ margin: '0 0 1.5rem 0', color: '#4b5563' }}>Please enter your official NIC details to verify your account.</p>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={{ fontSize: '0.85rem', color: '#4b5563', paddingLeft: '16px' }}>National Identity Card (NIC)</label>
-                <input
-                  type="text"
-                  style={{
-                    padding: '16px',
-                    border: 'none',
-                    borderBottom: '1px solid #111827',
-                    backgroundColor: '#f3f4f6',
-                    borderRadius: '4px 4px 0 0',
-                    fontFamily: 'inherit',
-                    fontSize: '1rem',
-                    outline: 'none'
-                  }}
-                  value={verifyForm.nic}
-                  onChange={(e) => setVerifyForm({...verifyForm, nic: e.target.value})}
-                  required
-                />
-              </div>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={{ fontSize: '0.85rem', color: '#4b5563', paddingLeft: '16px' }}>Date of Birth</label>
-                <input 
-                  type="date"
-                  style={{
-                    padding: '16px',
-                    border: 'none',
-                    borderBottom: '1px solid #111827',
-                    backgroundColor: '#f3f4f6',
-                    borderRadius: '4px 4px 0 0',
-                    fontFamily: 'inherit',
-                    fontSize: '1rem',
-                    outline: 'none'
-                  }}
-                  value={verifyForm.dob}
-                  onChange={(e) => setVerifyForm({...verifyForm, dob: e.target.value})}
-                  required
-                />
-              </div>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={{ fontSize: '0.85rem', color: '#4b5563', paddingLeft: '16px' }}>Gender</label>
-                <select 
-                  style={{
-                    padding: '16px',
-                    border: 'none',
-                    borderBottom: '1px solid #111827',
-                    backgroundColor: '#f3f4f6',
-                    borderRadius: '4px 4px 0 0',
-                    fontFamily: 'inherit',
-                    fontSize: '1rem',
-                    outline: 'none'
-                  }}
-                  value={verifyForm.gender}
-                  onChange={(e) => setVerifyForm({...verifyForm, gender: e.target.value})}
-                  required
-                >
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                </select>
-              </div>
+        <form onSubmit={handleVerifySubmit} className="flex flex-col">
+          <p className="text-[15px] text-[#6B6B6B] m-0 mb-8">Please enter your official NIC details to verify your account.</p>
+          
+          <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-2">
+              <label className="text-[14px] font-medium text-gray-900">National Identity Card (NIC)</label>
+              <input
+                type="text"
+                className="w-full h-12 px-4 bg-white border border-[#D9D9DE] rounded-xl text-[16px] text-black focus:ring-2 focus:ring-black focus:outline-none hover:bg-gray-50 transition-colors"
+                value={verifyForm.nic}
+                placeholder="e.g., 199912345678"
+                onChange={(e) => setVerifyForm({...verifyForm, nic: e.target.value})}
+                required
+              />
             </div>
-
-            {verifyError && (
-              <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#fef2f2', color: '#991b1b', borderRadius: '8px', fontSize: '0.9rem' }}>
-                {verifyError}
-              </div>
-            )}
+            
+            <div className="flex flex-col gap-2">
+              <label className="text-[14px] font-medium text-gray-900">Date of Birth</label>
+              <input 
+                type="date"
+                className="w-full h-12 px-4 bg-white border border-[#D9D9DE] rounded-xl text-[16px] text-black focus:ring-2 focus:ring-black focus:outline-none hover:bg-gray-50 transition-colors"
+                value={verifyForm.dob}
+                onChange={(e) => setVerifyForm({...verifyForm, dob: e.target.value})}
+                required
+              />
+            </div>
+            
+            <div className="flex flex-col gap-2">
+              <label className="text-[14px] font-medium text-gray-900">Gender</label>
+              <select 
+                className="w-full h-12 px-4 bg-white border border-[#D9D9DE] rounded-xl text-[16px] text-black focus:ring-2 focus:ring-black focus:outline-none hover:bg-gray-50 transition-colors appearance-none bg-no-repeat bg-[right_16px_center] bg-[length:16px_16px]"
+                style={{ backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")` }}
+                value={verifyForm.gender}
+                onChange={(e) => setVerifyForm({...verifyForm, gender: e.target.value})}
+                required
+              >
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+              </select>
+            </div>
           </div>
 
-          <div>
+          {verifyError && (
+            <div className="mt-5 p-4 bg-red-50 text-red-600 rounded-xl text-[14px] font-medium border border-red-100">
+              {verifyError}
+            </div>
+          )}
+
+          <div className="mt-8">
             <button
               type="submit"
-              style={{ padding: '12px 24px', backgroundColor: '#2563eb', color: '#ffffff', border: 'none', borderRadius: '8px', fontSize: '1rem', fontWeight: '600', cursor: 'pointer' }}
+              className="w-full sm:w-auto h-12 px-6 font-semibold text-white bg-black rounded-xl hover:bg-[#222222] transition-colors border-none outline-none cursor-pointer text-[16px] whitespace-nowrap disabled:opacity-40"
             >
               Verify Now
             </button>
