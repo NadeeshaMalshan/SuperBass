@@ -61,13 +61,6 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
     endTime: '17:00'
   });
 
-  // Security / Password State
-  const [passwords, setPasswords] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
-  });
-
   const [currentWorkerId, setCurrentWorkerId] = useState(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
@@ -326,31 +319,6 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
     }
   };
 
-  const handleSavePassword = async (e) => {
-    e.preventDefault();
-    if (!currentWorkerId) return;
-    if (passwords.newPassword !== passwords.confirmPassword) {
-      alert('New password and confirm password do not match!');
-      return;
-    }
-
-    try {
-      const wId = currentWorkerId || 1;
-      await axios.put(`${API_BASE_URL}/workers/${wId}/password`, {
-        newPassword: passwords.newPassword
-      }, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
-      });
-      setSaveStatus('Password changed successfully!');
-      setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      setTimeout(() => setSaveStatus(null), 3000);
-    } catch (err) {
-      setSaveStatus('Password updated.');
-      setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      setTimeout(() => setSaveStatus(null), 3000);
-    }
-  };
-
   const handleDeleteWorkerAccount = async () => {
     if (deleteConfirmText !== 'DELETE') {
       alert("Please type DELETE in capital letters to confirm permanent account deletion.");
@@ -494,8 +462,8 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
           className={`profile-tab-btn ${activeTab === 'security' ? 'active' : ''}`}
           onClick={() => setActiveTab('security')}
         >
-          <i className="fa-solid fa-lock"></i>
-          Security & Password
+          <i className="fa-solid fa-shield-halved"></i>
+          Account Security
         </button>
       </div>
 
@@ -1006,56 +974,45 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
         </div>
       )}
 
-      {/* Tab 5: Security & Password */}
+      {/* Tab 5: Account Security & Danger Zone */}
       {activeTab === 'security' && (
         <div className="worker-card" style={{ padding: '30px', borderRadius: '18px' }}>
-          <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#000000', marginBottom: '16px', letterSpacing: '-0.02em' }}>
-            Account Security & Change Password
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#000000', marginBottom: '8px', letterSpacing: '-0.02em' }}>
+            Account Security
           </h3>
+          <p style={{ fontSize: '0.9rem', color: '#6b7280', margin: '0 0 20px 0', lineHeight: 1.5 }}>
+            Your worker profile is authenticated securely via Google OAuth. Password login is disabled for enhanced account protection.
+          </p>
 
-          <form onSubmit={handleSavePassword} style={{ maxWidth: '440px' }}>
-            <div className="worker-input-group">
-              <label className="worker-label">Current Password</label>
-              <input 
-                type="password" 
-                required
-                className="worker-input" 
-                placeholder="••••••••"
-                value={passwords.currentPassword}
-                onChange={(e) => setPasswords({ ...passwords, currentPassword: e.target.value })}
-              />
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '14px',
+            backgroundColor: '#f9fafb',
+            border: '1px solid #e5e7eb',
+            borderRadius: '12px',
+            padding: '16px 20px',
+            marginBottom: '28px'
+          }}>
+            <div style={{
+              width: '38px',
+              height: '38px',
+              borderRadius: '50%',
+              backgroundColor: '#ecfdf5',
+              border: '1px solid #a7f3d0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.1rem',
+              color: '#059669'
+            }}>
+              <i className="fa-solid fa-check"></i>
             </div>
-
-            <div className="worker-input-group">
-              <label className="worker-label">New Password</label>
-              <input 
-                type="password" 
-                required
-                className="worker-input" 
-                placeholder="••••••••"
-                value={passwords.newPassword}
-                onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
-              />
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#111827' }}>Google Single Sign-On Active</div>
+              <div style={{ fontSize: '0.82rem', color: '#6b7280' }}>Connected to {userEmail}</div>
             </div>
-
-            <div className="worker-input-group">
-              <label className="worker-label">Confirm New Password</label>
-              <input 
-                type="password" 
-                required
-                className="worker-input" 
-                placeholder="••••••••"
-                value={passwords.confirmPassword}
-                onChange={(e) => setPasswords({ ...passwords, confirmPassword: e.target.value })}
-              />
-            </div>
-
-            <button type="submit" className="worker-btn-primary">
-              Update Password
-            </button>
-          </form>
-
-          <hr style={{ margin: '32px 0 24px 0', borderColor: '#e5e5e5' }} />
+          </div>
 
           {/* RESTRICTED AREA — DANGER ZONE */}
           <div style={{
