@@ -897,6 +897,25 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                 metadata={"agent": "support_review_agent", "user_email": email}
             )
 
+        if tool_name == "lookup_platform_policy":
+            suggestions = [
+                "7-Day Workmanship Guarantee",
+                "Cancellation & Fees",
+                "Property Damage Protection",
+                "Technician Safety & Vetting"
+            ]
+            msg = last_ai_content or "Here is the verified platform policy information:"
+            card = TextMessageCard(
+                text=msg,
+                suggestions=suggestions
+            )
+            return AgentCardResponse(
+                response_type="text_message",
+                message=card.text,
+                card_data=card.model_dump(),
+                metadata={"agent": "support_review_agent", "user_email": email}
+            )
+
         if tool_name in ["escalate_to_human", "get_user_job_history"]:
             suggestions = ["Leave a review", "Contact hotline", "Return to home"]
             msg = last_ai_content
