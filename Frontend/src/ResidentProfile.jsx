@@ -665,38 +665,29 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
         onToggleSidebar={() => setIsSidebarCollapsed(prev => !prev)}
       />
 
-      <div className="find-layout">
+      <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-[#F7F7F8] w-full font-inherit">
         {/* Left Sidebar Navigation Drawer */}
-        <aside className={`find-sidebar m3-drawer ${isSidebarCollapsed ? 'minimized' : ''}`}>
+        <aside className={`flex flex-col h-full overflow-y-auto bg-white border-r border-[#E5E5EA] transition-all duration-300 shrink-0 ${isSidebarCollapsed ? 'w-20 items-center py-6 px-2' : 'w-[280px] py-6 px-4'}`}>
           {/* User Profile Info Mini Header */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            padding: isSidebarCollapsed ? '12px 0' : '16px 14px',
-            justifyContent: isSidebarCollapsed ? 'center' : 'flex-start',
-            borderBottom: '1px solid #f1f5f9',
-            marginBottom: '10px'
-          }}>
+          <div className={`flex items-center gap-3 ${isSidebarCollapsed ? 'justify-center' : ''} mb-6`}>
             {userPicture ? (
-              <img src={userPicture} alt="Avatar" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+              <img src={userPicture} alt="Avatar" className="w-14 h-14 rounded-full object-cover shrink-0 shadow-sm" />
             ) : (
-              <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#009688', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '16px', flexShrink: 0 }}>
+              <div className="w-14 h-14 rounded-full bg-black text-white flex items-center justify-center font-bold text-xl shrink-0 shadow-sm">
                 {profile.name ? profile.name.charAt(0).toUpperCase() : 'U'}
               </div>
             )}
             {!isSidebarCollapsed && (
-              <div style={{ overflow: 'hidden', minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#111827', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <div className="overflow-hidden min-w-0">
+                <div className="font-bold text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis flex items-center gap-1 text-[16px]">
                   {profile.name || 'User'}
-                    {isVerified && <VerifiedBadge />}
                   {isVerified && <VerifiedBadge />}
                 </div>
-                <div style={{ fontSize: '0.75rem', color: '#64748b', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                <div className="text-[13px] text-gray-500 whitespace-nowrap overflow-hidden text-ellipsis mt-0.5">
                   {userEmail}
                 </div>
                 {isWorker && (
-                  <span style={{ backgroundColor: '#DBEAFE', color: '#1E40AF', padding: '1px 6px', borderRadius: '6px', fontSize: '0.65rem', fontWeight: 800, display: 'inline-block', marginTop: '2px' }}>
+                  <span className="bg-gray-100 text-black px-2 py-0.5 rounded-md text-xs font-bold inline-block mt-1">
                     Active Worker
                   </span>
                 )}
@@ -704,81 +695,61 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
             )}
           </div>
 
-          <nav className="m3-drawer-nav">
+          <nav className="flex flex-col gap-1 w-full">
             <div
-              className={`m3-drawer-item ${activeTab === 'overview' ? 'active' : ''}`}
+              className={`flex items-center gap-3 px-3 h-[44px] rounded-xl cursor-pointer transition-all ${activeTab === 'overview' ? 'bg-[#F0F0F2] text-black font-semibold' : 'text-gray-500 hover:bg-gray-50 hover:text-black font-medium'}`}
               onClick={() => setActiveTab('overview')}
             >
-              <div className="m3-drawer-item-left">
-                <md-icon className="m3-drawer-icon">person</md-icon>
-                <span className="m3-drawer-label">Profile Overview</span>
-              </div>
+              <md-icon className="text-[20px]">person</md-icon>
+              <span className="text-[14px]">Profile Overview</span>
             </div>
 
-              <div
-                className={`m3-drawer-item ${activeTab === 'verify' ? 'active' : ''}`}
-                onClick={() => setActiveTab('verify')}
-              >
-                <div className="m3-drawer-item-left">
-                  <md-icon className="m3-drawer-icon">verified_user</md-icon>
-                  <span className="m3-drawer-label">Verify Account</span>
-                </div>
-              </div>
+            <div
+              className={`flex items-center gap-3 px-3 h-[44px] rounded-xl cursor-pointer transition-all ${activeTab === 'verify' ? 'bg-[#F0F0F2] text-black font-semibold' : 'text-gray-500 hover:bg-gray-50 hover:text-black font-medium'}`}
+              onClick={() => setActiveTab('verify')}
+            >
+              <md-icon className="text-[20px]">verified_user</md-icon>
+              <span className="text-[14px]">Verify Account</span>
+            </div>
 
             <div
-              className={`m3-drawer-item ${activeTab === 'edit' ? 'active' : ''}`}
+              className={`flex items-center gap-3 px-3 h-[44px] rounded-xl cursor-pointer transition-all ${activeTab === 'edit' ? 'bg-[#F0F0F2] text-black font-semibold' : 'text-gray-500 hover:bg-gray-50 hover:text-black font-medium'}`}
               onClick={() => setActiveTab('edit')}
             >
-              <div className="m3-drawer-item-left">
-                <md-icon className="m3-drawer-icon">edit</md-icon>
-                <span className="m3-drawer-label">Edit Profile</span>
-              </div>
+              <md-icon className="text-[20px]">edit</md-icon>
+              <span className="text-[14px]">Edit Profile</span>
             </div>
 
             <div
-              className={`m3-drawer-item ${activeTab === 'bookings' ? 'active' : ''}`}
+              className={`flex items-center gap-3 px-3 h-[44px] rounded-xl cursor-pointer transition-all ${activeTab === 'bookings' ? 'bg-[#F0F0F2] text-black font-semibold' : 'text-gray-500 hover:bg-gray-50 hover:text-black font-medium'}`}
               onClick={() => setActiveTab('bookings')}
             >
-              <div className="m3-drawer-item-left">
-                <md-icon className="m3-drawer-icon">calendar_month</md-icon>
-                <span className="m3-drawer-label">My Bookings</span>
-              </div>
+              <md-icon className="text-[20px]">calendar_month</md-icon>
+              <span className="text-[14px]">My Bookings</span>
             </div>
 
             <div
-              className={`m3-drawer-item ${activeTab === 'posts' ? 'active' : ''}`}
+              className={`flex items-center gap-3 px-3 h-[44px] rounded-xl cursor-pointer transition-all ${activeTab === 'posts' ? 'bg-[#F0F0F2] text-black font-semibold' : 'text-gray-500 hover:bg-gray-50 hover:text-black font-medium'}`}
               onClick={() => setActiveTab('posts')}
             >
-              <div className="m3-drawer-item-left">
-                <md-icon className="m3-drawer-icon">dynamic_feed</md-icon>
-                <span className="m3-drawer-label">My Community Posts</span>
-              </div>
+              <md-icon className="text-[20px]">dynamic_feed</md-icon>
+              <span className="text-[14px]">My Community Posts</span>
             </div>
 
             <div
-              className={`m3-drawer-item ${activeTab === 'settings' ? 'active' : ''}`}
+              className={`flex items-center gap-3 px-3 h-[44px] rounded-xl cursor-pointer transition-all ${activeTab === 'settings' ? 'bg-[#F0F0F2] text-black font-semibold' : 'text-gray-500 hover:bg-gray-50 hover:text-black font-medium'}`}
               onClick={() => setActiveTab('settings')}
             >
-              <div className="m3-drawer-item-left">
-                <md-icon className="m3-drawer-icon">settings</md-icon>
-                <span className="m3-drawer-label">Settings</span>
-              </div>
+              <md-icon className="text-[20px]">settings</md-icon>
+              <span className="text-[14px]">Settings</span>
             </div>
-
           </nav>
         </aside>
 
         {/* Main Content Area */}
-        <main className="find-main" style={{ flex: 1, minWidth: 0, padding: activeTab === 'posts' ? '24px 28px' : '24px 32px' }}>
-          <div style={{
-            maxWidth: activeTab === 'posts' ? '1280px' : '900px',
-            width: '100%',
-            backgroundColor: activeTab === 'posts' ? 'transparent' : '#ffffff',
-            borderRadius: '16px',
-            padding: activeTab === 'posts' ? '0' : '2rem',
-            boxShadow: activeTab === 'posts' ? 'none' : '0 2px 8px rgba(0,0,0,0.04)',
-            transition: 'all 0.2s ease'
-          }}>
+        <main className="flex-1 min-w-0 overflow-y-auto bg-[#F7F7F8]">
+          <div className="max-w-[720px] mx-auto p-4 sm:p-6 lg:p-8">
+            <div className="bg-white rounded-[16px] shadow-[0_1px_3px_rgba(0,0,0,0.06)] border border-[#E5E5EA] p-4 sm:p-8 space-y-8">
 
             {/* TAB: Verify Account */}
             {activeTab === 'verify' && (
@@ -792,108 +763,94 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
 
           {/* TAB: Overview */}
           {activeTab === 'overview' && (
-            <div>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: '800', marginTop: 0, marginBottom: '1.5rem', color: '#111827' }}>Profile Overview</h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                <div style={{ padding: '1.5rem', backgroundColor: '#f9fafb', borderRadius: '12px', border: '1px solid #f3f4f6' }}>
-                  <h4 style={{ margin: '0 0 0.5rem 0', color: '#6b7280', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Display Name</h4>
-                  <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: '600' }}>{profile.name || <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>Not provided</span>}</p>
-                </div>
-                <div style={{ padding: '1.5rem', backgroundColor: '#f9fafb', borderRadius: '12px', border: '1px solid #f3f4f6' }}>
-                  <h4 style={{ margin: '0 0 0.5rem 0', color: '#6b7280', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Phone Number</h4>
-                  <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: '600' }}>{profile.phoneNo || <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>Not provided</span>}</p>
-                </div>
-                <div style={{ padding: '1.5rem', backgroundColor: '#f9fafb', borderRadius: '12px', border: '1px solid #f3f4f6' }}>
-                  <h4 style={{ margin: '0 0 0.5rem 0', color: '#6b7280', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Physical Address</h4>
-                  <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: '600' }}>{profile.address || <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>Not provided</span>}</p>
-                </div>
-
-                <div style={{ marginTop: '1rem' }}>
-                  <md-filled-button
-                    onClick={() => setActiveTab('edit')}
-                    style={{ '--md-sys-color-primary': '#111827', '--md-sys-color-on-primary': '#ffffff', '--md-filled-button-container-shape': '8px' }}
-                  >
-                    Edit Profile Details
-                  </md-filled-button>
-                </div>
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+                <h2 className="text-[28px] font-semibold text-black m-0 leading-tight">Profile Overview</h2>
+                <button 
+                  className="w-full sm:w-auto h-12 px-6 font-semibold text-white bg-black rounded-xl hover:bg-[#222222] transition-colors whitespace-nowrap cursor-pointer border-none outline-none shadow-sm text-[16px]"
+                  onClick={() => setActiveTab('edit')}
+                >
+                  Edit Profile
+                </button>
               </div>
+              <dl className="divide-y divide-[#E5E5EA] m-0">
+                <div className="py-5 flex flex-col gap-1">
+                  <dt className="text-[14px] font-medium text-[#6B6B6B]">Display Name</dt>
+                  <dd className="text-[16px] text-gray-900 m-0">{profile.name || <span className="text-gray-400 italic font-normal">Not provided</span>}</dd>
+                </div>
+                <div className="py-5 flex flex-col gap-1">
+                  <dt className="text-[14px] font-medium text-[#6B6B6B]">Phone Number</dt>
+                  <dd className="text-[16px] text-gray-900 m-0">{profile.phoneNo || <span className="text-gray-400 italic font-normal">Not provided</span>}</dd>
+                </div>
+                <div className="py-5 flex flex-col gap-1">
+                  <dt className="text-[14px] font-medium text-[#6B6B6B]">Physical Address</dt>
+                  <dd className="text-[16px] text-gray-900 m-0">{profile.address || <span className="text-gray-400 italic font-normal">Not provided</span>}</dd>
+                </div>
+              </dl>
             </div>
           )}
 
           {/* TAB: My Bookings & Hires */}
           {activeTab === 'bookings' && (
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '12px' }}>
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
                 <div>
-                  <h2 style={{ fontSize: '1.5rem', fontWeight: '800', margin: 0, color: '#111827' }}>My Bookings & Hires</h2>
-                  <p style={{ color: '#6b7280', margin: '4px 0 0 0', fontSize: '0.95rem' }}>
+                  <h2 className="text-[28px] font-semibold text-black m-0 mb-2 leading-tight">My Bookings & Hires</h2>
+                  <p className="text-[15px] text-[#6B6B6B] m-0">
                     Track your hired workers, follow job progress live, and review completed home services.
                   </p>
                 </div>
-                <md-text-button
+                <button
                   onClick={fetchResidentBookings}
-                  style={{ '--md-sys-color-primary': '#0f172a' }}
+                  className="bg-white text-black border border-[#D9D9DE] h-12 px-6 rounded-xl text-[16px] font-medium hover:bg-gray-50 transition-colors whitespace-nowrap cursor-pointer shadow-sm outline-none flex items-center gap-2"
                 >
-                  <md-icon slot="icon">refresh</md-icon>
+                  <md-icon className="text-[20px]">refresh</md-icon>
                   Refresh
-                </md-text-button>
+                </button>
               </div>
 
               {loadingBookings ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', color: '#6b7280' }}>
+                <div className="flex flex-col items-center justify-center p-12 gap-4">
                   <Loader />
-                  <p>Loading your service bookings...</p>
+                  <p className="text-[15px] text-[#6B6B6B] m-0">Loading your service bookings...</p>
                 </div>
               ) : residentBookings.length === 0 ? (
-                <div style={{ padding: '3rem', backgroundColor: '#f9fafb', borderRadius: '16px', border: '1px dashed #cbd5e1', textAlign: 'center' }}>
-                  <div style={{ fontSize: '2.5rem', marginBottom: '10px' }}>⚡</div>
-                  <h3 style={{ margin: '0 0 8px 0', fontSize: '1.2rem', fontWeight: 700, color: '#1e293b' }}>
-                    No bookings or hire requests yet
-                  </h3>
-                  <p style={{ color: '#64748b', marginBottom: '20px', fontSize: '0.95rem' }}>
-                    Need home repairs or maintenance? Browse our verified pros and hire one with one click!
-                  </p>
-                  <md-filled-button onClick={() => navigateTo('/find')} style={{ '--md-sys-color-primary': '#FDC101', '--md-sys-color-on-primary': '#000000' }}>
+                <div className="flex flex-col items-center justify-center p-12 text-center border border-dashed border-[#D9D9DE] rounded-2xl bg-[#F7F7F8]">
+                  <md-icon className="text-[40px] text-gray-400 mb-4">calendar_month</md-icon>
+                  <h3 className="text-[18px] font-semibold text-black m-0 mb-2">No bookings or hire requests yet</h3>
+                  <p className="text-[15px] text-[#6B6B6B] m-0 mb-6 max-w-md">Need home repairs or maintenance? Browse our verified pros and hire one with one click!</p>
+                  <button 
+                    onClick={() => navigateTo('/find')} 
+                    className="w-full sm:w-auto h-12 px-6 font-semibold text-white bg-black rounded-xl hover:bg-[#222222] transition-colors shadow-sm cursor-pointer border-none outline-none text-[16px]"
+                  >
                     Find Verified Workers
-                  </md-filled-button>
+                  </button>
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div className="flex flex-col gap-6">
                   {residentBookings.map((b) => (
-                    <div key={b.id} style={{ backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                    <div key={b.id} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
 
                       {/* Top Row: Worker info & Status Badge */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', borderBottom: '1px solid #f1f5f9', paddingBottom: '14px', marginBottom: '16px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                          <div style={{
-                            width: '50px',
-                            height: '50px',
-                            borderRadius: '50%',
-                            backgroundColor: '#2563eb',
-                            color: '#ffffff',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '1.4rem',
-                            fontWeight: 800,
-                            overflow: 'hidden'
-                          }}>
+                      <div >
+                        <div >
+                          <div >
                             {b.workerProfileImage ? (
-                              <img src={b.workerProfileImage} alt={b.workerName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              <img src={b.workerProfileImage} alt={b.workerName}  />
                             ) : (
                               b.workerName ? b.workerName.charAt(0).toUpperCase() : 'W'
                             )}
                           </div>
                           <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#111827' }}>
+                            <div >
+                              <h3 >
                                 {b.workerName}
                               </h3>
-                              <span style={{ fontSize: '0.75rem', backgroundColor: '#dbeafe', color: '#1e40af', padding: '2px 8px', borderRadius: '10px', fontWeight: 700 }}>
+                              <span >
                                 Pro
                               </span>
                             </div>
-                            <p style={{ margin: '2px 0 0 0', fontSize: '0.85rem', color: '#64748b' }}>
+                            <p >
                               Booking #{b.id} • Scheduled for {new Date(b.scheduledDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                             </p>
                           </div>
@@ -937,126 +894,66 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                       </div>
 
                       {/* Job details */}
-                      <div style={{ marginBottom: '16px' }}>
-                        <h4 style={{ margin: '0 0 6px 0', fontSize: '1.1rem', fontWeight: 700, color: '#1e293b' }}>
+                      <div >
+                        <h4 >
                           {b.jobTitle}
                         </h4>
                         {b.description && (
-                          <p style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: '#4b5563' }}>
+                          <p >
                             {b.description}
                           </p>
                         )}
 
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', fontSize: '0.875rem', color: '#64748b' }}>
-                          <div> Address: <strong style={{ color: '#1e293b' }}>{b.locationAddress}</strong></div>
-                          <div> Urgency: <strong style={{ color: '#1e293b' }}>{b.urgency}</strong></div>
-                          <div> Worker Phone: <strong style={{ color: '#2563eb' }}>{b.workerPhone || 'In chat'}</strong></div>
+                        <div >
+                          <div> Address: <strong >{b.locationAddress}</strong></div>
+                          <div> Urgency: <strong >{b.urgency}</strong></div>
+                          <div> Worker Phone: <strong >{b.workerPhone || 'In chat'}</strong></div>
                           {b.estimatedPrice && (
-                            <div> Estimate: <strong style={{ color: '#059669' }}>Rs. {b.estimatedPrice.toLocaleString()}</strong></div>
+                            <div> Estimate: <strong >Rs. {b.estimatedPrice.toLocaleString()}</strong></div>
                           )}
                         </div>
                       </div>
 
                       {/* Visual Booking Stepper Bar */}
-                      <div style={{ backgroundColor: '#f8fafc', borderRadius: '12px', padding: '14px', marginBottom: '16px', border: '1px solid #f1f5f9' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative' }}>
+                      <div >
+                        <div >
 
                           {/* Step 1 */}
-                          <div style={{ textAlign: 'center', zIndex: 1 }}>
-                            <div style={{
-                              width: '24px',
-                              height: '24px',
-                              borderRadius: '50%',
-                              backgroundColor: '#10b981',
-                              color: '#fff',
-                              margin: '0 auto 4px auto',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '0.75rem',
-                              fontWeight: 800
-                            }}>✓</div>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#111827' }}>Requested</span>
+                          <div >
+                            <div >✓</div>
+                            <span >Requested</span>
                           </div>
 
                           {/* Step 2 */}
-                          <div style={{ textAlign: 'center', zIndex: 1 }}>
-                            <div style={{
-                              width: '24px',
-                              height: '24px',
-                              borderRadius: '50%',
-                              backgroundColor: ['Confirmed', 'InProgress', 'Completed', 'Reviewed'].includes(b.status) ? '#10b981' : b.status === 'Requested' ? '#FDC101' : '#cbd5e1',
-                              color: b.status === 'Requested' ? '#000000' : '#fff',
-                              margin: '0 auto 4px auto',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '0.75rem',
-                              fontWeight: 800
-                            }}>
+                          <div >
+                            <div >
                               {['Confirmed', 'InProgress', 'Completed', 'Reviewed'].includes(b.status) ? '✓' : '2'}
                             </div>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: ['Confirmed', 'InProgress', 'Completed', 'Reviewed'].includes(b.status) ? '#111827' : '#94a3b8' }}>Accepted</span>
+                            <span >Accepted</span>
                           </div>
 
                           {/* Step 3 */}
-                          <div style={{ textAlign: 'center', zIndex: 1 }}>
-                            <div style={{
-                              width: '24px',
-                              height: '24px',
-                              borderRadius: '50%',
-                              backgroundColor: ['InProgress', 'Completed', 'Reviewed'].includes(b.status) ? '#10b981' : b.status === 'Confirmed' ? '#FDC101' : '#cbd5e1',
-                              color: b.status === 'Confirmed' ? '#000000' : '#fff',
-                              margin: '0 auto 4px auto',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '0.75rem',
-                              fontWeight: 800
-                            }}>
+                          <div >
+                            <div >
                               {['Completed', 'Reviewed'].includes(b.status) ? '✓' : '3'}
                             </div>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: ['InProgress', 'Completed', 'Reviewed'].includes(b.status) ? '#111827' : '#94a3b8' }}>In Progress</span>
+                            <span >In Progress</span>
                           </div>
 
                           {/* Step 4 */}
-                          <div style={{ textAlign: 'center', zIndex: 1 }}>
-                            <div style={{
-                              width: '24px',
-                              height: '24px',
-                              borderRadius: '50%',
-                              backgroundColor: ['Completed', 'Reviewed'].includes(b.status) ? '#10b981' : b.status === 'InProgress' ? '#FDC101' : '#cbd5e1',
-                              color: b.status === 'InProgress' ? '#000000' : '#fff',
-                              margin: '0 auto 4px auto',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '0.75rem',
-                              fontWeight: 800
-                            }}>
+                          <div >
+                            <div >
                               {['Reviewed'].includes(b.status) ? '✓' : '4'}
                             </div>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: ['Completed', 'Reviewed'].includes(b.status) ? '#111827' : '#94a3b8' }}>Completed</span>
+                            <span >Completed</span>
                           </div>
 
                           {/* Step 5 */}
-                          <div style={{ textAlign: 'center', zIndex: 1 }}>
-                            <div style={{
-                              width: '24px',
-                              height: '24px',
-                              borderRadius: '50%',
-                              backgroundColor: b.status === 'Reviewed' ? '#FDC101' : b.status === 'Completed' ? '#0f172a' : '#cbd5e1',
-                              color: b.status === 'Reviewed' ? '#000000' : '#fff',
-                              margin: '0 auto 4px auto',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '0.75rem',
-                              fontWeight: 800
-                            }}>
+                          <div >
+                            <div >
                               {b.status === 'Reviewed' ? '★' : '5'}
                             </div>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: b.status === 'Reviewed' ? '#d97706' : '#94a3b8' }}>Reviewed</span>
+                            <span >Reviewed</span>
                           </div>
 
                         </div>
@@ -1064,13 +961,13 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
 
                       {/* Review details if already reviewed */}
                       {b.status === 'Reviewed' && (
-                        <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fef3c7', borderRadius: '10px', padding: '12px 16px', marginBottom: '14px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                            <span style={{ color: '#d97706', fontSize: '1.1rem', fontWeight: 800 }}>★ {b.reviewRating?.toFixed(1)}/5.0</span>
-                            <span style={{ fontSize: '0.8rem', color: '#92400e' }}>(Quality: {b.qualityRating}★, Punctuality: {b.punctualityRating}★, Communication: {b.communicationRating}★)</span>
+                        <div >
+                          <div >
+                            <span >★ {b.reviewRating?.toFixed(1)}/5.0</span>
+                            <span >(Quality: {b.qualityRating}★, Punctuality: {b.punctualityRating}★, Communication: {b.communicationRating}★)</span>
                           </div>
                           {b.reviewComment && (
-                            <p style={{ margin: 0, fontSize: '0.9rem', color: '#78350f', fontStyle: 'italic' }}>
+                            <p >
                               "{b.reviewComment}"
                             </p>
                           )}
@@ -1078,10 +975,10 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                       )}
 
                       {/* Action buttons */}
-                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                      <div >
                         <md-outlined-button
                           onClick={() => navigateTo('/chats')}
-                          style={{ '--md-sys-color-primary': '#0f172a' }}
+                          
                         >
                           <md-icon slot="icon">chat</md-icon>
                           Chat with {b.workerName}
@@ -1091,7 +988,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                         {b.status === 'Completed' && (
                           <md-filled-button
                             onClick={() => handleOpenReviewModal(b)}
-                            style={{ '--md-sys-color-primary': '#FDC101', '--md-sys-color-on-primary': '#000000' }}
+                            
                           >
                             <md-icon slot="icon">star</md-icon>
                             Leave Rating & Review
@@ -1102,7 +999,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                         {['Requested', 'Confirmed'].includes(b.status) && (
                           <md-outlined-button
                             onClick={() => handleCancelBooking(b.id)}
-                            style={{ '--md-sys-color-primary': '#dc2626' }}
+                            
                           >
                             <md-icon slot="icon">cancel</md-icon>
                             Cancel Booking
@@ -1119,41 +1016,52 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
 
           {/* TAB: Edit Profile */}
           {activeTab === 'edit' && (
-            <div>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: '800', marginTop: 0, marginBottom: '1.5rem', color: '#111827' }}>Edit Profile</h2>
-              <form onSubmit={handleUpdateProfile} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                <md-filled-text-field
-                  label="Display Name"
-                  value={profile.name}
-                  onInput={(e) => setProfile({ ...profile, name: e.target.value })}
-                ></md-filled-text-field>
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <h2 className="text-[28px] font-semibold text-black m-0 mb-8 leading-tight">Edit Profile</h2>
+              <form onSubmit={handleUpdateProfile} className="flex flex-col">
+                <div className="flex flex-col gap-5">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[14px] font-medium text-gray-900">Display Name</label>
+                    <input
+                      type="text"
+                      value={profile.name}
+                      onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                      className="w-full h-12 px-4 bg-white border border-[#D9D9DE] rounded-xl text-[16px] text-black focus:ring-2 focus:ring-black focus:outline-none hover:bg-gray-50 transition-colors"
+                    />
+                  </div>
 
-                <md-filled-text-field
-                  label="Phone Number (10 digits)"
-                  type="tel"
-                  maxLength={10}
-                  value={profile.phoneNo}
-                  error={profile.phoneNo ? !/^0\d{9}$/.test(profile.phoneNo) : false}
-                  error-text={profile.phoneNo && !/^0\d{9}$/.test(profile.phoneNo) ? "Must be 10 digits starting with 0" : ""}
-                  onInput={(e) => {
-                    const clean = e.target.value.replace(/\D/g, '').slice(0, 10);
-                    setProfile({ ...profile, phoneNo: clean });
-                  }}
-                ></md-filled-text-field>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[14px] font-medium text-gray-900">Phone Number (10 digits)</label>
+                    <input
+                      type="tel"
+                      maxLength={10}
+                      value={profile.phoneNo}
+                      onChange={(e) => {
+                        const clean = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        setProfile({ ...profile, phoneNo: clean });
+                      }}
+                      className={`w-full h-12 px-4 bg-white border ${profile.phoneNo && !/^0\d{9}$/.test(profile.phoneNo) ? 'border-red-500 focus:ring-red-500' : 'border-[#D9D9DE] focus:ring-black'} rounded-xl text-[16px] text-black focus:ring-2 focus:outline-none hover:bg-gray-50 transition-colors`}
+                    />
+                    {profile.phoneNo && !/^0\d{9}$/.test(profile.phoneNo) && (
+                      <span className="text-[13px] text-red-500 mt-1">Must be 10 digits starting with 0</span>
+                    )}
+                  </div>
 
-                <md-filled-text-field
-                  label="Physical Address"
-                  value={profile.address}
-                  onInput={(e) => setProfile({ ...profile, address: e.target.value })}
-                ></md-filled-text-field>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[14px] font-medium text-gray-900">Physical Address</label>
+                    <input
+                      type="text"
+                      value={profile.address}
+                      onChange={(e) => setProfile({ ...profile, address: e.target.value })}
+                      className="w-full h-12 px-4 bg-white border border-[#D9D9DE] rounded-xl text-[16px] text-black focus:ring-2 focus:ring-black focus:outline-none hover:bg-gray-50 transition-colors"
+                    />
+                  </div>
+                </div>
 
-                <div style={{ marginTop: '1rem' }}>
-                  <md-filled-button
-                    type="submit"
-                    style={{ '--md-sys-color-primary': '#009688', '--md-sys-color-on-primary': '#ffffff', height: '48px', fontSize: '16px', '--md-filled-button-container-shape': '50px', padding: '0 32px' }}
-                  >
+                <div className="mt-8">
+                  <button type="submit" className="w-full sm:w-auto h-12 px-6 font-semibold text-white bg-black rounded-xl hover:bg-[#222222] transition-colors border-none outline-none cursor-pointer text-[16px] whitespace-nowrap">
                     Save Changes
-                  </md-filled-button>
+                  </button>
                 </div>
               </form>
             </div>
@@ -1161,168 +1069,139 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
 
           {/* TAB: My Community Posts (Full Search, Filters, Edit, Delete, Create) */}
           {activeTab === 'posts' && (
-            <MyCommunityPostsManager
-              userEmail={userEmail}
-              userName={userName || profile.name}
-              userPicture={userPicture}
-              role="Resident"
-            />
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <MyCommunityPostsManager
+                userEmail={userEmail}
+                userName={userName || profile.name}
+                userPicture={userPicture}
+                role="Resident"
+              />
+            </div>
           )}
 
           {/* TAB: Settings */}
           {activeTab === 'settings' && (
-            <div>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: '800', marginTop: 0, marginBottom: '1.5rem', color: '#111827' }}>Account Settings</h2>
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 flex flex-col gap-8">
+              <div>
+                <h2 className="text-[28px] font-semibold text-black m-0 mb-6 leading-tight">Account Settings</h2>
 
-              <div style={{ marginBottom: '3rem' }}>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: '700', marginBottom: '1rem' }}>Session Options</h3>
-                <p style={{ color: '#4b5563', marginBottom: '1rem' }}>Sign out of your current session on this device.</p>
-                <md-outlined-button
-                  type="button"
-                  onClick={handleLogout}
-                  style={{ height: '48px', fontSize: '16px', '--md-outlined-button-container-shape': '50px' }}
-                >
-                  Log Out
-                </md-outlined-button>
+                <div className="bg-white border border-[#E5E5EA] rounded-2xl p-6">
+                  <h3 className="text-[16px] font-semibold text-black mb-1 m-0">Session Options</h3>
+                  <p className="text-[14px] text-gray-500 mb-6 m-0">Sign out of your current session on this device.</p>
+                  <button className="w-full sm:w-auto h-12 px-6 font-semibold text-white bg-black rounded-xl hover:bg-[#222222] transition-colors shadow-sm cursor-pointer border-none outline-none text-[16px]" 
+                    type="button"
+                    onClick={handleLogout}
+                  >
+                    Log Out
+                  </button>
+                </div>
               </div>
 
               {/* RESTRICTED DANGER ZONE */}
-              <div style={{
-                marginTop: '2rem',
-                border: '2px solid #dc2626',
-                borderRadius: '16px',
-                backgroundColor: '#fef2f2',
-                padding: '24px',
-                boxShadow: '0 4px 16px rgba(220, 38, 38, 0.08)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                  <span style={{ fontSize: '1.4rem' }}>🚨</span>
+              <div className="bg-red-50 border border-red-200 rounded-2xl p-6 flex flex-col gap-6">
+                <div className="flex items-center gap-3">
+                  <md-icon className="text-red-600 text-[28px]">warning</md-icon>
                   <div>
-                    <h3 style={{ margin: 0, color: '#991b1b', fontWeight: 800, fontSize: '1.15rem', letterSpacing: '-0.01em' }}>
-                      RESTRICTED AREA — DANGER ZONE
+                    <h3 className="text-[18px] font-semibold text-red-900 m-0">
+                      Danger Zone
                     </h3>
-                    <p style={{ margin: '2px 0 0 0', color: '#b91c1c', fontSize: '0.825rem', fontWeight: 600 }}>
+                    <p className="text-[14px] text-red-700 m-0 mt-1">
                       Permanent Resident Account Erasure & Role Liberation
                     </p>
                   </div>
                 </div>
 
-                <div style={{ backgroundColor: '#ffffff', borderRadius: '10px', padding: '16px', border: '1px solid #fecaca', marginBottom: '18px' }}>
-                  <p style={{ margin: '0 0 8px 0', fontSize: '0.88rem', color: '#7f1d1d', lineHeight: 1.5 }}>
+                <div className="text-[14px] text-red-800 space-y-3">
+                  <p className="m-0">
                     <strong>Warning:</strong> Deleting your account will permanently wipe your profile, service bookings, community posts, comments, and messages. This action is irreversible.
                   </p>
-                  <p style={{ margin: 0, fontSize: '0.88rem', color: '#991b1b', lineHeight: 1.5 }}>
+                  <p className="m-0">
                     <strong>Role Exclusivity:</strong> An email can only be registered as either a Resident or a Worker. If you wish to switch roles and become a Worker, you must permanently delete this Resident account first. Once deleted, this email address is released to register as a Worker.
                   </p>
                 </div>
 
-                <div style={{ marginBottom: '18px' }}>
-                  <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', color: '#7f1d1d', marginBottom: '6px' }}>
-                    To confirm permanent deletion, please type <code style={{ backgroundColor: '#fee2e2', padding: '2px 6px', borderRadius: '4px', color: '#991b1b', fontWeight: 800 }}>DELETE</code> below:
+                <div className="flex flex-col gap-2 mt-2">
+                  <label className="text-[14px] font-medium text-red-900">
+                    To confirm permanent deletion, please type <code className="bg-red-100 px-1.5 py-0.5 rounded text-red-800 font-mono">DELETE</code> below:
                   </label>
                   <input
                     type="text"
                     value={deleteConfirmText}
                     onChange={(e) => setDeleteConfirmText(e.target.value)}
                     placeholder="Type DELETE to confirm"
-                    style={{
-                      width: '100%',
-                      maxWidth: '360px',
-                      padding: '10px 14px',
-                      borderRadius: '8px',
-                      border: deleteConfirmText === 'DELETE' ? '2px solid #dc2626' : '1.5px solid #fca5a5',
-                      fontSize: '0.95rem',
-                      fontFamily: 'monospace',
-                      fontWeight: 700,
-                      outline: 'none',
-                      backgroundColor: '#ffffff',
-                      color: '#991b1b'
-                    }}
+                    className="w-full h-12 px-4 bg-white border border-red-200 rounded-xl text-[16px] text-black focus:ring-2 focus:ring-red-500 focus:outline-none transition-colors"
                   />
                 </div>
 
-                <button
-                  type="button"
-                  disabled={deleteConfirmText !== 'DELETE' || isDeletingAccount}
-                  onClick={handleDeleteAccount}
-                  style={{
-                    backgroundColor: deleteConfirmText === 'DELETE' ? '#dc2626' : '#f87171',
-                    color: '#ffffff',
-                    border: 'none',
-                    padding: '12px 24px',
-                    borderRadius: '8px',
-                    fontWeight: 800,
-                    fontSize: '0.92rem',
-                    cursor: deleteConfirmText === 'DELETE' ? 'pointer' : 'not-allowed',
-                    opacity: deleteConfirmText === 'DELETE' ? 1 : 0.6,
-                    transition: 'all 0.2s ease',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}
-                >
-                  <span>🗑️</span>
-                  <span>{isDeletingAccount ? 'Deleting Account...' : 'Permanently Delete Resident Account'}</span>
-                </button>
+                <div>
+                  <button
+                    type="button"
+                    disabled={deleteConfirmText !== 'DELETE' || isDeletingAccount}
+                    onClick={handleDeleteAccount}
+                    className={`w-full sm:w-auto h-12 px-6 rounded-xl font-semibold text-white transition-all border-none outline-none text-[16px] ${deleteConfirmText === 'DELETE' ? 'bg-red-600 hover:bg-red-700 cursor-pointer shadow-sm' : 'bg-red-300 cursor-not-allowed opacity-60'}`}
+                  >
+                    {isDeletingAccount ? 'Deleting Account...' : 'Permanently Delete Account'}
+                  </button>
+                </div>
               </div>
             </div>
           )}
 
           {/* TAB: Become Worker (Disabled - account must be deleted to switch roles) */}
-          {false && (
+          {Boolean(false) && (
             <div>
-              <div style={{ marginBottom: '1.5rem' }}>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: '800', margin: 0, color: '#111827' }}>Upgrade to Worker Profile</h2>
-                <p style={{ color: '#6b7280', marginTop: '0.5rem', fontSize: '0.95rem' }}>
+              <div >
+                <h2 >Upgrade to Worker Profile</h2>
+                <p >
                   Complete your trade profile details below to start listing your services on Workio.
                 </p>
               </div>
 
               {isWorker ? (
-                <div style={{ padding: '2.5rem', backgroundColor: '#EFF6FF', borderRadius: '16px', border: '1px solid #BFDBFE', textAlign: 'center' }}>
-                  <h3 style={{ margin: '0 0 0.5rem 0', color: '#1E40AF', fontSize: '1.25rem', fontWeight: '700' }}>
+                <div >
+                  <h3 >
                     You are already a registered Worker!
                   </h3>
-                  <p style={{ color: '#1E3A8A', marginBottom: '1.5rem', fontSize: '0.95rem' }}>
+                  <p >
                     Your worker profile is active. You can manage your jobs, skills, and availability in your Worker Dashboard.
                   </p>
                   <md-filled-button
                     type="button"
                     onClick={() => navigateTo('/worker/dashboard')}
-                    style={{ '--md-sys-color-primary': '#2563EB', '--md-sys-color-on-primary': '#ffffff', '--md-filled-button-container-shape': '50px' }}
+                    
                   >
                     Go to Worker Dashboard
                   </md-filled-button>
                 </div>
               ) : (
-                <form onSubmit={handleBecomeWorkerSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                <form onSubmit={handleBecomeWorkerSubmit} >
 
                   {workerError && (
-                    <div style={{ padding: '1rem', backgroundColor: '#FEF2F2', border: '1px solid #FCA5A5', color: '#991B1B', borderRadius: '8px', fontSize: '0.9rem' }}>
+                    <div >
                       {workerError}
                     </div>
                   )}
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <label style={{ fontWeight: '600', fontSize: '0.9rem', color: '#374151' }}>Trade Experience / Short Bio *</label>
-                    <textarea
+                  <div >
+                    <label >Trade Experience / Short Bio *</label>
+                    <textarea className="w-full px-4 py-3.5 bg-gray-100 border-none rounded-xl text-black focus:ring-2 focus:ring-black focus:bg-white transition-all outline-none" 
                       rows="3"
                       required
                       placeholder="Describe your skills, experience, and trade specialization..."
                       value={workerForm.description}
                       onChange={(e) => setWorkerForm({ ...workerForm, description: e.target.value })}
-                      style={{ padding: '12px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '0.95rem', fontFamily: 'inherit' }}
+                      
                     />
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      <label style={{ fontWeight: '600', fontSize: '0.9rem', color: '#374151' }}>Primary Service Area *</label>
-                      <select
+                  <div >
+                    <div >
+                      <label >Primary Service Area *</label>
+                      <select className="w-full px-4 py-3.5 bg-gray-100 border-none rounded-xl text-black focus:ring-2 focus:ring-black focus:bg-white transition-all outline-none" 
                         required
                         value={workerForm.primaryServiceArea || 'Colombo'}
                         onChange={(e) => setWorkerForm({ ...workerForm, primaryServiceArea: e.target.value })}
-                        style={{ padding: '12px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '0.95rem', backgroundColor: '#FFFFFF', color: '#111827' }}
+                        
                       >
                         <option value="" disabled>Select Primary Service Area</option>
                         {Object.entries(sriLankaDistricts).map(([province, districts]) => (
@@ -1335,26 +1214,26 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                       </select>
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      <label style={{ fontWeight: '600', fontSize: '0.9rem', color: '#374151' }}>Coverage Radius (Km)</label>
-                      <input
+                    <div >
+                      <label >Coverage Radius (Km)</label>
+                      <input className="w-full px-4 py-3.5 bg-gray-100 border-none rounded-xl text-black focus:ring-2 focus:ring-black focus:bg-white transition-all outline-none" 
                         type="number"
                         min="1"
                         max="200"
                         value={workerForm.coverageRadiusKm}
                         onChange={(e) => setWorkerForm({ ...workerForm, coverageRadiusKm: e.target.value })}
-                        style={{ padding: '12px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '0.95rem' }}
+                        
                       />
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      <label style={{ fontWeight: '600', fontSize: '0.9rem', color: '#374151' }}>Pricing Model</label>
-                      <select
+                  <div >
+                    <div >
+                      <label >Pricing Model</label>
+                      <select className="w-full px-4 py-3.5 bg-gray-100 border-none rounded-xl text-black focus:ring-2 focus:ring-black focus:bg-white transition-all outline-none" 
                         value={workerForm.pricingModel}
                         onChange={(e) => setWorkerForm({ ...workerForm, pricingModel: e.target.value })}
-                        style={{ padding: '12px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '0.95rem', backgroundColor: '#fff' }}
+                        
                       >
                         <option value="Hourly">Hourly Rate</option>
                         <option value="Daily">Daily Rate</option>
@@ -1362,101 +1241,69 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                       </select>
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      <label style={{ fontWeight: '600', fontSize: '0.9rem', color: '#374151' }}>Hourly Rate (LKR)</label>
-                      <input
+                    <div >
+                      <label >Hourly Rate (LKR)</label>
+                      <input className="w-full px-4 py-3.5 bg-gray-100 border-none rounded-xl text-black focus:ring-2 focus:ring-black focus:bg-white transition-all outline-none" 
                         type="number"
                         placeholder="e.g. 1500"
                         value={workerForm.hourlyRate}
                         onChange={(e) => setWorkerForm({ ...workerForm, hourlyRate: e.target.value })}
-                        style={{ padding: '12px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '0.95rem' }}
+                        
                       />
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      <label style={{ fontWeight: '600', fontSize: '0.9rem', color: '#374151' }}>Daily Rate (LKR)</label>
-                      <input
+                    <div >
+                      <label >Daily Rate (LKR)</label>
+                      <input className="w-full px-4 py-3.5 bg-gray-100 border-none rounded-xl text-black focus:ring-2 focus:ring-black focus:bg-white transition-all outline-none" 
                         type="number"
                         placeholder="e.g. 8000"
                         value={workerForm.dailyRate}
                         onChange={(e) => setWorkerForm({ ...workerForm, dailyRate: e.target.value })}
-                        style={{ padding: '12px', borderRadius: '8px', border: '1px solid #D1D5DB', fontSize: '0.95rem' }}
+                        
                       />
                     </div>
                   </div>
 
                   {/* Skills Section - Hierarchical Services & Specialization Sub-Skills (Matching Mobile App) */}
-                  <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: '1.5rem', marginTop: '0.5rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '10px' }}>
+                  <div >
+                    <div >
                       <div>
-                        <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '700', color: '#111827' }}>
+                        <h4 >
                           Skills & Trade Specialization
                         </h4>
-                        <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#6B7280' }}>
+                        <p >
                           Select your trade services, experience levels, and tap sub-skill chips to customize your specializations.
                         </p>
                       </div>
-                      <button
+                      <button className="w-full px-6 py-3.5 font-semibold text-white bg-black rounded-full hover:bg-gray-800 transition-colors shadow-sm cursor-pointer border-none outline-none" 
                         type="button"
                         onClick={handleAddService}
-                        style={{
-                          padding: '8px 16px',
-                          borderRadius: '8px',
-                          border: '1.5px solid #2563EB',
-                          backgroundColor: '#EFF6FF',
-                          color: '#2563EB',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                          fontSize: '0.85rem',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          transition: 'all 0.2s ease'
-                        }}
+                        
                       >
-                        <i className="fa-solid fa-plus" style={{ fontSize: '0.8rem' }}></i>
+                        <i  ></i>
                         Add Another Service
                       </button>
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div >
                       {workerForm.skills.map((serviceItem, sIdx) => {
                         const suggestedSkills = getSkillsForService(serviceItem.serviceName);
 
                         return (
                           <div
                             key={sIdx}
-                            style={{
-                              backgroundColor: '#F8FAFC',
-                              border: '1.5px solid #E2E8F0',
-                              borderRadius: '16px',
-                              padding: '18px 20px',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              gap: '14px',
-                              boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-                            }}
+                            
                           >
                             {/* Card Top Row: Category Dropdown & Experience Dropdown */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-                              <div style={{ flex: '1 1 300px' }}>
-                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px' }}>
+                            <div >
+                              <div >
+                                <label >
                                   Service Category
                                 </label>
-                                <select
+                                <select className="w-full px-4 py-3.5 bg-gray-100 border-none rounded-xl text-black focus:ring-2 focus:ring-black focus:bg-white transition-all outline-none" 
                                   value={serviceItem.serviceName}
                                   onChange={(e) => handleServiceCategoryChange(sIdx, e.target.value)}
-                                  style={{
-                                    width: '100%',
-                                    padding: '8px 12px',
-                                    borderRadius: '8px',
-                                    border: '1.5px solid #CBD5E1',
-                                    fontSize: '0.92rem',
-                                    fontWeight: 600,
-                                    backgroundColor: '#FFFFFF',
-                                    color: '#0F172A',
-                                    outline: 'none'
-                                  }}
+                                  
                                 >
                                   {WORKER_SERVICES_CATALOG.map((cat) => (
                                     <option key={cat.name} value={cat.name}>
@@ -1466,24 +1313,15 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                                 </select>
                               </div>
 
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <div >
                                 <div>
-                                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px' }}>
+                                  <label >
                                     Experience
                                   </label>
-                                  <select
+                                  <select className="w-full px-4 py-3.5 bg-gray-100 border-none rounded-xl text-black focus:ring-2 focus:ring-black focus:bg-white transition-all outline-none" 
                                     value={serviceItem.experienceYears}
                                     onChange={(e) => handleExperienceChange(sIdx, e.target.value)}
-                                    style={{
-                                      padding: '8px 12px',
-                                      borderRadius: '8px',
-                                      border: '1.5px solid #CBD5E1',
-                                      fontSize: '0.9rem',
-                                      backgroundColor: '#FFFFFF',
-                                      color: '#0F172A',
-                                      outline: 'none',
-                                      fontWeight: 500
-                                    }}
+                                    
                                   >
                                     <option value={0}>&lt; 1 Year Exp.</option>
                                     <option value={1}>1 Year Exp.</option>
@@ -1495,26 +1333,13 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                                 </div>
 
                                 {workerForm.skills.length > 1 && (
-                                  <button
+                                  <button className="w-full px-6 py-3.5 font-semibold text-white bg-black rounded-full hover:bg-gray-800 transition-colors shadow-sm cursor-pointer border-none outline-none" 
                                     type="button"
                                     onClick={() => handleRemoveService(sIdx)}
                                     title="Remove this service"
-                                    style={{
-                                      marginTop: '16px',
-                                      padding: '8px 12px',
-                                      borderRadius: '8px',
-                                      border: '1px solid #FCA5A5',
-                                      backgroundColor: '#FEF2F2',
-                                      color: '#DC2626',
-                                      cursor: 'pointer',
-                                      fontSize: '0.85rem',
-                                      fontWeight: 600,
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: '4px'
-                                    }}
+                                    
                                   >
-                                    <i className="fa-solid fa-trash-can" style={{ fontSize: '0.8rem' }}></i>
+                                    <i  ></i>
                                     Remove
                                   </button>
                                 )}
@@ -1522,44 +1347,31 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                             </div>
 
                             {/* Sub-skills Section */}
-                            <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: '12px' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155' }}>
-                                  Specialization Sub-Skills in <span style={{ color: '#2563EB' }}>{serviceItem.serviceName}</span>:
+                            <div >
+                              <div >
+                                <label >
+                                  Specialization Sub-Skills in <span >{serviceItem.serviceName}</span>:
                                 </label>
-                                <span style={{ fontSize: '0.78rem', color: '#64748B', fontWeight: 500 }}>
+                                <span >
                                   {serviceItem.skills.length} selected (tap chips to toggle)
                                 </span>
                               </div>
 
                               {/* Suggested skill chips */}
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+                              <div >
                                 {suggestedSkills.map((subSkill) => {
                                   const isSelected = serviceItem.skills.includes(subSkill);
                                   return (
-                                    <button
+                                    <button className="w-full px-6 py-3.5 font-semibold text-white bg-black rounded-full hover:bg-gray-800 transition-colors shadow-sm cursor-pointer border-none outline-none" 
                                       key={subSkill}
                                       type="button"
                                       onClick={() => handleToggleSubSkill(sIdx, subSkill)}
-                                      style={{
-                                        padding: '6px 14px',
-                                        borderRadius: '20px',
-                                        border: isSelected ? '1.5px solid #2563EB' : '1.5px solid #E2E8F0',
-                                        backgroundColor: isSelected ? '#EFF6FF' : '#FFFFFF',
-                                        color: isSelected ? '#1D4ED8' : '#334155',
-                                        fontWeight: isSelected ? 600 : 500,
-                                        fontSize: '0.82rem',
-                                        cursor: 'pointer',
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '6px',
-                                        transition: 'all 0.15s ease'
-                                      }}
+                                      
                                     >
                                       {isSelected ? (
-                                        <i className="fa-solid fa-check" style={{ fontSize: '0.75rem', color: '#2563EB' }}></i>
+                                        <i  ></i>
                                       ) : (
-                                        <i className="fa-solid fa-plus" style={{ fontSize: '0.7rem', color: '#94A3B8' }}></i>
+                                        <i  ></i>
                                       )}
                                       {subSkill}
                                     </button>
@@ -1572,33 +1384,14 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                                   .map((customSkill) => (
                                     <span
                                       key={customSkill}
-                                      style={{
-                                        padding: '6px 12px',
-                                        borderRadius: '20px',
-                                        border: '1.5px solid #2563EB',
-                                        backgroundColor: '#EFF6FF',
-                                        color: '#1D4ED8',
-                                        fontWeight: 600,
-                                        fontSize: '0.82rem',
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '6px'
-                                      }}
+                                      
                                     >
-                                      <i className="fa-solid fa-star" style={{ fontSize: '0.7rem', color: '#F59E0B' }}></i>
+                                      <i  ></i>
                                       {customSkill}
-                                      <button
+                                      <button className="w-full px-6 py-3.5 font-semibold text-white bg-black rounded-full hover:bg-gray-800 transition-colors shadow-sm cursor-pointer border-none outline-none" 
                                         type="button"
                                         onClick={() => handleToggleSubSkill(sIdx, customSkill)}
-                                        style={{
-                                          border: 'none',
-                                          background: 'none',
-                                          color: '#DC2626',
-                                          cursor: 'pointer',
-                                          padding: 0,
-                                          fontSize: '0.85rem',
-                                          lineHeight: 1
-                                        }}
+                                        
                                         title={`Remove ${customSkill}`}
                                       >
                                         ✕
@@ -1608,8 +1401,8 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                               </div>
 
                               {/* Custom sub-skill input */}
-                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                <input
+                              <div >
+                                <input className="w-full px-4 py-3.5 bg-gray-100 border-none rounded-xl text-black focus:ring-2 focus:ring-black focus:bg-white transition-all outline-none" 
                                   type="text"
                                   placeholder={`Add specialized skill to ${serviceItem.serviceName}...`}
                                   value={serviceItem.customSkillInput || ''}
@@ -1620,30 +1413,12 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                                       handleAddCustomSubSkill(sIdx);
                                     }
                                   }}
-                                  style={{
-                                    flex: 1,
-                                    padding: '8px 12px',
-                                    borderRadius: '8px',
-                                    border: '1px solid #CBD5E1',
-                                    fontSize: '0.85rem',
-                                    backgroundColor: '#FFFFFF',
-                                    outline: 'none'
-                                  }}
+                                  
                                 />
-                                <button
+                                <button className="w-full px-6 py-3.5 font-semibold text-white bg-black rounded-full hover:bg-gray-800 transition-colors shadow-sm cursor-pointer border-none outline-none" 
                                   type="button"
                                   onClick={() => handleAddCustomSubSkill(sIdx)}
-                                  style={{
-                                    padding: '8px 14px',
-                                    borderRadius: '8px',
-                                    border: '1px solid #2563EB',
-                                    backgroundColor: '#2563EB',
-                                    color: '#FFFFFF',
-                                    fontWeight: 600,
-                                    fontSize: '0.85rem',
-                                    cursor: 'pointer',
-                                    whiteSpace: 'nowrap'
-                                  }}
+                                  
                                 >
                                   + Add Skill
                                 </button>
@@ -1655,11 +1430,11 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                     </div>
                   </div>
 
-                  <div style={{ marginTop: '1rem' }}>
+                  <div >
                     <md-filled-button
                       type="submit"
                       disabled={submittingWorker}
-                      style={{ '--md-sys-color-primary': '#2563EB', '--md-sys-color-on-primary': '#ffffff', height: '48px', fontSize: '16px', '--md-filled-button-container-shape': '50px', padding: '0 32px' }}
+                      
                     >
                       {submittingWorker ? 'Upgrading Account...' : 'Complete Worker Upgrade'}
                     </md-filled-button>
@@ -1669,26 +1444,18 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
               )}
             </div>
           )}
+            </div>
           </div>
         </main>
       </div>
 
       {/* VIEW POST DETAIL MODAL */}
       {selectedPostForDetail && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(15, 23, 42, 0.6)',
-          backdropFilter: 'blur(4px)',
-          display: 'flex', justifyContent: 'center', alignItems: 'center',
-          zIndex: 1000, padding: '1rem'
-        }} onClick={() => setSelectedPostForDetail(null)}>
-          <div style={{
-            backgroundColor: '#ffffff', borderRadius: '16px', maxWidth: '640px', width: '100%',
-            maxHeight: '90vh', overflowY: 'auto', padding: '1.5rem'
-          }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem' }}>
-              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '800' }}>{selectedPostForDetail.title}</h3>
-              <button onClick={() => setSelectedPostForDetail(null)} style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer' }}>✕</button>
+        <div  onClick={() => setSelectedPostForDetail(null)}>
+          <div  onClick={(e) => e.stopPropagation()}>
+            <div >
+              <h3 >{selectedPostForDetail.title}</h3>
+              <button className="w-full px-6 py-3.5 font-semibold text-white bg-black rounded-full hover:bg-gray-800 transition-colors shadow-sm cursor-pointer border-none outline-none"  onClick={() => setSelectedPostForDetail(null)} >✕</button>
             </div>
 
             {selectedPostForDetail.images && selectedPostForDetail.images.length > 0 && (
@@ -1696,20 +1463,17 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                 <img
                   src={selectedGalleryImage || selectedPostForDetail.images[0]}
                   alt="Post"
-                  style={{ width: '100%', maxHeight: '300px', objectFit: 'cover', borderRadius: '10px', marginBottom: '1rem' }}
+                  
                 />
                 {selectedPostForDetail.images.length > 1 && (
-                  <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', marginBottom: '1rem' }}>
+                  <div >
                     {selectedPostForDetail.images.map((img, idx) => (
                       <img
                         key={idx}
                         src={img}
                         alt="Thumb"
                         onClick={() => setSelectedGalleryImage(img)}
-                        style={{
-                          width: '65px', height: '50px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer',
-                          border: selectedGalleryImage === img ? '2px solid #009688' : '2px solid transparent'
-                        }}
+                        
                       />
                     ))}
                   </div>
@@ -1717,37 +1481,37 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
               </div>
             )}
 
-            <p style={{ fontSize: '0.95rem', color: '#334155', lineHeight: '1.6', whiteSpace: 'pre-line', marginBottom: '1rem' }}>
+            <p >
               {selectedPostForDetail.content}
             </p>
 
-            <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
-              <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.95rem', fontWeight: '700' }}>Comments</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '1rem' }}>
+            <div >
+              <h4 >Comments</h4>
+              <div >
                 {(commentsMap[selectedPostForDetail.postId] || []).length === 0 ? (
-                  <p style={{ color: '#94a3b8', fontSize: '0.85rem' }}>No comments on this post yet.</p>
+                  <p >No comments on this post yet.</p>
                 ) : (
                   (commentsMap[selectedPostForDetail.postId] || []).map(c => (
-                    <div key={c.commentId} style={{ backgroundColor: '#f8fafc', padding: '8px 12px', borderRadius: '8px' }}>
-                      <span style={{ fontWeight: '700', fontSize: '0.825rem' }}>{c.userName}: </span>
-                      <span style={{ fontSize: '0.875rem' }}>{c.content}</span>
+                    <div key={c.commentId} >
+                      <span >{c.userName}: </span>
+                      <span >{c.content}</span>
                     </div>
                   ))
                 )}
               </div>
 
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <input
+              <div >
+                <input className="w-full px-4 py-3.5 bg-gray-100 border-none rounded-xl text-black focus:ring-2 focus:ring-black focus:bg-white transition-all outline-none" 
                   type="text"
                   placeholder="Write a comment..."
                   value={newCommentText}
                   onChange={(e) => setNewCommentText(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddComment(selectedPostForDetail.postId)}
-                  style={{ flex: 1, padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.875rem' }}
+                  
                 />
-                <button
+                <button className="w-full px-6 py-3.5 font-semibold text-white bg-black rounded-full hover:bg-gray-800 transition-colors shadow-sm cursor-pointer border-none outline-none" 
                   onClick={() => handleAddComment(selectedPostForDetail.postId)}
-                  style={{ backgroundColor: '#009688', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '6px', fontWeight: '700', cursor: 'pointer' }}
+                  
                 >
                   Reply
                 </button>
@@ -1759,49 +1523,41 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
 
       {/* EDIT POST MODAL */}
       {editingPost && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(15, 23, 42, 0.6)',
-          backdropFilter: 'blur(4px)',
-          display: 'flex', justifyContent: 'center', alignItems: 'center',
-          zIndex: 1000, padding: '1rem'
-        }} onClick={() => setEditingPost(null)}>
-          <div style={{
-            backgroundColor: '#ffffff', borderRadius: '16px', maxWidth: '520px', width: '100%', padding: '1.5rem'
-          }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '800' }}>Edit Community Post</h3>
-              <button onClick={() => setEditingPost(null)} style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer' }}>✕</button>
+        <div  onClick={() => setEditingPost(null)}>
+          <div  onClick={(e) => e.stopPropagation()}>
+            <div >
+              <h3 >Edit Community Post</h3>
+              <button className="w-full px-6 py-3.5 font-semibold text-white bg-black rounded-full hover:bg-gray-800 transition-colors shadow-sm cursor-pointer border-none outline-none"  onClick={() => setEditingPost(null)} >✕</button>
             </div>
 
-            <form onSubmit={handleSaveEdit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <form onSubmit={handleSaveEdit} >
               <div>
-                <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>Title</label>
-                <input
+                <label >Title</label>
+                <input className="w-full px-4 py-3.5 bg-gray-100 border-none rounded-xl text-black focus:ring-2 focus:ring-black focus:bg-white transition-all outline-none" 
                   type="text"
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
                   required
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                  
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                <div style={{ flex: '1 1 140px' }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>Category</label>
-                  <select
+              <div >
+                <div >
+                  <label >Category</label>
+                  <select className="w-full px-4 py-3.5 bg-gray-100 border-none rounded-xl text-black focus:ring-2 focus:ring-black focus:bg-white transition-all outline-none" 
                     value={editCategory}
                     onChange={(e) => setEditCategory(e.target.value)}
-                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                    
                   >
                     {categoriesData.map(c => (
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>
                 </div>
-                <div style={{ flex: '1 1 140px' }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>Province</label>
-                  <select
+                <div >
+                  <label >Province</label>
+                  <select className="w-full px-4 py-3.5 bg-gray-100 border-none rounded-xl text-black focus:ring-2 focus:ring-black focus:bg-white transition-all outline-none" 
                     value={editProvince}
                     onChange={(e) => {
                       const prov = e.target.value;
@@ -1809,19 +1565,19 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                       const firstDist = (sriLankaDistricts[prov] && sriLankaDistricts[prov][0]) || 'Colombo';
                       setEditDistrict(firstDist);
                     }}
-                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#0f172a' }}
+                    
                   >
                     {Object.keys(sriLankaDistricts).map(prov => (
                       <option key={prov} value={prov}>{prov}</option>
                     ))}
                   </select>
                 </div>
-                <div style={{ flex: '1 1 140px' }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>District</label>
-                  <select
+                <div >
+                  <label >District</label>
+                  <select className="w-full px-4 py-3.5 bg-gray-100 border-none rounded-xl text-black focus:ring-2 focus:ring-black focus:bg-white transition-all outline-none" 
                     value={editDistrict}
                     onChange={(e) => setEditDistrict(e.target.value)}
-                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#0f172a' }}
+                    
                   >
                     {(sriLankaDistricts[editProvince] || []).map(d => (
                       <option key={d} value={d}>{d}</option>
@@ -1831,55 +1587,52 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>Description</label>
-                <textarea
+                <label >Description</label>
+                <textarea className="w-full px-4 py-3.5 bg-gray-100 border-none rounded-xl text-black focus:ring-2 focus:ring-black focus:bg-white transition-all outline-none" 
                   value={editContent}
                   onChange={(e) => setEditContent(e.target.value)}
                   required
                   rows={4}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontFamily: 'inherit' }}
+                  
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>Photos ({editImages.length} attached)</label>
+                <label >Photos ({editImages.length} attached)</label>
                 <input
                   type="file"
                   accept="image/*"
                   multiple
                   ref={editFileInputRef}
                   onChange={handleEditImageUpload}
-                  style={{ display: 'none' }}
+                  
                 />
-                <button
+                <button className="w-full px-6 py-3.5 font-semibold text-white bg-black rounded-full hover:bg-gray-800 transition-colors shadow-sm cursor-pointer border-none outline-none" 
                   type="button"
                   onClick={() => editFileInputRef.current?.click()}
-                  style={{
-                    padding: '8px 14px', borderRadius: '6px', border: '1px dashed #94a3b8',
-                    backgroundColor: '#f8fafc', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem', width: '100%'
-                  }}
+                  
                 >
                   📷 Add / Change Photos
                 </button>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '0.5rem' }}>
-                <button
+              <div >
+                <button className="w-full px-6 py-3.5 font-semibold text-white bg-black rounded-full hover:bg-gray-800 transition-colors shadow-sm cursor-pointer border-none outline-none" 
                   type="button"
                   onClick={() => setEditingPost(null)}
                   disabled={isSavingPost}
-                  style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}
+                  
                 >
                   Cancel
                 </button>
-                <button
+                <button className="w-full px-6 py-3.5 font-semibold text-white bg-black rounded-full hover:bg-gray-800 transition-colors shadow-sm cursor-pointer border-none outline-none"  
                   type="submit"
                   disabled={isSavingPost}
-                  style={{ padding: '8px 20px', borderRadius: '6px', border: 'none', backgroundColor: '#3b82f6', color: '#fff', fontWeight: '700', cursor: isSavingPost ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  
                 >
                   {isSavingPost ? (
                     <>
-                      <i className="fa-solid fa-spinner fa-spin"></i> Saving...
+                      <i ></i> Saving...
                     </>
                   ) : (
                     'Save Changes'
@@ -1893,50 +1646,42 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
 
       {/* MAKE NEW POST MODAL */}
       {isCreateModalOpen && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(15, 23, 42, 0.6)',
-          backdropFilter: 'blur(4px)',
-          display: 'flex', justifyContent: 'center', alignItems: 'center',
-          zIndex: 1000, padding: '1rem'
-        }} onClick={() => setIsCreateModalOpen(false)}>
-          <div style={{
-            backgroundColor: '#ffffff', borderRadius: '16px', maxWidth: '540px', width: '100%', padding: '1.5rem'
-          }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '800' }}>Create Community Post</h3>
-              <button onClick={() => setIsCreateModalOpen(false)} style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer' }}>✕</button>
+        <div  onClick={() => setIsCreateModalOpen(false)}>
+          <div  onClick={(e) => e.stopPropagation()}>
+            <div >
+              <h3 >Create Community Post</h3>
+              <button className="w-full px-6 py-3.5 font-semibold text-white bg-black rounded-full hover:bg-gray-800 transition-colors shadow-sm cursor-pointer border-none outline-none" onClick={() => setIsCreateModalOpen(false)} >✕</button>
             </div>
 
-            <form onSubmit={handleCreatePost} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <form onSubmit={handleCreatePost} >
               <div>
-                <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>Post Title</label>
-                <input
+                <label >Post Title</label>
+                <input className="w-full px-4 py-3.5 bg-gray-100 border-none rounded-xl text-black focus:ring-2 focus:ring-black focus:bg-white transition-all outline-none" 
                   type="text"
                   placeholder="e.g. Need urgent electrician or selling unused gaming monitor"
                   value={createTitle}
                   onChange={(e) => setCreateTitle(e.target.value)}
                   required
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                  
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                <div style={{ flex: '1 1 140px' }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>Category</label>
-                  <select
+              <div >
+                <div >
+                  <label >Category</label>
+                  <select className="w-full px-4 py-3.5 bg-gray-100 border-none rounded-xl text-black focus:ring-2 focus:ring-black focus:bg-white transition-all outline-none" 
                     value={createCategory}
                     onChange={(e) => setCreateCategory(e.target.value)}
-                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                    
                   >
                     {categoriesData.map(c => (
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>
                 </div>
-                <div style={{ flex: '1 1 140px' }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>Province</label>
-                  <select
+                <div >
+                  <label >Province</label>
+                  <select className="w-full px-4 py-3.5 bg-gray-100 border-none rounded-xl text-black focus:ring-2 focus:ring-black focus:bg-white transition-all outline-none" 
                     value={createProvince}
                     onChange={(e) => {
                       const prov = e.target.value;
@@ -1944,19 +1689,19 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                       const firstDist = (sriLankaDistricts[prov] && sriLankaDistricts[prov][0]) || 'Colombo';
                       setCreateDistrict(firstDist);
                     }}
-                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#0f172a' }}
+                    
                   >
                     {Object.keys(sriLankaDistricts).map(prov => (
                       <option key={prov} value={prov}>{prov}</option>
                     ))}
                   </select>
                 </div>
-                <div style={{ flex: '1 1 140px' }}>
-                  <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>District</label>
-                  <select
+                <div >
+                  <label >District</label>
+                  <select className="w-full px-4 py-3.5 bg-gray-100 border-none rounded-xl text-black focus:ring-2 focus:ring-black focus:bg-white transition-all outline-none" 
                     value={createDistrict}
                     onChange={(e) => setCreateDistrict(e.target.value)}
-                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#0f172a' }}
+                    
                   >
                     {(sriLankaDistricts[createProvince] || []).map(d => (
                       <option key={d} value={d}>{d}</option>
@@ -1966,56 +1711,53 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>Description</label>
-                <textarea
+                <label >Description</label>
+                <textarea className="w-full px-4 py-3.5 bg-gray-100 border-none rounded-xl text-black focus:ring-2 focus:ring-black focus:bg-white transition-all outline-none" 
                   placeholder="Provide details about your post..."
                   value={createContent}
                   onChange={(e) => setCreateContent(e.target.value)}
                   required
                   rows={4}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontFamily: 'inherit' }}
+                  
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontWeight: '600', marginBottom: '4px', fontSize: '0.85rem' }}>Multiple Photos (Optional)</label>
+                <label >Multiple Photos (Optional)</label>
                 <input
                   type="file"
                   accept="image/*"
                   multiple
                   ref={fileInputRef}
                   onChange={handleImageUpload}
-                  style={{ display: 'none' }}
+                  
                 />
-                <button
+                <button className="w-full px-6 py-3.5 font-semibold text-white bg-black rounded-full hover:bg-gray-800 transition-colors shadow-sm cursor-pointer border-none outline-none"
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  style={{
-                    padding: '8px 14px', borderRadius: '6px', border: '1px dashed #94a3b8',
-                    backgroundColor: '#f8fafc', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem', width: '100%'
-                  }}
+                  
                 >
                   📷 Attach Photos ({createImages.length} selected)
                 </button>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '0.5rem' }}>
-                <button
+              <div >
+                <button className="w-full px-6 py-3.5 font-semibold text-white bg-black rounded-full hover:bg-gray-800 transition-colors shadow-sm cursor-pointer border-none outline-none"
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
                   disabled={isCreatingPost}
-                  style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}
+                  
                 >
                   Cancel
                 </button>
-                <button
+                <button className="w-full px-6 py-3.5 font-semibold text-white bg-black rounded-full hover:bg-gray-800 transition-colors shadow-sm cursor-pointer border-none outline-none" 
                   type="submit"
                   disabled={isCreatingPost}
-                  style={{ padding: '8px 20px', borderRadius: '6px', border: 'none', backgroundColor: '#009688', color: '#fff', fontWeight: '700', cursor: isCreatingPost ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  
                 >
                   {isCreatingPost ? (
                     <>
-                      <i className="fa-solid fa-spinner fa-spin"></i> Publishing...
+                      <i ></i> Publishing...
                     </>
                   ) : (
                     'Publish Post'
@@ -2029,77 +1771,46 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
 
       {/* ===================== RESIDENT REVIEW MODAL ===================== */}
       {reviewingBooking && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.65)',
-          backdropFilter: 'blur(4px)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 10000,
-          padding: '16px'
-        }}>
-          <div style={{
-            backgroundColor: '#ffffff',
-            borderRadius: '20px',
-            maxWidth: '520px',
-            width: '100%',
-            padding: '28px',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-            border: '1px solid #e5e7eb'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <div >
+          <div >
+            <div >
               <div>
-                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#d97706', textTransform: 'uppercase' }}>
+                <span >
                   Verified Resident Review
                 </span>
-                <h3 style={{ margin: '4px 0 0 0', fontSize: '1.3rem', fontWeight: 800, color: '#111827' }}>
+                <h3 >
                   Rate {reviewingBooking.workerName}
                 </h3>
               </div>
-              <button
+              <button className="w-full px-6 py-3.5 font-semibold text-white bg-black rounded-full hover:bg-gray-800 transition-colors shadow-sm cursor-pointer border-none outline-none"
                 onClick={() => setReviewingBooking(null)}
-                style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#94a3b8' }}
+                
               >
                 ✕
               </button>
             </div>
 
-            <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '20px' }}>
+            <p >
               Your feedback helps keep our community safe and rewards reliable pros.
             </p>
 
-            <form onSubmit={handleSubmitReview} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <form onSubmit={handleSubmitReview} >
 
               {/* Star Rating 1: Quality */}
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <label style={{ fontSize: '0.9rem', fontWeight: 700, color: '#374151' }}>
+                <div >
+                  <label >
                     Quality & Craftsmanship
                   </label>
-                  <span style={{ color: '#d97706', fontWeight: 800 }}>★ {reviewForm.qualityRating}/5</span>
+                  <span >★ {reviewForm.qualityRating}/5</span>
                 </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div >
                   {[1, 2, 3, 4, 5].map((star) => (
-                    <button
+                    <button className="w-full px-6 py-3.5 font-semibold text-white bg-black rounded-full hover:bg-gray-800 transition-colors shadow-sm cursor-pointer border-none outline-none"
                       key={star}
                       type="button"
                       onClick={() => setReviewForm({ ...reviewForm, qualityRating: star })}
-                      style={{
-                        flex: 1,
-                        padding: '8px',
-                        borderRadius: '8px',
-                        border: '1px solid #cbd5e1',
-                        backgroundColor: reviewForm.qualityRating >= star ? '#fef3c7' : '#f8fafc',
-                        color: reviewForm.qualityRating >= star ? '#d97706' : '#94a3b8',
-                        fontSize: '1.2rem',
-                        fontWeight: 800,
-                        cursor: 'pointer'
-                      }}
+                      
                     >
                       ★
                     </button>
@@ -2109,29 +1820,19 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
 
               {/* Star Rating 2: Punctuality */}
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <label style={{ fontSize: '0.9rem', fontWeight: 700, color: '#374151' }}>
+                <div >
+                  <label >
                     Punctuality & Timeliness
                   </label>
-                  <span style={{ color: '#d97706', fontWeight: 800 }}>★ {reviewForm.punctualityRating}/5</span>
+                  <span >★ {reviewForm.punctualityRating}/5</span>
                 </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div >
                   {[1, 2, 3, 4, 5].map((star) => (
-                    <button
+                    <button className="w-full px-6 py-3.5 font-semibold text-white bg-black rounded-full hover:bg-gray-800 transition-colors shadow-sm cursor-pointer border-none outline-none"
                       key={star}
                       type="button"
                       onClick={() => setReviewForm({ ...reviewForm, punctualityRating: star })}
-                      style={{
-                        flex: 1,
-                        padding: '8px',
-                        borderRadius: '8px',
-                        border: '1px solid #cbd5e1',
-                        backgroundColor: reviewForm.punctualityRating >= star ? '#fef3c7' : '#f8fafc',
-                        color: reviewForm.punctualityRating >= star ? '#d97706' : '#94a3b8',
-                        fontSize: '1.2rem',
-                        fontWeight: 800,
-                        cursor: 'pointer'
-                      }}
+                      
                     >
                       ★
                     </button>
@@ -2141,29 +1842,19 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
 
               {/* Star Rating 3: Communication */}
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <label style={{ fontSize: '0.9rem', fontWeight: 700, color: '#374151' }}>
+                <div >
+                  <label >
                     Communication & Professionalism
                   </label>
-                  <span style={{ color: '#d97706', fontWeight: 800 }}>★ {reviewForm.communicationRating}/5</span>
+                  <span >★ {reviewForm.communicationRating}/5</span>
                 </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div >
                   {[1, 2, 3, 4, 5].map((star) => (
-                    <button
+                    <button className="w-full px-6 py-3.5 font-semibold text-white bg-black rounded-full hover:bg-gray-800 transition-colors shadow-sm cursor-pointer border-none outline-none"
                       key={star}
                       type="button"
                       onClick={() => setReviewForm({ ...reviewForm, communicationRating: star })}
-                      style={{
-                        flex: 1,
-                        padding: '8px',
-                        borderRadius: '8px',
-                        border: '1px solid #cbd5e1',
-                        backgroundColor: reviewForm.communicationRating >= star ? '#fef3c7' : '#f8fafc',
-                        color: reviewForm.communicationRating >= star ? '#d97706' : '#94a3b8',
-                        fontSize: '1.2rem',
-                        fontWeight: 800,
-                        cursor: 'pointer'
-                      }}
+                      
                     >
                       ★
                     </button>
@@ -2173,58 +1864,32 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
 
               {/* Review text */}
               <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700, color: '#374151', marginBottom: '6px' }}>
+                <label >
                   Your Review / Comments
                 </label>
-                <textarea
+                <textarea className="w-full px-4 py-3.5 bg-gray-100 border-none rounded-xl text-black focus:ring-2 focus:ring-black focus:bg-white transition-all outline-none" 
                   rows={3}
                   required
                   placeholder="Share details about the work done, punctuality, and overall experience..."
                   value={reviewForm.comment}
                   onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '0.9rem',
-                    boxSizing: 'border-box',
-                    fontFamily: 'inherit'
-                  }}
+                  
                 />
               </div>
 
               {/* Action Buttons */}
-              <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
-                <button
+              <div >
+                <button className="w-full px-6 py-3.5 font-semibold text-white bg-black rounded-full hover:bg-gray-800 transition-colors shadow-sm cursor-pointer border-none outline-none"
                   type="button"
                   onClick={() => setReviewingBooking(null)}
-                  style={{
-                    flex: 1,
-                    padding: '12px',
-                    borderRadius: '10px',
-                    border: '1px solid #cbd5e1',
-                    backgroundColor: '#fff',
-                    fontWeight: 700,
-                    cursor: 'pointer'
-                  }}
+                  
                 >
                   Cancel
                 </button>
-                <button
+                <button className="w-full px-6 py-3.5 font-semibold text-white bg-black rounded-full hover:bg-gray-800 transition-colors shadow-sm cursor-pointer border-none outline-none" 
                   type="submit"
                   disabled={submittingReview}
-                  style={{
-                    flex: 2,
-                    padding: '12px',
-                    borderRadius: '10px',
-                    border: 'none',
-                    backgroundColor: '#FDC101',
-                    color: '#000000',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    boxShadow: '0 4px 12px rgba(253,193,1,0.3)'
-                  }}
+                  
                 >
                   {submittingReview ? 'Submitting...' : 'Submit Review ⭐'}
                 </button>
