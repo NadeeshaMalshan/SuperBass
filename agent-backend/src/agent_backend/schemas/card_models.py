@@ -223,6 +223,31 @@ class BookingConfirmedCard(BaseModel):
     status: str = Field(default="Confirmed", description="Booking status")
 
 
+class BookingSummary(BaseModel):
+    """Summary of an individual booking appointment."""
+    id: Union[int, str] = Field(description="Booking ID")
+    workerId: Union[int, str] = Field(description="Worker ID")
+    workerName: str = Field(default="Verified Technician", description="Worker display name")
+    workerProfileImage: Optional[str] = Field(default=None, description="Worker avatar/photo URL")
+    workerPhone: Optional[str] = Field(default=None, description="Worker contact phone")
+    jobTitle: str = Field(default="Home Service", description="Job title / service description")
+    scheduledDate: Optional[str] = Field(default=None, description="Scheduled appointment date & time")
+    locationAddress: Optional[str] = Field(default="Colombo", description="Service location")
+    contactPhone: Optional[str] = Field(default=None, description="Resident contact phone")
+    pricingModel: Optional[str] = Field(default="Hourly", description="Pricing model")
+    estimatedPrice: Optional[float] = Field(default=None, description="Estimated price in LKR")
+    agreedPrice: Optional[float] = Field(default=None, description="Agreed price in LKR")
+    status: str = Field(default="Requested", description="Booking status: Requested, Confirmed, InProgress, Completed, Cancelled")
+    createdAt: Optional[str] = Field(default=None, description="Timestamp created")
+
+
+class BookingListCard(BaseModel):
+    """UI Card rendered when displaying resident's bookings or appointment history."""
+    totalCount: int = Field(default=0, description="Total count of bookings found")
+    statusFilter: Optional[str] = Field(default="Upcoming", description="Filter applied: 'Upcoming', 'All', etc.")
+    bookings: List[BookingSummary] = Field(default_factory=list, description="List of bookings")
+
+
 ResponseTypeLiteral = Literal[
     "create_community_post",
     "edit_community_post",
@@ -237,6 +262,7 @@ ResponseTypeLiteral = Literal[
     "worker_list",
     "booking_form",
     "booking_confirmed",
+    "booking_list",
     "text_message",
     "error"
 ]

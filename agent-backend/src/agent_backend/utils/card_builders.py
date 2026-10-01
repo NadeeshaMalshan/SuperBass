@@ -31,7 +31,9 @@ from agent_backend.schemas.card_models import (
     WorkerSummary,
     SpecialistConversationalOutput,
     BookingFormCard,
-    BookingConfirmedCard
+    BookingConfirmedCard,
+    BookingSummary,
+    BookingListCard
 )
 
 logger = logging.getLogger("agent_backend.card_builders")
@@ -744,7 +746,75 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                 metadata={"agent": "booking_agent", "user_email": email}
             )
 
-        if tool_name in ["get_resident_bookings", "cancel_booking", "reschedule_booking"]:
+        if tool_name == "get_resident_bookings":
+            raw_bookings = data if isinstance(data, list) else (
+                data.get("bookings") or data.get("items") or data.get("value") or []
+                if isinstance(data, dict) else []
+            )
+            if not isinstance(raw_bookings, list):
+                raw_bookings = []
+
+            booking_summaries: List[BookingSummary] = []
+            for b in raw_bookings:
+                if isinstance(b, dict):
+                    b_id = b.get("id") or b.get("bookingId") or 0
+                    b_worker_id = b.get("workerId") or 0
+                    b_worker_name = b.get("workerName") or "Verified Technician"
+                    b_worker_img = b.get("workerProfileImage") or b.get("workerAvatar")
+                    b_worker_phone = b.get("workerPhone")
+                    b_title = b.get("jobTitle") or b.get("description") or "Home Service Appointment"
+                    b_date = b.get("scheduledDate")
+                    b_loc = b.get("locationAddress") or "Colombo"
+                    b_phone = b.get("contactPhone")
+                    b_pricing = b.get("pricingModel") or "Hourly"
+                    b_est = float(b["estimatedPrice"]) if b.get("estimatedPrice") is not None else None
+                    b_agr = float(b["agreedPrice"]) if b.get("agreedPrice") is not None else None
+                    b_status = b.get("status") or "Requested"
+                    b_created = b.get("createdAt")
+
+                    booking_summaries.append(
+                        BookingSummary(
+                            id=b_id,
+                            workerId=b_worker_id,
+                            workerName=b_worker_name,
+                            workerProfileImage=b_worker_img,
+                            workerPhone=b_worker_phone,
+                            jobTitle=b_title,
+                            scheduledDate=b_date,
+                            locationAddress=b_loc,
+                            contactPhone=b_phone,
+                            pricingModel=b_pricing,
+                            estimatedPrice=b_est,
+                            agreedPrice=b_agr,
+                            status=b_status,
+                            createdAt=b_created
+                        )
+                    )
+
+            # Strip markdown pipes and raw tables from conversational message
+            clean_msg = last_ai_content or ""
+            if clean_msg:
+                clean_msg = re.split(r'\n\s*\|', clean_msg)[0].strip()
+                clean_msg = re.sub(r'The booking records provide start times.*$', '', clean_msg, flags=re.IGNORECASE).strip()
+
+            if not clean_msg or len(clean_msg) < 5:
+                count_str = f"{len(booking_summaries)} upcoming bookings" if booking_summaries else "no upcoming bookings"
+                clean_msg = f"You have {count_str} on Workio:"
+
+            card = BookingListCard(
+                totalCount=len(booking_summaries),
+                statusFilter="Upcoming",
+                bookings=booking_summaries
+            )
+
+            return AgentCardResponse(
+                response_type="booking_list",
+                message=clean_msg,
+                card_data=card.model_dump(),
+                metadata={"agent": "booking_agent", "user_email": email}
+            )
+
+        if tool_name in ["cancel_booking", "reschedule_booking"]:
             suggestions = ["Book a technician", "View upcoming bookings", "Cancel a booking"]
             msg = last_ai_content
             if not msg:
@@ -935,6 +1005,43 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
             card_data=booking_card.model_dump(),
             metadata={"agent": "booking_agent", "user_email": email, "workerId": worker_id_val}
         )
+
+    # -------------------------------------------------------------------------
+    # Booking List / Table Detection in Conversational Turns
+    # -------------------------------------------------------------------------
+    has_booking_table = bool(
+        re.search(r'\|\s*Booking ID\s*\|\s*Worker\s*\|\s*Service\s*\|', last_ai_content, re.IGNORECASE)
+        or ("booking id" in lower_content and "scheduled time" in lower_content and "|" in last_ai_content)
+    )
+    if has_booking_table:
+        rows = re.findall(r'\|\s*\*{0,2}#?(\d+)\*{0,2}\s*\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|', last_ai_content)
+        if rows:
+            booking_summaries = []
+            for r in rows:
+                b_id, b_worker, b_service, b_time, b_stat = [x.strip() for x in r]
+                b_stat_clean = b_stat.strip().strip("*").strip()
+                booking_summaries.append(
+                    BookingSummary(
+                        id=b_id,
+                        workerId="",
+                        workerName=b_worker.strip("*# "),
+                        jobTitle=b_service.strip("*# "),
+                        scheduledDate=b_time.strip("*# "),
+                        status=b_stat_clean or "Requested"
+                    )
+                )
+            clean_msg = re.split(r'\n\s*\|', last_ai_content)[0].strip()
+            clean_msg = re.sub(r'The booking records provide start times.*$', '', clean_msg, flags=re.IGNORECASE).strip()
+            return AgentCardResponse(
+                response_type="booking_list",
+                message=clean_msg or f"You have {len(booking_summaries)} upcoming bookings:",
+                card_data=BookingListCard(
+                    totalCount=len(booking_summaries),
+                    statusFilter="Upcoming",
+                    bookings=booking_summaries
+                ).model_dump(),
+                metadata={"agent": "booking_agent", "user_email": email}
+            )
 
     # A. Check if the agent prepared a draft community post awaiting confirmation
     is_choice_turn = any(kw in lower_content for kw in [
