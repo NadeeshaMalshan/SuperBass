@@ -532,6 +532,52 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
     }
   }
 
+  Future<void> _handleLogOut(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          'Log Out',
+          style: GoogleFonts.dmSans(
+            fontWeight: FontWeight.w800,
+            color: WorkerColors.onSurface,
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to log out of SuperBass?',
+          style: GoogleFonts.dmSans(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.dmSans(color: WorkerColors.onSurfaceVariant),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: WorkerColors.error,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(
+              'Log Out',
+              style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await AuthService().logout();
+      if (context.mounted) {
+        Navigator.of(context).pushNamedAndRemoveUntil('/join', (route) => false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -1013,6 +1059,28 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
             title: 'Account Settings',
             icon: Icons.manage_accounts_rounded,
             children: [
+              // Log Out Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => _handleLogOut(context),
+                  icon: const Icon(Icons.logout_rounded, size: 18),
+                  label: Text(
+                    'Log Out',
+                    style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 14),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                    foregroundColor: Colors.white,
+                    shape: const StadiumBorder(),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    elevation: 0,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Divider(height: 1),
+              const SizedBox(height: 20),
 
               // Danger Zone: Revert to Resident
               Text(

@@ -1,14 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:superbass/data/sri_lanka_locations.dart';
 import 'package:superbass/services/api_service.dart';
-
-import 'location_service_stub.dart'
-    if (dart.library.js_interop) 'location_service_web.dart'
-    if (dart.library.html) 'location_service_web.dart'
-    if (dart.library.io) 'location_service_io.dart';
 
 class LocationService {
   static const String _prefKey = 'selected_find_location';
@@ -121,10 +117,69 @@ class LocationService {
     return null;
   }
 
+  /// Request device or browser GPS permission and return true if granted
+  static Future<bool> requestLocationPermission() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        debugPrint('[LocationService] Location service disabled on device.');
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      return permission == LocationPermission.always || permission == LocationPermission.whileInUse;
+    } catch (e) {
+      debugPrint('[LocationService] Error requesting permission: $e');
+      return false;
+    }
+  }
+
+  /// Get current GPS coordinates (lat, lng) with runtime permission request
+  static Future<Map<String, double>?> getCurrentCoordinates() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        debugPrint('[LocationService] Location services disabled.');
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          debugPrint('[LocationService] Location permissions denied.');
+          return null;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        debugPrint('[LocationService] Location permissions permanently denied.');
+        return null;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 10),
+        ),
+      );
+
+      return {
+        'lat': position.latitude,
+        'lng': position.longitude,
+      };
+    } catch (e) {
+      debugPrint('[LocationService] Error getting GPS coordinates: $e');
+      return null;
+    }
+  }
+
   /// Detect device GPS location and return city/area name
   static Future<String?> detectGpsCity() async {
     try {
-      final coords = await PlatformLocationService.getCurrentCoordinates();
+      final coords = await getCurrentCoordinates();
       if (coords != null && coords['lat'] != null && coords['lng'] != null) {
         final city = await reverseGeocode(coords['lat']!, coords['lng']!);
         if (city != null && city.isNotEmpty) {
