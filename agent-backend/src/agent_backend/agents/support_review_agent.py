@@ -16,6 +16,7 @@ from agent_backend.utils.card_builders import (
     build_support_review_card,
     format_specialist_structured_message
 )
+from agent_backend.knowledge import get_formatted_policy_knowledge_base
 
 logger = logging.getLogger("agent_backend.support_review_agent")
 
@@ -34,7 +35,8 @@ async def support_review_agent_node(state: AgentState) -> Dict[str, Any]:
         SystemMessage(
             content=SUPPORT_REVIEW_SYSTEM_PROMPT.format(
                 email=email,
-                user_profile=user_profile
+                user_profile=user_profile,
+                policy_knowledge_base=get_formatted_policy_knowledge_base()
             )
         )
     ] + clean_messages

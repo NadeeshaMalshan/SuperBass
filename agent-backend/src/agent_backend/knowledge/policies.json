@@ -1,0 +1,52 @@
+{
+  "platform_name": "Workio",
+  "version": "1.0",
+  "last_updated": "2026-10-01",
+  "policies": {
+    "cancellation_and_rescheduling": {
+      "title": "Cancellation & Rescheduling Policy",
+      "free_cancellation_window": "Up to 2 hours before scheduled appointment time.",
+      "late_cancellation_fee": "Rs. 500 dispatch compensation if cancelled within 2 hours of start time or after worker is en route.",
+      "rescheduling_rules": "Rescheduling is 100% free if done before the technician arrives at your location.",
+      "worker_no_show_compensation": "If a technician fails to arrive without prior notice, resident receives a Rs. 1,000 platform credit toward their next service."
+    },
+    "workmanship_guarantee": {
+      "title": "7-Day Workmanship Guarantee & Warranty",
+      "warranty_period": "7 days from the completion timestamp of the booking.",
+      "coverage": "Covers labor and craftsmanship defects for the specific problem repaired.",
+      "recurrent_issue_resolution": "If the exact same issue recurs within 7 days (e.g. pipe leaks again, electrical switch fails), Workio re-dispatches a technician to re-inspect and fix it at zero extra labor charge.",
+      "exclusions": "New unrelated faults, user misuse, or pre-existing third-party structural defects are not covered."
+    },
+    "pricing_and_payments": {
+      "title": "Pricing & Payment Standards",
+      "pricing_models": "Hourly rates (typically Rs. 2,000 - 3,500/hr depending on trade) or fixed quotes for major tasks.",
+      "advance_payment_rule": "Strictly NO advance payment is required for standard service appointments.",
+      "payment_timing": "Payment is made only upon satisfactory completion and inspection of the work.",
+      "accepted_payment_methods": ["Cash directly to the technician", "Online debit/credit card through Workio platform"],
+      "diagnostic_inspection_fee": "A standard diagnostic fee of Rs. 1,000 applies only if an in-person diagnostic is performed and the resident chooses not to proceed with the repair."
+    },
+    "trust_and_safety": {
+      "title": "Technician Vetting & Safety Standards",
+      "vetting_requirements": [
+        "Government National Identity Card (NIC) verification",
+        "Mandatory Sri Lanka Police Clearance Certificate",
+        "Practical trade skill evaluation & reference check",
+        "Ongoing community rating threshold (minimum 4.0 out of 5 stars)"
+      ],
+      "property_protection_guarantee": "Workio Trust & Safety covers verified accidental property damages caused during the service up to Rs. 50,000.",
+      "platform_protection_rule": "Warranties and damage protections only apply to bookings registered through the Workio platform."
+    },
+    "disputes_and_escalation": {
+      "title": "Dispute Resolution & Customer Escalation",
+      "dispute_filing": "Residents can report damages, unfulfilled work, no-shows, or overcharging directly in AI Chat or via Support Hotline.",
+      "response_sla": "Trust & Safety team reviews formal dispute tickets within 2 to 4 business hours.",
+      "human_supervisor_escalation": "For urgent concerns or unresolved issues, chat can be escalated to a live human supervisor with an average wait time under 5 minutes."
+    },
+    "support_contacts": {
+      "emergency_hotline": "+94 11 234 5678",
+      "operating_hours": "8:00 AM – 10:00 PM daily (Sri Lanka Standard Time)",
+      "email": "support@superbass.lk",
+      "headquarters": "Colombo, Sri Lanka"
+    }
+  }
+}
