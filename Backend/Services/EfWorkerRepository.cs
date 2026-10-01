@@ -28,7 +28,16 @@ namespace Superbass.Services
             return await _context.Workers.Include(w => w.Skills).FirstOrDefaultAsync(w => w.ResidentEmail == email || w.Email == email);
         }
 
-        public async Task<IEnumerable<Worker>> SearchWorkersAsync(string? skill, string? location, double? maxDistanceKm, double? residentLat = null, double? residentLng = null, decimal? maxHourlyRate = null, decimal? minHourlyRate = null)
+        public async Task<IEnumerable<Worker>> SearchWorkersAsync(
+            string? skill,
+            string? location,
+            double? maxDistanceKm,
+            double? residentLat = null,
+            double? residentLng = null,
+            decimal? maxHourlyRate = null,
+            decimal? minHourlyRate = null,
+            string? province = null,
+            string? district = null)
         {
             var query = _context.Workers.Include(w => w.Skills).AsQueryable();
 
@@ -77,6 +86,49 @@ namespace Superbass.Services
                 query = query.Where(w => w.PrimaryServiceArea != null && w.PrimaryServiceArea.ToLower().Contains(location.ToLower()));
             }
 
+            // Province Filtering
+            if (!string.IsNullOrWhiteSpace(province) && !province.Equals("all", StringComparison.OrdinalIgnoreCase))
+            {
+                var provTerm = province.Trim().ToLower().Replace(" province", "");
+                var matchingDistricts = DistrictToProvinceMap
+                    .Where(kv => kv.Value.ToLower().Contains(provTerm))
+                    .Select(kv => kv.Key.ToLower())
+                    .ToList();
+
+                var matchingAreas = AreaToDistrictMap
+                    .Where(kv => matchingDistricts.Contains(kv.Value.ToLower()))
+                    .Select(kv => kv.Key.ToLower())
+                    .ToList();
+
+                query = query.Where(w =>
+                    (w.Province != null && w.Province.ToLower().Contains(provTerm)) ||
+                    (w.District != null && matchingDistricts.Contains(w.District.ToLower())) ||
+                    (w.PrimaryServiceArea != null && (
+                        matchingAreas.Contains(w.PrimaryServiceArea.ToLower()) ||
+                        matchingDistricts.Contains(w.PrimaryServiceArea.ToLower()) ||
+                        w.PrimaryServiceArea.ToLower().Contains(provTerm)
+                    ))
+                );
+            }
+
+            // District Filtering
+            if (!string.IsNullOrWhiteSpace(district) && !district.Equals("all", StringComparison.OrdinalIgnoreCase))
+            {
+                var distTerm = district.Trim().ToLower();
+                var matchingAreas = AreaToDistrictMap
+                    .Where(kv => kv.Value.ToLower().Equals(distTerm, StringComparison.OrdinalIgnoreCase))
+                    .Select(kv => kv.Key.ToLower())
+                    .ToList();
+
+                query = query.Where(w =>
+                    (w.District != null && w.District.ToLower().Contains(distTerm)) ||
+                    (w.PrimaryServiceArea != null && (
+                        w.PrimaryServiceArea.ToLower().Contains(distTerm) ||
+                        matchingAreas.Contains(w.PrimaryServiceArea.ToLower())
+                    ))
+                );
+            }
+
             if (maxHourlyRate.HasValue)
             {
                 query = query.Where(w => w.HourlyRate != null && w.HourlyRate <= maxHourlyRate.Value);
@@ -122,6 +174,81 @@ namespace Superbass.Services
 
             return workers;
         }
+
+        public static readonly Dictionary<string, string> DistrictToProvinceMap = new(StringComparer.OrdinalIgnoreCase)
+        {
+            // Western Province
+            { "Colombo", "Western Province" },
+            { "Gampaha", "Western Province" },
+            { "Kalutara", "Western Province" },
+            // Central Province
+            { "Kandy", "Central Province" },
+            { "Matale", "Central Province" },
+            { "Nuwara Eliya", "Central Province" },
+            // Southern Province
+            { "Galle", "Southern Province" },
+            { "Matara", "Southern Province" },
+            { "Hambantota", "Southern Province" },
+            // Northern Province
+            { "Jaffna", "Northern Province" },
+            { "Kilinochchi", "Northern Province" },
+            { "Mannar", "Northern Province" },
+            { "Mullaitivu", "Northern Province" },
+            { "Vavuniya", "Northern Province" },
+            // Eastern Province
+            { "Trincomalee", "Eastern Province" },
+            { "Batticaloa", "Eastern Province" },
+            { "Ampara", "Eastern Province" },
+            // North Western Province
+            { "Kurunegala", "North Western Province" },
+            { "Puttalam", "North Western Province" },
+            // North Central Province
+            { "Anuradhapura", "North Central Province" },
+            { "Polonnaruwa", "North Central Province" },
+            // Uva Province
+            { "Badulla", "Uva Province" },
+            { "Monaragala", "Uva Province" },
+            // Sabaragamuwa Province
+            { "Ratnapura", "Sabaragamuwa Province" },
+            { "Kegalle", "Sabaragamuwa Province" }
+        };
+
+        public static readonly Dictionary<string, string> AreaToDistrictMap = new(StringComparer.OrdinalIgnoreCase)
+        {
+            // Colombo District
+            { "Colombo", "Colombo" }, { "Dehiwala", "Colombo" }, { "Mount Lavinia", "Colombo" },
+            { "Moratuwa", "Colombo" }, { "Kotte", "Colombo" }, { "Kaduwela", "Colombo" },
+            { "Maharagama", "Colombo" }, { "Kesbewa", "Colombo" }, { "Homagama", "Colombo" },
+            { "Kolonnawa", "Colombo" }, { "Padukka", "Colombo" }, { "Hanwella", "Colombo" },
+            { "Ratmalana", "Colombo" }, { "Nugegoda", "Colombo" }, { "Battaramulla", "Colombo" },
+            { "Rajagiriya", "Colombo" }, { "Malabe", "Colombo" }, { "Piliyandala", "Colombo" },
+            { "Pannipitiya", "Colombo" }, { "Kottawa", "Colombo" }, { "Athurugiriya", "Colombo" },
+
+            // Gampaha District
+            { "Gampaha", "Gampaha" }, { "Negombo", "Gampaha" }, { "Kelaniya", "Gampaha" },
+            { "Wattala", "Gampaha" }, { "Ja-Ela", "Gampaha" }, { "Kandana", "Gampaha" },
+            { "Ragama", "Gampaha" }, { "Kiribathgoda", "Gampaha" }, { "Minuwangoda", "Gampaha" },
+            { "Mirigama", "Gampaha" }, { "Veyangoda", "Gampaha" }, { "Kadawatha", "Gampaha" },
+
+            // Kalutara District
+            { "Kalutara", "Kalutara" }, { "Panadura", "Kalutara" }, { "Horana", "Kalutara" },
+            { "Beruwala", "Kalutara" }, { "Wadduwa", "Kalutara" }, { "Aluthgama", "Kalutara" },
+            { "Matugama", "Kalutara" }, { "Bandaragama", "Kalutara" },
+
+            // Central Province
+            { "Kandy", "Kandy" }, { "Peradeniya", "Kandy" }, { "Katugastota", "Kandy" }, { "Gampola", "Kandy" },
+            { "Matale", "Matale" }, { "Dambulla", "Matale" },
+            { "Nuwara Eliya", "Nuwara Eliya" }, { "Hatton", "Nuwara Eliya" },
+
+            // Southern Province
+            { "Galle", "Galle" }, { "Hikkaduwa", "Galle" }, { "Karapitiya", "Galle" }, { "Ambalangoda", "Galle" },
+            { "Matara", "Matara" }, { "Weligama", "Matara" }, { "Dickwella", "Matara" },
+            { "Hambantota", "Hambantota" }, { "Tangalle", "Hambantota" },
+
+            // Sabaragamuwa Province
+            { "Ratnapura", "Ratnapura" }, { "Balangoda", "Ratnapura" }, { "Embilipitiya", "Ratnapura" },
+            { "Kegalle", "Kegalle" }, { "Mawanella", "Kegalle" }
+        };
 
         private static readonly Dictionary<string, (double Lat, double Lng)> KnownCityCoordinates = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -236,6 +363,8 @@ namespace Superbass.Services
             existing.ProfileImage = updatedWorker.ProfileImage;
             existing.Description = updatedWorker.Description;
             existing.PrimaryServiceArea = updatedWorker.PrimaryServiceArea;
+            if (!string.IsNullOrWhiteSpace(updatedWorker.Province)) existing.Province = updatedWorker.Province;
+            if (!string.IsNullOrWhiteSpace(updatedWorker.District)) existing.District = updatedWorker.District;
             existing.PricingModel = updatedWorker.PricingModel;
             existing.HourlyRate = updatedWorker.HourlyRate;
             existing.DailyRate = updatedWorker.DailyRate;
@@ -338,6 +467,23 @@ namespace Superbass.Services
 
             worker.PrimaryServiceArea = serviceArea;
             worker.CoverageRadiusKm = radiusKm;
+
+            if (!string.IsNullOrWhiteSpace(serviceArea))
+            {
+                if (DistrictToProvinceMap.TryGetValue(serviceArea, out var prov))
+                {
+                    worker.District = serviceArea;
+                    worker.Province = prov;
+                }
+                else if (AreaToDistrictMap.TryGetValue(serviceArea, out var dist))
+                {
+                    worker.District = dist;
+                    if (DistrictToProvinceMap.TryGetValue(dist, out var p))
+                    {
+                        worker.Province = p;
+                    }
+                }
+            }
 
             await _context.SaveChangesAsync();
             return true;
