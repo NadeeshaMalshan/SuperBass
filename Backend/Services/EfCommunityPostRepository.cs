@@ -84,7 +84,9 @@ namespace Superbass.Services
 
                 if (!string.IsNullOrWhiteSpace(categoryId) && !categoryId.Equals("all", StringComparison.OrdinalIgnoreCase))
                 {
-                    query = query.Where(p => p.ServiceCategoryId == categoryId);
+                    var cleanCat = categoryId.Trim().ToLower();
+                    var normCatId = ServiceCategoryConstants.ToCategoryId(ServiceCategoryConstants.NormalizeCategoryName(categoryId));
+                    query = query.Where(p => p.ServiceCategoryId.ToLower() == cleanCat || p.ServiceCategoryId == normCatId || p.ServiceCategoryName.ToLower() == cleanCat);
                 }
 
                 if (!string.IsNullOrWhiteSpace(location) && !location.Equals("all", StringComparison.OrdinalIgnoreCase))

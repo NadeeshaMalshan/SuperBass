@@ -826,6 +826,44 @@ def test_draft_content_never_uses_ai_announcement():
     assert card_resp.response_type == "post_confirmation"
     assert "Here is your draft" not in card_resp.card_data["content"]
     assert "tap is leaking" in card_resp.card_data["content"]
+    # Verify title is issue-related and NEVER generic "Community Service Request"
+    assert card_resp.card_data["title"] != "Community Service Request"
+    assert any(w in card_resp.card_data["title"].lower() for w in ["tap", "leaking", "washroom", "plumbing"])
+
+
+def test_draft_title_is_always_issue_related():
+    """Verify that community post title is generated from the issue, not 'Community Service Request'."""
+    from agent_backend.utils.card_builders import _deterministic_card_builder, generate_issue_title
+
+    # 1. Direct helper unit tests
+    t1 = generate_issue_title("Community Service Request", "my room electrical wiring is messy and sparking", "Electrical")
+    assert t1 != "Community Service Request"
+    assert "Wiring" in t1 or "Electrical" in t1
+
+    t2 = generate_issue_title(None, "my AC is not cooling at all", "AC & Air Conditioning")
+    assert t2 != "Community Service Request"
+    assert "AC" in t2 or "Cooling" in t2
+
+    t3 = generate_issue_title("**Title**: Broken Kitchen Cabinet", "", "Carpentry")
+    assert t3 == "Broken Kitchen Cabinet"
+
+    # 2. State-driven card builder test
+    state = {
+        "messages": [
+            HumanMessage(content="Can you create a community post for my electrical short circuit in the living room?"),
+            AIMessage(content="Here is your draft community post:\n• **Title**: Electrical Short Circuit in Living Room\n• **Category**: Electrical\n• **Location**: Colombo\n• **Content**: Experiencing a short circuit in the living room. Need a certified electrician.")
+        ],
+        "email": "jayashan@workio.lk",
+        "user_type": "Resident",
+        "user_profile": {"displayName": "Jayashan", "address": "Colombo"},
+        "next": None,
+        "structured_response": None,
+        "metadata": {"inferred_category": "Electrical"}
+    }
+    card_resp = _deterministic_card_builder(state)
+    assert card_resp.response_type == "post_confirmation"
+    assert card_resp.card_data["title"] == "Electrical Short Circuit in Living Room"
+    assert card_resp.card_data["title"] != "Community Service Request"
 
 
 def test_title_update_suggestions():

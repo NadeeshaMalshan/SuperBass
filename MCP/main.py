@@ -10,6 +10,7 @@ import math
 import re
 import logging
 from dotenv import load_dotenv
+import jwt
 
 # Zero-Trust Auth & Eligibility Logic
 async def get_authenticated_user(request: Request) -> str:
@@ -81,6 +82,27 @@ MCP_ERROR_CODES = {
 # Backend configuration
 BACKEND_BASE_URL = os.getenv("BACKEND_BASE_URL", "http://localhost:5000")
 backend_client = httpx.AsyncClient(base_url=BACKEND_BASE_URL, timeout=30.0)
+
+# JWT Authentication for SuperBass Backend API (for authorized endpoints like Bookings)
+JWT_SECRET = os.getenv("JWT_SECRET") or os.getenv("Authentication__Jwt__Secret", "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")
+
+def generate_jwt_token(email: str = "dampahalagevenuri@gmail.com", name: str = "Workio Resident", role: str = "Resident") -> str:
+    now = int(datetime.utcnow().timestamp())
+    payload = {
+        "nameid": email,
+        "email": email,
+        "unique_name": name,
+        "role": role,
+        "nbf": now,
+        "iat": now,
+        "exp": now + 86400 * 30
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+
+def get_auth_headers(email: Optional[str] = None) -> Dict[str, str]:
+    target_email = email or "dampahalagevenuri@gmail.com"
+    token = generate_jwt_token(target_email)
+    return {"Authorization": f"Bearer {token}"}
 
 # In-memory storage for demo purposes (can be removed if not needed)
 resources = {
@@ -542,6 +564,16 @@ async def call_search_workers(args: Dict[str, Any]):
         except (ValueError, TypeError):
             pass
 
+    # Support pagination
+    if args.get("pageSize") is not None:
+        try:
+            page_size = max(1, int(args.get("pageSize", 10)))
+            page_num = max(1, int(args.get("page", 1)))
+            start_idx = (page_num - 1) * page_size
+            workers = workers[start_idx : start_idx + page_size]
+        except (ValueError, TypeError):
+            pass
+
     return workers
 
 async def call_get_worker_details(args: Dict[str, Any]):
@@ -649,7 +681,7 @@ async def call_check_worker_availability(args: Dict[str, Any]):
 
 async def call_create_booking(args: Dict[str, Any]):
     worker_id = int(args.get("workerId", 0))
-    resident_email = args.get("residentId") or "resident@workio.lk"
+    resident_email = args.get("residentId") or "dampahalagevenuri@gmail.com"
     if "@" not in resident_email:
         resident_email = f"{resident_email}@workio.lk"
     normalized_start = normalize_datetime_str(args.get("startTime"), default_hour=10) or args.get("startTime")
@@ -662,34 +694,50 @@ async def call_create_booking(args: Dict[str, Any]):
         "locationAddress": args.get("locationAddress", "Colombo"),
         "contactPhone": args.get("contactPhone", "0771234567")
     }
-    response = await backend_client.post("/api/Bookings", json=payload)
+    headers = get_auth_headers(resident_email)
+    response = await backend_client.post("/api/Bookings", json=payload, headers=headers)
+    if response.status_code >= 400:
+        raise ValueError(f"Backend error ({response.status_code}): {response.text}")
     return response.json()
 
 async def call_get_booking(args: Dict[str, Any]):
     booking_id = args["bookingId"]
-    response = await backend_client.get(f"/api/Bookings/{booking_id}")
+    headers = get_auth_headers()
+    response = await backend_client.get(f"/api/Bookings/{booking_id}", headers=headers)
+    if response.status_code >= 400:
+        raise ValueError(f"Backend error ({response.status_code}): {response.text}")
     return response.json()
 
 async def call_get_resident_bookings(args: Dict[str, Any]):
     resident_id = args["residentId"]
     upcoming_only = args.get("upcomingOnly", False)
     params = {"email": resident_id, "upcomingOnly": upcoming_only}
-    response = await backend_client.get("/api/Bookings/resident", params=params)
+    headers = get_auth_headers(resident_id)
+    response = await backend_client.get("/api/Bookings/resident", params=params, headers=headers)
+    if response.status_code >= 400:
+        raise ValueError(f"Backend error ({response.status_code}): {response.text}")
     return response.json()
 
 async def call_cancel_booking(args: Dict[str, Any]):
     booking_id = args["bookingId"]
     reason = args.get("reason", "Cancelled by user")
-    response = await backend_client.post(f"/api/Bookings/{booking_id}/cancel", json={"reason": reason})
+    headers = get_auth_headers()
+    response = await backend_client.post(f"/api/Bookings/{booking_id}/cancel", json={"reason": reason}, headers=headers)
+    if response.status_code >= 400:
+        raise ValueError(f"Backend error ({response.status_code}): {response.text}")
     return response.json()
 
 async def call_reschedule_booking(args: Dict[str, Any]):
     booking_id = args["bookingId"]
+    normalized_start = normalize_datetime_str(args.get("startTime"), default_hour=10) or args.get("startTime")
     payload = {
-        "scheduledDate": args.get("startTime"),
+        "scheduledDate": normalized_start,
         "note": args.get("reason", "")
     }
-    response = await backend_client.post(f"/api/Bookings/{booking_id}/reschedule", json=payload)
+    headers = get_auth_headers()
+    response = await backend_client.post(f"/api/Bookings/{booking_id}/reschedule", json=payload, headers=headers)
+    if response.status_code >= 400:
+        raise ValueError(f"Backend error ({response.status_code}): {response.text}")
     return response.json()
 
 async def call_create_community_post(args: Dict[str, Any]):
@@ -730,7 +778,7 @@ async def call_get_community_posts(args: Dict[str, Any]):
         response = await backend_client.get(f"/api/community-posts/{community_id}", params=params)
     else:
         if community_id and community_id.lower() != "all":
-            params["category"] = community_id
+            params["category"] = community_id.lower()
         response = await backend_client.get("/api/community-posts", params=params)
     if response.status_code >= 400:
         raise ValueError(f"Backend error ({response.status_code}): {response.text}")
@@ -769,13 +817,16 @@ async def call_create_worker_review(args: Dict[str, Any]):
     if not booking_id:
         raise ValueError("bookingId required for creating review")
     rating = int(args.get("rating", 5))
+    comment = args.get("comment", "")
     payload = {
         "qualityRating": rating,
         "punctualityRating": rating,
         "communicationRating": rating,
-        "comment": args.get("comment", "")
+        "reviewComment": comment,
+        "comment": comment
     }
-    response = await backend_client.post(f"/api/Bookings/{booking_id}/review", json=payload)
+    headers = get_auth_headers(args.get("residentId"))
+    response = await backend_client.post(f"/api/Bookings/{booking_id}/review", json=payload, headers=headers)
     if response.status_code >= 400:
         raise ValueError(f"Backend error ({response.status_code}): {response.text}")
     return response.json() if response.text else {"success": True}

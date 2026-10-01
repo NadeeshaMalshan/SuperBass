@@ -40,7 +40,7 @@ export default function AiCommunityChat() {
         if (!picture && payload.picture) {
           picture = payload.picture;
         }
-      } catch {}
+      } catch { }
     }
 
     if (!name && email) {
@@ -112,7 +112,7 @@ export default function AiCommunityChat() {
           setUserLocation(coords);
           try {
             localStorage.setItem('workio_user_coords', JSON.stringify(coords));
-          } catch {}
+          } catch { }
         },
         (err) => {
           console.warn('Geolocation not enabled or unavailable, defaulting to Colombo:', err);
@@ -379,7 +379,15 @@ export default function AiCommunityChat() {
 
   return (
     <div className="find-page-container ai-chat-uber-page">
-      {/* SuperBass Material 3 Top Navbar (Dark Theme matching Landing Page) (Rendered Globally) */}
+      {/* SuperBass Material 3 Top Navbar (Dark Theme matching Landing Page) */}
+      <M3TopNavbar
+        theme="dark"
+        activePage="ai"
+        showSidebarToggle={true}
+        isSidebarCollapsed={isSidebarCollapsed}
+        onToggleSidebar={() => setIsSidebarCollapsed((prev) => !prev)}
+        alwaysShowLinks={true}
+      />
 
       <div className="find-layout ai-chat-uber-layout">
         {/* Left Sidebar — Quick Actions, Emergency Services & Urgent Help */}
@@ -558,48 +566,48 @@ export default function AiCommunityChat() {
                     msg.cardResponse?.response_type === 'post_created'
                   );
 
-                return (
-                  <div key={msg.id} className={`ai-bubble-row ${isUser ? 'resident' : 'assistant'} ${isWorkerList ? 'worker-list-row' : ''} ${isFullWidthWorkerList ? 'full-width' : ''} ${workerCountClass} ${isCommunityPost ? 'community-post-row' : ''}`}>
-                    {!isUser && (
-                      <div className="ai-msg-avatar bot-av">
-                        <img
-                          src={workioLogoWhite}
-                          alt="Workio AI"
-                          style={{ width: '18px', height: '18px', objectFit: 'contain' }}
-                        />
-                      </div>
-                    )}
-
-                    <div className={`ai-msg-wrapper ${isWorkerList ? 'worker-list-msg-wrapper' : ''} ${isFullWidthWorkerList ? 'full-width' : ''} ${workerCountClass} ${isCommunityPost ? 'community-post-msg-wrapper' : ''}`}>
-                      {isUser ? (
-                        <div className="ai-bubble resident">
-                          <div>{msg.text}</div>
+                  return (
+                    <div key={msg.id} className={`ai-bubble-row ${isUser ? 'resident' : 'assistant'} ${isWorkerList ? 'worker-list-row' : ''} ${isFullWidthWorkerList ? 'full-width' : ''} ${workerCountClass} ${isCommunityPost ? 'community-post-row' : ''}`}>
+                      {!isUser && (
+                        <div className="ai-msg-avatar bot-av">
+                          <img
+                            src={workioLogoWhite}
+                            alt="Workio AI"
+                            style={{ width: '18px', height: '18px', objectFit: 'contain' }}
+                          />
                         </div>
-                      ) : (
-                        <>
-                          {hasPlainTextMessage && (
-                            <div className="ai-bubble assistant text-bubble">
-                              <div>{msg.cardResponse.message}</div>
-                            </div>
-                          )}
-                          <div className={`ai-bubble assistant ai-card-bubble ${isWorkerList ? 'worker-list-bubble' : ''} ${workerCountClass} ${isCommunityPost ? 'community-post-bubble' : ''}`}>
-                            <AgentCardDispatcher
-                              response={msg.cardResponse}
-                              onAction={handleCardAction}
-                            />
-                          </div>
-                        </>
                       )}
-                      <span className="ai-msg-time">
-                        {msg.time}
-                        {isUser && (
-                          <i className="fa-solid fa-check-double ai-check-icon"></i>
+
+                      <div className={`ai-msg-wrapper ${isWorkerList ? 'worker-list-msg-wrapper' : ''} ${isFullWidthWorkerList ? 'full-width' : ''} ${workerCountClass} ${isCommunityPost ? 'community-post-msg-wrapper' : ''}`}>
+                        {isUser ? (
+                          <div className="ai-bubble resident">
+                            <div>{msg.text}</div>
+                          </div>
+                        ) : (
+                          <>
+                            {hasPlainTextMessage && (
+                              <div className="ai-bubble assistant text-bubble">
+                                <div>{msg.cardResponse.message}</div>
+                              </div>
+                            )}
+                            <div className={`ai-bubble assistant ai-card-bubble ${isWorkerList ? 'worker-list-bubble' : ''} ${workerCountClass} ${isCommunityPost ? 'community-post-bubble' : ''}`}>
+                              <AgentCardDispatcher
+                                response={msg.cardResponse}
+                                onAction={handleCardAction}
+                              />
+                            </div>
+                          </>
                         )}
-                      </span>
+                        <span className="ai-msg-time">
+                          {msg.time}
+                          {isUser && (
+                            <i className="fa-solid fa-check-double ai-check-icon"></i>
+                          )}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                );
-              }))}
+                  );
+                }))}
 
               {loading && (
                 <div className="ai-bubble-row assistant">
