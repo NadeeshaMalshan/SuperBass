@@ -10,6 +10,8 @@ enum NotificationType {
   bookingCancelled,
   bookingStarted,
   bookingCompleted,
+  communityLike,
+  communityComment,
   general,
 }
 
@@ -20,7 +22,7 @@ class AppNotification {
   final NotificationType type;
   final DateTime timestamp;
   bool isRead;
-  final int? referenceId; // bookingId or conversationId
+  final int? referenceId; // bookingId or conversationId or postId
   final Map<String, dynamic>? metadata;
 
   AppNotification({
@@ -50,6 +52,10 @@ class AppNotification {
         return Icons.play_arrow_rounded;
       case NotificationType.bookingCompleted:
         return Icons.task_alt_rounded;
+      case NotificationType.communityLike:
+        return Icons.favorite_rounded;
+      case NotificationType.communityComment:
+        return Icons.chat_bubble_outline_rounded;
       case NotificationType.general:
         return Icons.notifications_rounded;
     }
@@ -70,6 +76,10 @@ class AppNotification {
         return const Color(0xFF06B6D4);
       case NotificationType.bookingCompleted:
         return const Color(0xFF10B981);
+      case NotificationType.communityLike:
+        return const Color(0xFFEF4444);
+      case NotificationType.communityComment:
+        return const Color(0xFF8B5CF6);
       case NotificationType.general:
         return AppColors.onSurfaceVariant;
     }

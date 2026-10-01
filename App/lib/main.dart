@@ -13,7 +13,6 @@ import 'screens/join_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/worker/worker_portal_screen.dart';
-import 'screens/worker/become_worker_sheet.dart';
 import 'package:flutter/foundation.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'services/api_config.dart';
@@ -28,6 +27,8 @@ import 'widgets/notifications_sheet.dart';
 import 'widgets/m3_bottom_nav_bar.dart';
 import 'package:loading_indicator_m3e/loading_indicator_m3e.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'data/sri_lanka_locations.dart';
+import 'services/location_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,7 +43,9 @@ void main() async {
     try {
       final appId = ApiConfig.onesignalAppId;
       if (appId.isNotEmpty) {
-        OneSignal.Debug.setLogLevel(kDebugMode ? OSLogLevel.verbose : OSLogLevel.none);
+        OneSignal.Debug.setLogLevel(
+          kDebugMode ? OSLogLevel.verbose : OSLogLevel.none,
+        );
         OneSignal.initialize(appId);
         OneSignal.Notifications.requestPermission(true);
       }
@@ -97,10 +100,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
   void _initNotifications() {
     final user = AuthService().currentUser;
     if (user != null) {
-      NotificationService().startListening(
-        user.email,
-        isWorker: user.isWorker,
-      );
+      NotificationService().startListening(user.email, isWorker: user.isWorker);
       ChatSignalRService().connect(user.email);
       _checkUnreadChats(user.email);
     }
@@ -129,10 +129,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
   void _onAuthChanged() {
     final user = AuthService().currentUser;
     if (user != null) {
-      NotificationService().startListening(
-        user.email,
-        isWorker: user.isWorker,
-      );
+      NotificationService().startListening(user.email, isWorker: user.isWorker);
       ChatSignalRService().connect(user.email);
       _checkUnreadChats(user.email);
     } else {
@@ -210,10 +207,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
                 : _currentIndex;
 
             return Scaffold(
-              body: IndexedStack(
-                index: effectiveIndex,
-                children: pages,
-              ),
+              body: IndexedStack(index: effectiveIndex, children: pages),
               bottomNavigationBar: M3BottomNavigationBar(
                 selectedIndex: effectiveIndex,
                 items: navItems,
@@ -243,35 +237,162 @@ class _FindTabScreenState extends State<FindTabScreen> {
   int? _selectedCategoryIndex;
   List<WorkerModel> _workers = [];
   bool _isLoading = true;
+  String _selectedCity = 'Colombo';
+  String? _primaryAddressCity;
 
   final List<Map<String, dynamic>> _categories = [
-    {'name': 'Plumber', 'skill': 'Plumbing', 'image': 'assets/icons/plumbing.png'},
-    {'name': 'Electrician', 'skill': 'Electrical', 'image': 'assets/icons/electrical.png'},
-    {'name': 'Carpenter', 'skill': 'Carpentry', 'image': 'assets/icons/carpentry.png'},
-    {'name': 'Painter', 'skill': 'Painting', 'image': 'assets/icons/painting.png'},
-    {'name': 'Mason', 'skill': 'Masonry & Construction', 'image': 'assets/icons/masonry.png'},
-    {'name': 'AC Repair', 'skill': 'AC & Air Conditioning', 'image': 'assets/icons/ac_repair.png'},
-    {'name': 'Welding', 'skill': 'Welding', 'image': 'assets/icons/welding.png'},
-    {'name': 'Cleaning', 'skill': 'Cleaning', 'image': 'assets/icons/cleaning.png'},
-    {'name': 'Gardening', 'skill': 'Gardening & Landscaping', 'image': 'assets/icons/gardening.png'},
-    {'name': 'Handyman', 'skill': 'Handyman Services', 'image': 'assets/icons/handyman.png'},
-    {'name': 'Mechanic', 'skill': 'Vehicle Repair & Mechanic', 'image': 'assets/icons/mechanic.png'},
-    {'name': 'Roofing', 'skill': 'Roofing', 'image': 'assets/icons/roofing.png'},
-    {'name': 'Glass & Windows', 'skill': 'Glass & Window Services', 'image': 'assets/icons/glass_window.png'},
-    {'name': 'Locksmith', 'skill': 'Locksmith', 'image': 'assets/icons/locksmith.png'},
-    {'name': 'Appliance', 'skill': 'Appliance Repair', 'image': 'assets/icons/appliance_repair.png'},
-    {'name': 'Computer/IT', 'skill': 'Computer & IT Services', 'image': 'assets/icons/computer_it.png'},
-    {'name': 'Phone Repair', 'skill': 'Phone Repair', 'image': 'assets/icons/phone_repair.png'},
-    {'name': 'Moving', 'skill': 'Moving & Transport', 'image': 'assets/icons/moving.png'},
-    {'name': 'Furniture', 'skill': 'Furniture Repair & Assembly', 'image': 'assets/icons/furniture_repair.png'},
-    {'name': 'Pest Control', 'skill': 'Pest Control', 'image': 'assets/icons/pest_control.png'},
-    {'name': 'CCTV', 'skill': 'CCTV Installation & Repair', 'image': 'assets/icons/cctv.png'},
+    {
+      'name': 'Plumber',
+      'skill': 'Plumbing',
+      'image': 'assets/icons/plumbing.png',
+    },
+    {
+      'name': 'Electrician',
+      'skill': 'Electrical',
+      'image': 'assets/icons/electrical.png',
+    },
+    {
+      'name': 'Carpenter',
+      'skill': 'Carpentry',
+      'image': 'assets/icons/carpentry.png',
+    },
+    {
+      'name': 'Painter',
+      'skill': 'Painting',
+      'image': 'assets/icons/painting.png',
+    },
+    {
+      'name': 'Mason',
+      'skill': 'Masonry & Construction',
+      'image': 'assets/icons/masonry.png',
+    },
+    {
+      'name': 'AC Repair',
+      'skill': 'AC & Air Conditioning',
+      'image': 'assets/icons/ac_repair.png',
+    },
+    {
+      'name': 'Welding',
+      'skill': 'Welding',
+      'image': 'assets/icons/welding.png',
+    },
+    {
+      'name': 'Cleaning',
+      'skill': 'Cleaning',
+      'image': 'assets/icons/cleaning.png',
+    },
+    {
+      'name': 'Gardening',
+      'skill': 'Gardening & Landscaping',
+      'image': 'assets/icons/gardening.png',
+    },
+    {
+      'name': 'Handyman',
+      'skill': 'Handyman Services',
+      'image': 'assets/icons/handyman.png',
+    },
+    {
+      'name': 'Mechanic',
+      'skill': 'Vehicle Repair & Mechanic',
+      'image': 'assets/icons/mechanic.png',
+    },
+    {
+      'name': 'Roofing',
+      'skill': 'Roofing',
+      'image': 'assets/icons/roofing.png',
+    },
+    {
+      'name': 'Glass & Windows',
+      'skill': 'Glass & Window Services',
+      'image': 'assets/icons/glass_window.png',
+    },
+    {
+      'name': 'Locksmith',
+      'skill': 'Locksmith',
+      'image': 'assets/icons/locksmith.png',
+    },
+    {
+      'name': 'Appliance',
+      'skill': 'Appliance Repair',
+      'image': 'assets/icons/appliance_repair.png',
+    },
+    {
+      'name': 'Computer/IT',
+      'skill': 'Computer & IT Services',
+      'image': 'assets/icons/computer_it.png',
+    },
+    {
+      'name': 'Phone Repair',
+      'skill': 'Phone Repair',
+      'image': 'assets/icons/phone_repair.png',
+    },
+    {
+      'name': 'Moving',
+      'skill': 'Moving & Transport',
+      'image': 'assets/icons/moving.png',
+    },
+    {
+      'name': 'Furniture',
+      'skill': 'Furniture Repair & Assembly',
+      'image': 'assets/icons/furniture_repair.png',
+    },
+    {
+      'name': 'Pest Control',
+      'skill': 'Pest Control',
+      'image': 'assets/icons/pest_control.png',
+    },
+    {
+      'name': 'CCTV',
+      'skill': 'CCTV Installation & Repair',
+      'image': 'assets/icons/cctv.png',
+    },
   ];
 
   @override
   void initState() {
     super.initState();
-    _fetchWorkers();
+    _loadInitialLocation();
+  }
+
+  Future<void> _loadInitialLocation() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getString('selected_find_location');
+      if (saved != null && saved.isNotEmpty) {
+        if (mounted) {
+          setState(() {
+            _selectedCity = saved;
+          });
+        }
+        _fetchWorkers();
+      } else {
+        // Default must be taken from GPS
+        final gpsCity = await LocationService.detectGpsCity();
+        final cityToUse = (gpsCity != null && gpsCity.isNotEmpty) ? gpsCity : 'Colombo';
+        if (mounted) {
+          setState(() {
+            _selectedCity = cityToUse;
+          });
+        }
+        await LocationService.setSelectedCity(cityToUse);
+        _fetchWorkers();
+      }
+    } catch (_) {
+      _fetchWorkers();
+    }
+    _loadPrimaryAddress();
+  }
+
+  Future<void> _loadPrimaryAddress() async {
+    try {
+      final user = AuthService().currentUser;
+      final city = await LocationService.getPrimaryAddressCity(user?.email);
+      if (mounted && city != null && city.isNotEmpty) {
+        setState(() {
+          _primaryAddressCity = city;
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _fetchWorkers() async {
@@ -283,10 +404,27 @@ class _FindTabScreenState extends State<FindTabScreen> {
       final selectedSkill = _selectedCategoryIndex != null
           ? _categories[_selectedCategoryIndex!]['skill'] as String?
           : null;
-      final list = await ApiService().fetchWorkers(skill: selectedSkill);
+      final isAllLocations =
+          _selectedCity == 'All Locations' || _selectedCity.trim().isEmpty;
+      final locationQuery = isAllLocations ? null : _selectedCity.trim();
+
+      final list = await ApiService().fetchWorkers(
+        skill: selectedSkill,
+        location: locationQuery,
+      );
+
+      final filtered = isAllLocations
+          ? list
+          : list.where((w) {
+              return LocationService.workerMatchesLocation(
+                w.primaryServiceArea,
+                _selectedCity,
+              );
+            }).toList();
+
       if (mounted) {
         setState(() {
-          _workers = list;
+          _workers = isAllLocations ? list : filtered;
           _isLoading = false;
         });
       }
@@ -297,6 +435,500 @@ class _FindTabScreenState extends State<FindTabScreen> {
         });
       }
     }
+  }
+
+  void _updateCity(String newCity) {
+    setState(() {
+      _selectedCity = newCity;
+    });
+    LocationService.setSelectedCity(newCity);
+    _fetchWorkers();
+  }
+
+  void _showLocationPickerSheet() {
+    final TextEditingController searchController = TextEditingController();
+    bool isDetecting = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          final query = searchController.text.trim().toLowerCase();
+
+          const sriLankaDistricts = [
+            'All Locations',
+            'Ampara',
+            'Anuradhapura',
+            'Badulla',
+            'Batticaloa',
+            'Colombo',
+            'Galle',
+            'Gampaha',
+            'Hambantota',
+            'Jaffna',
+            'Kalutara',
+            'Kandy',
+            'Kegalle',
+            'Kilinochchi',
+            'Kurunegala',
+            'Mannar',
+            'Matale',
+            'Matara',
+            'Monaragala',
+            'Mullaitivu',
+            'Nuwara Eliya',
+            'Polonnaruwa',
+            'Puttalam',
+            'Ratnapura',
+            'Trincomalee',
+            'Vavuniya',
+          ];
+
+          final List<Map<String, String>> matchingPlaces = [];
+          if (query.isNotEmpty) {
+            for (final entry in SriLankaLocations.districtDsMap.entries) {
+              final district = entry.key;
+              if (district.toLowerCase().contains(query)) {
+                matchingPlaces.add({'name': district, 'type': 'District'});
+              }
+              for (final ds in entry.value) {
+                final dsName = ds.split('/').first.split('-').first.trim();
+                if (dsName.toLowerCase().contains(query)) {
+                  matchingPlaces.add({
+                    'name': dsName,
+                    'type': '$district District',
+                  });
+                }
+              }
+            }
+          }
+
+          return Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+            ),
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 12),
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 14, 16, 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Select Location',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 19,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.black,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Find verified pros available in your city',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 12.5,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        icon: const Icon(Icons.close, color: Colors.black),
+                        tooltip: 'Close',
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1, thickness: 1, color: Color(0xFFEEEEEE)),
+
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    children: [
+                      // Option 1: Use Current Location (GPS)
+                      InkWell(
+                        onTap: isDetecting
+                            ? null
+                            : () async {
+                                setModalState(() => isDetecting = true);
+                                try {
+                                  final city = await LocationService.detectGpsCity();
+                                  if (mounted && city != null && city.isNotEmpty) {
+                                    _updateCity(city);
+                                    if (ctx.mounted) Navigator.pop(ctx);
+                                  } else {
+                                    setModalState(() => isDetecting = false);
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Could not detect GPS location. Please select your city below.'),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                } catch (_) {
+                                  setModalState(() => isDetecting = false);
+                                }
+                              },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                            borderRadius: BorderRadius.circular(12),
+                            color: const Color(0xFFFAFAFA),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 38,
+                                height: 38,
+                                decoration: const BoxDecoration(
+                                  color: Colors.black,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: isDetecting
+                                    ? const Padding(
+                                        padding: EdgeInsets.all(10.0),
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Icon(
+                                        Icons.my_location,
+                                        size: 19,
+                                        color: Colors.white,
+                                      ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Use Current Location',
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 14.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      isDetecting
+                                          ? 'Detecting via GPS / Network...'
+                                          : 'Detect your city using device GPS',
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(
+                                Icons.chevron_right,
+                                size: 20,
+                                color: Colors.grey,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      // Option 2: Use Primary Address City
+                      InkWell(
+                        onTap: () async {
+                          if (_primaryAddressCity != null && _primaryAddressCity!.isNotEmpty) {
+                            _updateCity(_primaryAddressCity!);
+                            Navigator.pop(ctx);
+                          } else {
+                            final user = AuthService().currentUser;
+                            final city = await LocationService.getPrimaryAddressCity(user?.email);
+                            if (city != null && city.isNotEmpty) {
+                              _primaryAddressCity = city;
+                              _updateCity(city);
+                              if (ctx.mounted) Navigator.pop(ctx);
+                            } else {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('No primary address found. Please enter or select a city below.'),
+                                  ),
+                                );
+                              }
+                            }
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                            borderRadius: BorderRadius.circular(12),
+                            color: const Color(0xFFFAFAFA),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 38,
+                                height: 38,
+                                decoration: const BoxDecoration(
+                                  color: Colors.black,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.home_outlined,
+                                  size: 20,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Use Primary Address',
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 14.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      (_primaryAddressCity != null && _primaryAddressCity!.isNotEmpty)
+                                          ? 'Saved: $_primaryAddressCity'
+                                          : 'From your resident account profile',
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(
+                                Icons.chevron_right,
+                                size: 20,
+                                color: Colors.grey,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Search text input
+                      TextField(
+                        controller: searchController,
+                        onChanged: (_) => setModalState(() {}),
+                        style: GoogleFonts.dmSans(fontSize: 14, color: Colors.black),
+                        decoration: InputDecoration(
+                          hintText: 'Search city or district (e.g. Ratnapura, Erathna)...',
+                          hintStyle: GoogleFonts.dmSans(fontSize: 13, color: Colors.grey[500]),
+                          prefixIcon: const Icon(Icons.search, size: 20, color: Colors.black87),
+                          suffixIcon: searchController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear, size: 18),
+                                  onPressed: () {
+                                    searchController.clear();
+                                    setModalState(() {});
+                                  },
+                                )
+                              : null,
+                          filled: true,
+                          fillColor: const Color(0xFFF1F5F9),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+
+                      // If manual query has text, show "Use '<query>'" tile so user can type any custom name
+                      if (searchController.text.trim().isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        InkWell(
+                          onTap: () {
+                            final custom = LocationService.cleanLocationName(searchController.text.trim());
+                            if (custom.isNotEmpty) {
+                              _updateCity(custom);
+                              Navigator.pop(ctx);
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(10),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: Colors.black,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.location_on, size: 18, color: Colors.white),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Use "${searchController.text.trim()}"',
+                                    style: GoogleFonts.dmSans(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13.5,
+                                      color: Colors.white,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const Icon(Icons.arrow_forward, size: 16, color: Colors.white),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+
+                      // If search query is empty, show Popular Cities chips
+                      if (searchController.text.trim().isEmpty) ...[
+                        const SizedBox(height: 16),
+                        Text(
+                          'Districts (Sri Lanka)',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: sriLankaDistricts.map((city) {
+                            final isSelected = _selectedCity.toLowerCase() == city.toLowerCase();
+                            return ChoiceChip(
+                              label: Text(city),
+                              selected: isSelected,
+                              onSelected: (_) {
+                                _updateCity(city);
+                                Navigator.pop(ctx);
+                              },
+                              selectedColor: Colors.black,
+                              backgroundColor: const Color(0xFFF1F5F9),
+                              labelStyle: GoogleFonts.dmSans(
+                                fontSize: 12.5,
+                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                color: isSelected ? Colors.white : Colors.black87,
+                              ),
+                              side: BorderSide(
+                                color: isSelected ? Colors.black : const Color(0xFFE2E8F0),
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              showCheckmark: false,
+                            );
+                          }).toList(),
+                        ),
+                      ],
+
+                      // If search query is not empty, show matching results from SriLankaLocations
+                      if (query.isNotEmpty) ...[
+                        const SizedBox(height: 14),
+                        Text(
+                          'Matching Locations (${matchingPlaces.length})',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        if (matchingPlaces.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 16.0),
+                            child: Center(
+                              child: Text(
+                                'No official district/division found.\nYou can tap "Use \\"${searchController.text}\\"" above.',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 13,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ),
+                          )
+                        else
+                          ...matchingPlaces.map((place) {
+                            final name = place['name']!;
+                            final type = place['type']!;
+                            final isSelected = _selectedCity.toLowerCase() == name.toLowerCase();
+                            return ListTile(
+                              dense: true,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                              leading: Icon(
+                                Icons.location_on_outlined,
+                                size: 20,
+                                color: isSelected ? Colors.black : Colors.grey[600],
+                              ),
+                              title: Text(
+                                name,
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 14,
+                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                  color: Colors.black,
+                                ),
+                              ),
+                              subtitle: Text(
+                                type,
+                                style: GoogleFonts.dmSans(fontSize: 11.5, color: Colors.grey[600]),
+                              ),
+                              trailing: isSelected
+                                  ? const Icon(Icons.check, size: 18, color: Colors.black)
+                                  : null,
+                              onTap: () {
+                                _updateCity(name);
+                                Navigator.pop(ctx);
+                              },
+                            );
+                          }),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 
   void _onCategorySelected(int index) {
@@ -349,7 +981,8 @@ class _FindTabScreenState extends State<FindTabScreen> {
                       'assets/icons/AI.png',
                       width: 40,
                       height: 40,
-                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.auto_awesome, size: 30),
+                      errorBuilder: (context, error, stackTrace) =>
+                          const Icon(Icons.auto_awesome, size: 30),
                     ),
                     const SizedBox(width: 12),
                     Column(
@@ -380,7 +1013,8 @@ class _FindTabScreenState extends State<FindTabScreen> {
                   maxLines: 3,
                   autofocus: true,
                   decoration: InputDecoration(
-                    hintText: 'e.g. My kitchen sink pipe is leaking water under the cabinet...',
+                    hintText:
+                        'e.g. My kitchen sink pipe is leaking water under the cabinet...',
                     hintStyle: GoogleFonts.dmSans(
                       fontSize: 13.5,
                       color: AppColors.onSurfaceVariant,
@@ -405,35 +1039,45 @@ class _FindTabScreenState extends State<FindTabScreen> {
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: [
-                    '🚿 Leaking Tap',
-                    '⚡ Breaker Tripped',
-                    '❄️ AC Not Cooling',
-                    '🚪 Broken Door Lock',
-                    '🎨 Wall Repainting',
-                  ].map((tag) => InkWell(
-                    onTap: () {
-                      setModalState(() {
-                        problemController.text = tag.substring(2).trim();
-                      });
-                    },
-                    borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceVariant,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        tag,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.onSurface,
-                        ),
-                      ),
-                    ),
-                  )).toList(),
+                  children:
+                      [
+                            '🚿 Leaking Tap',
+                            '⚡ Breaker Tripped',
+                            '❄️ AC Not Cooling',
+                            '🚪 Broken Door Lock',
+                            '🎨 Wall Repainting',
+                          ]
+                          .map(
+                            (tag) => InkWell(
+                              onTap: () {
+                                setModalState(() {
+                                  problemController.text = tag
+                                      .substring(2)
+                                      .trim();
+                                });
+                              },
+                              borderRadius: BorderRadius.circular(20),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surfaceVariant,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  tag,
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.onSurface,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          )
+                          .toList(),
                 ),
                 const SizedBox(height: 20),
                 SizedBox(
@@ -445,16 +1089,42 @@ class _FindTabScreenState extends State<FindTabScreen> {
                       Navigator.pop(ctx);
                       if (query.isNotEmpty) {
                         int foundIndex = -1;
-                        if (query.contains('pipe') || query.contains('plumb') || query.contains('tap') || query.contains('sink') || query.contains('leak') || query.contains('water')) {
-                          foundIndex = _categories.indexWhere((c) => c['name'] == 'Plumber');
-                        } else if (query.contains('electric') || query.contains('wire') || query.contains('breaker') || query.contains('power') || query.contains('switch')) {
-                          foundIndex = _categories.indexWhere((c) => c['name'] == 'Electrician');
-                        } else if (query.contains('ac') || query.contains('cool') || query.contains('air')) {
-                          foundIndex = _categories.indexWhere((c) => c['name'] == 'AC Repair');
-                        } else if (query.contains('wood') || query.contains('carpent') || query.contains('door') || query.contains('table') || query.contains('furniture')) {
-                          foundIndex = _categories.indexWhere((c) => c['name'] == 'Carpenter');
-                        } else if (query.contains('paint') || query.contains('wall')) {
-                          foundIndex = _categories.indexWhere((c) => c['name'] == 'Painter');
+                        if (query.contains('pipe') ||
+                            query.contains('plumb') ||
+                            query.contains('tap') ||
+                            query.contains('sink') ||
+                            query.contains('leak') ||
+                            query.contains('water')) {
+                          foundIndex = _categories.indexWhere(
+                            (c) => c['name'] == 'Plumber',
+                          );
+                        } else if (query.contains('electric') ||
+                            query.contains('wire') ||
+                            query.contains('breaker') ||
+                            query.contains('power') ||
+                            query.contains('switch')) {
+                          foundIndex = _categories.indexWhere(
+                            (c) => c['name'] == 'Electrician',
+                          );
+                        } else if (query.contains('ac') ||
+                            query.contains('cool') ||
+                            query.contains('air')) {
+                          foundIndex = _categories.indexWhere(
+                            (c) => c['name'] == 'AC Repair',
+                          );
+                        } else if (query.contains('wood') ||
+                            query.contains('carpent') ||
+                            query.contains('door') ||
+                            query.contains('table') ||
+                            query.contains('furniture')) {
+                          foundIndex = _categories.indexWhere(
+                            (c) => c['name'] == 'Carpenter',
+                          );
+                        } else if (query.contains('paint') ||
+                            query.contains('wall')) {
+                          foundIndex = _categories.indexWhere(
+                            (c) => c['name'] == 'Painter',
+                          );
                         }
                         if (foundIndex != -1) {
                           _onCategorySelected(foundIndex);
@@ -490,10 +1160,22 @@ class _FindTabScreenState extends State<FindTabScreen> {
     final user = AuthService().currentUser;
     final userEmail = user?.email ?? prefs.getString('email') ?? '';
 
-    String initialPhone = prefs.getString('phoneNo') ?? prefs.getString('userPhone') ?? '';
-    String initialAddress = prefs.getString('address') ?? prefs.getString('userAddress') ?? '';
-    double? initialLat = user?.locationLat ?? prefs.getDouble('locationLat') ?? (prefs.getString('locationLat') != null ? double.tryParse(prefs.getString('locationLat')!) : null);
-    double? initialLng = user?.locationLng ?? prefs.getDouble('locationLng') ?? (prefs.getString('locationLng') != null ? double.tryParse(prefs.getString('locationLng')!) : null);
+    String initialPhone =
+        prefs.getString('phoneNo') ?? prefs.getString('userPhone') ?? '';
+    String initialAddress =
+        prefs.getString('address') ?? prefs.getString('userAddress') ?? '';
+    double? initialLat =
+        user?.locationLat ??
+        prefs.getDouble('locationLat') ??
+        (prefs.getString('locationLat') != null
+            ? double.tryParse(prefs.getString('locationLat')!)
+            : null);
+    double? initialLng =
+        user?.locationLng ??
+        prefs.getDouble('locationLng') ??
+        (prefs.getString('locationLng') != null
+            ? double.tryParse(prefs.getString('locationLng')!)
+            : null);
 
     if (userEmail.isNotEmpty) {
       try {
@@ -523,11 +1205,14 @@ class _FindTabScreenState extends State<FindTabScreen> {
       }
     }
 
-    final titleController = TextEditingController(text: 'Need help with ${worker.skills.isNotEmpty ? worker.skills.first : "home service"}');
+    final titleController = TextEditingController(
+      text:
+          'Need help with ${worker.skills.isNotEmpty ? worker.skills.first : "home service"}',
+    );
     final descController = TextEditingController();
     final phoneController = TextEditingController(text: initialPhone);
     final addressController = TextEditingController(text: initialAddress);
-    
+
     DateTime? selectedDate = DateTime.now().add(const Duration(days: 1));
     bool isSubmitting = false;
     String selectedUrgency = 'Medium';
@@ -569,7 +1254,11 @@ class _FindTabScreenState extends State<FindTabScreen> {
                     Expanded(
                       child: Text(
                         'Request Service from ${worker.name}',
-                        style: GoogleFonts.dmSans(fontWeight: FontWeight.w800, fontSize: 22, color: const Color(0xFF111827)),
+                        style: GoogleFonts.dmSans(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 22,
+                          color: const Color(0xFF111827),
+                        ),
                       ),
                     ),
                     IconButton(
@@ -586,8 +1275,13 @@ class _FindTabScreenState extends State<FindTabScreen> {
                     labelText: 'Job Title',
                     hintText: 'e.g. Pipe leakage repair',
                     prefixIcon: const Icon(Icons.work_outline),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 16,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -597,8 +1291,13 @@ class _FindTabScreenState extends State<FindTabScreen> {
                   decoration: InputDecoration(
                     labelText: 'Description / Scope of Work',
                     hintText: 'Describe details or location within house',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 16,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -621,8 +1320,13 @@ class _FindTabScreenState extends State<FindTabScreen> {
                         decoration: InputDecoration(
                           labelText: 'Urgency',
                           prefixIcon: const Icon(Icons.priority_high),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 16,
+                          ),
                         ),
                       ),
                     ),
@@ -639,8 +1343,13 @@ class _FindTabScreenState extends State<FindTabScreen> {
                           labelText: 'Contact Phone',
                           hintText: '07XXXXXXXX',
                           prefixIcon: const Icon(Icons.phone),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 16,
+                          ),
                         ),
                       ),
                     ),
@@ -650,23 +1359,28 @@ class _FindTabScreenState extends State<FindTabScreen> {
                 TextField(
                   readOnly: true,
                   controller: TextEditingController(
-                    text: selectedDate == null 
-                        ? '' 
-                        : '${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}'
+                    text: selectedDate == null
+                        ? ''
+                        : '${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}',
                   ),
                   decoration: InputDecoration(
                     labelText: 'Preferred Date',
                     prefixIcon: const Icon(Icons.calendar_today),
                     suffixIcon: const Icon(Icons.edit_calendar),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 16,
+                    ),
                   ),
                   onTap: () async {
                     final d = await showDatePicker(
-                      context: context, 
-                      initialDate: selectedDate ?? DateTime.now(), 
-                      firstDate: DateTime.now(), 
-                      lastDate: DateTime.now().add(const Duration(days: 365))
+                      context: context,
+                      initialDate: selectedDate ?? DateTime.now(),
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
                     );
                     if (d != null) setModalState(() => selectedDate = d);
                   },
@@ -678,8 +1392,13 @@ class _FindTabScreenState extends State<FindTabScreen> {
                     labelText: 'Location Address',
                     hintText: 'e.g. 123 Galle Road, Colombo',
                     prefixIcon: const Icon(Icons.location_on),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 16,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -702,10 +1421,16 @@ class _FindTabScreenState extends State<FindTabScreen> {
                             value: shareGps,
                             activeColor: Colors.black,
                             checkColor: Colors.white,
-                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
                             visualDensity: VisualDensity.compact,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                            side: const BorderSide(color: Color(0xFF94A3B8), width: 1.5),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            side: const BorderSide(
+                              color: Color(0xFF94A3B8),
+                              width: 1.5,
+                            ),
                             onChanged: (val) {
                               setModalState(() {
                                 shareGps = val ?? false;
@@ -725,7 +1450,11 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                 children: [
                                   Row(
                                     children: [
-                                      const Icon(Icons.my_location, size: 18, color: Colors.black),
+                                      const Icon(
+                                        Icons.my_location,
+                                        size: 18,
+                                        color: Colors.black,
+                                      ),
                                       const SizedBox(width: 6),
                                       Text(
                                         'Share saved GPS location',
@@ -741,18 +1470,30 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                   if (hasSavedCoordinates)
                                     Row(
                                       children: [
-                                        const Icon(Icons.pin_drop, size: 14, color: Colors.black),
+                                        const Icon(
+                                          Icons.pin_drop,
+                                          size: 14,
+                                          color: Colors.black,
+                                        ),
                                         const SizedBox(width: 4),
                                         RichText(
                                           text: TextSpan(
-                                            style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF64748B)),
+                                            style: GoogleFonts.dmSans(
+                                              fontSize: 12,
+                                              color: const Color(0xFF64748B),
+                                            ),
                                             children: [
-                                              const TextSpan(text: 'Saved Pin: '),
+                                              const TextSpan(
+                                                text: 'Saved Pin: ',
+                                              ),
                                               TextSpan(
-                                                text: '${locationLat.toStringAsFixed(5)}, ${locationLng.toStringAsFixed(5)}',
+                                                text:
+                                                    '${locationLat.toStringAsFixed(5)}, ${locationLng.toStringAsFixed(5)}',
                                                 style: GoogleFonts.dmSans(
                                                   fontWeight: FontWeight.w700,
-                                                  color: const Color(0xFF0F172A),
+                                                  color: const Color(
+                                                    0xFF0F172A,
+                                                  ),
                                                 ),
                                               ),
                                             ],
@@ -763,7 +1504,10 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                   else
                                     Text(
                                       'No GPS coordinates saved. Pick on map to attach.',
-                                      style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF64748B)),
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 12,
+                                        color: const Color(0xFF64748B),
+                                      ),
                                     ),
                                 ],
                               ),
@@ -776,12 +1520,18 @@ class _FindTabScreenState extends State<FindTabScreen> {
                               });
                             },
                             icon: Icon(
-                              showMapPicker ? Icons.expand_less : Icons.map_outlined,
+                              showMapPicker
+                                  ? Icons.expand_less
+                                  : Icons.map_outlined,
                               size: 16,
                               color: Colors.black,
                             ),
                             label: Text(
-                              showMapPicker ? 'Hide Map' : (hasSavedCoordinates ? 'View / Change Pin' : 'Pick on Map'),
+                              showMapPicker
+                                  ? 'Hide Map'
+                                  : (hasSavedCoordinates
+                                        ? 'View / Change Pin'
+                                        : 'Pick on Map'),
                               style: GoogleFonts.dmSans(
                                 fontWeight: FontWeight.w700,
                                 fontSize: 13,
@@ -789,7 +1539,10 @@ class _FindTabScreenState extends State<FindTabScreen> {
                               ),
                             ),
                             style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
                               minimumSize: Size.zero,
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
@@ -808,12 +1561,19 @@ class _FindTabScreenState extends State<FindTabScreen> {
                             Expanded(
                               child: Row(
                                 children: [
-                                  const Icon(Icons.touch_app, size: 15, color: Colors.black),
+                                  const Icon(
+                                    Icons.touch_app,
+                                    size: 15,
+                                    color: Colors.black,
+                                  ),
                                   const SizedBox(width: 4),
                                   Flexible(
                                     child: Text(
                                       'Tap anywhere on map to pin',
-                                      style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF64748B)),
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 12,
+                                        color: const Color(0xFF64748B),
+                                      ),
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
@@ -831,16 +1591,25 @@ class _FindTabScreenState extends State<FindTabScreen> {
                               },
                               borderRadius: BorderRadius.circular(8),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFF1F5F9),
-                                  border: Border.all(color: const Color(0xFFCBD5E1)),
+                                  border: Border.all(
+                                    color: const Color(0xFFCBD5E1),
+                                  ),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Icon(Icons.gps_fixed, size: 13, color: Colors.black),
+                                    const Icon(
+                                      Icons.gps_fixed,
+                                      size: 13,
+                                      color: Colors.black,
+                                    ),
                                     const SizedBox(width: 4),
                                     Text(
                                       'Use Device GPS',
@@ -867,8 +1636,10 @@ class _FindTabScreenState extends State<FindTabScreen> {
                           clipBehavior: Clip.antiAlias,
                           child: GestureDetector(
                             onTapDown: (details) {
-                              final normX = (details.localPosition.dx / 280.0) - 0.5;
-                              final normY = (details.localPosition.dy / 180.0) - 0.5;
+                              final normX =
+                                  (details.localPosition.dx / 280.0) - 0.5;
+                              final normY =
+                                  (details.localPosition.dy / 180.0) - 0.5;
                               setModalState(() {
                                 locationLat = locationLat + (normY * 0.02);
                                 locationLng = locationLng + (normX * 0.02);
@@ -882,12 +1653,16 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                 Container(
                                   decoration: const BoxDecoration(
                                     image: DecorationImage(
-                                      image: NetworkImage('https://tile.openstreetmap.org/13/4688/3187.png'),
+                                      image: NetworkImage(
+                                        'https://tile.openstreetmap.org/13/4688/3187.png',
+                                      ),
                                       fit: BoxFit.cover,
                                     ),
                                   ),
                                 ),
-                                Container(color: Colors.black.withValues(alpha: 0.03)),
+                                Container(
+                                  color: Colors.black.withValues(alpha: 0.03),
+                                ),
                                 Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
@@ -897,15 +1672,26 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                         color: Colors.black,
                                         shape: BoxShape.circle,
                                         boxShadow: [
-                                          BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 3)),
+                                          BoxShadow(
+                                            color: Colors.black26,
+                                            blurRadius: 6,
+                                            offset: Offset(0, 3),
+                                          ),
                                         ],
                                       ),
-                                      child: const Icon(Icons.location_on, color: Colors.white, size: 18),
+                                      child: const Icon(
+                                        Icons.location_on,
+                                        color: Colors.white,
+                                        size: 18,
+                                      ),
                                     ),
                                     Container(
                                       width: 6,
                                       height: 3,
-                                      decoration: const BoxDecoration(color: Colors.black38, shape: BoxShape.circle),
+                                      decoration: const BoxDecoration(
+                                        color: Colors.black38,
+                                        shape: BoxShape.circle,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -915,7 +1701,10 @@ class _FindTabScreenState extends State<FindTabScreen> {
                         ),
                         const SizedBox(height: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(8),
@@ -923,16 +1712,26 @@ class _FindTabScreenState extends State<FindTabScreen> {
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.location_on, size: 15, color: Colors.black),
+                              const Icon(
+                                Icons.location_on,
+                                size: 15,
+                                color: Colors.black,
+                              ),
                               const SizedBox(width: 4),
                               RichText(
                                 text: TextSpan(
-                                  style: GoogleFonts.dmSans(fontSize: 11, color: const Color(0xFF0F172A)),
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 11,
+                                    color: const Color(0xFF0F172A),
+                                  ),
                                   children: [
                                     const TextSpan(text: 'Selected: '),
                                     TextSpan(
-                                      text: '${locationLat.toStringAsFixed(6)}, ${locationLng.toStringAsFixed(6)}',
-                                      style: const TextStyle(fontWeight: FontWeight.w700),
+                                      text:
+                                          '${locationLat.toStringAsFixed(6)}, ${locationLng.toStringAsFixed(6)}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -948,7 +1747,10 @@ class _FindTabScreenState extends State<FindTabScreen> {
 
                 // Pricing Info (Read-only)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(12),
@@ -959,7 +1761,11 @@ class _FindTabScreenState extends State<FindTabScreen> {
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.payments_outlined, size: 18, color: Colors.black),
+                          const Icon(
+                            Icons.payments_outlined,
+                            size: 18,
+                            color: Colors.black,
+                          ),
                           const SizedBox(width: 6),
                           Text(
                             'Pricing Model',
@@ -994,11 +1800,16 @@ class _FindTabScreenState extends State<FindTabScreen> {
                           onPressed: () => Navigator.pop(sheetContext),
                           style: TextButton.styleFrom(
                             foregroundColor: const Color(0xFF475569),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(28),
+                            ),
                           ),
                           child: Text(
                             'Cancel',
-                            style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 16),
+                            style: GoogleFonts.dmSans(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                            ),
                           ),
                         ),
                       ),
@@ -1016,7 +1827,9 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                   if (!RegExp(r'^0\d{9}$').hasMatch(phone)) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
-                                        content: Text('Phone number must be exactly 10 digits starting with 0 (e.g. 0771234567).'),
+                                        content: Text(
+                                          'Phone number must be exactly 10 digits starting with 0 (e.g. 0771234567).',
+                                        ),
                                         backgroundColor: AppColors.error,
                                       ),
                                     );
@@ -1024,27 +1837,45 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                   }
 
                                   setModalState(() => isSubmitting = true);
-                                  
+
                                   DateTime? finalDate = selectedDate != null
-                                      ? DateTime.utc(selectedDate!.year, selectedDate!.month, selectedDate!.day)
+                                      ? DateTime.utc(
+                                          selectedDate!.year,
+                                          selectedDate!.month,
+                                          selectedDate!.day,
+                                        )
                                       : null;
 
-                                  final scaffoldMessenger = ScaffoldMessenger.of(context);
+                                  final scaffoldMessenger =
+                                      ScaffoldMessenger.of(context);
                                   final navigator = Navigator.of(sheetContext);
 
-                                  final booking = await ApiService().createBooking(
-                                    workerId: worker.id,
-                                    jobTitle: titleController.text.trim(),
-                                    description: descController.text.trim(),
-                                    urgency: selectedUrgency,
-                                    scheduledDate: finalDate,
-                                    locationAddress: addressController.text.trim().isNotEmpty ? addressController.text.trim() : 'Colombo',
-                                    contactPhone: phoneController.text.trim(),
-                                    estimatedPrice: worker.hourlyRate > 0 ? worker.hourlyRate : 2500.0,
-                                    pricingModel: worker.pricingModel,
-                                    locationLat: shareGps ? locationLat : null,
-                                    locationLng: shareGps ? locationLng : null,
-                                  );
+                                  final booking = await ApiService()
+                                      .createBooking(
+                                        workerId: worker.id,
+                                        jobTitle: titleController.text.trim(),
+                                        description: descController.text.trim(),
+                                        urgency: selectedUrgency,
+                                        scheduledDate: finalDate,
+                                        locationAddress:
+                                            addressController.text
+                                                .trim()
+                                                .isNotEmpty
+                                            ? addressController.text.trim()
+                                            : 'Colombo',
+                                        contactPhone: phoneController.text
+                                            .trim(),
+                                        estimatedPrice: worker.hourlyRate > 0
+                                            ? worker.hourlyRate
+                                            : 2500.0,
+                                        pricingModel: worker.pricingModel,
+                                        locationLat: shareGps
+                                            ? locationLat
+                                            : null,
+                                        locationLng: shareGps
+                                            ? locationLng
+                                            : null,
+                                      );
 
                                   if (sheetContext.mounted) {
                                     navigator.pop();
@@ -1053,32 +1884,51 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                     if (booking != null) {
                                       scaffoldMessenger.showSnackBar(
                                         SnackBar(
-                                          content: Text('Booking #${booking.id} created with ${worker.name}!'),
-                                          backgroundColor: AppColors.success,
+                                          content: Text(
+                                            'Booking #${booking.id} created with ${worker.name}!',
+                                          ),
+                                          backgroundColor: Colors.black,
                                         ),
                                       );
                                     } else {
                                       scaffoldMessenger.showSnackBar(
                                         const SnackBar(
-                                          content: Text('Failed to create booking. Check backend connection.'),
-                                          backgroundColor: AppColors.error,
+                                          content: Text(
+                                            'Failed to create booking. Check backend connection.',
+                                          ),
+                                          backgroundColor: Colors.black,
                                         ),
                                       );
                                     }
                                   }
                                 },
-                          icon: isSubmitting ? const SizedBox.shrink() : const Icon(Icons.send, size: 20),
+                          icon: isSubmitting
+                              ? const SizedBox.shrink()
+                              : const Icon(Icons.send, size: 20, color: Colors.white),
                           label: isSubmitting
-                              ? const SizedBox(width: 22, height: 22, child: LoadingIndicatorM3E())
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
                               : Text(
                                   'Submit Hire Request',
-                                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w800, fontSize: 16, color: Colors.black),
+                                  style: GoogleFonts.dmSans(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 16,
+                                    color: Colors.white,
+                                  ),
                                 ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFFDC101),
-                            foregroundColor: Colors.black,
+                            backgroundColor: Colors.black,
+                            foregroundColor: Colors.white,
                             elevation: 0,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(28),
+                            ),
                           ),
                         ),
                       ),
@@ -1131,21 +1981,35 @@ class _FindTabScreenState extends State<FindTabScreen> {
                       color: AppColors.surfaceVariant,
                     ),
                     child: ClipOval(
-                      child: (worker.profileImage != null && worker.profileImage!.isNotEmpty && worker.profileImage != 'null')
+                      child:
+                          (worker.profileImage != null &&
+                              worker.profileImage!.isNotEmpty &&
+                              worker.profileImage != 'null')
                           ? Image.network(
                               worker.profileImage!,
                               fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => Center(
-                                child: Text(
-                                  worker.name.isNotEmpty ? worker.name[0].toUpperCase() : 'W',
-                                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w800, fontSize: 24),
-                                ),
-                              ),
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Center(
+                                    child: Text(
+                                      worker.name.isNotEmpty
+                                          ? worker.name[0].toUpperCase()
+                                          : 'W',
+                                      style: GoogleFonts.dmSans(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 24,
+                                      ),
+                                    ),
+                                  ),
                             )
                           : Center(
                               child: Text(
-                                worker.name.isNotEmpty ? worker.name[0].toUpperCase() : 'W',
-                                style: GoogleFonts.dmSans(fontWeight: FontWeight.w800, fontSize: 24),
+                                worker.name.isNotEmpty
+                                    ? worker.name[0].toUpperCase()
+                                    : 'W',
+                                style: GoogleFonts.dmSans(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 24,
+                                ),
                               ),
                             ),
                     ),
@@ -1160,43 +2024,75 @@ class _FindTabScreenState extends State<FindTabScreen> {
                             Flexible(
                               child: Text(
                                 worker.name,
-                                style: GoogleFonts.dmSans(fontWeight: FontWeight.w800, fontSize: 20, color: AppColors.onSurface),
+                                style: GoogleFonts.dmSans(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 20,
+                                  color: AppColors.onSurface,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 6),
-                            const Icon(Icons.verified, size: 18, color: AppColors.brandYellowHover),
+                            const Icon(
+                              Icons.verified,
+                              size: 18,
+                              color: AppColors.brandYellowHover,
+                            ),
                           ],
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          worker.skills.isNotEmpty ? worker.skills.join(', ') : 'General Pro',
-                          style: GoogleFonts.dmSans(fontWeight: FontWeight.w500, fontSize: 14, color: AppColors.onSurfaceVariant),
+                          worker.skills.isNotEmpty
+                              ? worker.skills.join(', ')
+                              : 'General Pro',
+                          style: GoogleFonts.dmSans(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 14,
+                            color: AppColors.onSurfaceVariant,
+                          ),
                         ),
                         const SizedBox(height: 6),
                         Row(
                           children: [
-                            const Icon(Icons.star_rounded, size: 18, color: AppColors.starRating),
+                            const Icon(
+                              Icons.star_rounded,
+                              size: 18,
+                              color: AppColors.starRating,
+                            ),
                             const SizedBox(width: 4),
                             Text(
-                              (worker.overallRating != null && worker.overallRating! > 0)
+                              (worker.overallRating != null &&
+                                      worker.overallRating! > 0)
                                   ? worker.overallRating!.toStringAsFixed(1)
                                   : '0',
-                              style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 14),
+                              style: GoogleFonts.dmSans(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                              ),
                             ),
                             if (worker.completedJobs > 0) ...[
                               const SizedBox(width: 4),
                               Text(
                                 '(${worker.completedJobs} jobs)',
-                                style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.onSurfaceVariant),
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 13,
+                                  color: AppColors.onSurfaceVariant,
+                                ),
                               ),
                             ],
                             const SizedBox(width: 12),
-                            const Icon(Icons.location_on_outlined, size: 15, color: AppColors.onSurfaceVariant),
+                            const Icon(
+                              Icons.location_on_outlined,
+                              size: 15,
+                              color: AppColors.onSurfaceVariant,
+                            ),
                             const SizedBox(width: 2),
                             Flexible(
                               child: Text(
                                 worker.primaryServiceArea ?? 'Colombo',
-                                style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.onSurfaceVariant),
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 13,
+                                  color: AppColors.onSurfaceVariant,
+                                ),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
@@ -1210,37 +2106,61 @@ class _FindTabScreenState extends State<FindTabScreen> {
               const SizedBox(height: 20),
               const Divider(color: AppColors.outlineVariant, height: 1),
               const SizedBox(height: 16),
-              if (worker.description != null && worker.description!.isNotEmpty) ...[
+              if (worker.description != null &&
+                  worker.description!.isNotEmpty) ...[
                 Text(
                   'About',
-                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.onSurface),
+                  style: GoogleFonts.dmSans(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                    color: AppColors.onSurface,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   worker.description!,
-                  style: GoogleFonts.dmSans(fontSize: 14, color: const Color(0xFF4B5563), height: 1.45),
+                  style: GoogleFonts.dmSans(
+                    fontSize: 14,
+                    color: const Color(0xFF4B5563),
+                    height: 1.45,
+                  ),
                 ),
                 const SizedBox(height: 16),
               ],
               Text(
                 'Skills & Services',
-                style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.onSurface),
+                style: GoogleFonts.dmSans(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  color: AppColors.onSurface,
+                ),
               ),
               const SizedBox(height: 10),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: worker.skills.map((skill) => Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceVariant,
-                    borderRadius: BorderRadius.circular(9999),
-                  ),
-                  child: Text(
-                    skill,
-                    style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.onSurface),
-                  ),
-                )).toList(),
+                children: worker.skills
+                    .map(
+                      (skill) => Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceVariant,
+                          borderRadius: BorderRadius.circular(9999),
+                        ),
+                        child: Text(
+                          skill,
+                          style: GoogleFonts.dmSans(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            color: AppColors.onSurface,
+                          ),
+                        ),
+                      ),
+                    )
+                    .toList(),
               ),
               const SizedBox(height: 24),
               if (isLoggedIn)
@@ -1260,7 +2180,11 @@ class _FindTabScreenState extends State<FindTabScreen> {
                     ),
                     child: Text(
                       'Book Now',
-                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.onPrimary),
+                      style: GoogleFonts.dmSans(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        color: AppColors.onPrimary,
+                      ),
                     ),
                   ),
                 )
@@ -1274,7 +2198,10 @@ class _FindTabScreenState extends State<FindTabScreen> {
                   ),
                   child: Text(
                     'Please sign in to book this pro or request a service.',
-                    style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.onSurfaceVariant),
+                    style: GoogleFonts.dmSans(
+                      fontSize: 13,
+                      color: AppColors.onSurfaceVariant,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -1303,6 +2230,14 @@ class _FindTabScreenState extends State<FindTabScreen> {
                     ),
                   ),
                 );
+              } else if (n.type == NotificationType.communityLike || n.type == NotificationType.communityComment) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const Scaffold(
+                      body: SafeArea(child: CommunityScreen()),
+                    ),
+                  ),
+                );
               }
             },
           ),
@@ -1311,8 +2246,12 @@ class _FindTabScreenState extends State<FindTabScreen> {
             child: ValueListenableBuilder<AuthUser?>(
               valueListenable: AuthService().currentUserNotifier,
               builder: (context, user, _) {
-                final displayName = user?.name.isNotEmpty == true ? user!.name : 'User';
-                final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U';
+                final displayName = user?.name.isNotEmpty == true
+                    ? user!.name
+                    : 'User';
+                final initial = displayName.isNotEmpty
+                    ? displayName[0].toUpperCase()
+                    : 'U';
                 return InkWell(
                   borderRadius: BorderRadius.circular(18),
                   onTap: () {
@@ -1328,7 +2267,8 @@ class _FindTabScreenState extends State<FindTabScreen> {
                       color: AppColors.primaryContainer,
                     ),
                     child: ClipOval(
-                      child: (user?.picture != null && user!.picture!.isNotEmpty)
+                      child:
+                          (user?.picture != null && user!.picture!.isNotEmpty)
                           ? Image.network(
                               user.picture!,
                               width: 36,
@@ -1376,12 +2316,47 @@ class _FindTabScreenState extends State<FindTabScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    InkWell(
+                      onTap: _showLocationPickerSheet,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.location_on_outlined,
+                              size: 19,
+                              color: AppColors.brandBlack,
+                            ),
+                            const SizedBox(width: 5),
+                            Flexible(
+                              child: Text(
+                                _selectedCity,
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.brandBlack,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 3),
+                            const Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              size: 20,
+                              color: AppColors.brandBlack,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     Text(
                       'Find Trusted Community Pros',
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                      ),
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(fontSize: 24, fontWeight: FontWeight.w800),
                     ),
                     const SizedBox(height: 6),
                     Text(
@@ -1445,7 +2420,9 @@ class _FindTabScreenState extends State<FindTabScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Text(
                   'Browse Categories',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 18),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontSize: 18),
                 ),
               ),
 
@@ -1457,7 +2434,8 @@ class _FindTabScreenState extends State<FindTabScreen> {
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   itemCount: _categories.length,
-                  separatorBuilder: (context, index) => const SizedBox(width: 14),
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(width: 14),
                   itemBuilder: (context, index) {
                     final cat = _categories[index];
                     return SizedBox(
@@ -1485,11 +2463,17 @@ class _FindTabScreenState extends State<FindTabScreen> {
                   children: [
                     Text(
                       'Featured Workers Near You',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 18),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.titleLarge?.copyWith(fontSize: 18),
                     ),
                     Row(
                       children: [
-                        const Icon(Icons.verified, size: 16, color: AppColors.brandYellowHover),
+                        const Icon(
+                          Icons.verified,
+                          size: 16,
+                          color: AppColors.brandYellowHover,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           'Verified (${_workers.length})',
@@ -1518,55 +2502,99 @@ class _FindTabScreenState extends State<FindTabScreen> {
                         ),
                       )
                     : _workers.isEmpty
-                        ? Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(32),
-                            decoration: BoxDecoration(
-                              color: AppColors.surfaceVariant.withValues(alpha: 0.5),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Column(
-                              children: [
-                                const Icon(Icons.engineering_outlined, size: 48, color: AppColors.onSurfaceVariant),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'No workers found in this category',
-                                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 16),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Try selecting "All Pros" or refreshing',
-                                  style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.onSurfaceVariant),
-                                ),
-                              ],
-                            ),
-                          )
-                        : ValueListenableBuilder<AuthUser?>(
-                            valueListenable: AuthService().currentUserNotifier,
-                            builder: (context, currentUser, _) {
-                              final isLoggedIn = currentUser != null;
-                              return Column(
-                                children: _workers.map((worker) {
-                                  final trade = worker.skills.isNotEmpty ? worker.skills.first : 'General Pro';
-                                  return Padding(
-                                    padding: const EdgeInsets.only(bottom: 12.0),
-                                    child: WorkerCard(
-                                      name: worker.name,
-                                      trade: trade,
-                                      rating: worker.overallRating,
-                                      reviewCount: worker.completedJobs,
-                                      location: worker.primaryServiceArea ?? 'Colombo',
-                                      distance: worker.distance != null ? '${worker.distance!.toStringAsFixed(1)} km' : 'Unknown',
-                                      profileImage: worker.profileImage,
-                                      showBookNow: isLoggedIn,
-                                      onBookTap: isLoggedIn ? () => _showBookingSheet(worker) : null,
-                                      onProfileTap: () => _showWorkerDetailSheet(worker),
-                                    ),
-                                  );
-                                }).toList(),
-                              );
-                            },
+                    ? Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(32),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceVariant.withValues(
+                            alpha: 0.5,
                           ),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Column(
+                          children: [
+                            const Icon(
+                              Icons.engineering_outlined,
+                              size: 48,
+                              color: AppColors.onSurfaceVariant,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              _selectedCity == 'All Locations'
+                                  ? 'No workers found in this category'
+                                  : 'No workers found in $_selectedCity',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.dmSans(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _selectedCity == 'All Locations'
+                                  ? 'Try selecting "All Pros" or refreshing'
+                                  : 'Try selecting "All Locations" or another city',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 13,
+                                color: AppColors.onSurfaceVariant,
+                              ),
+                            ),
+                            if (_selectedCity != 'All Locations') ...[
+                              const SizedBox(height: 14),
+                              ElevatedButton(
+                                onPressed: () => _updateCity('All Locations'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.brandBlack,
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  shape: const StadiumBorder(),
+                                ),
+                                child: Text(
+                                  'View All Locations',
+                                  style: GoogleFonts.dmSans(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13.5,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      )
+                    : ValueListenableBuilder<AuthUser?>(
+                        valueListenable: AuthService().currentUserNotifier,
+                        builder: (context, currentUser, _) {
+                          final isLoggedIn = currentUser != null;
+                          return Column(
+                            children: _workers.map((worker) {
+                              final trade = worker.skills.isNotEmpty
+                                  ? worker.skills.first
+                                  : 'General Pro';
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12.0),
+                                child: WorkerCard(
+                                  name: worker.name,
+                                  trade: trade,
+                                  rating: worker.overallRating,
+                                  reviewCount: worker.completedJobs,
+                                  location:
+                                      worker.primaryServiceArea ?? 'Colombo',
+                                  distance: worker.distance != null
+                                      ? '${worker.distance!.toStringAsFixed(1)} km'
+                                      : 'Unknown',
+                                  profileImage: worker.profileImage,
+                                  showBookNow: isLoggedIn,
+                                  onBookTap: isLoggedIn
+                                      ? () => _showBookingSheet(worker)
+                                      : null,
+                                  onProfileTap: () =>
+                                      _showWorkerDetailSheet(worker),
+                                ),
+                              );
+                            }).toList(),
+                          );
+                        },
+                      ),
               ),
               const SizedBox(height: 24),
             ],
@@ -1615,27 +2643,11 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
     }
   }
 
-  Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'confirmed':
-      case 'accepted':
-        return AppColors.success;
-      case 'completed':
-        return Colors.blue;
-      case 'cancelled':
-      case 'rejected':
-        return AppColors.error;
-      case 'pending':
-      default:
-        return Colors.orange;
-    }
-  }
-
   void _showBookingDetails(BookingModel b) {
     final scheduledDateStr = b.scheduledDate != null
         ? '${b.scheduledDate!.day}/${b.scheduledDate!.month}/${b.scheduledDate!.year}'
         : 'Flexible / ASAP';
-        
+
     int currentStep = 1;
     final status = b.status.toLowerCase();
     if (status == 'accepted') currentStep = 2;
@@ -1649,7 +2661,12 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
         height: MediaQuery.of(context).size.height * 0.9,
-        padding: const EdgeInsets.only(left: 20, right: 20, top: 16, bottom: 24),
+        padding: const EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 16,
+          bottom: 24,
+        ),
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -1668,7 +2685,11 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                         color: Colors.black,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.assignment, color: Colors.white, size: 20),
+                      child: const Icon(
+                        Icons.assignment,
+                        color: Colors.white,
+                        size: 20,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Column(
@@ -1676,11 +2697,18 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                       children: [
                         Text(
                           'Booking Details',
-                          style: GoogleFonts.dmSans(fontSize: 20, fontWeight: FontWeight.w800, color: const Color(0xFF111827)),
+                          style: GoogleFonts.dmSans(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF111827),
+                          ),
                         ),
                         Text(
                           'Reference ID: #${b.id}',
-                          style: GoogleFonts.dmSans(fontSize: 13, color: const Color(0xFF64748B)),
+                          style: GoogleFonts.dmSans(
+                            fontSize: 13,
+                            color: const Color(0xFF64748B),
+                          ),
                         ),
                       ],
                     ),
@@ -1693,18 +2721,33 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
               ],
             ),
             const Divider(height: 32, color: Color(0xFFF1F5F9)),
-            
+
             Expanded(
               child: SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Job Title
-                    Text('JOB TITLE', style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF94A3B8), letterSpacing: 0.5)),
+                    Text(
+                      'JOB TITLE',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF94A3B8),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
                     const SizedBox(height: 4),
-                    Text(b.jobTitle, style: GoogleFonts.dmSans(fontSize: 18, fontWeight: FontWeight.w800, color: const Color(0xFF111827))),
+                    Text(
+                      b.jobTitle,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF111827),
+                      ),
+                    ),
                     const SizedBox(height: 16),
-                    
+
                     // Status & Priority
                     Row(
                       children: [
@@ -1712,17 +2755,42 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('STATUS', style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF94A3B8), letterSpacing: 0.5)),
+                              Text(
+                                'STATUS',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF94A3B8),
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
                               const SizedBox(height: 6),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                decoration: BoxDecoration(color: const Color(0xFF1F2937), borderRadius: BorderRadius.circular(20)),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1F2937),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Icon(Icons.thumb_up_alt_outlined, color: Colors.white, size: 16),
+                                    const Icon(
+                                      Icons.thumb_up_alt_outlined,
+                                      color: Colors.white,
+                                      size: 16,
+                                    ),
                                     const SizedBox(width: 6),
-                                    Text(b.status, style: GoogleFonts.dmSans(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
+                                    Text(
+                                      b.status,
+                                      style: GoogleFonts.dmSans(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 13,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -1733,17 +2801,42 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('PRIORITY', style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF94A3B8), letterSpacing: 0.5)),
+                              Text(
+                                'PRIORITY',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF94A3B8),
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
                               const SizedBox(height: 6),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(20)),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.black,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Icon(Icons.flag_outlined, color: Colors.white, size: 16),
+                                    const Icon(
+                                      Icons.flag_outlined,
+                                      color: Colors.white,
+                                      size: 16,
+                                    ),
                                     const SizedBox(width: 6),
-                                    Text(b.urgency.toUpperCase(), style: GoogleFonts.dmSans(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13)),
+                                    Text(
+                                      b.urgency.toUpperCase(),
+                                      style: GoogleFonts.dmSans(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 13,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -1753,7 +2846,7 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                       ],
                     ),
                     const SizedBox(height: 24),
-                    
+
                     // Date/Time & Location Card
                     Container(
                       padding: const EdgeInsets.all(16),
@@ -1767,15 +2860,33 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Icon(Icons.calendar_today_outlined, size: 18, color: Color(0xFF111827)),
+                              const Icon(
+                                Icons.calendar_today_outlined,
+                                size: 18,
+                                color: Color(0xFF111827),
+                              ),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('DATE', style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF64748B))),
+                                    Text(
+                                      'DATE',
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: const Color(0xFF64748B),
+                                      ),
+                                    ),
                                     const SizedBox(height: 4),
-                                    Text(scheduledDateStr, style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFF111827))),
+                                    Text(
+                                      scheduledDateStr,
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: const Color(0xFF111827),
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -1785,15 +2896,33 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Icon(Icons.location_on_outlined, size: 18, color: Color(0xFF111827)),
+                              const Icon(
+                                Icons.location_on_outlined,
+                                size: 18,
+                                color: Color(0xFF111827),
+                              ),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('LOCATION', style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF64748B))),
+                                    Text(
+                                      'LOCATION',
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: const Color(0xFF64748B),
+                                      ),
+                                    ),
                                     const SizedBox(height: 4),
-                                    Text(b.locationAddress, style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFF111827))),
+                                    Text(
+                                      b.locationAddress,
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: const Color(0xFF111827),
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -1803,7 +2932,7 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Worker & Price Card
                     Container(
                       padding: const EdgeInsets.all(16),
@@ -1818,9 +2947,23 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('WORKER', style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF64748B))),
+                                Text(
+                                  'WORKER',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF64748B),
+                                  ),
+                                ),
                                 const SizedBox(height: 4),
-                                Text(b.workerName, style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w800, color: const Color(0xFF111827))),
+                                Text(
+                                  b.workerName,
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800,
+                                    color: const Color(0xFF111827),
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -1828,9 +2971,25 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('ESTIMATED PRICE', style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF64748B))),
+                                Text(
+                                  'ESTIMATED PRICE',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF64748B),
+                                  ),
+                                ),
                                 const SizedBox(height: 4),
-                                Text(b.estimatedPrice > 0 ? 'Rs. ${b.estimatedPrice.toStringAsFixed(0)}' : 'Negotiable', style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w800, color: const Color(0xFF111827))),
+                                Text(
+                                  b.estimatedPrice > 0
+                                      ? 'Rs. ${b.estimatedPrice.toStringAsFixed(0)}'
+                                      : 'Negotiable',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800,
+                                    color: const Color(0xFF111827),
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -1838,7 +2997,7 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                       ),
                     ),
                     const SizedBox(height: 24),
-                    
+
                     // Lifecycle Status
                     Container(
                       padding: const EdgeInsets.all(20),
@@ -1850,24 +3009,70 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('SERVICE LIFECYCLE STATUS', style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w800, color: const Color(0xFF64748B), letterSpacing: 0.5)),
+                          Text(
+                            'SERVICE LIFECYCLE STATUS',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF64748B),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
                           const SizedBox(height: 20),
-                          _buildLifecycleStep('1', 'Booking Requested', 'Request submitted by resident', currentStep >= 1, isCompleted: currentStep > 1),
+                          _buildLifecycleStep(
+                            '1',
+                            'Booking Requested',
+                            'Request submitted by resident',
+                            currentStep >= 1,
+                            isCompleted: currentStep > 1,
+                          ),
                           const SizedBox(height: 16),
-                          _buildLifecycleStep('2', 'Worker Accepts / Rejects', 'Worker accepted the booking', currentStep >= 2, isCompleted: currentStep > 2),
+                          _buildLifecycleStep(
+                            '2',
+                            'Worker Accepts / Rejects',
+                            'Worker accepted the booking',
+                            currentStep >= 2,
+                            isCompleted: currentStep > 2,
+                          ),
                           const SizedBox(height: 16),
-                          _buildLifecycleStep('3', 'Confirmed', 'Schedule locked in', currentStep >= 3, isCompleted: currentStep > 3),
+                          _buildLifecycleStep(
+                            '3',
+                            'Confirmed',
+                            'Schedule locked in',
+                            currentStep >= 3,
+                            isCompleted: currentStep > 3,
+                          ),
                           const SizedBox(height: 16),
-                          _buildLifecycleStep('4', 'In Progress', '', currentStep >= 4, isCompleted: currentStep > 4),
+                          _buildLifecycleStep(
+                            '4',
+                            'In Progress',
+                            '',
+                            currentStep >= 4,
+                            isCompleted: currentStep > 4,
+                          ),
                           const SizedBox(height: 16),
-                          _buildLifecycleStep('5', 'Completed', '', currentStep >= 5, isCompleted: currentStep > 5),
+                          _buildLifecycleStep(
+                            '5',
+                            'Completed',
+                            '',
+                            currentStep >= 5,
+                            isCompleted: currentStep > 5,
+                          ),
                         ],
                       ),
                     ),
-                    
+
                     if (b.description.isNotEmpty) ...[
                       const SizedBox(height: 24),
-                      Text('NOTES / DESCRIPTION', style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF94A3B8), letterSpacing: 0.5)),
+                      Text(
+                        'NOTES / DESCRIPTION',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF94A3B8),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
                       const SizedBox(height: 6),
                       Container(
                         width: double.infinity,
@@ -1877,10 +3082,16 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: const Color(0xFFF1F5F9)),
                         ),
-                        child: Text(b.description, style: GoogleFonts.dmSans(fontSize: 14, color: const Color(0xFF334155))),
+                        child: Text(
+                          b.description,
+                          style: GoogleFonts.dmSans(
+                            fontSize: 14,
+                            color: const Color(0xFF334155),
+                          ),
+                        ),
                       ),
                     ],
-                    
+
                     // Map Preview Card
                     const SizedBox(height: 24),
                     Container(
@@ -1906,15 +3117,34 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                                         color: Colors.black,
                                         borderRadius: BorderRadius.circular(12),
                                       ),
-                                      child: const Icon(Icons.map_outlined, color: Colors.white, size: 20),
+                                      child: const Icon(
+                                        Icons.map_outlined,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
                                     ),
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
-                                          Text('Service Location & Map Preview', style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w800, color: const Color(0xFF111827))),
-                                          Text(b.locationAddress, style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF71717A)), overflow: TextOverflow.ellipsis),
+                                          Text(
+                                            'Service Location & Map Preview',
+                                            style: GoogleFonts.dmSans(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w800,
+                                              color: const Color(0xFF111827),
+                                            ),
+                                          ),
+                                          Text(
+                                            b.locationAddress,
+                                            style: GoogleFonts.dmSans(
+                                              fontSize: 12,
+                                              color: const Color(0xFF71717A),
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -1922,16 +3152,30 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                                 ),
                               ),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Colors.black,
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.open_in_new, color: Colors.white, size: 16),
+                                    const Icon(
+                                      Icons.open_in_new,
+                                      color: Colors.white,
+                                      size: 16,
+                                    ),
                                     const SizedBox(width: 6),
-                                    Text('View on Google Maps', style: GoogleFonts.dmSans(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
+                                    Text(
+                                      'View on Google Maps',
+                                      style: GoogleFonts.dmSans(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -1949,17 +3193,33 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.location_on, color: Color(0xFFE11D48), size: 48),
+                                  const Icon(
+                                    Icons.location_on,
+                                    color: Colors.black,
+                                    size: 48,
+                                  ),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: Colors.white,
                                       borderRadius: BorderRadius.circular(4),
-                                      boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                                      boxShadow: const [
+                                        BoxShadow(
+                                          color: Colors.black12,
+                                          blurRadius: 4,
+                                        ),
+                                      ],
                                     ),
                                     child: Text(
                                       'Service Location',
-                                      style: GoogleFonts.dmSans(fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFFE11D48)),
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.black,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -1969,10 +3229,11 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                         ],
                       ),
                     ),
-                    
+
                     // Action Buttons (Cancel / Review)
                     const SizedBox(height: 32),
-                    if (b.status.toLowerCase() == 'requested' || b.status.toLowerCase() == 'pending') ...[
+                    if (b.status.toLowerCase() == 'requested' ||
+                        b.status.toLowerCase() == 'pending') ...[
                       SizedBox(
                         width: double.infinity,
                         height: 52,
@@ -1982,13 +3243,19 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                             _confirmCancelBooking(b);
                           },
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.error,
-                            side: const BorderSide(color: AppColors.error),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+                            foregroundColor: Colors.black,
+                            side: const BorderSide(color: Colors.black),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(26),
+                            ),
                           ),
                           child: Text(
                             'Cancel Booking Request',
-                            style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 15),
+                            style: GoogleFonts.dmSans(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                              color: Colors.black,
+                            ),
                           ),
                         ),
                       ),
@@ -2003,20 +3270,29 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                             Navigator.of(ctx).pop();
                             _showReviewSheet(b);
                           },
-                          icon: const Icon(Icons.star_rounded, color: Colors.black),
+                          icon: const Icon(
+                            Icons.star_rounded,
+                            color: Colors.white,
+                          ),
                           label: Text(
                             'Leave a Review',
-                            style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 15, color: Colors.black),
+                            style: GoogleFonts.dmSans(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                              color: Colors.white,
+                            ),
                           ),
                           style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.brandYellow,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+                            backgroundColor: Colors.black,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(26),
+                            ),
                           ),
                         ),
                       ),
                       const SizedBox(height: 12),
                     ],
-                    
                   ],
                 ),
               ),
@@ -2027,10 +3303,16 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
     );
   }
 
-  Widget _buildLifecycleStep(String number, String title, String subtitle, bool isActive, {bool isCompleted = false}) {
+  Widget _buildLifecycleStep(
+    String number,
+    String title,
+    String subtitle,
+    bool isActive, {
+    bool isCompleted = false,
+  }) {
     final color = isActive ? Colors.black : const Color(0xFFCBD5E1);
     final textColor = isActive ? Colors.black : const Color(0xFF94A3B8);
-    
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2038,14 +3320,18 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
           width: 24,
           height: 24,
           margin: const EdgeInsets.only(top: 2),
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           child: Center(
             child: isCompleted
                 ? const Icon(Icons.check, color: Colors.white, size: 14)
-                : Text(number, style: GoogleFonts.dmSans(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+                : Text(
+                    number,
+                    style: GoogleFonts.dmSans(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
           ),
         ),
         const SizedBox(width: 12),
@@ -2053,9 +3339,22 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w700, color: textColor)),
+              Text(
+                title,
+                style: GoogleFonts.dmSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: textColor,
+                ),
+              ),
               if (subtitle.isNotEmpty && isActive)
-                Text(subtitle, style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF64748B))),
+                Text(
+                  subtitle,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 12,
+                    color: const Color(0xFF64748B),
+                  ),
+                ),
             ],
           ),
         ),
@@ -2086,7 +3385,7 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
           FilledButton(
             onPressed: () => Navigator.of(dialogCtx).pop(true),
             style: FilledButton.styleFrom(
-              backgroundColor: AppColors.error,
+              backgroundColor: Colors.black,
               foregroundColor: Colors.white,
             ),
             child: Text(
@@ -2100,9 +3399,9 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
 
     if (confirmed == true) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cancelling booking...')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Cancelling booking...'), backgroundColor: Colors.black));
 
       final success = await ApiService().cancelBooking(b.id);
       if (mounted) {
@@ -2110,7 +3409,7 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Booking request cancelled successfully.'),
-              backgroundColor: AppColors.onPrimary,
+              backgroundColor: Colors.black,
             ),
           );
           _fetchBookings();
@@ -2118,7 +3417,7 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Failed to cancel booking. Please try again.'),
-              backgroundColor: AppColors.error,
+              backgroundColor: Colors.black,
             ),
           );
         }
@@ -2182,45 +3481,66 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                
-                Text('Quality & Craftsmanship', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
+
+                Text(
+                  'Quality & Craftsmanship',
+                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
+                ),
                 Slider(
                   value: quality.toDouble(),
                   min: 1,
                   max: 5,
                   divisions: 4,
+                  activeColor: Colors.black,
+                  inactiveColor: const Color(0xFFE2E8F0),
                   label: quality.toString(),
                   onChanged: (v) => setModalState(() => quality = v.toInt()),
                 ),
-                
-                Text('Punctuality', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
+
+                Text(
+                  'Punctuality',
+                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
+                ),
                 Slider(
                   value: punctuality.toDouble(),
                   min: 1,
                   max: 5,
                   divisions: 4,
+                  activeColor: Colors.black,
+                  inactiveColor: const Color(0xFFE2E8F0),
                   label: punctuality.toString(),
-                  onChanged: (v) => setModalState(() => punctuality = v.toInt()),
+                  onChanged: (v) =>
+                      setModalState(() => punctuality = v.toInt()),
                 ),
-                
-                Text('Communication', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
+
+                Text(
+                  'Communication',
+                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
+                ),
                 Slider(
                   value: communication.toDouble(),
                   min: 1,
                   max: 5,
                   divisions: 4,
+                  activeColor: Colors.black,
+                  inactiveColor: const Color(0xFFE2E8F0),
                   label: communication.toString(),
-                  onChanged: (v) => setModalState(() => communication = v.toInt()),
+                  onChanged: (v) =>
+                      setModalState(() => communication = v.toInt()),
                 ),
                 const SizedBox(height: 16),
-                
-                Text('Comment', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
+
+                Text(
+                  'Comment',
+                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
+                ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: commentController,
                   maxLines: 4,
                   decoration: InputDecoration(
-                    hintText: 'Tell us about your experience with this worker...',
+                    hintText:
+                        'Tell us about your experience with this worker...',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -2228,45 +3548,69 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                
+
                 SizedBox(
                   width: double.infinity,
                   height: 48,
                   child: FilledButton(
-                    onPressed: isSubmitting ? null : () async {
-                      setModalState(() => isSubmitting = true);
-                      final updated = await ApiService().submitReview(
-                        b.id,
-                        qualityRating: quality,
-                        punctualityRating: punctuality,
-                        communicationRating: communication,
-                        reviewComment: commentController.text.trim(),
-                      );
-                      
-                      if (context.mounted) {
-                        Navigator.pop(context);
-                        if (updated != null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Review submitted successfully!'), backgroundColor: AppColors.success),
-                          );
-                          _fetchBookings();
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Failed to submit review.'), backgroundColor: AppColors.error),
-                          );
-                        }
-                      }
-                    },
+                    onPressed: isSubmitting
+                        ? null
+                        : () async {
+                            setModalState(() => isSubmitting = true);
+                            final updated = await ApiService().submitReview(
+                              b.id,
+                              qualityRating: quality,
+                              punctualityRating: punctuality,
+                              communicationRating: communication,
+                              reviewComment: commentController.text.trim(),
+                            );
+
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              if (updated != null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Review submitted successfully!',
+                                    ),
+                                    backgroundColor: Colors.black,
+                                  ),
+                                );
+                                _fetchBookings();
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Failed to submit review.'),
+                                    backgroundColor: Colors.black,
+                                  ),
+                                );
+                              }
+                            }
+                          },
                     style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.brandYellow,
-                      foregroundColor: Colors.black,
+                      backgroundColor: Colors.black,
+                      foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: isSubmitting 
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
-                      : Text('Submit Review', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 15)),
+                    child: isSubmitting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(
+                            'Submit Review',
+                            style: GoogleFonts.dmSans(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                              color: Colors.white,
+                            ),
+                          ),
                   ),
                 ),
               ],
@@ -2300,6 +3644,14 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                     ),
                   ),
                 );
+              } else if (n.type == NotificationType.communityLike || n.type == NotificationType.communityComment) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const Scaffold(
+                      body: SafeArea(child: CommunityScreen()),
+                    ),
+                  ),
+                );
               }
             },
           ),
@@ -2310,16 +3662,26 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.lock_outline_rounded, size: 48, color: AppColors.onSurfaceVariant),
+                  const Icon(
+                    Icons.lock_outline_rounded,
+                    size: 48,
+                    color: AppColors.onSurfaceVariant,
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     'Sign in to view your bookings',
-                    style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 16),
+                    style: GoogleFonts.dmSans(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () => Navigator.pushNamed(context, '/join'),
-                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.brandYellow, foregroundColor: Colors.black),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.black,
+                      foregroundColor: Colors.white,
+                    ),
                     child: const Text('Sign In'),
                   ),
                 ],
@@ -2328,202 +3690,258 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
           : RefreshIndicator(
               onRefresh: _fetchBookings,
               child: _isLoading
-                  ? const Center(child: LoadingIndicatorM3E())
+                  ? const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
                   : _bookings.isEmpty
-                      ? ListView(
-                          children: [
-                            Container(
-                              margin: const EdgeInsets.all(24),
-                              padding: const EdgeInsets.all(32),
-                              decoration: BoxDecoration(
-                                color: AppColors.surfaceVariant.withValues(alpha: 0.5),
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Column(
-                                children: [
-                                  const Icon(Icons.calendar_month_outlined, size: 48, color: AppColors.onSurfaceVariant),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    'No bookings yet',
-                                    style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 16),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'When you book a professional from the Find tab, your booking history will appear here.',
-                                    style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.onSurfaceVariant),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ],
-                              ),
+                  ? ListView(
+                      children: [
+                        Container(
+                          margin: const EdgeInsets.all(24),
+                          padding: const EdgeInsets.all(32),
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceVariant.withValues(
+                              alpha: 0.5,
                             ),
-                          ],
-                        )
-                      : ListView.separated(
-                          padding: const EdgeInsets.all(20),
-                          itemCount: _bookings.length,
-                          separatorBuilder: (_, _) => const SizedBox(height: 14),
-                          itemBuilder: (context, index) {
-                            final b = _bookings[index];
-                            final color = _getStatusColor(b.status);
-                            final scheduled = b.scheduledDate != null
-                                ? '${b.scheduledDate!.day}/${b.scheduledDate!.month}/${b.scheduledDate!.year}'
-                                : 'Upcoming';
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Column(
+                            children: [
+                              const Icon(
+                                Icons.calendar_month_outlined,
+                                size: 48,
+                                color: AppColors.onSurfaceVariant,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'No bookings yet',
+                                style: GoogleFonts.dmSans(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'When you book a professional from the Find tab, your booking history will appear here.',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 13,
+                                  color: AppColors.onSurfaceVariant,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.all(20),
+                      itemCount: _bookings.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 14),
+                      itemBuilder: (context, index) {
+                        final b = _bookings[index];
+                        final scheduled = b.scheduledDate != null
+                            ? '${b.scheduledDate!.day}/${b.scheduledDate!.month}/${b.scheduledDate!.year}'
+                            : 'Upcoming';
 
-                            return Container(
-                              padding: const EdgeInsets.all(18),
-                              decoration: BoxDecoration(
-                                color: AppColors.surface,
-                                borderRadius: BorderRadius.circular(18),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.04),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 3),
+                        return Container(
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(18),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.04),
+                                blurRadius: 12,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      b.workerName,
+                                      style: GoogleFonts.dmSans(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: (b.status.toLowerCase() ==
+                                                  'confirmed' ||
+                                              b.status.toLowerCase() ==
+                                                  'accepted' ||
+                                              b.status.toLowerCase() ==
+                                                  'completed')
+                                          ? Colors.black
+                                          : Colors.white,
+                                      border: Border.all(
+                                        color: Colors.black,
+                                        width: 1.2,
+                                      ),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Text(
+                                      b.status,
+                                      style: GoogleFonts.dmSans(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 12,
+                                        color: (b.status.toLowerCase() ==
+                                                    'confirmed' ||
+                                                b.status.toLowerCase() ==
+                                                    'accepted' ||
+                                                b.status.toLowerCase() ==
+                                                    'completed')
+                                            ? Colors.white
+                                            : Colors.black,
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          b.workerName,
-                                          style: GoogleFonts.dmSans(
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 16,
-                                          ),
-                                        ),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 4,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: color.withValues(alpha: 0.12),
-                                          borderRadius: BorderRadius.circular(20),
-                                        ),
-                                        child: Text(
-                                          b.status,
-                                          style: GoogleFonts.dmSans(
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 12,
-                                            color: color,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+                              const SizedBox(height: 4),
+                              Text(
+                                b.jobTitle,
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.onSurface,
+                                ),
+                              ),
+                              if (b.description.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  b.description,
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 12,
+                                    color: AppColors.onSurfaceVariant,
                                   ),
-                                  const SizedBox(height: 4),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                              const Divider(
+                                height: 24,
+                                color: AppColors.outlineVariant,
+                              ),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.schedule,
+                                    size: 16,
+                                    color: AppColors.onSurfaceVariant,
+                                  ),
+                                  const SizedBox(width: 6),
                                   Text(
-                                    b.jobTitle,
+                                    scheduled,
                                     style: GoogleFonts.dmSans(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  Text(
+                                    'Rs. ${b.estimatedPrice.toStringAsFixed(0)}',
+                                    style: GoogleFonts.dmSans(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 14,
                                       color: AppColors.onSurface,
                                     ),
                                   ),
-                                  if (b.description.isNotEmpty) ...[
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      b.description,
-                                      style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.onSurfaceVariant),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-                                  const Divider(height: 24, color: AppColors.outlineVariant),
-                                  Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.schedule,
-                                        size: 16,
-                                        color: AppColors.onSurfaceVariant,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        scheduled,
-                                        style: GoogleFonts.dmSans(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      const Spacer(),
-                                      Text(
-                                        'Rs. ${b.estimatedPrice.toStringAsFixed(0)}',
-                                        style: GoogleFonts.dmSans(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 14,
-                                          color: AppColors.onSurface,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 14),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        flex: (b.status.toLowerCase() == 'requested' || b.status.toLowerCase() == 'pending') ? 3 : 1,
-                                        child: SizedBox(
-                                          height: 42,
-                                          child: ElevatedButton.icon(
-                                            onPressed: () => _showBookingDetails(b),
-                                            icon: const Icon(Icons.visibility_outlined, size: 16),
-                                            label: Text(
-                                              'View Booking',
-                                              style: GoogleFonts.dmSans(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                            style: ElevatedButton.styleFrom(
-                                              elevation: 0,
-                                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                              foregroundColor: AppColors.onSurface,
-                                              backgroundColor: AppColors.surfaceVariant,
-                                              shape: const StadiumBorder(),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      if (b.status.toLowerCase() == 'requested' || b.status.toLowerCase() == 'pending') ...[
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          flex: 2,
-                                          child: SizedBox(
-                                            height: 42,
-                                            child: ElevatedButton.icon(
-                                              onPressed: () => _confirmCancelBooking(b),
-                                              icon: const Icon(Icons.cancel_outlined, size: 16, color: AppColors.error),
-                                              label: Text(
-                                                'Cancel',
-                                                style: GoogleFonts.dmSans(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: AppColors.error,
-                                                ),
-                                              ),
-                                              style: ElevatedButton.styleFrom(
-                                                elevation: 0,
-                                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                                foregroundColor: AppColors.error,
-                                                backgroundColor: const Color(0xFFFEE2E2),
-                                                shape: const StadiumBorder(),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
                                 ],
                               ),
-                            );
-                          },
-                        ),
+                              const SizedBox(height: 14),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    flex:
+                                        (b.status.toLowerCase() ==
+                                                'requested' ||
+                                            b.status.toLowerCase() == 'pending')
+                                        ? 3
+                                        : 1,
+                                    child: SizedBox(
+                                      height: 42,
+                                      child: ElevatedButton.icon(
+                                        onPressed: () => _showBookingDetails(b),
+                                        icon: const Icon(
+                                          Icons.visibility_outlined,
+                                          size: 16,
+                                          color: Colors.white,
+                                        ),
+                                        label: Text(
+                                          'View Booking',
+                                          style: GoogleFonts.dmSans(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                        style: ElevatedButton.styleFrom(
+                                          elevation: 0,
+                                          tapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
+                                          foregroundColor: Colors.white,
+                                          backgroundColor: Colors.black,
+                                          shape: const StadiumBorder(),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  if (b.status.toLowerCase() == 'requested' ||
+                                      b.status.toLowerCase() == 'pending') ...[
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      flex: 2,
+                                      child: SizedBox(
+                                        height: 42,
+                                        child: OutlinedButton.icon(
+                                          onPressed: () =>
+                                              _confirmCancelBooking(b),
+                                          icon: const Icon(
+                                            Icons.cancel_outlined,
+                                            size: 16,
+                                            color: Colors.black,
+                                          ),
+                                          label: Text(
+                                            'Cancel',
+                                            style: GoogleFonts.dmSans(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.black,
+                                            ),
+                                          ),
+                                          style: OutlinedButton.styleFrom(
+                                            elevation: 0,
+                                            tapTargetSize: MaterialTapTargetSize
+                                                .shrinkWrap,
+                                            foregroundColor: Colors.black,
+                                            side: const BorderSide(
+                                              color: Colors.black,
+                                            ),
+                                            shape: const StadiumBorder(),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
             ),
     );
   }
@@ -2597,7 +4015,9 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
       final now = DateTime.now();
       final diff = now.difference(dt);
       if (diff.inDays == 0 && now.day == dt.day) {
-        final hour = dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
+        final hour = dt.hour == 0
+            ? 12
+            : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
         final minute = dt.minute.toString().padLeft(2, '0');
         final ampm = dt.hour >= 12 ? 'pm' : 'am';
         return '$hour:$minute $ampm';
@@ -2605,7 +4025,20 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
         const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
         return days[dt.weekday - 1];
       } else {
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const months = [
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'May',
+          'Jun',
+          'Jul',
+          'Aug',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dec',
+        ];
         return '${dt.day} ${months[dt.month - 1]}';
       }
     } catch (_) {
@@ -2623,9 +4056,7 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
           'Messages',
           style: GoogleFonts.dmSans(fontWeight: FontWeight.w800),
         ),
-        actions: const [
-          NotificationBellButton(),
-        ],
+        actions: const [NotificationBellButton()],
       ),
       body: user == null
           ? Center(
@@ -2639,136 +4070,196 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
               child: _isLoading
                   ? const Center(child: LoadingIndicatorM3E())
                   : _conversations.isEmpty
-                      ? ListView(
-                          children: [
-                            Container(
-                              margin: const EdgeInsets.all(24),
-                              padding: const EdgeInsets.all(32),
-                              decoration: BoxDecoration(
-                                color: AppColors.surfaceVariant.withValues(alpha: 0.5),
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Column(
-                                children: [
-                                  const Icon(Icons.chat_bubble_outline_rounded, size: 48, color: AppColors.onSurfaceVariant),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    'No messages yet',
-                                    style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 16),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Conversations with workers you hire will appear here.',
-                                    style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.onSurfaceVariant),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ],
-                              ),
+                  ? ListView(
+                      children: [
+                        Container(
+                          margin: const EdgeInsets.all(24),
+                          padding: const EdgeInsets.all(32),
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceVariant.withValues(
+                              alpha: 0.5,
                             ),
-                          ],
-                        )
-                      : ListView.builder(
-                          itemCount: _conversations.length,
-                          itemBuilder: (context, index) {
-                            final c = _conversations[index];
-                            final name = c['workerName']?.toString() ?? c['otherPartyName']?.toString() ?? 'Worker';
-                            final lastMsg = c['lastMessage']?.toString() ?? 'Conversation started';
-                            final unread = c['unreadCount'] is int ? c['unreadCount'] as int : 0;
-                            final timeStr = _formatMessageTime(c['updatedAt']?.toString() ?? c['lastMessageAt']?.toString());
-
-                            return ListTile(
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                              leading: CircleAvatar(
-                                radius: 26,
-                                backgroundColor: AppColors.surfaceVariant,
-                                backgroundImage: (c['workerProfileImage'] != null && c['workerProfileImage'].toString().isNotEmpty && c['workerProfileImage'].toString() != 'null')
-                                    ? NetworkImage(c['workerProfileImage'].toString())
-                                    : null,
-                                child: (c['workerProfileImage'] == null || c['workerProfileImage'].toString().isEmpty || c['workerProfileImage'].toString() == 'null')
-                                    ? Text(
-                                        name.isNotEmpty ? name[0].toUpperCase() : 'W',
-                                        style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 18, color: AppColors.onSurfaceVariant),
-                                      )
-                                    : null,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Column(
+                            children: [
+                              const Icon(
+                                Icons.chat_bubble_outline_rounded,
+                                size: 48,
+                                color: AppColors.onSurfaceVariant,
                               ),
-                              title: Text(
-                                name,
-                                style: GoogleFonts.dmSans(fontWeight: FontWeight.w500, fontSize: 16),
-                              ),
-                              subtitle: Padding(
-                                padding: const EdgeInsets.only(top: 4.0),
-                                child: Text(
-                                  lastMsg,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.dmSans(
-                                    fontSize: 14,
-                                    color: AppColors.onSurfaceVariant,
-                                    fontWeight: unread > 0 ? FontWeight.w700 : FontWeight.w400,
-                                  ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'No messages yet',
+                                style: GoogleFonts.dmSans(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16,
                                 ),
                               ),
-                              trailing: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  if (timeStr.isNotEmpty)
-                                    Text(
-                                      timeStr,
-                                      style: GoogleFonts.dmSans(
-                                        fontSize: 12,
-                                        color: unread > 0 ? AppColors.onSurface : AppColors.onSurfaceVariant,
-                                        fontWeight: unread > 0 ? FontWeight.w700 : FontWeight.w400,
-                                      ),
-                                    ),
-                                  if (unread > 0) ...[
-                                    const SizedBox(height: 6),
-                                    Container(
-                                      padding: const EdgeInsets.all(6),
-                                      decoration: const BoxDecoration(
-                                        color: AppColors.brandYellow,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Text(
-                                        '$unread',
-                                        style: GoogleFonts.dmSans(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w800,
-                                          color: AppColors.onPrimary,
-                                        ),
-                                      ),
-                                    ),
-                                  ]
-                                ],
+                              const SizedBox(height: 4),
+                              Text(
+                                'Conversations with workers you hire will appear here.',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 13,
+                                  color: AppColors.onSurfaceVariant,
+                                ),
+                                textAlign: TextAlign.center,
                               ),
-                              onTap: () async {
-                                final convId = c['id'] is int ? c['id'] as int : int.tryParse(c['id']?.toString() ?? '0') ?? 0;
-                                final userEmail = AuthService().currentUser?.email;
+                            ],
+                          ),
+                        ),
+                      ],
+                    )
+                  : ListView.builder(
+                      itemCount: _conversations.length,
+                      itemBuilder: (context, index) {
+                        final c = _conversations[index];
+                        final name =
+                            c['workerName']?.toString() ??
+                            c['otherPartyName']?.toString() ??
+                            'Worker';
+                        final lastMsg =
+                            c['lastMessage']?.toString() ??
+                            'Conversation started';
+                        final unread = c['unreadCount'] is int
+                            ? c['unreadCount'] as int
+                            : 0;
+                        final timeStr = _formatMessageTime(
+                          c['updatedAt']?.toString() ??
+                              c['lastMessageAt']?.toString(),
+                        );
 
-                                // Optimistically clear unread count badge in UI immediately
-                                setState(() {
-                                  c['unreadCount'] = 0;
-                                });
-
-                                if (userEmail != null && convId > 0) {
-                                  ApiService().markConversationAsRead(convId, userEmail);
-                                }
-
-                                await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => ChatScreen(
-                                      conversationId: convId,
-                                      name: name,
-                                      profileImage: c['workerProfileImage']?.toString(),
+                        return ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 8,
+                          ),
+                          leading: CircleAvatar(
+                            radius: 26,
+                            backgroundColor: AppColors.surfaceVariant,
+                            backgroundImage:
+                                (c['workerProfileImage'] != null &&
+                                    c['workerProfileImage']
+                                        .toString()
+                                        .isNotEmpty &&
+                                    c['workerProfileImage'].toString() !=
+                                        'null')
+                                ? NetworkImage(
+                                    c['workerProfileImage'].toString(),
+                                  )
+                                : null,
+                            child:
+                                (c['workerProfileImage'] == null ||
+                                    c['workerProfileImage']
+                                        .toString()
+                                        .isEmpty ||
+                                    c['workerProfileImage'].toString() ==
+                                        'null')
+                                ? Text(
+                                    name.isNotEmpty
+                                        ? name[0].toUpperCase()
+                                        : 'W',
+                                    style: GoogleFonts.dmSans(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 18,
+                                      color: AppColors.onSurfaceVariant,
+                                    ),
+                                  )
+                                : null,
+                          ),
+                          title: Text(
+                            name,
+                            style: GoogleFonts.dmSans(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 16,
+                            ),
+                          ),
+                          subtitle: Padding(
+                            padding: const EdgeInsets.only(top: 4.0),
+                            child: Text(
+                              lastMsg,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.dmSans(
+                                fontSize: 14,
+                                color: AppColors.onSurfaceVariant,
+                                fontWeight: unread > 0
+                                    ? FontWeight.w700
+                                    : FontWeight.w400,
+                              ),
+                            ),
+                          ),
+                          trailing: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              if (timeStr.isNotEmpty)
+                                Text(
+                                  timeStr,
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 12,
+                                    color: unread > 0
+                                        ? AppColors.onSurface
+                                        : AppColors.onSurfaceVariant,
+                                    fontWeight: unread > 0
+                                        ? FontWeight.w700
+                                        : FontWeight.w400,
+                                  ),
+                                ),
+                              if (unread > 0) ...[
+                                const SizedBox(height: 6),
+                                Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.brandYellow,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Text(
+                                    '$unread',
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.onPrimary,
                                     ),
                                   ),
-                                );
-                                _fetchChats();
-                              },
+                                ),
+                              ],
+                            ],
+                          ),
+                          onTap: () async {
+                            final convId = c['id'] is int
+                                ? c['id'] as int
+                                : int.tryParse(c['id']?.toString() ?? '0') ?? 0;
+                            final userEmail = AuthService().currentUser?.email;
+
+                            // Optimistically clear unread count badge in UI immediately
+                            setState(() {
+                              c['unreadCount'] = 0;
+                            });
+
+                            if (userEmail != null && convId > 0) {
+                              ApiService().markConversationAsRead(
+                                convId,
+                                userEmail,
+                              );
+                            }
+
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ChatScreen(
+                                  conversationId: convId,
+                                  name: name,
+                                  profileImage: c['workerProfileImage']
+                                      ?.toString(),
+                                ),
+                              ),
                             );
+                            _fetchChats();
                           },
-                        ),
+                        );
+                      },
+                    ),
             ),
     );
   }
@@ -2821,22 +4312,25 @@ class AccountTabScreen extends StatelessWidget {
                           ],
                         ),
                         child: ClipOval(
-                          child: (user?.picture != null && user!.picture!.isNotEmpty)
+                          child:
+                              (user?.picture != null &&
+                                  user!.picture!.isNotEmpty)
                               ? Image.network(
                                   user.picture!,
                                   width: 96,
                                   height: 96,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) => Center(
-                                    child: Text(
-                                      initial,
-                                      style: GoogleFonts.dmSans(
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 36,
-                                        color: AppColors.onPrimaryContainer,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      Center(
+                                        child: Text(
+                                          initial,
+                                          style: GoogleFonts.dmSans(
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 36,
+                                            color: AppColors.onPrimaryContainer,
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  ),
                                 )
                               : Center(
                                   child: Text(
@@ -2887,110 +4381,6 @@ class AccountTabScreen extends StatelessWidget {
                 },
               ),
             ),
-            const SizedBox(height: 32),
-
-            // Worker Portal Card
-            Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(16),
-                onTap: () async {
-                  final user = AuthService().currentUser;
-                  if (user == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Please sign in to access Worker Mode.', style: GoogleFonts.dmSans()),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                    return;
-                  }
-
-                  // Show quick loading indicator while checking profile
-                  showDialog(
-                    context: context,
-                    barrierDismissible: false,
-                    builder: (_) => const Center(
-                      child: CircularProgressIndicator(color: AppColors.brandYellow),
-                    ),
-                  );
-
-                  WorkerModel? worker;
-                  try {
-                    worker = await ApiService().fetchMyWorkerProfile(user.email);
-                  } catch (_) {}
-
-                  if (context.mounted) {
-                    Navigator.of(context).pop(); // dismiss loading dialog
-
-                    if (worker != null || user.isWorker) {
-                      await AuthService().updateActiveRole('Worker');
-                    } else {
-                      // Open Become Worker bottom sheet
-                      BecomeWorkerSheet.show(
-                        context,
-                        onWorkerCreated: () {
-                          // Handled reactively: BecomeWorkerSheet calls AuthService.updateWorkerStatus, switching the shell to WorkerPortalScreen
-                        },
-                      );
-                    }
-                  }
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: AppColors.onPrimary,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.08),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.handyman_rounded,
-                        color: AppColors.brandYellow,
-                        size: 28,
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Switch to Worker Mode',
-                              style: GoogleFonts.dmSans(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 15,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Offer your skills and get jobs in your area.',
-                              style: GoogleFonts.dmSans(
-                                fontSize: 12,
-                                color: Colors.white70,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(
-                        Icons.arrow_forward_ios_rounded,
-                        color: Colors.white,
-                        size: 16,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
             const SizedBox(height: 24),
 
             _buildSettingsTile(

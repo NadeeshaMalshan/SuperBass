@@ -86,6 +86,15 @@ namespace Superbass.Models
         public string Content { get; set; } = string.Empty;
         public string? UserName { get; set; }
         public string? UserAvatar { get; set; }
+        public string? UserEmail { get; set; }
+        public string? UserId { get; set; }
+    }
+
+    public class LikePostRequest
+    {
+        public string? UserId { get; set; }
+        public string? UserEmail { get; set; }
+        public string? UserName { get; set; }
     }
 
     public class ReportPostRequest

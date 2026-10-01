@@ -36,6 +36,10 @@ namespace Superbass.Controllers
         public async Task<IActionResult> GetAll()
         {
             var workers = await _workerRepository.GetAllWorkersAsync();
+            foreach (var w in workers)
+            {
+                w.PhoneNo = null; // Privacy: Worker contact is hidden until worker explicitly shares it via chat
+            }
             return Ok(workers);
         }
 
@@ -52,6 +56,17 @@ namespace Superbass.Controllers
         {
             var worker = await _workerRepository.GetWorkerByIdAsync(id);
             if (worker == null) return NotFound(new { message = "Worker not found" });
+
+            var requesterEmail = GetEmailFromRequest();
+            var isSelf = !string.IsNullOrEmpty(requesterEmail) && 
+                (string.Equals(requesterEmail, worker.Email, StringComparison.OrdinalIgnoreCase) || 
+                 string.Equals(requesterEmail, worker.ResidentEmail, StringComparison.OrdinalIgnoreCase));
+
+            if (!isSelf)
+            {
+                worker.PhoneNo = null; // Privacy: Worker contact is hidden on public profile
+            }
+
             return Ok(worker);
         }
 
@@ -60,12 +75,18 @@ namespace Superbass.Controllers
         public async Task<IActionResult> Search(
             [FromQuery] string? skill,
             [FromQuery] string? location,
+            [FromQuery] string? province,
+            [FromQuery] string? district,
             [FromQuery] double? residentLat,
             [FromQuery] double? residentLng,
             [FromQuery] decimal? maxHourlyRate = null,
             [FromQuery] decimal? minHourlyRate = null)
         {
-            var results = await _workerRepository.SearchWorkersAsync(skill, location, null, residentLat, residentLng, maxHourlyRate, minHourlyRate);
+            var results = await _workerRepository.SearchWorkersAsync(skill, location, null, residentLat, residentLng, maxHourlyRate, minHourlyRate, province, district);
+            foreach (var w in results)
+            {
+                w.PhoneNo = null; // Privacy: Worker contact is hidden on public search
+            }
             return Ok(results);
         }
 
@@ -292,6 +313,8 @@ namespace Superbass.Controllers
                     ProfileImage = dto.ProfileImage,
                     Description = dto.Description,
                     PrimaryServiceArea = dto.PrimaryServiceArea ?? "Colombo",
+                    Province = dto.Province,
+                    District = dto.District,
                     LocationLat = dto.LocationLat,
                     LocationLng = dto.LocationLng,
                     CoverageRadiusKm = dto.CoverageRadiusKm > 0 ? dto.CoverageRadiusKm : 10.0,
@@ -310,6 +333,8 @@ namespace Superbass.Controllers
                 if (!string.IsNullOrWhiteSpace(dto.ProfileImage)) existingWorker.ProfileImage = dto.ProfileImage;
                 existingWorker.Description = dto.Description ?? existingWorker.Description;
                 existingWorker.PrimaryServiceArea = dto.PrimaryServiceArea ?? existingWorker.PrimaryServiceArea;
+                if (!string.IsNullOrWhiteSpace(dto.Province)) existingWorker.Province = dto.Province;
+                if (!string.IsNullOrWhiteSpace(dto.District)) existingWorker.District = dto.District;
                 if (dto.LocationLat.HasValue) existingWorker.LocationLat = dto.LocationLat;
                 if (dto.LocationLng.HasValue) existingWorker.LocationLng = dto.LocationLng;
                 if (dto.CoverageRadiusKm > 0) existingWorker.CoverageRadiusKm = dto.CoverageRadiusKm;
@@ -532,6 +557,8 @@ namespace Superbass.Controllers
             public double? LocationLng { get; set; }
             public string? Description { get; set; }
             public string? PrimaryServiceArea { get; set; } = "Colombo";
+            public string? Province { get; set; }
+            public string? District { get; set; }
             public double CoverageRadiusKm { get; set; } = 10.0;
             public string PricingModel { get; set; } = "Hourly";
             public decimal? HourlyRate { get; set; }

@@ -10,7 +10,8 @@ import VerifiedBadge from '../../components/VerifiedBadge.jsx';
 export default function WorkerProfile({ defaultTab = 'bio' }) {
   const urlParams = new URLSearchParams(window.location.search);
   const tabParam = urlParams.get('tab');
-  const [activeTab, setActiveTab] = useState(tabParam || defaultTab || 'bio');
+  const resolvedTab = (tabParam === 'verify' || defaultTab === 'verify') ? 'security' : (tabParam || defaultTab || 'bio');
+  const [activeTab, setActiveTab] = useState(resolvedTab);
   const [saveStatus, setSaveStatus] = useState(null);
 
   useEffect(() => {
@@ -18,7 +19,7 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
       const params = new URLSearchParams(window.location.search);
       const tab = params.get('tab');
       if (tab) {
-        setActiveTab(tab);
+        setActiveTab(tab === 'verify' ? 'security' : tab);
       }
     };
     window.addEventListener('popstate', handlePopState);
@@ -432,15 +433,6 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
       {/* Profile Top Tab Navigation (Uber Pill Style) */}
       <div className="profile-tabs-nav">
         <button 
-          className={`profile-tab-btn ${activeTab === 'verify' ? 'active' : ''}`}
-          onClick={() => setActiveTab('verify')}
-        >
-          <i className="fa-solid fa-user-check"></i>
-          Verify Account
-          {bio.isVerified && <span style={{ marginLeft: 6, fontSize: '0.85rem', color: '#16a34a' }}>✓</span>}
-        </button>
-        
-        <button 
           className={`profile-tab-btn ${activeTab === 'bio' ? 'active' : ''}`}
           onClick={() => setActiveTab('bio')}
         >
@@ -478,36 +470,9 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
         >
           <i className="fa-solid fa-shield-halved"></i>
           Account Security
+          {bio.isVerified && <span style={{ marginLeft: 6, fontSize: '0.85rem', color: '#16a34a' }}>✓</span>}
         </button>
       </div>
-
-      {/* Tab: Verify Account */}
-      {activeTab === 'verify' && (
-        <div className="worker-card">
-          <VerificationForm 
-            isVerified={bio.isVerified}
-            onVerifySuccess={async (data) => {
-              try {
-                if (currentWorkerId) {
-                  await axios.post(`${API_BASE_URL}/workers/${currentWorkerId}/verify`, {
-                    nicNumber: data?.nic || '',
-                    dateOfBirth: data?.dateOfBirth || '',
-                    gender: data?.gender || ''
-                  });
-                }
-                setBio(prev => ({ ...prev, isVerified: true, nicNumber: data?.nic || prev.nicNumber }));
-                setSaveStatus('Identity verified and saved successfully!');
-                setTimeout(() => setSaveStatus(null), 3500);
-              } catch (err) {
-                console.error('Error saving verification status:', err);
-                setBio(prev => ({ ...prev, isVerified: true, nicNumber: data?.nic || prev.nicNumber }));
-                setSaveStatus('Identity verified! (Note: Could not update server)');
-                setTimeout(() => setSaveStatus(null), 3500);
-              }
-            }}
-          />
-        </div>
-      )}
 
       {/* Tab 1: Personal Details & Bio */}
       {activeTab === 'bio' && (
@@ -590,8 +555,40 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
             </div>
 
             <div className="worker-input-group">
-              <label className="worker-label">Email Address</label>
-              <input type="email" className="worker-input" value={bio.email} onChange={(e) => setBio({ ...bio, email: e.target.value })} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <label className="worker-label" style={{ margin: 0 }}>Email Address</label>
+                <span style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  color: '#64748b',
+                  backgroundColor: '#f1f5f9',
+                  padding: '2px 8px',
+                  borderRadius: '6px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px'
+                }}>
+                  <i className="fa-solid fa-lock" style={{ fontSize: '0.65rem' }}></i> Read-only
+                </span>
+              </div>
+              <input 
+                type="email" 
+                className="worker-input" 
+                value={bio.email} 
+                readOnly 
+                disabled
+                style={{
+                  backgroundColor: '#f8fafc',
+                  color: '#475569',
+                  borderColor: '#e2e8f0',
+                  cursor: 'not-allowed',
+                  fontWeight: 500
+                }}
+                title="Worker email address is permanent and cannot be changed."
+              />
+              <span style={{ fontSize: '0.78rem', color: '#94a3b8', marginTop: '6px', display: 'block' }}>
+                Registered email address linked to your account (cannot be changed).
+              </span>
             </div>
 
             <div className="worker-input-group">
@@ -958,7 +955,15 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
           <div className="worker-input-group" style={{ marginBottom: '24px' }}>
             <label className="worker-label">Availability Status</label>
             <div
-              onClick={() => setAvailability({ ...availability, isAvailable: !availability.isAvailable })}
+              onClick={() => {
+                const next = !availability.isAvailable;
+                const msg = next
+                  ? 'Switch status to Available for Work?\n\nYou will be visible to residents and eligible to receive new bookings.'
+                  : 'Switch status to Currently Offline?\n\nYou will be hidden from search results and won\'t receive new bookings until you switch back online.';
+                if (window.confirm(msg)) {
+                  setAvailability({ ...availability, isAvailable: next });
+                }
+              }}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -1105,6 +1110,39 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
               <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#111827' }}>Google Single Sign-On Active</div>
               <div style={{ fontSize: '0.82rem', color: '#6b7280' }}>Connected to {userEmail}</div>
             </div>
+          </div>
+
+          {/* Identity & Account Verification Card */}
+          <div style={{
+            backgroundColor: '#ffffff',
+            border: '1px solid #e5e7eb',
+            borderRadius: '16px',
+            padding: '28px 24px',
+            marginBottom: '28px',
+            boxShadow: '0 2px 10px rgba(0, 0, 0, 0.03)'
+          }}>
+            <VerificationForm 
+              isVerified={bio.isVerified}
+              onVerifySuccess={async (data) => {
+                try {
+                  if (currentWorkerId) {
+                    await axios.post(`${API_BASE_URL}/workers/${currentWorkerId}/verify`, {
+                      nicNumber: data?.nic || '',
+                      dateOfBirth: data?.dateOfBirth || '',
+                      gender: data?.gender || ''
+                    });
+                  }
+                  setBio(prev => ({ ...prev, isVerified: true, nicNumber: data?.nic || prev.nicNumber }));
+                  setSaveStatus('Identity verified and saved successfully!');
+                  setTimeout(() => setSaveStatus(null), 3500);
+                } catch (err) {
+                  console.error('Error saving verification status:', err);
+                  setBio(prev => ({ ...prev, isVerified: true, nicNumber: data?.nic || prev.nicNumber }));
+                  setSaveStatus('Identity verified! (Note: Could not update server)');
+                  setTimeout(() => setSaveStatus(null), 3500);
+                }
+              }}
+            />
           </div>
 
           {/* RESTRICTED AREA — DANGER ZONE */}

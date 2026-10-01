@@ -32,8 +32,11 @@ class NotificationService {
   // Track previous snapshots to detect new state changes
   final Map<int, String> _lastKnownBookingStatuses = {};
   final Map<int, String> _lastKnownMessageKeys = {};
+  final Map<int, int> _lastKnownPostLikes = {};
+  final Map<int, int> _lastKnownPostComments = {};
   bool _initialBookingFetchDone = false;
   bool _initialChatFetchDone = false;
+  bool _initialCommunityFetchDone = false;
 
   /// Initialize service and restore persisted notifications
   Future<void> initialize() async {
@@ -52,8 +55,11 @@ class NotificationService {
     _isWorker = isWorker;
     _initialBookingFetchDone = false;
     _initialChatFetchDone = false;
+    _initialCommunityFetchDone = false;
     _lastKnownBookingStatuses.clear();
     _lastKnownMessageKeys.clear();
+    _lastKnownPostLikes.clear();
+    _lastKnownPostComments.clear();
 
     // Perform first fetch immediately
     _checkForUpdates();
@@ -79,6 +85,7 @@ class NotificationService {
       await Future.wait([
         _checkBookingUpdates(email),
         _checkChatUpdates(email),
+        _checkCommunityUpdates(email),
       ]);
     } catch (e) {
       debugPrint('Error polling notifications: $e');
@@ -243,6 +250,78 @@ class NotificationService {
       }
     } catch (e) {
       debugPrint('Error checking chat updates: $e');
+    }
+  }
+
+  /// 3. Check for new likes and comments on user's community posts
+  Future<void> _checkCommunityUpdates(String email) async {
+    try {
+      final posts = await ApiService().fetchUserCommunityPosts(email);
+
+      if (!_initialCommunityFetchDone) {
+        for (var p in posts) {
+          _lastKnownPostLikes[p.postId] = p.likesCount;
+          _lastKnownPostComments[p.postId] = p.commentsCount;
+        }
+        _initialCommunityFetchDone = true;
+        return;
+      }
+
+      for (var p in posts) {
+        final prevLikes = _lastKnownPostLikes[p.postId];
+        final prevComments = _lastKnownPostComments[p.postId];
+
+        // Check for new likes
+        if (prevLikes != null && p.likesCount > prevLikes) {
+          final diff = p.likesCount - prevLikes;
+          final likeText = diff == 1 ? 'Someone liked your post' : '$diff people liked your post';
+          final postTitle = p.title.isNotEmpty ? '"${p.title}"' : 'your post';
+
+          _addAndBroadcastNotification(
+            AppNotification(
+              id: 'like_${p.postId}_${DateTime.now().millisecondsSinceEpoch}',
+              title: 'New Like! ❤️',
+              body: '$likeText: $postTitle',
+              type: NotificationType.communityLike,
+              timestamp: DateTime.now(),
+              referenceId: p.postId,
+              metadata: {
+                'postId': p.postId,
+                'postTitle': p.title,
+                'likesCount': p.likesCount,
+              },
+            ),
+          );
+        }
+
+        // Check for new comments
+        if (prevComments != null && p.commentsCount > prevComments) {
+          final diff = p.commentsCount - prevComments;
+          final commentText = diff == 1 ? 'New comment on your post' : '$diff new comments on your post';
+          final postTitle = p.title.isNotEmpty ? '"${p.title}"' : 'your post';
+
+          _addAndBroadcastNotification(
+            AppNotification(
+              id: 'comment_${p.postId}_${DateTime.now().millisecondsSinceEpoch}',
+              title: 'New Comment! 💬',
+              body: '$commentText: $postTitle',
+              type: NotificationType.communityComment,
+              timestamp: DateTime.now(),
+              referenceId: p.postId,
+              metadata: {
+                'postId': p.postId,
+                'postTitle': p.title,
+                'commentsCount': p.commentsCount,
+              },
+            ),
+          );
+        }
+
+        _lastKnownPostLikes[p.postId] = p.likesCount;
+        _lastKnownPostComments[p.postId] = p.commentsCount;
+      }
+    } catch (e) {
+      debugPrint('Error checking community updates: $e');
     }
   }
 
