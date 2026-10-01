@@ -374,6 +374,14 @@
   box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
 }
 
+.worker-input:disabled, .worker-input[readonly], .worker-select:disabled, .worker-textarea:disabled {
+  background-color: #f8fafc;
+  color: #475569;
+  border-color: #e2e8f0;
+  cursor: not-allowed;
+  opacity: 0.9;
+}
+
 /* Primary Worker Button (Uber Style) */
 .worker-btn-primary {
   display: inline-flex;
