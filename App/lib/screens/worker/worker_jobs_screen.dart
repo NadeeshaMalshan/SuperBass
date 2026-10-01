@@ -201,7 +201,6 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen> with SingleTickerPr
 
   Future<void> _handleReschedule(BookingModel booking) async {
     DateTime selectedDate = booking.scheduledDate ?? DateTime.now().add(const Duration(days: 1));
-    TimeOfDay selectedTime = TimeOfDay.fromDateTime(selectedDate);
     final noteController = TextEditingController();
 
     final pickedDate = await showDatePicker(
@@ -212,18 +211,10 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen> with SingleTickerPr
     );
     if (pickedDate == null || !mounted) return;
 
-    final pickedTime = await showTimePicker(
-      context: context,
-      initialTime: selectedTime,
-    );
-    if (pickedTime == null || !mounted) return;
-
-    final newDateTime = DateTime(
+    final newDateTime = DateTime.utc(
       pickedDate.year,
       pickedDate.month,
       pickedDate.day,
-      pickedTime.hour,
-      pickedTime.minute,
     );
 
     final confirm = await showDialog<bool>(
@@ -235,7 +226,7 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen> with SingleTickerPr
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'New Date: ${newDateTime.day}/${newDateTime.month}/${newDateTime.year} at ${pickedTime.format(ctx)}',
+              'New Date: ${newDateTime.day}/${newDateTime.month}/${newDateTime.year}',
               style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, color: WorkerColors.primary),
             ),
             const SizedBox(height: 12),
@@ -480,7 +471,7 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen> with SingleTickerPr
     final status = b.status.toLowerCase();
     final isActionLoading = _actionLoadingId?.contains('${b.id}') ?? false;
     final scheduledDateStr = b.scheduledDate != null
-        ? '${b.scheduledDate!.day}/${b.scheduledDate!.month}/${b.scheduledDate!.year} at ${b.scheduledDate!.hour.toString().padLeft(2, '0')}:${b.scheduledDate!.minute.toString().padLeft(2, '0')}'
+        ? '${b.scheduledDate!.day}/${b.scheduledDate!.month}/${b.scheduledDate!.year}'
         : 'Flexible / ASAP';
 
     Color statusColor;

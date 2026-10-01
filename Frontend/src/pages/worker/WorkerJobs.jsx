@@ -18,7 +18,6 @@ export default function WorkerJobs() {
   // Reschedule Modal State
   const [rescheduleBooking, setRescheduleBooking] = useState(null);
   const [newDate, setNewDate] = useState('');
-  const [newTime, setNewTime] = useState('10:00');
   const [rescheduleNote, setRescheduleNote] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -180,7 +179,7 @@ export default function WorkerJobs() {
 
     try {
       setActionLoading(true);
-      const combinedDateTime = new Date(`${newDate}T${newTime}:00`);
+      const combinedDateTime = new Date(`${newDate}T00:00:00Z`);
       const res = await axios.post(`${API_BASE_URL}/bookings/${rescheduleBooking.id}/reschedule`, {
         scheduledDate: combinedDateTime.toISOString(),
         note: rescheduleNote
@@ -223,10 +222,9 @@ export default function WorkerJobs() {
     const d = new Date(dateStr);
     return d.toLocaleDateString('en-US', {
       weekday: 'short',
+      year: 'numeric',
       month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      day: 'numeric'
     });
   };
 
@@ -647,17 +645,6 @@ export default function WorkerJobs() {
                   required
                   value={newDate}
                   onChange={(e) => setNewDate(e.target.value)}
-                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700, marginBottom: '6px' }}>New Time</label>
-                <input
-                  type="time"
-                  required
-                  value={newTime}
-                  onChange={(e) => setNewTime(e.target.value)}
                   style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
                 />
               </div>

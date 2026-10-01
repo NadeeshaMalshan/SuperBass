@@ -16,9 +16,8 @@ export default function BookingConfirmedCard({ data = {}, onAction }) {
   let formattedDate = scheduledDate;
   try {
     if (scheduledDate) {
-      formattedDate = new Date(scheduledDate).toLocaleString([], {
+      formattedDate = new Date(scheduledDate).toLocaleDateString([], {
         dateStyle: 'medium',
-        timeStyle: 'short',
       });
     }
   } catch (err) {
@@ -46,7 +45,7 @@ export default function BookingConfirmedCard({ data = {}, onAction }) {
             <span className="detail-val">{workerName} (Worker #{workerId})</span>
           </div>
           <div className="booking-confirmed-detail-row">
-            <span className="detail-key"><i className="fa-regular fa-calendar"></i> Scheduled Time:</span>
+            <span className="detail-key"><i className="fa-regular fa-calendar"></i> Scheduled Date:</span>
             <span className="detail-val">{formattedDate || 'Upcoming appointment'}</span>
           </div>
           <div className="booking-confirmed-detail-row">

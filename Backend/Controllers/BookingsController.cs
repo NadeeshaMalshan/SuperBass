@@ -154,7 +154,7 @@ namespace Superbass.Controllers
                         WorkerName = worker.Name,
                         WorkerAvatar = worker.ProfileImage,
                         ResidentEmail = residentEmail,
-                        InitialMessage = $"New Hire Request: {request.JobTitle} scheduled for {(request.ScheduledDate ?? DateTime.UtcNow.AddDays(1)):dd MMM yyyy, hh:mm tt}."
+                        InitialMessage = $"New Hire Request: {request.JobTitle} scheduled for {(request.ScheduledDate ?? DateTime.UtcNow.AddDays(1)):dd MMM yyyy}."
                     }, residentEmail);
                     conversationId = convSummary.Id;
                 }
@@ -164,10 +164,8 @@ namespace Superbass.Controllers
                 }
 
                 var scheduledUtc = request.ScheduledDate.HasValue 
-                    ? (request.ScheduledDate.Value.Kind == DateTimeKind.Utc 
-                        ? request.ScheduledDate.Value 
-                        : DateTime.SpecifyKind(request.ScheduledDate.Value, DateTimeKind.Utc))
-                    : DateTime.UtcNow.AddDays(1);
+                    ? DateTime.SpecifyKind(request.ScheduledDate.Value.Date, DateTimeKind.Utc)
+                    : DateTime.SpecifyKind(DateTime.UtcNow.AddDays(1).Date, DateTimeKind.Utc);
 
                 var booking = new Booking
                 {
@@ -581,9 +579,7 @@ namespace Superbass.Controllers
                 return NotFound(new { message = "Booking not found." });
             }
 
-            var rescheduleUtc = request.ScheduledDate.Kind == DateTimeKind.Utc
-                ? request.ScheduledDate
-                : DateTime.SpecifyKind(request.ScheduledDate, DateTimeKind.Utc);
+            var rescheduleUtc = DateTime.SpecifyKind(request.ScheduledDate.Date, DateTimeKind.Utc);
 
             booking.ScheduledDate = rescheduleUtc;
             booking.UpdatedAt = DateTime.UtcNow;
@@ -598,7 +594,7 @@ namespace Superbass.Controllers
                         SenderEmail = booking.ResidentEmail,
                         SenderRole = "Resident",
                         MessageType = "BookingUpdate",
-                        Content = $"📅 Booking Rescheduled to: {request.ScheduledDate:dd MMM yyyy, hh:mm tt}. {request.Note}"
+                        Content = $"📅 Booking Rescheduled to: {request.ScheduledDate:dd MMM yyyy}. {request.Note}"
                     });
                 }
                 catch { }

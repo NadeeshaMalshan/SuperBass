@@ -529,7 +529,6 @@ class _FindTabScreenState extends State<FindTabScreen> {
     final addressController = TextEditingController(text: initialAddress);
     
     DateTime? selectedDate = DateTime.now().add(const Duration(days: 1));
-    TimeOfDay? selectedTime = TimeOfDay.now();
     bool isSubmitting = false;
     String selectedUrgency = 'Medium';
 
@@ -648,52 +647,29 @@ class _FindTabScreenState extends State<FindTabScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        readOnly: true,
-                        controller: TextEditingController(text: selectedDate == null ? '' : '${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}'),
-                        decoration: InputDecoration(
-                          labelText: 'Preferred Date',
-                          prefixIcon: const Icon(Icons.calendar_today),
-                          suffixIcon: const Icon(Icons.edit_calendar),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                        ),
-                        onTap: () async {
-                          final d = await showDatePicker(
-                            context: context, 
-                            initialDate: selectedDate ?? DateTime.now(), 
-                            firstDate: DateTime.now(), 
-                            lastDate: DateTime.now().add(const Duration(days: 365))
-                          );
-                          if (d != null) setModalState(() => selectedDate = d);
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        readOnly: true,
-                        controller: TextEditingController(text: selectedTime == null ? '' : selectedTime!.format(context)),
-                        decoration: InputDecoration(
-                          labelText: 'Preferred Time',
-                          prefixIcon: const Icon(Icons.schedule),
-                          suffixIcon: const Icon(Icons.access_time),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                        ),
-                        onTap: () async {
-                          final t = await showTimePicker(
-                            context: context, 
-                            initialTime: selectedTime ?? TimeOfDay.now()
-                          );
-                          if (t != null) setModalState(() => selectedTime = t);
-                        },
-                      ),
-                    ),
-                  ],
+                TextField(
+                  readOnly: true,
+                  controller: TextEditingController(
+                    text: selectedDate == null 
+                        ? '' 
+                        : '${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}'
+                  ),
+                  decoration: InputDecoration(
+                    labelText: 'Preferred Date',
+                    prefixIcon: const Icon(Icons.calendar_today),
+                    suffixIcon: const Icon(Icons.edit_calendar),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  ),
+                  onTap: () async {
+                    final d = await showDatePicker(
+                      context: context, 
+                      initialDate: selectedDate ?? DateTime.now(), 
+                      firstDate: DateTime.now(), 
+                      lastDate: DateTime.now().add(const Duration(days: 365))
+                    );
+                    if (d != null) setModalState(() => selectedDate = d);
+                  },
                 ),
                 const SizedBox(height: 16),
                 TextField(
@@ -1049,17 +1025,9 @@ class _FindTabScreenState extends State<FindTabScreen> {
 
                                   setModalState(() => isSubmitting = true);
                                   
-                                  DateTime? finalDate;
-                                  if (selectedDate != null) {
-                                    final time = selectedTime ?? TimeOfDay.now();
-                                    finalDate = DateTime(
-                                      selectedDate!.year, 
-                                      selectedDate!.month, 
-                                      selectedDate!.day, 
-                                      time.hour, 
-                                      time.minute
-                                    );
-                                  }
+                                  DateTime? finalDate = selectedDate != null
+                                      ? DateTime.utc(selectedDate!.year, selectedDate!.month, selectedDate!.day)
+                                      : null;
 
                                   final scaffoldMessenger = ScaffoldMessenger.of(context);
                                   final navigator = Navigator.of(sheetContext);
@@ -1665,7 +1633,7 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
 
   void _showBookingDetails(BookingModel b) {
     final scheduledDateStr = b.scheduledDate != null
-        ? '${b.scheduledDate!.month}/${b.scheduledDate!.day}/${b.scheduledDate!.year}, ${b.scheduledDate!.hour > 12 ? b.scheduledDate!.hour - 12 : (b.scheduledDate!.hour == 0 ? 12 : b.scheduledDate!.hour)}:${b.scheduledDate!.minute.toString().padLeft(2, '0')}:00 ${b.scheduledDate!.hour >= 12 ? "PM" : "AM"}'
+        ? '${b.scheduledDate!.day}/${b.scheduledDate!.month}/${b.scheduledDate!.year}'
         : 'Flexible / ASAP';
         
     int currentStep = 1;
@@ -1805,7 +1773,7 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('DATE & TIME', style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF64748B))),
+                                    Text('DATE', style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF64748B))),
                                     const SizedBox(height: 4),
                                     Text(scheduledDateStr, style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFF111827))),
                                   ],

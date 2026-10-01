@@ -892,7 +892,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                               </span>
                             </div>
                             <p >
-                              Booking #{b.id} • Scheduled for {new Date(b.scheduledDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                              Booking #{b.id} • Scheduled for {new Date(b.scheduledDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
                             </p>
                           </div>
                         </div>
