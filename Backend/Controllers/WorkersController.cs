@@ -180,14 +180,28 @@ namespace Superbass.Controllers
             return Ok(new { message = "Service area updated successfully" });
         }
 
-        // PUT /api/workers/{id}/password
-        [HttpPut("{id}/password")]
-        public async Task<IActionResult> UpdatePassword(int id, [FromBody] PasswordUpdateDto dto)
+        // POST /api/workers/{id}/verify
+        [HttpPost("{id}/verify")]
+        public async Task<IActionResult> VerifyWorker(int id, [FromBody] VerifyWorkerDto dto)
         {
-            if (string.IsNullOrWhiteSpace(dto.NewPassword)) return BadRequest(new { message = "New password is required" });
-            var success = await _workerRepository.UpdatePasswordAsync(id, dto.NewPassword);
-            if (!success) return NotFound();
-            return Ok(new { message = "Password updated successfully" });
+            var worker = await _dbContext.Workers.FindAsync(id);
+            if (worker == null) return NotFound(new { message = "Worker not found" });
+
+            worker.IsVerified = true;
+            if (!string.IsNullOrWhiteSpace(dto.NicNumber))
+            {
+                worker.NicNumber = dto.NicNumber.Trim();
+            }
+
+            await _dbContext.SaveChangesAsync();
+
+            return Ok(new 
+            { 
+                message = "Worker account verified successfully!", 
+                isVerified = true,
+                workerId = worker.Id,
+                nicNumber = worker.NicNumber
+            });
         }
         // GET: /api/workers/me
         [HttpGet("me")]
@@ -524,6 +538,13 @@ namespace Superbass.Controllers
             public decimal? DailyRate { get; set; }
             public bool IsAvailable { get; set; } = true;
             public List<WorkerSkillDto> Skills { get; set; } = new();
+        }
+
+        public class VerifyWorkerDto
+        {
+            public string? NicNumber { get; set; }
+            public string? DateOfBirth { get; set; }
+            public string? Gender { get; set; }
         }
     }
 }
