@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/app_notification_model.dart';
 import '../services/notification_service.dart';
 import '../theme/app_colors.dart';
+import '../screens/community_screen.dart';
 
 class NotificationBellButton extends StatelessWidget {
   final Function(AppNotification)? onNotificationTap;
@@ -51,7 +52,17 @@ class NotificationBellButton extends StatelessWidget {
             NotificationsSheet.show(
               context,
               onNotificationTap: (n) {
-                onNotificationTap?.call(n);
+                if (onNotificationTap != null) {
+                  onNotificationTap!(n);
+                } else if (n.type == NotificationType.communityLike || n.type == NotificationType.communityComment) {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const Scaffold(
+                        body: SafeArea(child: CommunityScreen()),
+                      ),
+                    ),
+                  );
+                }
               },
             );
           },

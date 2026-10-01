@@ -51,11 +51,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildProfileHeader(user),
                   const SizedBox(height: 32),
 
-                  // --- Worker Mode Banner ---
-                  if (!user.isWorker) ...[
-                    const _WorkerModeBanner(),
-                    const SizedBox(height: 32),
-                  ],
+
 
                   // --- Verify Account Section ---
                   if (!_isVerified)
@@ -200,112 +196,6 @@ class _RobustAvatarState extends State<_RobustAvatar> {
 
 }
 
-// --- Worker Mode Banner Widget ---
-class _WorkerModeBanner extends StatelessWidget {
-  const _WorkerModeBanner();
-
-  void _handleSwitchToWorker(BuildContext context) {
-    debugPrint("Tapped Switch to Worker Mode");
-    // Using a dialog for a clean, modern user interaction flow.
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text("Worker Mode"),
-        content: const Text("This feature will guide you through the worker registration and onboarding process. Ready to start?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            onPressed: () {
-              Navigator.pop(context); // Close dialog
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const WorkerOnboardingScreen()),
-              );
-            },
-            child: const Text("Get Started"),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.grey.shade900, Colors.black87],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: () => _handleSwitchToWorker(context),
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.yellow.shade700.withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(Icons.handyman, color: Colors.yellow.shade700, size: 28),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "Switch to Worker Mode",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        "Offer your skills and get jobs in your area.",
-                        style: TextStyle(
-                          color: Colors.grey.shade400,
-                          fontSize: 13,
-                          height: 1.3,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Icon(Icons.chevron_right, color: Colors.white, size: 28),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 // --- Interactive Profile Menu Widget ---
 class _ProfileMenu extends StatelessWidget {

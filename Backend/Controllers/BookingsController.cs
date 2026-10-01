@@ -69,7 +69,7 @@ namespace Superbass.Controllers
                 WorkerId = b.WorkerId,
                 WorkerName = b.Worker?.Name ?? "Worker",
                 WorkerEmail = b.Worker?.Email ?? b.Worker?.ResidentEmail ?? string.Empty,
-                WorkerPhone = b.Worker?.PhoneNo,
+                WorkerPhone = b.IsContactShared ? b.Worker?.PhoneNo : null,
                 WorkerProfileImage = b.Worker?.ProfileImage,
                 JobTitle = b.JobTitle,
                 Description = b.Description,
@@ -92,6 +92,7 @@ namespace Superbass.Controllers
                 ReviewComment = b.ReviewComment,
                 ReviewedAt = b.ReviewedAt,
                 ConversationId = b.ConversationId,
+                IsContactShared = b.IsContactShared,
                 CreatedAt = b.CreatedAt,
                 UpdatedAt = b.UpdatedAt
             };
@@ -332,6 +333,25 @@ namespace Superbass.Controllers
             if (booking.Worker != null)
             {
                 booking.Worker.AcceptedJobs += 1;
+            }
+
+            // Ensure private booking chat conversation exists
+            if (!booking.ConversationId.HasValue)
+            {
+                try
+                {
+                    var conv = await _communicationRepo.GetOrCreateConversationAsync(new CreateConversationRequest
+                    {
+                        WorkerId = booking.WorkerId,
+                        ResidentEmail = booking.ResidentEmail,
+                        BookingId = booking.Id,
+                        WorkerEmail = booking.Worker?.Email,
+                        WorkerName = booking.Worker?.Name,
+                        WorkerAvatar = booking.Worker?.ProfileImage
+                    }, booking.ResidentEmail);
+                    booking.ConversationId = conv.Id;
+                }
+                catch { }
             }
 
             await _context.SaveChangesAsync();

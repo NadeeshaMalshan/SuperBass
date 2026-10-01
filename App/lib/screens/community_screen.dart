@@ -8,6 +8,7 @@ import '../models/auth_user.dart';
 import '../models/community_post_model.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/location_service.dart';
 import '../theme/app_colors.dart';
 
 class CommunityScreen extends StatefulWidget {
@@ -27,6 +28,8 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
   String _selectedCategory = 'All';
   String _searchQuery = '';
   String _sortBy = 'latest'; // 'latest' or 'popular'
+  String _selectedLocation = 'All Locations';
+  String? _primaryAddressCity;
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -45,6 +48,7 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
 
   Future<void> _loadInitialData() async {
     setState(() => _isLoading = true);
+    _loadPrimaryAddress();
     await Future.wait([
       _fetchCategories(),
       _fetchPosts(),
@@ -52,6 +56,18 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
     if (mounted) {
       setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _loadPrimaryAddress() async {
+    try {
+      final user = AuthService().currentUser;
+      final city = await LocationService.getPrimaryAddressCity(user?.email);
+      if (mounted && city != null && city.isNotEmpty) {
+        setState(() {
+          _primaryAddressCity = city;
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _fetchCategories() async {
@@ -65,24 +81,49 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
 
   Future<void> _fetchPosts() async {
     final currentUserEmail = AuthService().currentUser?.email;
+    final isAllLocations = _selectedLocation == 'All' ||
+        _selectedLocation == 'All Locations' ||
+        _selectedLocation.trim().isEmpty;
+    final locationQuery = isAllLocations ? null : _selectedLocation.trim();
 
     final posts = await ApiService().fetchCommunityPosts(
       category: _selectedCategory,
       search: _searchQuery,
       sort: _sortBy,
+      location: locationQuery,
     );
+
+    final filteredPosts = isAllLocations
+        ? posts
+        : posts
+            .where((p) => LocationService.workerMatchesLocation(
+                p.location, _selectedLocation))
+            .toList();
 
     List<CommunityPostModel> userPosts = [];
     if (currentUserEmail != null && currentUserEmail.isNotEmpty) {
       userPosts = await ApiService().fetchUserCommunityPosts(currentUserEmail);
+      if (!isAllLocations) {
+        userPosts = userPosts
+            .where((p) => LocationService.workerMatchesLocation(
+                p.location, _selectedLocation))
+            .toList();
+      }
     }
 
     if (mounted) {
       setState(() {
-        _allPosts = posts;
+        _allPosts = isAllLocations ? posts : filteredPosts;
         _myPosts = userPosts;
       });
     }
+  }
+
+  void _updateLocation(String newLocation) {
+    setState(() {
+      _selectedLocation = newLocation;
+    });
+    _fetchPosts();
   }
 
   void _onCategorySelected(String categoryId) {
@@ -104,6 +145,492 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
       _sortBy = _sortBy == 'latest' ? 'popular' : 'latest';
     });
     _fetchPosts();
+  }
+
+  void _showLocationPickerSheet() {
+    final TextEditingController searchController = TextEditingController();
+    bool isDetecting = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          final query = searchController.text.trim().toLowerCase();
+
+          const sriLankaDistricts = [
+            'All Locations',
+            'Ampara',
+            'Anuradhapura',
+            'Badulla',
+            'Batticaloa',
+            'Colombo',
+            'Galle',
+            'Gampaha',
+            'Hambantota',
+            'Jaffna',
+            'Kalutara',
+            'Kandy',
+            'Kegalle',
+            'Kilinochchi',
+            'Kurunegala',
+            'Mannar',
+            'Matale',
+            'Matara',
+            'Monaragala',
+            'Mullaitivu',
+            'Nuwara Eliya',
+            'Polonnaruwa',
+            'Puttalam',
+            'Ratnapura',
+            'Trincomalee',
+            'Vavuniya',
+          ];
+
+          final List<Map<String, String>> matchingPlaces = [];
+          if (query.isNotEmpty) {
+            for (final entry in SriLankaLocations.districtDsMap.entries) {
+              final district = entry.key;
+              if (district.toLowerCase().contains(query)) {
+                matchingPlaces.add({'name': district, 'type': 'District'});
+              }
+              for (final ds in entry.value) {
+                final dsName = ds.split('/').first.split('-').first.trim();
+                if (dsName.toLowerCase().contains(query)) {
+                  matchingPlaces.add({
+                    'name': dsName,
+                    'type': '$district District',
+                  });
+                }
+              }
+            }
+          }
+
+          return Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+            ),
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 12),
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 14, 16, 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Select Location',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 19,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.black,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Filter community discussions by location',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 12.5,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        icon: const Icon(Icons.close, color: Colors.black),
+                        tooltip: 'Close',
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1, thickness: 1, color: Color(0xFFEEEEEE)),
+
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    children: [
+                      // Option 1: Use Current Location (GPS)
+                      InkWell(
+                        onTap: isDetecting
+                            ? null
+                            : () async {
+                                setModalState(() => isDetecting = true);
+                                try {
+                                  final city = await LocationService.detectGpsCity();
+                                  if (mounted && city != null && city.isNotEmpty) {
+                                    _updateLocation(city);
+                                    if (ctx.mounted) Navigator.pop(ctx);
+                                  } else {
+                                    setModalState(() => isDetecting = false);
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Could not detect GPS location. Please select your city below.'),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                } catch (_) {
+                                  setModalState(() => isDetecting = false);
+                                }
+                              },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                            borderRadius: BorderRadius.circular(12),
+                            color: const Color(0xFFFAFAFA),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 38,
+                                height: 38,
+                                decoration: const BoxDecoration(
+                                  color: Colors.black,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: isDetecting
+                                    ? const Padding(
+                                        padding: EdgeInsets.all(10.0),
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Icon(
+                                        Icons.my_location,
+                                        size: 19,
+                                        color: Colors.white,
+                                      ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Use Current Location',
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 14.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      isDetecting
+                                          ? 'Detecting via GPS / Network...'
+                                          : 'Filter posts near your device GPS',
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(
+                                Icons.chevron_right,
+                                size: 20,
+                                color: Colors.grey,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      // Option 2: Use Primary Address City
+                      InkWell(
+                        onTap: () async {
+                          if (_primaryAddressCity != null && _primaryAddressCity!.isNotEmpty) {
+                            _updateLocation(_primaryAddressCity!);
+                            Navigator.pop(ctx);
+                          } else {
+                            final user = AuthService().currentUser;
+                            final city = await LocationService.getPrimaryAddressCity(user?.email);
+                            if (city != null && city.isNotEmpty) {
+                              _primaryAddressCity = city;
+                              _updateLocation(city);
+                              if (ctx.mounted) Navigator.pop(ctx);
+                            } else {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('No primary address found. Please enter or select a city below.'),
+                                  ),
+                                );
+                              }
+                            }
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                            borderRadius: BorderRadius.circular(12),
+                            color: const Color(0xFFFAFAFA),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 38,
+                                height: 38,
+                                decoration: const BoxDecoration(
+                                  color: Colors.black,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.home_outlined,
+                                  size: 20,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Use Primary Address',
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 14.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      (_primaryAddressCity != null && _primaryAddressCity!.isNotEmpty)
+                                          ? 'Saved: $_primaryAddressCity'
+                                          : 'From your resident account profile',
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(
+                                Icons.chevron_right,
+                                size: 20,
+                                color: Colors.grey,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Search text input
+                      TextField(
+                        controller: searchController,
+                        onChanged: (_) => setModalState(() {}),
+                        style: GoogleFonts.dmSans(fontSize: 14, color: Colors.black),
+                        decoration: InputDecoration(
+                          hintText: 'Search city or district (e.g. Ratnapura, Colombo)...',
+                          hintStyle: GoogleFonts.dmSans(fontSize: 13, color: Colors.grey[500]),
+                          prefixIcon: const Icon(Icons.search, size: 20, color: Colors.black87),
+                          suffixIcon: searchController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear, size: 18),
+                                  onPressed: () {
+                                    searchController.clear();
+                                    setModalState(() {});
+                                  },
+                                )
+                              : null,
+                          filled: true,
+                          fillColor: const Color(0xFFF1F5F9),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+
+                      // If manual query has text, show "Use '<query>'" tile so user can type any custom name
+                      if (searchController.text.trim().isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        InkWell(
+                          onTap: () {
+                            final custom = LocationService.cleanLocationName(searchController.text.trim());
+                            if (custom.isNotEmpty) {
+                              _updateLocation(custom);
+                              Navigator.pop(ctx);
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(10),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: Colors.black,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.location_on, size: 18, color: Colors.white),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Use "${searchController.text.trim()}"',
+                                    style: GoogleFonts.dmSans(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13.5,
+                                      color: Colors.white,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const Icon(Icons.arrow_forward, size: 16, color: Colors.white),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+
+                      // If search query is empty, show Districts chips
+                      if (searchController.text.trim().isEmpty) ...[
+                        const SizedBox(height: 16),
+                        Text(
+                          'Districts (Sri Lanka)',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: sriLankaDistricts.map((district) {
+                            final isSelected = _selectedLocation.toLowerCase() == district.toLowerCase();
+                            return ChoiceChip(
+                              label: Text(district),
+                              selected: isSelected,
+                              onSelected: (_) {
+                                _updateLocation(district);
+                                Navigator.pop(ctx);
+                              },
+                              selectedColor: Colors.black,
+                              backgroundColor: const Color(0xFFF1F5F9),
+                              labelStyle: GoogleFonts.dmSans(
+                                fontSize: 12.5,
+                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                color: isSelected ? Colors.white : Colors.black87,
+                              ),
+                              side: BorderSide(
+                                color: isSelected ? Colors.black : const Color(0xFFE2E8F0),
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              showCheckmark: false,
+                            );
+                          }).toList(),
+                        ),
+                      ],
+
+                      // If search query is not empty, show matching results from SriLankaLocations
+                      if (query.isNotEmpty) ...[
+                        const SizedBox(height: 14),
+                        Text(
+                          'Matching Locations (${matchingPlaces.length})',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        if (matchingPlaces.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 16.0),
+                            child: Center(
+                              child: Text(
+                                'No official district/division found.\nYou can tap "Use \\"${searchController.text}\\"" above.',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 13,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ),
+                          )
+                        else
+                          ...matchingPlaces.map((place) {
+                            final name = place['name']!;
+                            final type = place['type']!;
+                            final isSelected = _selectedLocation.toLowerCase() == name.toLowerCase();
+                            return ListTile(
+                              dense: true,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                              leading: Icon(
+                                Icons.location_on_outlined,
+                                size: 20,
+                                color: isSelected ? Colors.black : Colors.grey[600],
+                              ),
+                              title: Text(
+                                name,
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 14,
+                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                  color: Colors.black,
+                                ),
+                              ),
+                              subtitle: Text(
+                                type,
+                                style: GoogleFonts.dmSans(fontSize: 11.5, color: Colors.grey[600]),
+                              ),
+                              trailing: isSelected
+                                  ? const Icon(Icons.check, size: 18, color: Colors.black)
+                                  : null,
+                              onTap: () {
+                                _updateLocation(name);
+                                Navigator.pop(ctx);
+                              },
+                            );
+                          }),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 
   // Handle Create or Edit Post Sheet
@@ -437,8 +964,8 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                       height: 50,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.brandYellow,
-                          foregroundColor: Colors.black,
+                          backgroundColor: Colors.black,
+                          foregroundColor: Colors.white,
                           shape: const StadiumBorder(),
                         ),
                         onPressed: isSubmitting
@@ -738,6 +1265,48 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
       child: ListView(
         padding: EdgeInsets.fromLTRB(16, 16, 16, widget.isWorkerMode ? 96 : 16),
         children: [
+          // Location Selector Row: [Pin] <Location Name> [Chevron Down]
+          Align(
+            alignment: Alignment.centerLeft,
+            child: InkWell(
+              onTap: _showLocationPickerSheet,
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.location_on_outlined,
+                      size: 19,
+                      color: AppColors.brandBlack,
+                    ),
+                    const SizedBox(width: 5),
+                    Flexible(
+                      child: Text(
+                        _selectedLocation,
+                        style: GoogleFonts.dmSans(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.brandBlack,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 3),
+                    const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: 20,
+                      color: AppColors.brandBlack,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+
           // Banner
           Container(
             padding: const EdgeInsets.all(16),
@@ -841,17 +1410,40 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                     const Icon(Icons.forum_outlined, size: 48, color: AppColors.onSurfaceVariant),
                     const SizedBox(height: 12),
                     Text(
-                      isMyPosts ? 'You have not created any posts yet' : 'No community posts found',
+                      isMyPosts
+                          ? 'You have not created any posts yet'
+                          : (_selectedLocation != 'All Locations' && _selectedLocation != 'All'
+                              ? 'No community posts found in $_selectedLocation'
+                              : 'No community posts found'),
                       style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 16),
+                      textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 4),
                     Text(
                       isMyPosts
                           ? 'Tap "+ New Post" below to start your first community discussion!'
-                          : 'Be the first to post recommendations or ask for help in your area!',
+                          : (_selectedLocation != 'All Locations' && _selectedLocation != 'All'
+                              ? 'Try switching to "All Locations" or be the first to post!'
+                              : 'Be the first to post recommendations or ask for help in your area!'),
                       style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.onSurfaceVariant),
                       textAlign: TextAlign.center,
                     ),
+                    if (!isMyPosts && _selectedLocation != 'All Locations' && _selectedLocation != 'All') ...[
+                      const SizedBox(height: 12),
+                      ElevatedButton(
+                        onPressed: () => _updateLocation('All Locations'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.brandBlack,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: const StadiumBorder(),
+                        ),
+                        child: Text(
+                          'View All Locations',
+                          style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, fontSize: 13.5),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -876,9 +1468,10 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
         labelStyle: GoogleFonts.dmSans(
           fontSize: 12,
           fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-          color: isSelected ? Colors.black : AppColors.onSurface,
+          color: isSelected ? Colors.white : AppColors.onSurface,
         ),
-        selectedColor: AppColors.brandYellow,
+        checkmarkColor: Colors.white,
+        selectedColor: Colors.black,
         backgroundColor: AppColors.surfaceVariant,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         onSelected: (_) => _onCategorySelected(id),

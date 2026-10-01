@@ -5,6 +5,7 @@ class AuthUser {
   final String? picture;
   final bool isNewUser;
   final bool isWorker;
+  final bool isNewWorker;
   final String activeRole;
   final int? workerId;
   final double? locationLat;
@@ -17,6 +18,7 @@ class AuthUser {
     this.picture,
     this.isNewUser = false,
     this.isWorker = false,
+    this.isNewWorker = false,
     this.activeRole = 'Resident',
     this.workerId,
     this.locationLat,
@@ -31,8 +33,9 @@ class AuthUser {
       picture: json['picture'] as String?,
       isNewUser: json['isNewUser'] as bool? ?? false,
       isWorker: json['isWorker'] as bool? ?? false,
+      isNewWorker: json['isNewWorker'] as bool? ?? false,
       activeRole: json['activeRole'] as String? ??
-          ((json['isWorker'] == true) ? 'Worker' : 'Resident'),
+          ((json['isWorker'] == true || json['activeRole'] == 'Worker') ? 'Worker' : 'Resident'),
       workerId: json['workerId'] as int?,
       locationLat: (json['locationLat'] as num?)?.toDouble(),
       locationLng: (json['locationLng'] as num?)?.toDouble(),
@@ -47,6 +50,7 @@ class AuthUser {
       'picture': picture,
       'isNewUser': isNewUser,
       'isWorker': isWorker,
+      'isNewWorker': isNewWorker,
       'activeRole': activeRole,
       'workerId': workerId,
       'locationLat': locationLat,
@@ -54,3 +58,4 @@ class AuthUser {
     };
   }
 }
+

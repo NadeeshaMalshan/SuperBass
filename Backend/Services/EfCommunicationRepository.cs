@@ -273,7 +273,7 @@ namespace Superbass.Services
                 WorkerId = conv.WorkerId,
                 WorkerName = conv.Worker?.Name ?? "Worker",
                 WorkerEmail = conv.Worker?.Email ?? string.Empty,
-                WorkerPhone = conv.Worker?.PhoneNo,
+                WorkerPhone = (isUserWorker || await _context.ChatMessages.AnyAsync(m => m.ConversationId == conversationId && m.MessageType == "ContactCard")) ? conv.Worker?.PhoneNo : null,
                 WorkerProfileImage = conv.Worker?.ProfileImage,
                 BookingId = conv.BookingId,
                 IsOnline = ChatHub.IsUserOnline(otherEmail),
@@ -372,7 +372,9 @@ namespace Superbass.Services
             // Update conversation snippet
             conversation.LastMessage = message.MessageType == "Image" 
                 ? "📷 [Image]" 
-                : (message.MessageType == "Attachment" ? "📎 [Attachment]" : message.Content);
+                : (message.MessageType == "ContactCard" 
+                    ? "📞 [Worker Contact Card]" 
+                    : (message.MessageType == "Attachment" ? "📎 [Attachment]" : message.Content));
             conversation.LastMessageAt = message.CreatedAt;
             conversation.LastSenderEmail = message.SenderEmail;
             conversation.LastSenderRole = message.SenderRole;
@@ -562,7 +564,7 @@ namespace Superbass.Services
                 WorkerId = conv.WorkerId,
                 WorkerName = conv.Worker?.Name ?? "Worker",
                 WorkerEmail = !string.IsNullOrWhiteSpace(conv.Worker?.Email) ? conv.Worker.Email : (conv.Worker?.ResidentEmail ?? string.Empty),
-                WorkerPhone = conv.Worker?.PhoneNo,
+                WorkerPhone = (isUserWorker || await _context.ChatMessages.AnyAsync(m => m.ConversationId == conv.Id && m.MessageType == "ContactCard")) ? conv.Worker?.PhoneNo : null,
                 WorkerProfileImage = conv.Worker?.ProfileImage,
                 BookingId = conv.BookingId,
                 LastMessage = lastMsg != null ? lastMsg.Content : conv.LastMessage,

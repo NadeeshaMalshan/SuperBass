@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/auth_user.dart';
-import '../services/api_config.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
 import '../main.dart';
@@ -89,7 +88,8 @@ class _GoogleLogoPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// Join screen for SuperBass faithfully replicating Frontend/src/Join.jsx
+/// Dual Login Screen replicating Web Frontend (LoginPortal.jsx)
+/// Provides separate Google Login flows for Resident and Worker roles.
 class JoinScreen extends StatefulWidget {
   const JoinScreen({super.key});
 
@@ -99,7 +99,8 @@ class JoinScreen extends StatefulWidget {
 
 class _JoinScreenState extends State<JoinScreen> {
   final AuthService _authService = AuthService();
-  bool _isLoading = false;
+  String? _loadingRole; // 'Resident' or 'Worker'
+  String? _errorMessage;
 
   void _goHome() {
     if (Navigator.of(context).canPop()) {
@@ -111,19 +112,23 @@ class _JoinScreenState extends State<JoinScreen> {
     }
   }
 
-  Future<void> _handleGoogleLogin() async {
+  Future<void> _handleLogin(String intendedRole) async {
     setState(() {
-      _isLoading = true;
+      _loadingRole = intendedRole;
+      _errorMessage = null;
     });
 
     try {
-      final user = await _authService.signInWithGoogle();
+      final user = await _authService.signInWithGoogle(intendedRole: intendedRole);
       if (!mounted) return;
       _navigateBasedOnRole(user);
     } catch (e) {
       if (!mounted) return;
-      debugPrint('Login exception: $e');
+      debugPrint('$intendedRole login exception: $e');
       final msg = e.toString().replaceAll('Exception: ', '');
+      setState(() {
+        _errorMessage = msg;
+      });
 
       showDialog(
         context: context,
@@ -142,46 +147,13 @@ class _JoinScreenState extends State<JoinScreen> {
               onPressed: () => Navigator.pop(ctx),
               child: const Text('Close'),
             ),
-            FilledButton(
-              onPressed: () {
-                Navigator.pop(ctx);
-                _showDevLoginDialog();
-              },
-              child: const Text('Use Dev Sign In'),
-            ),
           ],
         ),
       );
     } finally {
       if (mounted) {
         setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  /// Direct Dev/Demo login for rapid local frontend-backend testing
-  Future<void> _handleDevLogin({String role = 'Resident'}) async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final user = await _authService.devTestLogin(
-        name: 'Nadeesha (Local)',
-        email: 'nadeesha@superbass.lk',
-        role: role,
-        isWorker: role == 'Worker',
-      );
-      if (!mounted) return;
-      _navigateBasedOnRole(user);
-    } catch (e) {
-      if (!mounted) return;
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
+          _loadingRole = null;
         });
       }
     }
@@ -196,283 +168,271 @@ class _JoinScreenState extends State<JoinScreen> {
       ),
     );
 
-    // Redirect: New users go to OnboardingScreen (matching Frontend Join.jsx -> /onboarding)
-    if (user.activeRole != 'Worker' && user.isNewUser) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-      );
-    } else {
+    if (user.activeRole == 'Worker' || user.isWorker) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const MainNavigationShell()),
       );
+    } else {
+      if (user.isNewUser) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+        );
+      } else {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const MainNavigationShell()),
+        );
+      }
     }
   }
 
-  void _showDevLoginDialog() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+  Widget _buildRoleCard({
+    required String role,
+    required String title,
+    required String description,
+    required String buttonLabel,
+    required Color buttonColor,
+    required Color buttonTextColor,
+    required VoidCallback onTap,
+    required bool isLoading,
+    required bool isOtherLoading,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFFE5E7EB),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
-      builder: (ctx) {
-        return SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Development & Offline Mode',
-                      style: GoogleFonts.dmSans(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 18,
-                        color: AppColors.onSurface,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(ctx),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Quickly sign in as Resident or Worker without needing active Google Cloud OAuth credentials.',
-                  style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.onSurfaceVariant),
-                ),
-                const SizedBox(height: 20),
-                ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: AppColors.primaryContainer,
-                    child: Icon(Icons.person, color: AppColors.onPrimaryContainer),
-                  ),
-                  title: const Text('Sign in as Resident'),
-                  subtitle: const Text('Access community, find workers, post jobs'),
-                  tileColor: AppColors.surfaceVariant,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _handleDevLogin(role: 'Resident');
-                  },
-                ),
-                const SizedBox(height: 12),
-                ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: AppColors.onPrimary,
-                    child: Icon(Icons.handyman, color: AppColors.brandYellow),
-                  ),
-                  title: const Text('Sign in as Worker (Pro)'),
-                  subtitle: const Text('Access worker portal, incoming jobs, earnings'),
-                  tileColor: AppColors.surfaceVariant,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _handleDevLogin(role: 'Worker');
-                  },
-                ),
-                const SizedBox(height: 12),
-                ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: AppColors.brandYellow,
-                    child: Icon(Icons.person_add_alt_1, color: Colors.black),
-                  ),
-                  title: const Text('Test New User Onboarding'),
-                  subtitle: const Text('Experience the animated 4-step onboarding flow'),
-                  tileColor: AppColors.surfaceVariant,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-                    );
-                  },
-                ),
-                const SizedBox(height: 12),
-              ],
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            title,
+            style: GoogleFonts.dmSans(
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+              color: AppColors.onSurface,
+              letterSpacing: -0.5,
             ),
           ),
-        );
-      },
+          const SizedBox(height: 10),
+          Text(
+            description,
+            style: GoogleFonts.dmSans(
+              fontSize: 14,
+              color: AppColors.onSurfaceVariant,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton(
+              onPressed: (isLoading || isOtherLoading) ? null : onTap,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: buttonColor,
+                foregroundColor: buttonTextColor,
+                disabledBackgroundColor: buttonColor.withValues(alpha: 0.6),
+                disabledForegroundColor: buttonTextColor.withValues(alpha: 0.7),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(50.0),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+              ),
+              child: isLoading
+                  ? const SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: LoadingIndicatorM3E(),
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const GoogleLogoIcon(size: 22),
+                        const SizedBox(width: 12),
+                        Flexible(
+                          child: Text(
+                            buttonLabel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.dmSans(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: buttonTextColor,
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isWide = screenWidth >= 760;
+
+    final residentCard = _buildRoleCard(
+      role: 'Resident',
+      title: 'Resident',
+      description: 'Book skilled craftsmen, schedule home repairs, chat with technicians & manage service bookings.',
+      buttonLabel: 'Sign In / Sign Up as Resident',
+      buttonColor: AppColors.brandBlack,
+      buttonTextColor: Colors.white,
+      onTap: () => _handleLogin('Resident'),
+      isLoading: _loadingRole == 'Resident',
+      isOtherLoading: _loadingRole != null && _loadingRole != 'Resident',
+    );
+
+    final workerCard = _buildRoleCard(
+      role: 'Worker',
+      title: 'Worker',
+      description: 'Access your craftsman dashboard, view requested jobs, configure availability & grow your trade business.',
+      buttonLabel: 'Sign In / Sign Up as Worker',
+      buttonColor: const Color(0xFF2563EB),
+      buttonTextColor: Colors.white,
+      onTap: () => _handleLogin('Worker'),
+      isLoading: _loadingRole == 'Worker',
+      isOtherLoading: _loadingRole != null && _loadingRole != 'Worker',
+    );
+
     return Scaffold(
-      backgroundColor: Colors.white, // Match wireframe & Join.jsx pure white
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Centered Logo with tap to go home
-                GestureDetector(
-                  onTap: _goHome,
-                  child: MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: Padding(
-                      padding: const EdgeInsets.only(bottom: 48.0),
-                      child: Image.asset(
-                        'assets/images/iconWithText-cropped.png',
-                        height: 80,
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) {
-                          // Fallback to text logo if image asset is unavailable
-                          return Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.asset(
-                                  'assets/images/icon.png',
-                                  width: 38,
-                                  height: 38,
-                                  errorBuilder: (context, error, stackTrace) => const Icon(
-                                    Icons.bolt_rounded,
-                                    size: 36,
-                                    color: AppColors.brandBlack,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Text(
-                                'Workio',
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 34,
-                                  fontWeight: FontWeight.w900,
-                                  color: AppColors.onSurface,
-                                  letterSpacing: -0.5,
-                                ),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-
-                // Material 3 Yellow Pill Login Button
-                ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    maxWidth: 350,
-                    minHeight: 56,
-                  ),
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _handleGoogleLogin,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.brandYellow,
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: AppColors.brandYellow.withValues(alpha: 0.6),
-                        disabledForegroundColor: Colors.white60,
-                        elevation: 0,
-                        shadowColor: Colors.transparent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(50.0), // 50px pill shape
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                      ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              height: 24,
-                              width: 24,
-                              child: LoadingIndicatorM3E(),
-                            )
-                          : Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 36.0),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 880),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Centered Logo with tap to go home
+                  GestureDetector(
+                    onTap: _goHome,
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 24.0),
+                        child: Image.asset(
+                          'assets/images/iconWithText-cropped.png',
+                          height: 72,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const GoogleLogoIcon(size: 24),
-                                const SizedBox(width: 12),
-                                Flexible(
-                                  child: Text(
-                                    'Login with Google',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.dmSans(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.white,
-                                      letterSpacing: -0.2,
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.asset(
+                                    'assets/images/icon.png',
+                                    width: 36,
+                                    height: 36,
+                                    errorBuilder: (context, error, stackTrace) => const Icon(
+                                      Icons.bolt_rounded,
+                                      size: 34,
+                                      color: AppColors.brandBlack,
                                     ),
                                   ),
                                 ),
+                                const SizedBox(width: 10),
+                                Text(
+                                  'Workio',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.w900,
+                                    color: AppColors.onSurface,
+                                    letterSpacing: -0.5,
+                                  ),
+                                ),
                               ],
-                            ),
+                            );
+                          },
+                        ),
+                      ),
                     ),
                   ),
-                ),
 
-                const SizedBox(height: 24),
-
-                // Discreet test / dev options for instant evaluation
-                TextButton.icon(
-                  onPressed: _showDevLoginDialog,
-                  icon: const Icon(Icons.developer_mode_rounded, size: 16, color: AppColors.onSurfaceVariant),
-                  label: Text(
-                    'Dev / Demo Sign In',
+                  // Header Titles
+                  Text(
+                    'Log in to access your account',
+                    textAlign: TextAlign.center,
                     style: GoogleFonts.dmSans(
-                      fontSize: 13,
-                      color: AppColors.onSurfaceVariant,
-                      decoration: TextDecoration.underline,
+                      fontSize: isWide ? 32 : 24,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.onSurface,
+                      letterSpacing: -0.5,
                     ),
                   ),
-                ),
+                  const SizedBox(height: 32),
 
-                const SizedBox(height: 12),
-
-                // Server status indicator
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceVariant.withValues(alpha: 0.7),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: AppColors.success,
-                          shape: BoxShape.circle,
-                        ),
+                  // Error alert banner if any
+                  if (_errorMessage != null)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 24),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF2F2),
+                        border: Border.all(color: const Color(0xFFF87171)),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          'Backend: ${ApiConfig.baseUrl}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.dmSans(
-                            fontSize: 11,
-                            color: AppColors.onSurfaceVariant,
-                            fontWeight: FontWeight.w500,
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline, color: Color(0xFFDC2626), size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _errorMessage!,
+                              style: GoogleFonts.dmSans(
+                                color: const Color(0xFF991B1B),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
-              ],
+                    ),
+
+                  // Role Cards Section (Side-by-side on wide screens, stacked on mobile)
+                  if (isWide)
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: residentCard),
+                        const SizedBox(width: 24),
+                        Expanded(child: workerCard),
+                      ],
+                    )
+                  else
+                    Column(
+                      children: [
+                        residentCard,
+                        const SizedBox(height: 20),
+                        workerCard,
+                      ],
+                    ),
+                ],
+              ),
             ),
           ),
         ),

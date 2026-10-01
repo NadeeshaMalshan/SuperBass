@@ -71,5 +71,8 @@ namespace Superbass.Models
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+        // Contact sharing security
+        public bool IsContactShared { get; set; } = false;
     }
 }
