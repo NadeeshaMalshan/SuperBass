@@ -1,4 +1,5 @@
 import CreateCommunityPostCard from './CreateCommunityPostCard.jsx';
+import EditCommunityPostCard from './EditCommunityPostCard.jsx';
 import PostConfirmationCard from './PostConfirmationCard.jsx';
 import PostCreatedCard from './PostCreatedCard.jsx';
 import PostListCard from './PostListCard.jsx';
@@ -10,6 +11,8 @@ import TextMessageCard from './TextMessageCard.jsx';
 import ErrorCard from './ErrorCard.jsx';
 import ServiceCategoriesCard from './ServiceCategoriesCard.jsx';
 import WorkerListCard from './WorkerListCard.jsx';
+import BookingFormCard from './BookingFormCard.jsx';
+import BookingConfirmedCard from './BookingConfirmedCard.jsx';
 import InitialWelcomeCard from './InitialWelcomeCard.jsx';
 
 /**
@@ -23,30 +26,40 @@ export default function AgentCardDispatcher({ response, onAction }) {
   switch (response_type) {
     case 'initial_welcome':
       return <InitialWelcomeCard data={card_data} onAction={onAction} />;
-          case 'create_community_post':
-          case 'post_confirmation':
-            return <CreateCommunityPostCard data={card_data} onAction={onAction} />;
-          case 'post_created':
-            return <PostCreatedCard data={card_data} onAction={onAction} />;
+    case 'create_community_post':
+      return <CreateCommunityPostCard data={card_data} onAction={onAction} />;
+    case 'edit_community_post':
+      return <EditCommunityPostCard data={card_data} onAction={onAction} />;
+    case 'post_confirmation':
+      if (card_data?.action === 'update' || Boolean(card_data?.postId)) {
+        return <EditCommunityPostCard data={card_data} onAction={onAction} />;
+      }
+      return <CreateCommunityPostCard data={card_data} onAction={onAction} />;
+    case 'post_created':
+      return <PostCreatedCard data={card_data} onAction={onAction} />;
 
-          case 'post_list':
-            return <PostListCard data={card_data} onAction={onAction} />;
-          case 'post_detail':
-            return <PostDetailCard data={card_data} onAction={onAction} />;
-          case 'post_updated':
-            return <PostUpdatedCard data={card_data} onAction={onAction} />;
-          case 'post_deleted':
-            return <PostDeletedCard data={card_data} onAction={onAction} />;
-          case 'user_profile':
-            return <UserProfileCard data={card_data} onAction={onAction} />;
-          case 'service_categories':
-            return <ServiceCategoriesCard data={card_data} onAction={onAction} />;
-          case 'worker_list':
-            return <WorkerListCard data={card_data} onAction={onAction} />;
-          case 'error':
-            return <ErrorCard data={card_data} onAction={onAction} />;
-          case 'text_message':
-          default:
+    case 'post_list':
+      return <PostListCard data={card_data} onAction={onAction} />;
+    case 'post_detail':
+      return <PostDetailCard data={card_data} onAction={onAction} />;
+    case 'post_updated':
+      return <PostUpdatedCard data={card_data} onAction={onAction} />;
+    case 'post_deleted':
+      return <PostDeletedCard data={card_data} onAction={onAction} />;
+    case 'user_profile':
+      return <UserProfileCard data={card_data} onAction={onAction} />;
+    case 'service_categories':
+      return <ServiceCategoriesCard data={card_data} onAction={onAction} />;
+    case 'worker_list':
+      return <WorkerListCard data={card_data} onAction={onAction} />;
+    case 'booking_form':
+      return <BookingFormCard data={card_data} onAction={onAction} />;
+    case 'booking_confirmed':
+      return <BookingConfirmedCard data={card_data} onAction={onAction} />;
+    case 'error':
+      return <ErrorCard data={card_data} onAction={onAction} />;
+    case 'text_message':
+    default:
             return (
               <TextMessageCard
                 data={{

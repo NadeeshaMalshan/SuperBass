@@ -255,6 +255,9 @@ export default function AiCommunityChat() {
           extraMeta.post_images = textToSend.postData.images;
         }
       }
+      if (textToSend.bookingData) {
+        extraMeta.booking_data = textToSend.bookingData;
+      }
     } else {
       prompt = (textToSend || inputText).trim();
     }
@@ -335,7 +338,58 @@ export default function AiCommunityChat() {
   const handleCardAction = (actionType, payload) => {
     if (actionType === 'navigate') {
       navigate(payload);
-    } else if (actionType === 'send_prompt' || actionType === 'confirm_post' || actionType === 'cancel_post') {
+    } else if (actionType === 'select_post') {
+      const postId = payload?.id || payload?.postId || payload?.PostId || payload;
+      if (postId) {
+        handleSendMessage(`Show details for post #${postId}`);
+      }
+    } else if (actionType === 'edit_post') {
+      const postId = payload?.id || payload?.postId || payload?.PostId || payload;
+      const editCardMsg = {
+        id: 'asst-edit-' + Date.now(),
+        sender: 'assistant',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        cardResponse: {
+          response_type: 'edit_community_post',
+          message: `Please edit the details for post #${postId} below and click 'Update Post' to save your changes:`,
+          card_data: {
+            action: 'update',
+            postId: postId,
+            id: postId,
+            title: payload?.title || '',
+            content: payload?.content || '',
+            communityId: payload?.communityId || payload?.serviceCategoryId || 'General',
+            location: payload?.location || 'Colombo',
+            photos: payload?.photos || payload?.images || [],
+          },
+        },
+      };
+      setMessages((prev) => [...prev, editCardMsg]);
+    } else if (actionType === 'confirm_booking') {
+      handleSendMessage(payload?.prompt || payload);
+    } else if (actionType === 'book_worker') {
+      const worker = payload || {};
+      const workerId = worker.id || worker.workerId || '44';
+      const workerName = worker.name || worker.workerName || 'Verified Technician';
+      const bookingCardMsg = {
+        id: 'asst-book-' + Date.now(),
+        sender: 'assistant',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        cardResponse: {
+          response_type: 'booking_form',
+          message: `Booking form for ${workerName} (Worker ID: ${workerId}):`,
+          card_data: {
+            workerId: workerId,
+            workerName: workerName,
+            workerAvatar: worker.profileImage || worker.avatarUrl,
+            category: worker.primaryRole || worker.category || 'General Service',
+            hourlyRate: worker.hourlyRate || worker.dailyRate || 2800,
+            location: worker.primaryServiceArea || worker.location || 'Colombo',
+          },
+        },
+      };
+      setMessages((prev) => [...prev, bookingCardMsg]);
+    } else if (actionType === 'send_prompt' || actionType === 'confirm_post' || actionType === 'confirm_update' || actionType === 'cancel_post') {
       handleSendMessage(payload);
     } else if (actionType === 'view_community') {
       navigate(`/community${payload?.id ? `?post=${payload.id}` : ''}`);

@@ -115,12 +115,22 @@ CRITICAL HUMAN-IN-THE-LOOP & POST PRE-FILLING PROTOCOL:
    - When the user asks "What categories are available?", "Show categories", or "What services do you support?":
      Call `get_service_categories` directly and display the result. No confirmation needed.
 
-3. MANDATORY CONFIRMATION FOR UPDATING A POST:
-   - When a user asks to edit or update an existing post:
-     DO NOT IMMEDIATELY CALL `update_community_post`!
-   - FIRST, summarize the proposed changes (title, content, category, location) and ask the user to confirm.
-   - If changing the category, call `get_service_categories` first to validate the new category exists.
-   - ONLY when the user confirms, execute `update_community_post` with `authorId="{email}"`!
+3. MANDATORY PROTOCOL FOR EDITING / UPDATING AN EXISTING POST:
+   - When a user asks to edit or update an existing post (e.g., "I need to edit this post", "update my post", "edit post 26", "add more details to my post"):
+     1) Use `get_user_community_posts` or `get_community_posts` to find the post ID and its current details.
+     2) Once the post is identified:
+        DO NOT call `update_community_post` immediately!
+        DO NOT display a list of all feed posts!
+        INSTEAD, immediately output the post details so the interactive EDIT FORM appears for the user:
+        "Here are your post details for editing (ID {{id}}):
+         • Title: <current or proposed title>
+         • Category: <current or proposed category>
+         • Location: <current location>
+         • Content: <current or updated description with any requested additions>
+
+         You can edit any details in the card above and click 'Update Post' to save your changes!"
+     3) When the user confirms the update (e.g. sending "CONFIRM_UPDATE: ..." or clicking "Update Post"):
+        Execute `update_community_post(postId=..., title=..., content=..., communityId=..., location=..., authorId="{email}")`!
 
 4. DELETING A POST:
    - Deleting a post removes it from the feed. Always verify the post ID and author before calling `delete_community_post` with `authorId="{email}"`.
