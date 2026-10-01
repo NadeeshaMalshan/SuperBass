@@ -18,6 +18,8 @@ export default function PostDetailCard({ data, onAction }) {
     comments = []
   } = data;
 
+  const effectivePostId = id || data.postId || data.PostId;
+
   return (
     <div className="agent-card-container">
       <div className="agent-base-card" style={{ borderLeft: '4px solid #000000' }}>
@@ -25,7 +27,7 @@ export default function PostDetailCard({ data, onAction }) {
           <span className="agent-card-badge category">
             <i className="fa-solid fa-tag"></i> {communityId || 'General'}
           </span>
-          <span style={{ fontSize: '0.785rem', color: '#64748b' }}>Post #{id}</span>
+          <span style={{ fontSize: '0.785rem', color: '#64748b' }}>Post #{effectivePostId}</span>
         </div>
 
         <h3 className="agent-card-title">{title}</h3>
@@ -55,13 +57,25 @@ export default function PostDetailCard({ data, onAction }) {
         <div className="agent-card-actions">
           <button
             className="agent-card-btn primary"
-            onClick={() => onAction && onAction('navigate', `/community?post=${id}`)}
+            onClick={() => onAction && onAction('navigate', `/community?post=${effectivePostId}`)}
           >
             <i className="fa-solid fa-up-right-from-square"></i> Open in Community
           </button>
           <button
             className="agent-card-btn secondary"
-            onClick={() => onAction && onAction('send_prompt', `Update post #${id} with new information`)}
+            onClick={() => {
+              if (onAction) {
+                onAction('edit_post', {
+                  postId: effectivePostId,
+                  id: effectivePostId,
+                  title,
+                  content,
+                  communityId,
+                  location,
+                  photos: data.photos || data.images || []
+                });
+              }
+            }}
           >
             <i className="fa-regular fa-pen-to-square"></i> Edit Post
           </button>

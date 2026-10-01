@@ -125,7 +125,7 @@ def _clean_card_intro_message(raw_msg: str, default_intro: str, card_type: str =
         return text
 
     # For draft community post confirmation cards
-    if card_type == "post_confirmation" or bool(re.search(r'\*\*(?:Title|Category|Location|Content|Description):\*\*', text, re.IGNORECASE)):
+    if card_type in ["post_confirmation", "create_community_post", "edit_community_post"] or bool(re.search(r'\*\*(?:Title|Category|Location|Content|Description):\*\*', text, re.IGNORECASE)):
         intro_match = re.search(
             r'^(.*?)(?=(?:\s*[•\-*]?\s*)\*\*(?:Title|Category|Location|Content|Description|Urgency):\*\*)',
             text,
@@ -312,20 +312,64 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
 
         # 2. get_community_posts / get_user_community_posts
         if tool_name in ["get_community_posts", "get_user_community_posts"]:
-            is_single_post = isinstance(data, dict) and bool(data.get("id") or data.get("postId")) and not ("posts" in data or "items" in data)
+            user_query = ""
+            for msg in reversed(messages):
+                if getattr(msg, "type", "") in ("human", "user"):
+                    user_query = extract_text_content(getattr(msg, "content", ""))
+                    break
+
+            user_query_lower = user_query.lower()
+            last_ai_lower = last_ai_content.lower()
+
+            is_edit_intent = (
+                any(w in user_query_lower for w in [
+                    "edit", "update", "modify", "change", "add more detail", "add detail", "fix this post", "correct this post", "need edit", "edit that", "edit this"
+                ])
+                or any(w in last_ai_lower for w in [
+                    "what additional details", "proposed update", "edit the post", "edit your post", "to update post", "update post id", "found your", "post (id", "post details for editing", "for editing (id", "for editing"
+                ])
+            )
+
+            is_single_post = isinstance(data, dict) and bool(data.get("id") or data.get("postId") or data.get("PostId")) and not ("posts" in data or "items" in data)
             if is_single_post:
-                # Single post detail view
-                post_id_val = data.get("id") or data.get("postId")
+                post_id_val = data.get("postId") or data.get("id") or data.get("PostId")
+                post_title = data.get("title") or data.get("Title", "")
+                post_content = data.get("content") or data.get("Content", "")
+                post_cat = data.get("serviceCategoryId") or data.get("ServiceCategoryId") or data.get("communityId", "General")
+                post_loc = data.get("location") or data.get("Location", "Colombo")
+
+                if is_edit_intent:
+                    card = PostConfirmationCard(
+                        action="update",
+                        postId=post_id_val,
+                        title=post_title,
+                        content=post_content,
+                        communityId=post_cat,
+                        location=post_loc,
+                        authorId=email,
+                        authorName=user_name,
+                        validationStatus="valid",
+                        validationNotes="You can edit the details in the form above and click 'Update Post' to save your changes.",
+                        confirmPrompt=f"CONFIRM_UPDATE: Yes, please update post ID {post_id_val} with title '{post_title}' in {post_cat} for {post_loc}. Description: {post_content}"
+                    )
+                    return AgentCardResponse(
+                        response_type="edit_community_post",
+                        message=last_ai_content,
+                        card_data=card.model_dump(),
+                        metadata={"agent": "community_agent", "user_email": email, "action": "update", "postId": post_id_val}
+                    )
+
+                # Single post detail view (read-only view)
                 card = PostDetailCard(
                     id=post_id_val,
-                    title=data.get("title", ""),
-                    content=data.get("content", ""),
-                    communityId=data.get("serviceCategoryId") or data.get("communityId", "General"),
-                    location=data.get("location", "Colombo"),
-                    authorName=data.get("userName") or data.get("userEmail", "").split("@")[0],
-                    authorEmail=data.get("userEmail"),
-                    likesCount=data.get("likesCount", 0),
-                    commentsCount=data.get("commentsCount", 0)
+                    title=post_title,
+                    content=post_content,
+                    communityId=post_cat,
+                    location=post_loc,
+                    authorName=data.get("userName") or data.get("UserName") or (data.get("userEmail") or data.get("UserEmail", "")).split("@")[0],
+                    authorEmail=data.get("userEmail") or data.get("UserEmail"),
+                    likesCount=data.get("likesCount") or data.get("LikesCount", 0),
+                    commentsCount=data.get("commentsCount") or data.get("CommentsCount", 0)
                 )
                 clean_msg = _clean_card_intro_message(
                     last_ai_content,
@@ -339,23 +383,80 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                     metadata={"agent": "community_agent", "user_email": email}
                 )
 
-            # Multiple posts list
             raw_posts = data if isinstance(data, list) else data.get("posts", data.get("items", []))
+
+            # If user wants to edit a post, return the Edit Post Form Card instead of showing all posts
+            if is_edit_intent and raw_posts:
+                # 1. Try to extract post ID mentioned in AI response (e.g. "post (ID 26)") or user query
+                target_id_m = re.search(r'\b(?:id|post)\s*[:#]?\s*(\d+)\b', last_ai_content, re.IGNORECASE) or re.search(r'\b(?:id|post)\s*[:#]?\s*(\d+)\b', user_query, re.IGNORECASE)
+                target_id = target_id_m.group(1) if target_id_m else None
+
+                target_post = None
+                if target_id:
+                    for p in raw_posts:
+                        if isinstance(p, dict) and str(p.get("postId") or p.get("id") or p.get("PostId")) == str(target_id):
+                            target_post = p
+                            break
+
+                if not target_post:
+                    # Match post authored by user that has issue keywords or is user's recent post
+                    user_posts = [p for p in raw_posts if isinstance(p, dict) and (p.get("userEmail") == email or p.get("userId") == email)]
+                    if user_posts:
+                        words = [w for w in re.findall(r'\b[a-zA-Z]{3,}\b', user_query_lower) if w not in ["need", "edit", "this", "post", "because", "more", "details", "for"]]
+                        matched = None
+                        for up in user_posts:
+                            up_text = (str(up.get("title", "")) + " " + str(up.get("content", ""))).lower()
+                            if any(w in up_text for w in words):
+                                matched = up
+                                break
+                        target_post = matched or user_posts[0]
+                    elif raw_posts and isinstance(raw_posts[0], dict):
+                        target_post = raw_posts[0]
+
+                if target_post:
+                    post_id_val = target_post.get("postId") or target_post.get("id") or target_post.get("PostId") or target_id
+                    post_title = target_post.get("title") or target_post.get("Title") or "Community Post"
+                    post_content = target_post.get("content") or target_post.get("Content") or ""
+                    post_cat = target_post.get("serviceCategoryId") or target_post.get("ServiceCategoryId") or target_post.get("communityId") or "General"
+                    post_loc = target_post.get("location") or target_post.get("Location") or "Colombo"
+
+                    card = PostConfirmationCard(
+                        action="update",
+                        postId=post_id_val,
+                        title=post_title,
+                        content=post_content,
+                        communityId=post_cat,
+                        location=post_loc,
+                        authorId=email,
+                        authorName=user_name,
+                        validationStatus="valid",
+                        validationNotes="You can edit the details in the form above and click 'Update Post' to save your changes.",
+                        confirmPrompt=f"CONFIRM_UPDATE: Yes, please update post ID {post_id_val} with title '{post_title}' in {post_cat} for {post_loc}. Description: {post_content}"
+                    )
+                    return AgentCardResponse(
+                        response_type="edit_community_post",
+                        message=last_ai_content,
+                        card_data=card.model_dump(),
+                        metadata={"agent": "community_agent", "user_email": email, "action": "update", "postId": post_id_val}
+                    )
+
+            # Multiple posts list (feed / search view)
             post_summaries: List[CommunityPostSummary] = []
             for item in (raw_posts if isinstance(raw_posts, list) else []):
                 if isinstance(item, dict):
+                    raw_post_id = item.get("postId") or item.get("id") or item.get("PostId") or ""
                     post_summaries.append(
                         CommunityPostSummary(
-                            id=item.get("id", ""),
-                            title=item.get("title", "Untitled"),
-                            content=item.get("content", "")[:140],
-                            communityId=item.get("serviceCategoryId") or item.get("communityId", "General"),
-                            location=item.get("location", "Colombo"),
-                            authorName=item.get("userName") or item.get("userEmail", "").split("@")[0],
-                            authorEmail=item.get("userEmail"),
-                            createdAt=item.get("createdAt"),
-                            likesCount=item.get("likesCount", 0),
-                            commentsCount=item.get("commentsCount", 0)
+                            id=raw_post_id,
+                            title=item.get("title") or item.get("Title", "Untitled"),
+                            content=(item.get("content") or item.get("Content", ""))[:140],
+                            communityId=item.get("serviceCategoryId") or item.get("ServiceCategoryId") or item.get("communityId", "General"),
+                            location=item.get("location") or item.get("Location", "Colombo"),
+                            authorName=item.get("userName") or item.get("UserName") or (item.get("userEmail") or item.get("UserEmail") or item.get("userId") or "").split("@")[0],
+                            authorEmail=item.get("userEmail") or item.get("UserEmail") or item.get("userId"),
+                            createdAt=str(item.get("createdAt") or item.get("CreatedAt") or ""),
+                            likesCount=item.get("likesCount") or item.get("LikesCount", 0),
+                            commentsCount=item.get("commentsCount") or item.get("CommentsCount", 0)
                         )
                     )
             card = PostListCard(
@@ -783,16 +884,46 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
         elif not any(k in draft_content.lower() for k in ["availability", "estimate", "quote", "contact me", "reach out"]):
             draft_content = draft_content.rstrip(". ") + ". Please contact me with your availability and an estimate."
 
-        if not draft_category or draft_category.lower() == "general":
-            if metadata.get("inferred_category"):
-                draft_category = metadata["inferred_category"]
+        user_query_for_intent = user_problem_txt.lower()
+        user_wants_edit = bool(
+            re.search(r'\b(?:edit|update|modify|change|correct)\b.*?\b(?:post|details|request|my post|that post|this post)\b', user_query_for_intent)
+            or re.search(r'\b(?:edit|update|modify)\s+(?:this|my|the|that)?\s*post\b', user_query_for_intent)
+            or any(kw in lower_content for kw in ["for editing (id", "for editing", "post details for editing", "updating post"])
+        )
 
-        user_loc_default = metadata.get("location") or user_profile.get("address") or "Colombo"
-        if not draft_location or draft_location.lower() in ["your location", "location", "n/a", "unknown", "none", "{location}"]:
-            draft_location = user_loc_default
+        explicit_id_pattern = r'\b(?:post\s*id\s*[:#]?|post\s*#|id\s*[:#])\s*(\d+)\b'
+        target_id_m = re.search(explicit_id_pattern, user_problem_txt, re.IGNORECASE)
+        if not target_id_m and user_wants_edit:
+            target_id_m = re.search(r'\b(?:edit|update)\s+post\s*(?:#|id)?\s*(\d+)\b', user_problem_txt, re.IGNORECASE)
+        if not target_id_m and user_wants_edit:
+            target_id_m = re.search(r'\(?(?:ID|Post)\s*[:#]?\s*(\d+)\)?', last_ai_content, re.IGNORECASE)
+        if not target_id_m and user_wants_edit:
+            for prev_m in reversed(messages):
+                prev_text = extract_text_content(getattr(prev_m, "content", ""))
+                prev_id_m = re.search(r'\b(?:post\s*#?|id\s*[:#]?)\s*(\d+)\b', prev_text, re.IGNORECASE)
+                if prev_id_m:
+                    target_id_m = prev_id_m
+                    break
+
+        post_id_val = None
+        if target_id_m:
+            groups = [g for g in target_id_m.groups() if g is not None]
+            if groups and groups[0].isdigit():
+                post_id_val = int(groups[0])
+
+        is_update_action = bool(
+            metadata.get("action") == "update"
+            or (user_wants_edit and post_id_val is not None)
+            or (user_wants_edit and "updating post" in lower_content)
+            or (user_wants_edit and "for editing" in lower_content)
+        )
+        action_val = "update" if is_update_action else "create"
+        if action_val == "create":
+            post_id_val = None
 
         card = PostConfirmationCard(
-            action="create",
+            action=action_val,
+            postId=post_id_val,
             title=draft_title,
             content=draft_content,
             communityId=draft_category,
@@ -801,19 +932,28 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
             authorId=email,
             authorName=user_name,
             validationStatus="valid",
-            validationNotes=f"Please review your draft details above and confirm to publish under your account ({user_name}).",
-            confirmPrompt=f"CONFIRM_PUBLISH: Yes, please publish the post '{draft_title}' in {draft_category} for {draft_location}."
+            validationNotes=(
+                "You can edit the details in the form above and click 'Update Post' to save your changes."
+                if action_val == "update"
+                else f"Please review your draft details above and confirm to publish under your account ({user_name})."
+            ),
+            confirmPrompt=(
+                f"CONFIRM_UPDATE: Yes, please update post ID {post_id_val} with title '{draft_title}' in {draft_category} for {draft_location}. Description: {draft_content}"
+                if action_val == "update" and post_id_val
+                else f"CONFIRM_PUBLISH: Yes, please publish the post '{draft_title}' in {draft_category} for {draft_location}."
+            )
         )
+        resp_type = "edit_community_post" if action_val == "update" else "create_community_post"
         clean_msg = _clean_card_intro_message(
             last_ai_content,
-            "Please review your draft community post below and confirm to publish:",
-            "post_confirmation"
+            ("Please review and edit your community post below:" if action_val == "update" else "Please review your draft community post below and confirm to publish:"),
+            resp_type
         )
         return AgentCardResponse(
-            response_type="post_confirmation",
+            response_type=resp_type,
             message=clean_msg,
             card_data=card.model_dump(),
-            metadata={"agent": "community_agent", "user_email": email}
+            metadata={"agent": "community_agent", "user_email": email, "action": action_val, "postId": post_id_val}
         )
 
     # B. Choice Turn (Worker vs Community Post)

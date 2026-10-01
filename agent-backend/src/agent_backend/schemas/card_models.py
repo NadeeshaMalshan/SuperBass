@@ -193,6 +193,8 @@ class WorkerListCard(BaseModel):
 
 
 ResponseTypeLiteral = Literal[
+    "create_community_post",
+    "edit_community_post",
     "post_confirmation",
     "post_created",
     "post_list",
