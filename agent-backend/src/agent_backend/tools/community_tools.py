@@ -78,9 +78,19 @@ async def create_community_post(
     else:
         real_images = []
 
+    final_title = (title or "").strip()
+    generic_titles = [
+        "community service request", "service request", "community post", "draft post",
+        "draft community post", "post title", "title", "<title>", "<pre-filled title>",
+        "n/a", "new post", "help needed"
+    ]
+    if not final_title or final_title.lower() in generic_titles:
+        from agent_backend.utils.card_builders import generate_issue_title
+        final_title = generate_issue_title(None, issue_text="", category=communityId or "General", content=content)
+
     args = {
         "authorId": authorId,
-        "title": title,
+        "title": final_title,
         "content": content,
         "communityId": communityId or "General",
         "location": location or "Colombo"
