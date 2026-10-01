@@ -15,6 +15,7 @@
     "@microsoft/signalr": "^10.0.11",
     "@react-oauth/google": "^0.12.2",
     "@sliit-foss/lk-nic": "^1.1.1",
+    "@tailwindcss/vite": "^4.3.3",
     "axios": "^1.19.0",
     "emoji-picker-react": "^4.22.2",
     "leaflet": "^1.9.4",
@@ -26,8 +27,11 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.4",
+    "autoprefixer": "^10.6.1",
     "oxlint": "^1.75.0",
+    "postcss": "^8.5.28",
     "sharp": "^0.35.3",
+    "tailwindcss": "^4.3.3",
     "vite": "^8.2.0"
   }
 }
