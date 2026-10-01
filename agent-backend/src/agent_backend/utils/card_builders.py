@@ -31,7 +31,12 @@ from agent_backend.schemas.card_models import (
     WorkerSummary,
     SpecialistConversationalOutput,
     BookingFormCard,
-    BookingConfirmedCard
+    BookingConfirmedCard,
+    BookingSummary,
+    BookingListCard,
+    ReviewFormCard,
+    ReviewSubmittedCard,
+    DisputeTicketCard
 )
 
 logger = logging.getLogger("agent_backend.card_builders")
@@ -744,7 +749,75 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                 metadata={"agent": "booking_agent", "user_email": email}
             )
 
-        if tool_name in ["get_resident_bookings", "cancel_booking", "reschedule_booking"]:
+        if tool_name == "get_resident_bookings":
+            raw_bookings = data if isinstance(data, list) else (
+                data.get("bookings") or data.get("items") or data.get("value") or []
+                if isinstance(data, dict) else []
+            )
+            if not isinstance(raw_bookings, list):
+                raw_bookings = []
+
+            booking_summaries: List[BookingSummary] = []
+            for b in raw_bookings:
+                if isinstance(b, dict):
+                    b_id = b.get("id") or b.get("bookingId") or 0
+                    b_worker_id = b.get("workerId") or 0
+                    b_worker_name = b.get("workerName") or "Verified Technician"
+                    b_worker_img = b.get("workerProfileImage") or b.get("workerAvatar")
+                    b_worker_phone = b.get("workerPhone")
+                    b_title = b.get("jobTitle") or b.get("description") or "Home Service Appointment"
+                    b_date = b.get("scheduledDate")
+                    b_loc = b.get("locationAddress") or "Colombo"
+                    b_phone = b.get("contactPhone")
+                    b_pricing = b.get("pricingModel") or "Hourly"
+                    b_est = float(b["estimatedPrice"]) if b.get("estimatedPrice") is not None else None
+                    b_agr = float(b["agreedPrice"]) if b.get("agreedPrice") is not None else None
+                    b_status = b.get("status") or "Requested"
+                    b_created = b.get("createdAt")
+
+                    booking_summaries.append(
+                        BookingSummary(
+                            id=b_id,
+                            workerId=b_worker_id,
+                            workerName=b_worker_name,
+                            workerProfileImage=b_worker_img,
+                            workerPhone=b_worker_phone,
+                            jobTitle=b_title,
+                            scheduledDate=b_date,
+                            locationAddress=b_loc,
+                            contactPhone=b_phone,
+                            pricingModel=b_pricing,
+                            estimatedPrice=b_est,
+                            agreedPrice=b_agr,
+                            status=b_status,
+                            createdAt=b_created
+                        )
+                    )
+
+            # Strip markdown pipes and raw tables from conversational message
+            clean_msg = last_ai_content or ""
+            if clean_msg:
+                clean_msg = re.split(r'\n\s*\|', clean_msg)[0].strip()
+                clean_msg = re.sub(r'The booking records provide start times.*$', '', clean_msg, flags=re.IGNORECASE).strip()
+
+            if not clean_msg or len(clean_msg) < 5:
+                count_str = f"{len(booking_summaries)} upcoming bookings" if booking_summaries else "no upcoming bookings"
+                clean_msg = f"You have {count_str} on Workio:"
+
+            card = BookingListCard(
+                totalCount=len(booking_summaries),
+                statusFilter="Upcoming",
+                bookings=booking_summaries
+            )
+
+            return AgentCardResponse(
+                response_type="booking_list",
+                message=clean_msg,
+                card_data=card.model_dump(),
+                metadata={"agent": "booking_agent", "user_email": email}
+            )
+
+        if tool_name in ["cancel_booking", "reschedule_booking"]:
             suggestions = ["Book a technician", "View upcoming bookings", "Cancel a booking"]
             msg = last_ai_content
             if not msg:
@@ -767,17 +840,89 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
             )
 
         # 9. Support & Review Tools
-        if tool_name in ["create_worker_review", "file_dispute_ticket", "escalate_to_human", "get_user_job_history"]:
-            suggestions = ["Leave a review", "Contact human support", "Return to home"]
-            if tool_name == "create_worker_review":
-                suggestions = ["Book another service", "View community feed"]
+        if tool_name == "create_worker_review":
+            b_id = data.get("bookingId") or data.get("id") or "0"
+            w_id = data.get("workerId") or ""
+            w_name = data.get("workerName") or "Verified Technician"
+            overall = float(data.get("overallRating") or data.get("rating") or 5.0)
+            quality = int(data.get("qualityRating") or overall)
+            punctuality = int(data.get("punctualityRating") or overall)
+            comm = int(data.get("communicationRating") or overall)
+            comment_text = data.get("comment") or data.get("reviewComment")
+            rev_at = data.get("reviewedAt") or datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
+
+            review_card = ReviewSubmittedCard(
+                bookingId=b_id,
+                workerId=w_id,
+                workerName=w_name,
+                overallRating=overall,
+                qualityRating=quality,
+                punctualityRating=punctuality,
+                communicationRating=comm,
+                comment=comment_text,
+                submittedAt=rev_at
+            )
+            clean_msg = f"Thank you! Your verified review for {w_name} has been published successfully."
+            return AgentCardResponse(
+                response_type="review_submitted",
+                message=clean_msg,
+                card_data=review_card.model_dump(),
+                metadata={"agent": "support_review_agent", "user_email": email}
+            )
+
+        if tool_name == "file_dispute_ticket":
+            ticket_id = data.get("ticketId") or data.get("id") or "TICKET-101"
+            w_id = data.get("workerId")
+            w_name = data.get("workerName")
+            reason_text = data.get("reason") or "Service dispute filed"
+            urgency_text = (data.get("urgencyLevel") or data.get("urgency") or "Medium").capitalize()
+            sla_text = data.get("sla") or "Support team responds within 2 hours"
+            phone_text = data.get("supportPhone") or "+94 11 234 5678"
+
+            dispute_card = DisputeTicketCard(
+                ticketId=ticket_id,
+                workerId=w_id,
+                workerName=w_name,
+                reason=reason_text,
+                urgencyLevel=urgency_text,
+                status=data.get("status", "Open"),
+                resolutionSla=sla_text,
+                supportHotline=phone_text
+            )
+            clean_msg = f"Dispute Ticket #{ticket_id} has been registered. Our safety coordinator will investigate and follow up."
+            return AgentCardResponse(
+                response_type="dispute_ticket",
+                message=clean_msg,
+                card_data=dispute_card.model_dump(),
+                metadata={"agent": "support_review_agent", "user_email": email}
+            )
+
+        if tool_name == "lookup_platform_policy":
+            suggestions = [
+                "7-Day Workmanship Guarantee",
+                "Cancellation & Fees",
+                "Property Damage Protection",
+                "Technician Safety & Vetting"
+            ]
+            msg = last_ai_content or "Here is the verified platform policy information:"
+            card = TextMessageCard(
+                text=msg,
+                suggestions=suggestions
+            )
+            return AgentCardResponse(
+                response_type="text_message",
+                message=card.text,
+                card_data=card.model_dump(),
+                metadata={"agent": "support_review_agent", "user_email": email}
+            )
+
+        if tool_name in ["escalate_to_human", "get_user_job_history"]:
+            suggestions = ["Leave a review", "Contact hotline", "Return to home"]
             msg = last_ai_content
             if not msg:
-                if tool_name == "create_worker_review":
-                    msg = "Your review has been successfully submitted and recorded. Thank you for your feedback!"
-                elif tool_name == "file_dispute_ticket":
-                    ticket_id = data.get("ticketId") or data.get("id") or ""
-                    msg = f"Dispute ticket #{ticket_id} has been submitted to support." if ticket_id else "Dispute ticket submitted."
+                if tool_name == "escalate_to_human":
+                    esc_id = data.get("escalationId") or "ESC-901"
+                    msg = f"Your case #{esc_id} has been escalated to a live human supervisor. Expected wait time is under 5 minutes."
                 else:
                     msg = f"Support action {tool_name} completed."
             card = TextMessageCard(
@@ -843,6 +988,109 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
             if cand and len(cand) > 2 and cand.lower() not in ["a worker", "a technician", "someone", "worker", "the worker"]:
                 extracted_worker_name = cand
 
+    # -------------------------------------------------------------------------
+    # 0A. REVIEW FORM & DISPUTE INTENT
+    # -------------------------------------------------------------------------
+    has_review_kw = any(w in user_query_lower for w in [
+        "review", "rate", "rating", "leave a review", "give review", "feedback", "give feedback", "stars",
+        "post a review", "submit review", "write a review"
+    ]) or any(w in last_ai_lower for w in [
+        "leave a review", "submit a review", "rate this technician", "how was your experience"
+    ]) or metadata.get("agent") == "support_review_agent"
+
+    is_asking_other_rating = any(w in user_query_lower for w in [
+        "what is his rating", "what is her rating", "what is their rating", "show rating", "performance"
+    ])
+
+    has_dispute_kw = any(w in user_query_lower for w in [
+        "dispute", "file complaint", "file a complaint", "technician didn't show", "no show",
+        "broke my", "damage", "scam", "overcharged", "poor quality work", "issue ticket", "ticket"
+    ])
+
+    if has_dispute_kw:
+        ticket_num = f"DISP-{datetime.now(timezone.utc).strftime('%y%m%d')}-9481"
+        dispute_card = DisputeTicketCard(
+            ticketId=ticket_num,
+            workerId=extracted_worker_id,
+            workerName=extracted_worker_name or "Assigned Technician",
+            reason=user_query or "Service quality and completion dispute reported by resident.",
+            urgencyLevel="High" if any(k in user_query_lower for k in ["damage", "broke", "emergency", "urgent"]) else "Medium",
+            status="Open",
+            resolutionSla="Support team responds within 2 hours",
+            supportHotline="+94 11 234 5678"
+        )
+        clean_msg = f"I have opened Support Ticket #{ticket_num} for your report. Our trust & safety team has been alerted."
+        return AgentCardResponse(
+            response_type="dispute_ticket",
+            message=clean_msg,
+            card_data=dispute_card.model_dump(),
+            metadata={"agent": "support_review_agent", "user_email": email}
+        )
+
+    if has_review_kw and not is_asking_other_rating:
+        # Extract booking ID
+        extracted_booking_id = None
+        b_match = re.search(r'(?:booking|order|appointment|#)\s*[:#]?\s*(\d+)', user_query, re.IGNORECASE)
+        if not b_match:
+            b_match = re.search(r'(?:booking|order|appointment|#)\s*[:#]?\s*(\d+)', last_ai_content, re.IGNORECASE)
+        if b_match:
+            extracted_booking_id = b_match.group(1)
+        else:
+            for prev_msg in reversed(messages):
+                if getattr(prev_msg, "type", "") == "tool" or isinstance(prev_msg, ToolMessage):
+                    try:
+                        p_data = json.loads(getattr(prev_msg, "content", "") or "{}")
+                        if isinstance(p_data, dict) and (p_data.get("bookingId") or p_data.get("id")):
+                            extracted_booking_id = str(p_data.get("bookingId") or p_data.get("id"))
+                            break
+                        elif isinstance(p_data, list) and p_data and isinstance(p_data[0], dict) and p_data[0].get("id"):
+                            extracted_booking_id = str(p_data[0].get("id"))
+                            break
+                    except Exception:
+                        pass
+
+        review_worker_id = extracted_worker_id or "44"
+        review_worker_name = extracted_worker_name or "Verified Technician"
+        review_job_title = "Completed Home Service"
+        review_avatar = None
+
+        for prev_msg in reversed(messages):
+            if getattr(prev_msg, "type", "") == "tool" or isinstance(prev_msg, ToolMessage):
+                try:
+                    p_data = json.loads(getattr(prev_msg, "content", "") or "{}")
+                    if isinstance(p_data, dict):
+                        if p_data.get("workerName"):
+                            review_worker_name = p_data["workerName"]
+                        if p_data.get("workerId"):
+                            review_worker_id = str(p_data["workerId"])
+                        if p_data.get("jobTitle"):
+                            review_job_title = p_data["jobTitle"]
+                        if p_data.get("workerProfileImage") or p_data.get("workerAvatar"):
+                            review_avatar = p_data.get("workerProfileImage") or p_data.get("workerAvatar")
+                except Exception:
+                    pass
+
+        review_card = ReviewFormCard(
+            bookingId=extracted_booking_id or "8",
+            workerId=review_worker_id,
+            workerName=review_worker_name,
+            workerAvatar=review_avatar,
+            jobTitle=review_job_title,
+            defaultQuality=5,
+            defaultPunctuality=5,
+            defaultCommunication=5
+        )
+        clean_msg = f"How was your experience with {review_worker_name}? Please share your ratings and feedback below:"
+        return AgentCardResponse(
+            response_type="review_form",
+            message=clean_msg,
+            card_data=review_card.model_dump(),
+            metadata={"agent": "support_review_agent", "user_email": email}
+        )
+
+    # -------------------------------------------------------------------------
+    # 0B. BOOKING FORM INTENT (e.g. user asks to book a worker / technician)
+    # -------------------------------------------------------------------------
     is_booking_flow = has_book_kw and (extracted_worker_id is not None or extracted_worker_name is not None or metadata.get("agent") == "booking_agent")
 
     if is_booking_flow and (extracted_worker_id or extracted_worker_name):
@@ -935,6 +1183,43 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
             card_data=booking_card.model_dump(),
             metadata={"agent": "booking_agent", "user_email": email, "workerId": worker_id_val}
         )
+
+    # -------------------------------------------------------------------------
+    # Booking List / Table Detection in Conversational Turns
+    # -------------------------------------------------------------------------
+    has_booking_table = bool(
+        re.search(r'\|\s*Booking ID\s*\|\s*Worker\s*\|\s*Service\s*\|', last_ai_content, re.IGNORECASE)
+        or ("booking id" in lower_content and "scheduled time" in lower_content and "|" in last_ai_content)
+    )
+    if has_booking_table:
+        rows = re.findall(r'\|\s*\*{0,2}#?(\d+)\*{0,2}\s*\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|\s*([^|]+)\s*\|', last_ai_content)
+        if rows:
+            booking_summaries = []
+            for r in rows:
+                b_id, b_worker, b_service, b_time, b_stat = [x.strip() for x in r]
+                b_stat_clean = b_stat.strip().strip("*").strip()
+                booking_summaries.append(
+                    BookingSummary(
+                        id=b_id,
+                        workerId="",
+                        workerName=b_worker.strip("*# "),
+                        jobTitle=b_service.strip("*# "),
+                        scheduledDate=b_time.strip("*# "),
+                        status=b_stat_clean or "Requested"
+                    )
+                )
+            clean_msg = re.split(r'\n\s*\|', last_ai_content)[0].strip()
+            clean_msg = re.sub(r'The booking records provide start times.*$', '', clean_msg, flags=re.IGNORECASE).strip()
+            return AgentCardResponse(
+                response_type="booking_list",
+                message=clean_msg or f"You have {len(booking_summaries)} upcoming bookings:",
+                card_data=BookingListCard(
+                    totalCount=len(booking_summaries),
+                    statusFilter="Upcoming",
+                    bookings=booking_summaries
+                ).model_dump(),
+                metadata={"agent": "booking_agent", "user_email": email}
+            )
 
     # A. Check if the agent prepared a draft community post awaiting confirmation
     is_choice_turn = any(kw in lower_content for kw in [

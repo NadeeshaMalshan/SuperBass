@@ -152,7 +152,38 @@ async def get_user_job_history(limit: Optional[int] = 5) -> Dict[str, Any]:
         return {"status": "error", "message": f"Failed to fetch job history: {str(e)}"}
 
 
+@tool
+async def lookup_platform_policy(
+    query: str,
+    category: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Retrieves verified platform rules, cancellation policies, warranties, guarantees, and pricing guidelines
+    from the Workio RAG Knowledge Base.
+    Arguments:
+    - query (string, required): Specific policy inquiry or question (e.g. 'cancellation fee', '7 day warranty', 'technician vetting').
+    - category (string, optional): Specific category filter (e.g. 'Cancellation', 'Warranties', 'Pricing', 'Safety', 'Disputes').
+    """
+    from agent_backend.knowledge.policy_retriever import policy_retriever
+    try:
+        results = await policy_retriever.search(query=query, top_k=2, category=category)
+        if not results:
+            return {
+                "status": "not_found",
+                "message": f"No specific policy documentation found for query: '{query}'. Please refer to platform hotline (+94 11 234 5678)."
+            }
+        return {
+            "status": "success",
+            "query": query,
+            "matched_policies": results
+        }
+    except Exception as e:
+        logger.error(f"RAG search failed: {e}")
+        return {"status": "error", "message": f"Failed to retrieve policy: {str(e)}"}
+
+
 SUPPORT_REVIEW_TOOLS = [
+    lookup_platform_policy,
     create_worker_review,
     get_worker_performance,
     get_user_details,
