@@ -7,6 +7,8 @@ import '../../models/worker_services_data.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../theme/worker_colors.dart';
+import '../../widgets/verified_badge.dart';
+import '../../widgets/verification_form.dart';
 
 class WorkerProfileScreen extends StatefulWidget {
   final WorkerModel? worker;
@@ -29,6 +31,8 @@ class WorkerProfileScreen extends StatefulWidget {
 }
 
 class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
+  bool _isVerified = false;
+
   // Bio section
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -535,13 +539,29 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Profile & Settings',
-            style: GoogleFonts.dmSans(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: WorkerColors.onSurface,
+          if (!_isVerified)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 24.0),
+              child: VerificationForm(
+                onVerifySuccess: () {
+                  setState(() {
+                    _isVerified = true;
+                  });
+                },
+              ),
             ),
+          Row(
+            children: [
+              Text(
+                'Profile & Settings',
+                style: GoogleFonts.dmSans(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: WorkerColors.onSurface,
+                ),
+              ),
+              if (_isVerified) const VerifiedBadge(),
+            ],
           ),
           const SizedBox(height: 4),
           Text(

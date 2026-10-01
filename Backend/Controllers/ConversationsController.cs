@@ -10,6 +10,9 @@ using Microsoft.AspNetCore.SignalR;
 using Superbass.Models;
 using Superbass.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Configuration;
+using CloudinaryDotNet;
+using CloudinaryDotNet.Actions;
 
 namespace Superbass.Controllers
 {
@@ -22,17 +25,20 @@ namespace Superbass.Controllers
         private readonly IHubContext<ChatHub> _hubContext;
         private readonly IWebHostEnvironment _environment;
         private readonly IPushNotificationService _pushNotificationService;
+        private readonly IConfiguration _configuration;
 
         public ConversationsController(
             ICommunicationRepository communicationRepo,
             IHubContext<ChatHub> hubContext,
             IWebHostEnvironment environment,
-            IPushNotificationService pushNotificationService)
+            IPushNotificationService pushNotificationService,
+            IConfiguration configuration)
         {
             _communicationRepo = communicationRepo;
             _hubContext = hubContext;
             _environment = environment;
             _pushNotificationService = pushNotificationService;
+            _configuration = configuration;
         }
 
         private string? GetCurrentUserEmail()
@@ -327,7 +333,6 @@ namespace Superbass.Controllers
             return Ok(new { unreadCount = count });
         }
 
-        // POST: /api/conversations/upload
         [HttpPost("upload")]
         public async Task<IActionResult> UploadAttachment(IFormFile file)
         {
@@ -342,27 +347,64 @@ namespace Superbass.Controllers
                 return BadRequest(new { message = "File size exceeds 25MB limit." });
             }
 
-            var uploadDir = Path.Combine(_environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "uploads", "chat");
-            if (!Directory.Exists(uploadDir))
-            {
-                Directory.CreateDirectory(uploadDir);
-            }
-
-            var fileExt = Path.GetExtension(file.FileName);
-            var uniqueFileName = $"{Guid.NewGuid():N}{fileExt}";
-            var filePath = Path.Combine(uploadDir, uniqueFileName);
-
-            using (var stream = new FileStream(filePath, FileMode.Create))
-            {
-                await file.CopyToAsync(stream);
-            }
-
             var isImage = file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
-            var fileUrl = $"/uploads/chat/{uniqueFileName}";
+
+            var cloudName = _configuration["Cloudinary:CloudName"];
+            var apiKey = _configuration["Cloudinary:ApiKey"];
+            var apiSecret = _configuration["Cloudinary:ApiSecret"];
+
+            if (string.IsNullOrEmpty(cloudName) || string.IsNullOrEmpty(apiKey) || string.IsNullOrEmpty(apiSecret))
+            {
+                // Fallback to local storage
+                var uploadDir = Path.Combine(_environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "uploads", "chat");
+                if (!Directory.Exists(uploadDir))
+                {
+                    Directory.CreateDirectory(uploadDir);
+                }
+
+                var fileExt = Path.GetExtension(file.FileName);
+                var uniqueFileName = $"{Guid.NewGuid():N}{fileExt}";
+                var filePath = Path.Combine(uploadDir, uniqueFileName);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await file.CopyToAsync(stream);
+                }
+
+                var fileUrl = $"/uploads/chat/{uniqueFileName}";
+
+                return Ok(new
+                {
+                    url = fileUrl,
+                    fileName = file.FileName,
+                    fileSize = file.Length,
+                    isImage,
+                    contentType = file.ContentType
+                });
+            }
+
+            // Cloudinary upload
+            var account = new Account(cloudName, apiKey, apiSecret);
+            var cloudinary = new Cloudinary(account);
+
+            using var uploadStream = file.OpenReadStream();
+            
+            var uploadParams = new RawUploadParams()
+            {
+                File = new FileDescription(file.FileName, uploadStream),
+                Folder = "superbass/chat"
+            };
+
+            var uploadResult = await cloudinary.UploadAsync(uploadParams);
+
+            if (uploadResult.Error != null)
+            {
+                return BadRequest(new { message = uploadResult.Error.Message });
+            }
 
             return Ok(new
             {
-                url = fileUrl,
+                url = uploadResult.SecureUrl.ToString(),
                 fileName = file.FileName,
                 fileSize = file.Length,
                 isImage,

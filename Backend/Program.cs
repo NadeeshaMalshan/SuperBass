@@ -121,6 +121,20 @@ using (var scope = app.Services.CreateScope())
                 ) THEN
                     ALTER TABLE ""Workers"" ALTER COLUMN ""ResidentEmail"" DROP NOT NULL;
                 END IF;
+
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name='Workers' AND column_name='IsVerified'
+                ) THEN
+                    ALTER TABLE ""Workers"" ADD COLUMN ""IsVerified"" boolean NOT NULL DEFAULT false;
+                END IF;
+
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name='Workers' AND column_name='NicNumber'
+                ) THEN
+                    ALTER TABLE ""Workers"" ADD COLUMN ""NicNumber"" text NULL;
+                END IF;
             END $$;
         ");
 

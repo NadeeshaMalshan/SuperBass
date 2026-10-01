@@ -33,7 +33,8 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
     location: '',
     experience: '',
     description: '',
-    isVerified: false
+    isVerified: false,
+    profileImage: ''
   });
 
   // Services & Skills State (hierarchical list matching backend & mobile app)
@@ -63,13 +64,6 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
     endTime: '17:00'
   });
 
-  // Security / Password State
-  const [passwords, setPasswords] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
-  });
-
   const [currentWorkerId, setCurrentWorkerId] = useState(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
@@ -93,7 +87,9 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
             location: w.primaryServiceArea || '',
             experience: w.completedJobs > 0 ? `${w.completedJobs} Jobs Completed` : 'Registered Worker',
             description: w.description || '',
-            isVerified: false
+            isVerified: w.isVerified ?? false,
+            nicNumber: w.nicNumber || '',
+            profileImage: w.profileImage || ''
           });
           if (w.pricingModel) setPricingModel(w.pricingModel);
           if (w.hourlyRate != null) setHourlyRate(w.hourlyRate);
@@ -328,31 +324,6 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
     }
   };
 
-  const handleSavePassword = async (e) => {
-    e.preventDefault();
-    if (!currentWorkerId) return;
-    if (passwords.newPassword !== passwords.confirmPassword) {
-      alert('New password and confirm password do not match!');
-      return;
-    }
-
-    try {
-      const wId = currentWorkerId || 1;
-      await axios.put(`${API_BASE_URL}/workers/${wId}/password`, {
-        newPassword: passwords.newPassword
-      }, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
-      });
-      setSaveStatus('Password changed successfully!');
-      setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      setTimeout(() => setSaveStatus(null), 3000);
-    } catch (err) {
-      setSaveStatus('Password updated.');
-      setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      setTimeout(() => setSaveStatus(null), 3000);
-    }
-  };
-
   const handleDeleteWorkerAccount = async () => {
     if (deleteConfirmText !== 'DELETE') {
       alert("Please type DELETE in capital letters to confirm permanent account deletion.");
@@ -434,7 +405,7 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
             margin: 0,
             maxWidth: '680px'
           }}>
-            Manage your personal bio, trade skills, rates, coverage area, working hours, and password.
+            Manage your personal bio, trade skills, rates, coverage area, working hours, and identity verification.
           </p>
         </div>
       </div>
@@ -466,6 +437,7 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
         >
           <i className="fa-solid fa-user-check"></i>
           Verify Account
+          {bio.isVerified && <span style={{ marginLeft: 6, fontSize: '0.85rem', color: '#16a34a' }}>✓</span>}
         </button>
         
         <button 
@@ -504,8 +476,8 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
           className={`profile-tab-btn ${activeTab === 'security' ? 'active' : ''}`}
           onClick={() => setActiveTab('security')}
         >
-          <i className="fa-solid fa-lock"></i>
-          Security & Password
+          <i className="fa-solid fa-shield-halved"></i>
+          Account Security
         </button>
       </div>
 
@@ -514,7 +486,25 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
         <div className="worker-card">
           <VerificationForm 
             isVerified={bio.isVerified}
-            onVerifySuccess={() => setBio({ ...bio, isVerified: true })}
+            onVerifySuccess={async (data) => {
+              try {
+                if (currentWorkerId) {
+                  await axios.post(`${API_BASE_URL}/workers/${currentWorkerId}/verify`, {
+                    nicNumber: data?.nic || '',
+                    dateOfBirth: data?.dateOfBirth || '',
+                    gender: data?.gender || ''
+                  });
+                }
+                setBio(prev => ({ ...prev, isVerified: true, nicNumber: data?.nic || prev.nicNumber }));
+                setSaveStatus('Identity verified and saved successfully!');
+                setTimeout(() => setSaveStatus(null), 3500);
+              } catch (err) {
+                console.error('Error saving verification status:', err);
+                setBio(prev => ({ ...prev, isVerified: true, nicNumber: data?.nic || prev.nicNumber }));
+                setSaveStatus('Identity verified! (Note: Could not update server)');
+                setTimeout(() => setSaveStatus(null), 3500);
+              }
+            }}
           />
         </div>
       )}
@@ -535,9 +525,14 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
               fontSize: '2rem',
               fontWeight: 800,
               border: '2px solid #e5e5e5',
-              flexShrink: 0
+              flexShrink: 0,
+              overflow: 'hidden'
             }}>
-              {bio.name ? bio.name.charAt(0).toUpperCase() : 'W'}
+              {bio.profileImage ? (
+                <img src={bio.profileImage} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} referrerPolicy="no-referrer" />
+              ) : (
+                bio.name ? bio.name.charAt(0).toUpperCase() : 'W'
+              )}
             </div>
 
             <div>
@@ -550,6 +545,41 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
               <p style={{ fontSize: '0.88rem', color: '#737373', marginTop: '4px', margin: 0 }}>
                 {bio.location || 'Location not set'} • Experience: {bio.experience || 'Verified Professional'}
               </p>
+
+              <label style={{
+                marginTop: '10px', display: 'inline-block', padding: '6px 12px',
+                backgroundColor: '#f1f5f9', color: '#334155', borderRadius: '6px',
+                cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600',
+                border: '1px solid #e2e8f0', transition: 'all 0.2s'
+              }}>
+                Upload New Photo
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  style={{ display: 'none' }}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    
+                    try {
+                      setSaveStatus('Uploading photo...');
+                      const res = await axios.post(`${API_BASE_URL}/upload/image`, formData, {
+                        headers: { 'Content-Type': 'multipart/form-data' }
+                      });
+                      setBio({ ...bio, profileImage: res.data.url });
+                      setSaveStatus('Photo uploaded! Click Save Bio Changes to apply.');
+                      setTimeout(() => setSaveStatus(null), 3000);
+                    } catch (err) {
+                      console.error('Image upload failed', err);
+                      setSaveStatus('Failed to upload image.');
+                      setTimeout(() => setSaveStatus(null), 3000);
+                    }
+                  }}
+                />
+              </label>
             </div>
           </div>
 
@@ -594,14 +624,40 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
 
           <button 
             className="worker-btn-primary" 
-            onClick={() => {
+            onClick={async () => {
               if (bio.phone && !/^0\d{9}$/.test(bio.phone)) {
                 setSaveStatus('Phone number must be exactly 10 digits starting with 0.');
                 setTimeout(() => setSaveStatus(null), 3000);
                 return;
               }
-              setSaveStatus('Bio details updated successfully!');
-              setTimeout(() => setSaveStatus(null), 3000);
+              if (!currentWorkerId) return;
+              try {
+                setSaveStatus('Saving changes...');
+                await axios.put(`${API_BASE_URL}/workers/${currentWorkerId}`, {
+                  name: bio.name,
+                  email: bio.email,
+                  residentEmail: bio.email,
+                  phoneNo: bio.phone,
+                  description: bio.description,
+                  profileImage: bio.profileImage,
+                  primaryServiceArea: serviceArea,
+                  pricingModel: pricingModel,
+                  hourlyRate: hourlyRate ? parseFloat(hourlyRate) : null,
+                  dailyRate: dailyRate ? parseFloat(dailyRate) : null,
+                  isAvailable: availability.isAvailable
+                }, {
+                  headers: token ? { Authorization: `Bearer ${token}` } : {}
+                });
+                setSaveStatus('Bio details updated successfully!');
+                if (bio.name) localStorage.setItem('userName', bio.name);
+                if (bio.profileImage) localStorage.setItem('userPicture', bio.profileImage);
+                window.dispatchEvent(new Event('profileUpdated'));
+                setTimeout(() => setSaveStatus(null), 3000);
+              } catch (err) {
+                console.error('Failed to update bio', err);
+                setSaveStatus('Failed to update bio details.');
+                setTimeout(() => setSaveStatus(null), 3000);
+              }
             }}
           >
             Save Bio Changes
@@ -1011,56 +1067,45 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
         </div>
       )}
 
-      {/* Tab 5: Security & Password */}
+      {/* Tab 5: Account Security & Danger Zone */}
       {activeTab === 'security' && (
         <div className="worker-card" style={{ padding: '30px', borderRadius: '18px' }}>
-          <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#000000', marginBottom: '16px', letterSpacing: '-0.02em' }}>
-            Account Security & Change Password
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#000000', marginBottom: '8px', letterSpacing: '-0.02em' }}>
+            Account Security
           </h3>
+          <p style={{ fontSize: '0.9rem', color: '#6b7280', margin: '0 0 20px 0', lineHeight: 1.5 }}>
+            Your worker profile is authenticated securely via Google OAuth. Password login is disabled for enhanced account protection.
+          </p>
 
-          <form onSubmit={handleSavePassword} style={{ maxWidth: '440px' }}>
-            <div className="worker-input-group">
-              <label className="worker-label">Current Password</label>
-              <input 
-                type="password" 
-                required
-                className="worker-input" 
-                placeholder="••••••••"
-                value={passwords.currentPassword}
-                onChange={(e) => setPasswords({ ...passwords, currentPassword: e.target.value })}
-              />
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '14px',
+            backgroundColor: '#f9fafb',
+            border: '1px solid #e5e7eb',
+            borderRadius: '12px',
+            padding: '16px 20px',
+            marginBottom: '28px'
+          }}>
+            <div style={{
+              width: '38px',
+              height: '38px',
+              borderRadius: '50%',
+              backgroundColor: '#ecfdf5',
+              border: '1px solid #a7f3d0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.1rem',
+              color: '#059669'
+            }}>
+              <i className="fa-solid fa-check"></i>
             </div>
-
-            <div className="worker-input-group">
-              <label className="worker-label">New Password</label>
-              <input 
-                type="password" 
-                required
-                className="worker-input" 
-                placeholder="••••••••"
-                value={passwords.newPassword}
-                onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
-              />
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#111827' }}>Google Single Sign-On Active</div>
+              <div style={{ fontSize: '0.82rem', color: '#6b7280' }}>Connected to {userEmail}</div>
             </div>
-
-            <div className="worker-input-group">
-              <label className="worker-label">Confirm New Password</label>
-              <input 
-                type="password" 
-                required
-                className="worker-input" 
-                placeholder="••••••••"
-                value={passwords.confirmPassword}
-                onChange={(e) => setPasswords({ ...passwords, confirmPassword: e.target.value })}
-              />
-            </div>
-
-            <button type="submit" className="worker-btn-primary">
-              Update Password
-            </button>
-          </form>
-
-          <hr style={{ margin: '32px 0 24px 0', borderColor: '#e5e5e5' }} />
+          </div>
 
           {/* RESTRICTED AREA — DANGER ZONE */}
           <div style={{

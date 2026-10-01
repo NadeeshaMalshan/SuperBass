@@ -3,9 +3,18 @@ import '../services/auth_service.dart';
 import '../models/auth_user.dart';
 import 'join_screen.dart';
 import 'placeholder_screens.dart';
+import '../widgets/verified_badge.dart';
+import '../widgets/verification_form.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  bool _isVerified = false;
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +57,19 @@ class ProfileScreen extends StatelessWidget {
                     const SizedBox(height: 32),
                   ],
 
+                  // --- Verify Account Section ---
+                  if (!_isVerified)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 32.0),
+                      child: VerificationForm(
+                        onVerifySuccess: () {
+                          setState(() {
+                            _isVerified = true;
+                          });
+                        },
+                      ),
+                    ),
+
                   // --- Menu Options ---
                   const _ProfileMenu(),
                   const SizedBox(height: 40), // Bottom padding
@@ -71,9 +93,15 @@ class ProfileScreen extends StatelessWidget {
           child: _buildRobustAvatar(user.picture, user.name),
         ),
         const SizedBox(height: 20),
-        Text(
-          user.name,
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              user.name,
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            if (_isVerified) const VerifiedBadge(),
+          ],
         ),
         const SizedBox(height: 6),
         Container(
