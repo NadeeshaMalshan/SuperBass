@@ -1,3 +1,4 @@
+@import "tailwindcss";
 /* Material Design 3 & Unified Design Tokens for SuperBass (Black, White & Grays) */
 :root {
   --md-sys-color-primary: #000000;
@@ -38,8 +39,6 @@
 
 * {
   box-sizing: border-box;
-  margin: 0;
-  padding: 0;
 }
 
 dialog {
@@ -191,4 +190,4 @@ md-select-option, md-menu-item {
   100% {
     transform: rotate(360deg);
   }
-}
+}
