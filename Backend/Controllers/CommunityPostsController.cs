@@ -12,10 +12,14 @@ namespace Superbass.Controllers
     public class CommunityPostsController : ControllerBase
     {
         private readonly ICommunityPostRepository _repository;
+        private readonly IPushNotificationService _pushNotificationService;
 
-        public CommunityPostsController(ICommunityPostRepository repository)
+        public CommunityPostsController(
+            ICommunityPostRepository repository,
+            IPushNotificationService pushNotificationService)
         {
             _repository = repository;
+            _pushNotificationService = pushNotificationService;
         }
 
         // GET /api/community-posts/categories and GET /api/categories
@@ -175,10 +179,37 @@ namespace Superbass.Controllers
                 return BadRequest(new { message = "Comment content cannot be empty." });
             }
 
-            string userId = User.Identity?.Name ?? "demo_user_1";
+            string commenterEmail = request.UserEmail ?? GetEmailFromRequest() ?? request.UserId ?? User.Identity?.Name ?? "demo_user_1";
+            string commenterName = !string.IsNullOrWhiteSpace(request.UserName) ? request.UserName : "Someone";
+
             try
             {
-                var comment = _repository.AddComment(id, request, userId);
+                var comment = _repository.AddComment(id, request, commenterEmail);
+
+                // Notify post author if different from commenter
+                var post = _repository.GetPostById(id);
+                if (post != null && !string.IsNullOrWhiteSpace(post.UserId))
+                {
+                    bool isSelf = string.Equals(post.UserId, commenterEmail, StringComparison.OrdinalIgnoreCase) ||
+                                  (!string.IsNullOrWhiteSpace(post.UserName) && string.Equals(post.UserName, commenterName, StringComparison.OrdinalIgnoreCase));
+                    if (!isSelf)
+                    {
+                        string commentPreview = request.Content.Length > 60
+                            ? request.Content.Substring(0, 57) + "..."
+                            : request.Content;
+                        _ = _pushNotificationService.SendPushNotificationAsync(
+                            recipientEmail: post.UserId,
+                            title: "New Comment on your post 💬",
+                            message: $"{commenterName} commented: \"{commentPreview}\"",
+                            data: new Dictionary<string, string>
+                            {
+                                { "postId", id.ToString() },
+                                { "type", "community_comment" }
+                            }
+                        );
+                    }
+                }
+
                 return Ok(comment);
             }
             catch (KeyNotFoundException)
@@ -189,11 +220,40 @@ namespace Superbass.Controllers
 
         // POST /api/community-posts/{id}/like
         [HttpPost("{id}/like")]
-        public IActionResult ToggleLike(int id)
+        public IActionResult ToggleLike(int id, [FromBody] LikePostRequest? request = null)
         {
-            string userId = User.Identity?.Name ?? "demo_user_1";
-            var result = _repository.ToggleLike(id, userId);
+            string likerEmail = request?.UserEmail ?? GetEmailFromRequest() ?? request?.UserId ?? User.Identity?.Name ?? "demo_user_1";
+            string likerName = !string.IsNullOrWhiteSpace(request?.UserName) ? request.UserName : "Someone";
+
+            var result = _repository.ToggleLike(id, likerEmail);
             if (!result.Success) return NotFound(new { message = "Post not found." });
+
+            // If liked, notify post author
+            if (result.IsLiked)
+            {
+                var post = _repository.GetPostById(id);
+                if (post != null && !string.IsNullOrWhiteSpace(post.UserId))
+                {
+                    bool isSelf = string.Equals(post.UserId, likerEmail, StringComparison.OrdinalIgnoreCase) ||
+                                  (!string.IsNullOrWhiteSpace(post.UserName) && string.Equals(post.UserName, likerName, StringComparison.OrdinalIgnoreCase));
+                    if (!isSelf)
+                    {
+                        string postTitlePreview = !string.IsNullOrWhiteSpace(post.Title)
+                            ? (post.Title.Length > 40 ? post.Title.Substring(0, 37) + "..." : post.Title)
+                            : "your post";
+                        _ = _pushNotificationService.SendPushNotificationAsync(
+                            recipientEmail: post.UserId,
+                            title: "Someone liked your post! ❤️",
+                            message: $"{likerName} liked \"{postTitlePreview}\"",
+                            data: new Dictionary<string, string>
+                            {
+                                { "postId", id.ToString() },
+                                { "type", "community_like" }
+                            }
+                        );
+                    }
+                }
+            }
 
             return Ok(new { isLiked = result.IsLiked, likesCount = result.LikesCount });
         }

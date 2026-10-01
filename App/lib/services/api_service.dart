@@ -299,6 +299,8 @@ class ApiService {
         'content': content,
         'userName': user?.name ?? 'Resident',
         'userAvatar': user?.picture ?? '',
+        'userEmail': user?.email ?? '',
+        'userId': user?.email ?? '',
       });
 
       debugPrint('Adding comment to post #$postId: $body');
@@ -319,8 +321,14 @@ class ApiService {
   /// Toggle Like on Post: POST /api/community-posts/{id}/like
   Future<Map<String, dynamic>?> togglePostLike(int postId) async {
     try {
+      final user = AuthService().currentUser;
       final uri = Uri.parse('${ApiConfig.baseUrl}/api/community-posts/$postId/like');
-      final response = await http.post(uri, headers: _headers);
+      final body = jsonEncode({
+        'userId': user?.email ?? 'demo_user_1',
+        'userEmail': user?.email ?? '',
+        'userName': user?.name ?? 'Resident',
+      });
+      final response = await http.post(uri, headers: _headers, body: body);
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return jsonDecode(response.body) as Map<String, dynamic>;

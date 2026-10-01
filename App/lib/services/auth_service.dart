@@ -101,7 +101,7 @@ class AuthService {
   }
 
   /// Perform Google Sign-In and authenticate with the SuperBass backend
-  Future<AuthUser> signInWithGoogle() async {
+  Future<AuthUser> signInWithGoogle({String intendedRole = 'Resident'}) async {
     try {
       final GoogleSignInAccount? googleAccount = await _googleSignIn.signIn();
       if (googleAccount == null) {
@@ -123,6 +123,7 @@ class AuthService {
         accessToken: accessToken,
         idToken: idToken,
         fallbackPhotoUrl: googleAccount.photoUrl,
+        intendedRole: intendedRole,
       );
     } catch (e) {
       debugPrint('Error during Google Sign-In: $e');
@@ -141,6 +142,7 @@ class AuthService {
     String? accessToken,
     String? idToken,
     String? fallbackPhotoUrl,
+    String intendedRole = 'Resident',
   }) async {
     final http.Response response;
     try {
@@ -150,6 +152,7 @@ class AuthService {
         body: jsonEncode({
           'accessToken': accessToken,
           'idToken': idToken,
+          'intendedRole': intendedRole,
         }),
       ).timeout(const Duration(seconds: 15));
     } catch (e) {
@@ -176,12 +179,15 @@ class AuthService {
           picture: fallbackPhotoUrl,
           isNewUser: user.isNewUser,
           isWorker: user.isWorker,
+          isNewWorker: user.isNewWorker,
           activeRole: user.activeRole,
           workerId: user.workerId,
+          locationLat: user.locationLat,
+          locationLng: user.locationLng,
         );
       }
 
-      // Save credentials in SharedPreferences (matches Join.jsx localStorage)
+      // Save credentials in SharedPreferences (matches Web localStorage)
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('token', user.token);
       await prefs.setString('userName', user.name);
@@ -191,6 +197,13 @@ class AuthService {
       await prefs.setString('email', user.email);
       await prefs.setString('activeRole', user.activeRole);
       await prefs.setBool('isWorker', user.isWorker);
+      if (user.workerId != null) {
+        await prefs.setInt('workerId', user.workerId!);
+      }
+      if (intendedRole == 'Worker' || user.activeRole == 'Worker') {
+        await prefs.setBool('workerAuth', true);
+        await prefs.setString('workerEmail', user.email);
+      }
 
       currentUserNotifier.value = user;
       _syncOneSignalUser(user.email);
