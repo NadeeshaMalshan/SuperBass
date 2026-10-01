@@ -671,17 +671,9 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
         {/* Left Sidebar Navigation Drawer */}
         <aside className={`flex flex-col h-full overflow-y-auto bg-white border-r border-[#E5E5EA] transition-all duration-300 shrink-0 ${isSidebarCollapsed ? 'w-20 items-center py-6 px-2' : 'w-[280px] py-6 px-4'}`}>
           {/* User Profile Info Mini Header */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            padding: isSidebarCollapsed ? '12px 0' : '16px 14px',
-            justifyContent: isSidebarCollapsed ? 'center' : 'flex-start',
-            borderBottom: '1px solid #f1f5f9',
-            marginBottom: '10px'
-          }}>
+          <div className={`flex items-center gap-3 ${isSidebarCollapsed ? 'justify-center' : ''} mb-6`}>
             {(profile.profileImage || userPicture) ? (
-              <img src={profile.profileImage || userPicture} alt="Avatar" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} referrerPolicy="no-referrer" />
+              <img src={profile.profileImage || userPicture} alt="Avatar" className="w-14 h-14 rounded-full object-cover shrink-0 shadow-sm" referrerPolicy="no-referrer" />
             ) : (
               <div className="w-14 h-14 rounded-full bg-black text-white flex items-center justify-center font-bold text-xl shrink-0 shadow-sm">
                 {profile.name ? profile.name.charAt(0).toUpperCase() : 'U'}
@@ -704,55 +696,78 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
               </div>
             )}
           </div>
-
-          <nav className="flex flex-col gap-1 w-full">
-            <div
-              className={`flex items-center gap-3 px-3 h-[44px] rounded-xl cursor-pointer transition-all ${activeTab === 'overview' ? 'bg-[#F0F0F2] text-black font-semibold' : 'text-gray-500 hover:bg-gray-50 hover:text-black font-medium'}`}
+          
+          <nav className="flex-1 flex flex-col gap-1 w-full relative">
+            <button
               onClick={() => setActiveTab('overview')}
+              className={`flex items-center w-full text-left h-11 px-3 rounded-xl transition-colors ${activeTab === 'overview' ? 'bg-[#F0F0F2] text-black font-semibold shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium'}`}
             >
-              <md-icon className="text-[20px]">person</md-icon>
-              <span className="text-[14px]">Profile Overview</span>
-            </div>
+              <div className="w-5 flex justify-center shrink-0">
+                <span className="material-symbols-rounded text-[20px]">{activeTab === 'overview' ? 'person' : 'person'}</span>
+              </div>
+              {!isSidebarCollapsed && <span className="ml-3 text-[15px]">Profile Overview</span>}
+            </button>
 
-            <div
-              className={`flex items-center gap-3 px-3 h-[44px] rounded-xl cursor-pointer transition-all ${activeTab === 'verify' ? 'bg-[#F0F0F2] text-black font-semibold' : 'text-gray-500 hover:bg-gray-50 hover:text-black font-medium'}`}
+            <button
               onClick={() => setActiveTab('verify')}
+              className={`flex items-center w-full text-left h-11 px-3 rounded-xl transition-colors ${activeTab === 'verify' ? 'bg-[#F0F0F2] text-black font-semibold shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium'}`}
             >
-              <md-icon className="text-[20px]">verified_user</md-icon>
-              <span className="text-[14px]">Verify Account</span>
-            </div>
+              <div className="w-5 flex justify-center shrink-0">
+                <span className="material-symbols-rounded text-[20px]">{activeTab === 'verify' ? 'verified_user' : 'verified_user'}</span>
+              </div>
+              {!isSidebarCollapsed && (
+                <div className="ml-3 flex items-center justify-between w-full">
+                  <span className="text-[15px]">Verify Account</span>
+                  {isVerified ? (
+                    <span className="bg-green-100 text-green-700 w-5 h-5 rounded-full flex items-center justify-center text-[10px]">
+                      <span className="material-symbols-rounded text-[14px]">check</span>
+                    </span>
+                  ) : (
+                    <span className="bg-red-100 text-red-600 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold">!</span>
+                  )}
+                </div>
+              )}
+            </button>
 
-            <div
-              className={`flex items-center gap-3 px-3 h-[44px] rounded-xl cursor-pointer transition-all ${activeTab === 'edit' ? 'bg-[#F0F0F2] text-black font-semibold' : 'text-gray-500 hover:bg-gray-50 hover:text-black font-medium'}`}
+            <button
               onClick={() => setActiveTab('edit')}
+              className={`flex items-center w-full text-left h-11 px-3 rounded-xl transition-colors ${activeTab === 'edit' ? 'bg-[#F0F0F2] text-black font-semibold shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium'}`}
             >
-              <md-icon className="text-[20px]">edit</md-icon>
-              <span className="text-[14px]">Edit Profile</span>
-            </div>
+              <div className="w-5 flex justify-center shrink-0">
+                <span className="material-symbols-rounded text-[20px]">{activeTab === 'edit' ? 'edit' : 'edit'}</span>
+              </div>
+              {!isSidebarCollapsed && <span className="ml-3 text-[15px]">Edit Profile</span>}
+            </button>
 
-            <div
-              className={`flex items-center gap-3 px-3 h-[44px] rounded-xl cursor-pointer transition-all ${activeTab === 'bookings' ? 'bg-[#F0F0F2] text-black font-semibold' : 'text-gray-500 hover:bg-gray-50 hover:text-black font-medium'}`}
+            <button
               onClick={() => setActiveTab('bookings')}
+              className={`flex items-center w-full text-left h-11 px-3 rounded-xl transition-colors ${activeTab === 'bookings' ? 'bg-[#F0F0F2] text-black font-semibold shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium'}`}
             >
-              <md-icon className="text-[20px]">calendar_month</md-icon>
-              <span className="text-[14px]">My Bookings</span>
-            </div>
-
-            <div
-              className={`flex items-center gap-3 px-3 h-[44px] rounded-xl cursor-pointer transition-all ${activeTab === 'posts' ? 'bg-[#F0F0F2] text-black font-semibold' : 'text-gray-500 hover:bg-gray-50 hover:text-black font-medium'}`}
+              <div className="w-5 flex justify-center shrink-0">
+                <span className="material-symbols-rounded text-[20px]">{activeTab === 'bookings' ? 'event_note' : 'event_note'}</span>
+              </div>
+              {!isSidebarCollapsed && <span className="ml-3 text-[15px]">My Bookings</span>}
+            </button>
+            
+            <button
               onClick={() => setActiveTab('posts')}
+              className={`flex items-center w-full text-left h-11 px-3 rounded-xl transition-colors ${activeTab === 'posts' ? 'bg-[#F0F0F2] text-black font-semibold shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium'}`}
             >
-              <md-icon className="text-[20px]">dynamic_feed</md-icon>
-              <span className="text-[14px]">My Community Posts</span>
-            </div>
+              <div className="w-5 flex justify-center shrink-0">
+                <span className="material-symbols-rounded text-[20px]">{activeTab === 'posts' ? 'forum' : 'forum'}</span>
+              </div>
+              {!isSidebarCollapsed && <span className="ml-3 text-[15px]">My Community Posts</span>}
+            </button>
 
-            <div
-              className={`flex items-center gap-3 px-3 h-[44px] rounded-xl cursor-pointer transition-all ${activeTab === 'settings' ? 'bg-[#F0F0F2] text-black font-semibold' : 'text-gray-500 hover:bg-gray-50 hover:text-black font-medium'}`}
+            <button
               onClick={() => setActiveTab('settings')}
+              className={`flex items-center w-full text-left h-11 px-3 rounded-xl transition-colors mt-auto ${activeTab === 'settings' ? 'bg-red-50 text-red-600 font-semibold shadow-sm' : 'text-gray-600 hover:bg-red-50 hover:text-red-600 font-medium'}`}
             >
-              <md-icon className="text-[20px]">settings</md-icon>
-              <span className="text-[14px]">Settings</span>
-            </div>
+              <div className="w-5 flex justify-center shrink-0">
+                <span className="material-symbols-rounded text-[20px]">{activeTab === 'settings' ? 'settings' : 'settings'}</span>
+              </div>
+              {!isSidebarCollapsed && <span className="ml-3 text-[15px]">Settings</span>}
+            </button>
           </nav>
         </aside>
 
@@ -1024,17 +1039,59 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
             </div>
           )}
 
-          {/* TAB: Edit Profile */}
+                    {/* TAB: Edit Profile */}
           {activeTab === 'edit' && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
               <h2 className="text-[28px] font-semibold text-black m-0 mb-8 leading-tight">Edit Profile</h2>
               <form onSubmit={handleUpdateProfile} className="flex flex-col">
                 <div className="flex flex-col gap-5">
+                  
+                  {/* Profile Photo Upload */}
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[14px] font-medium text-gray-900">Profile Photo</label>
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center shrink-0 border border-[#E5E5EA]">
+                        {profile.profileImage ? (
+                          <img src={profile.profileImage} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        ) : (
+                          <span className="text-2xl text-gray-400 font-bold">
+                            {profile.name ? profile.name.charAt(0).toUpperCase() : 'U'}
+                          </span>
+                        )}
+                      </div>
+                      <label className="h-10 px-4 bg-white border border-[#D9D9DE] text-[14px] font-medium text-gray-700 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer flex items-center justify-center shadow-sm">
+                        Upload New Photo
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            
+                            const formData = new FormData();
+                            formData.append('file', file);
+                            
+                            try {
+                              const res = await axios.post(`${API_BASE_URL}/upload/image`, formData, {
+                                headers: { 'Content-Type': 'multipart/form-data' }
+                              });
+                              setProfile({ ...profile, profileImage: res.data.url });
+                            } catch (err) {
+                              console.error('Image upload failed', err);
+                              alert('Failed to upload image.');
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
+                  </div>
+
                   <div className="flex flex-col gap-2">
                     <label className="text-[14px] font-medium text-gray-900">Display Name</label>
                     <input
                       type="text"
-                      value={profile.name}
+                      value={profile.name || ''}
                       onChange={(e) => setProfile({ ...profile, name: e.target.value })}
                       className="w-full h-12 px-4 bg-white border border-[#D9D9DE] rounded-xl text-[16px] text-black focus:ring-2 focus:ring-black focus:outline-none hover:bg-gray-50 transition-colors"
                     />
@@ -1045,14 +1102,14 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                     <input
                       type="tel"
                       maxLength={10}
-                      value={profile.phoneNo}
+                      value={profile.phoneNo || ''}
                       onChange={(e) => {
                         const clean = e.target.value.replace(/\D/g, '').slice(0, 10);
                         setProfile({ ...profile, phoneNo: clean });
                       }}
                       className={`w-full h-12 px-4 bg-white border ${profile.phoneNo && !/^0\d{9}$/.test(profile.phoneNo) ? 'border-red-500 focus:ring-red-500' : 'border-[#D9D9DE] focus:ring-black'} rounded-xl text-[16px] text-black focus:ring-2 focus:outline-none hover:bg-gray-50 transition-colors`}
                     />
-                    {profile.phoneNo && !/^0\d{9}$/.test(profile.phoneNo) && (
+                    {profile.phoneNo && !/^0d{9}$/.test(profile.phoneNo) && (
                       <span className="text-[13px] text-red-500 mt-1">Must be 10 digits starting with 0</span>
                     )}
                   </div>
@@ -1061,7 +1118,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                     <label className="text-[14px] font-medium text-gray-900">Physical Address</label>
                     <input
                       type="text"
-                      value={profile.address}
+                      value={profile.address || ''}
                       onChange={(e) => setProfile({ ...profile, address: e.target.value })}
                       className="w-full h-12 px-4 bg-white border border-[#D9D9DE] rounded-xl text-[16px] text-black focus:ring-2 focus:ring-black focus:outline-none hover:bg-gray-50 transition-colors"
                     />
@@ -1070,130 +1127,6 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
 
                 <div className="mt-8">
                   <button type="submit" className="w-full sm:w-auto h-12 px-6 font-semibold text-white bg-black rounded-xl hover:bg-[#222222] transition-colors border-none outline-none cursor-pointer text-[16px] whitespace-nowrap">
-            <div>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: '800', marginTop: 0, marginBottom: '1.5rem', color: '#111827' }}>Edit Profile</h2>
-              <form onSubmit={handleUpdateProfile} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                
-                {/* Profile Photo Upload */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <label style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>Profile Photo</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <div style={{
-                      width: '64px', height: '64px', borderRadius: '50%', overflow: 'hidden', 
-                      backgroundColor: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center'
-                    }}>
-                      {profile.profileImage ? (
-                        <img src={profile.profileImage} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} referrerPolicy="no-referrer" />
-                      ) : (
-                        <span style={{ fontSize: '24px', color: '#94a3b8' }}>
-                          {profile.name ? profile.name.charAt(0).toUpperCase() : 'U'}
-                        </span>
-                      )}
-                    </div>
-                    <label style={{
-                      padding: '8px 16px', backgroundColor: '#f1f5f9', color: '#334155', 
-                      borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500',
-                      border: '1px solid #e2e8f0', transition: 'all 0.2s'
-                    }}>
-                      Upload New Photo
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        style={{ display: 'none' }}
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          
-                          const formData = new FormData();
-                          formData.append('file', file);
-                          
-                          try {
-                            const res = await axios.post(`${API_BASE_URL}/upload/image`, formData, {
-                              headers: { 'Content-Type': 'multipart/form-data' }
-                            });
-                            setProfile({ ...profile, profileImage: res.data.url });
-                          } catch (err) {
-                            console.error('Image upload failed', err);
-                            alert('Failed to upload image.');
-                          }
-                        }}
-                      />
-                    </label>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <label style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>Display Name</label>
-                  <input
-                    type="text"
-                    value={profile.name || ''}
-                    onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                    style={{
-                      padding: '12px 16px', borderRadius: '8px', border: '1px solid #e2e8f0',
-                      fontSize: '15px', outline: 'none', backgroundColor: '#f8fafc', color: '#0f172a',
-                      transition: 'border-color 0.2s'
-                    }}
-                    onFocus={(e) => e.target.style.borderColor = '#000000'}
-                    onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <label style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>Phone Number (10 digits)</label>
-                  <input
-                    type="tel"
-                    maxLength={10}
-                    value={profile.phoneNo || ''}
-                    onChange={(e) => {
-                      const clean = e.target.value.replace(/\D/g, '').slice(0, 10);
-                      setProfile({ ...profile, phoneNo: clean });
-                    }}
-                    style={{
-                      padding: '12px 16px', borderRadius: '8px', 
-                      border: `1px solid ${profile.phoneNo && !/^0\d{9}$/.test(profile.phoneNo) ? '#ef4444' : '#e2e8f0'}`,
-                      fontSize: '15px', outline: 'none', backgroundColor: '#f8fafc', color: '#0f172a',
-                      transition: 'border-color 0.2s'
-                    }}
-                    onFocus={(e) => {
-                      if (!profile.phoneNo || /^0\d{9}$/.test(profile.phoneNo)) e.target.style.borderColor = '#000000';
-                    }}
-                    onBlur={(e) => {
-                      if (!profile.phoneNo || /^0\d{9}$/.test(profile.phoneNo)) e.target.style.borderColor = '#e2e8f0';
-                    }}
-                  />
-                  {profile.phoneNo && !/^0\d{9}$/.test(profile.phoneNo) && (
-                    <span style={{ fontSize: '12px', color: '#ef4444' }}>Must be 10 digits starting with 0</span>
-                  )}
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <label style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>Physical Address</label>
-                  <input
-                    type="text"
-                    value={profile.address || ''}
-                    onChange={(e) => setProfile({ ...profile, address: e.target.value })}
-                    style={{
-                      padding: '12px 16px', borderRadius: '8px', border: '1px solid #e2e8f0',
-                      fontSize: '15px', outline: 'none', backgroundColor: '#f8fafc', color: '#0f172a',
-                      transition: 'border-color 0.2s'
-                    }}
-                    onFocus={(e) => e.target.style.borderColor = '#000000'}
-                    onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
-                  />
-                </div>
-
-                <div style={{ marginTop: '1rem', display: 'flex' }}>
-                  <button
-                    type="submit"
-                    style={{
-                      padding: '12px 32px', backgroundColor: '#000000', color: '#ffffff',
-                      borderRadius: '8px', fontSize: '15px', fontWeight: '600',
-                      border: 'none', cursor: 'pointer', transition: 'background-color 0.2s',
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
-                    }}
-                    onMouseOver={(e) => e.target.style.backgroundColor = '#333333'}
-                    onMouseOut={(e) => e.target.style.backgroundColor = '#000000'}
-                  >
                     Save Changes
                   </button>
                 </div>
@@ -1282,7 +1215,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
           )}
 
           {/* TAB: Become Worker (Disabled - account must be deleted to switch roles) */}
-          {Boolean(false) && (
+          {activeTab === 'become_worker' && (
             <div>
               <div >
                 <h2 >Upgrade to Worker Profile</h2>
