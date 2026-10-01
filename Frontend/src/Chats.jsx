@@ -977,7 +977,9 @@ export default function Chats() {
                   <div className="m3-navbar-worker-info">
                     <div className="m3-navbar-worker-header">
                       <span className="m3-navbar-worker-name">{w.name}</span>
-                      <md-icon className="m3-navbar-verified-icon">verified</md-icon>
+                      {(w.isVerified || w.verified) && (
+                        <md-icon className="m3-navbar-verified-icon">verified</md-icon>
+                      )}
                       {primarySkill && (
                         <span className="m3-navbar-trade-tag">
                           <md-icon>handyman</md-icon>

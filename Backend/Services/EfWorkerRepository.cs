@@ -37,9 +37,15 @@ namespace Superbass.Services
             decimal? maxHourlyRate = null,
             decimal? minHourlyRate = null,
             string? province = null,
-            string? district = null)
+            string? district = null,
+            bool onlyVerified = true)
         {
             var query = _context.Workers.Include(w => w.Skills).AsQueryable();
+
+            if (onlyVerified)
+            {
+                query = query.Where(w => w.IsVerified);
+            }
 
             if (!string.IsNullOrWhiteSpace(skill))
             {
