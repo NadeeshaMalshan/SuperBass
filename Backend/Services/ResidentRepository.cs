@@ -36,7 +36,8 @@ namespace Superbass.Services
                     Email = email,
                     Name = updateDto.Name ?? (email.Contains("@") ? email.Split('@')[0] : email),
                     PhoneNo = updateDto.PhoneNo ?? "",
-                    Address = updateDto.Address ?? ""
+                    Address = updateDto.Address ?? "",
+                    ProfileImage = updateDto.ProfileImage
                 };
                 _context.Residents.Add(resident);
             }
@@ -47,6 +48,7 @@ namespace Superbass.Services
                 if (updateDto.Address != null) resident.Address = updateDto.Address;
                 if (updateDto.LocationLat != null) resident.LocationLat = updateDto.LocationLat;
                 if (updateDto.LocationLng != null) resident.LocationLng = updateDto.LocationLng;
+                if (updateDto.ProfileImage != null) resident.ProfileImage = updateDto.ProfileImage;
             }
 
             if (updateDto.Address != null && updateDto.LocationLat == null && updateDto.LocationLng == null)

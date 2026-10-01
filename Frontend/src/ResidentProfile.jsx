@@ -13,6 +13,9 @@ import '@material/web/textfield/filled-text-field.js';
 import Loader from './components/Loader.jsx';
 import MyCommunityPostsManager from './components/MyCommunityPostsManager.jsx';
 import { API_BASE_URL } from './config.js';
+import { showToast } from './utils/toast.js';
+import VerificationForm from './components/VerificationForm.jsx';
+import VerifiedBadge from './components/VerifiedBadge.jsx';
 
 export default function ResidentProfile({ defaultTab = 'overview' }) {
   const urlParams = new URLSearchParams(window.location.search);
@@ -20,10 +23,14 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
   const [activeTab, setActiveTab] = useState(tabParam || defaultTab || 'overview');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
+  const [isVerified, setIsVerified] = useState(false);
+
+
   const [profile, setProfile] = useState({
     name: '',
     phoneNo: '',
-    address: ''
+    address: '',
+    profileImage: ''
   });
   const [loading, setLoading] = useState(true);
 
@@ -134,7 +141,8 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
         setProfile({
           name: response.data.name || (userEmail ? userEmail.split('@')[0] : ''),
           phoneNo: response.data.phoneNo || '',
-          address: response.data.address || ''
+          address: response.data.address || '',
+          profileImage: response.data.profileImage || ''
         });
       } catch (err) {
         console.error('Failed to fetch profile', err);
@@ -428,10 +436,16 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
       await axios.put(`${API_BASE_URL}/residents/${encodeURIComponent(userEmail)}`, profile, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
-      alert('Profile updated successfully!');
+      showToast('Profile updated successfully!');
       if (profile.name) {
         localStorage.setItem('userName', profile.name);
       }
+      if (profile.profileImage) {
+        localStorage.setItem('userPicture', profile.profileImage);
+      }
+      
+      // Notify other components (like UserMenu) to re-read localStorage
+      window.dispatchEvent(new Event('profileUpdated'));
     } catch (err) {
       console.error(err);
       alert('Failed to update profile.');
@@ -651,14 +665,7 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
   return (
     <div className="find-page-container">
 
-      {/* Google Workspace / Material 3 Top Navbar */}
-      <M3TopNavbar
-        activePage="account"
-        showSearch={false}
-        showSidebarToggle={true}
-        isSidebarCollapsed={isSidebarCollapsed}
-        onToggleSidebar={() => setIsSidebarCollapsed(prev => !prev)}
-      />
+      {/* Google Workspace / Material 3 Top Navbar (Rendered Globally) */}
 
       <div className="find-layout">
         {/* Left Sidebar Navigation Drawer */}
@@ -673,8 +680,8 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
             borderBottom: '1px solid #f1f5f9',
             marginBottom: '10px'
           }}>
-            {userPicture ? (
-              <img src={userPicture} alt="Avatar" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+            {(profile.profileImage || userPicture) ? (
+              <img src={profile.profileImage || userPicture} alt="Avatar" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} referrerPolicy="no-referrer" />
             ) : (
               <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#009688', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '16px', flexShrink: 0 }}>
                 {profile.name ? profile.name.charAt(0).toUpperCase() : 'U'}
@@ -682,8 +689,10 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
             )}
             {!isSidebarCollapsed && (
               <div style={{ overflow: 'hidden', minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#111827', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#111827', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   {profile.name || 'User'}
+                    {isVerified && <VerifiedBadge />}
+                  {isVerified && <VerifiedBadge />}
                 </div>
                 <div style={{ fontSize: '0.75rem', color: '#64748b', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
                   {userEmail}
@@ -707,6 +716,16 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
                 <span className="m3-drawer-label">Profile Overview</span>
               </div>
             </div>
+
+              <div
+                className={`m3-drawer-item ${activeTab === 'verify' ? 'active' : ''}`}
+                onClick={() => setActiveTab('verify')}
+              >
+                <div className="m3-drawer-item-left">
+                  <md-icon className="m3-drawer-icon">verified_user</md-icon>
+                  <span className="m3-drawer-label">Verify Account</span>
+                </div>
+              </div>
 
             <div
               className={`m3-drawer-item ${activeTab === 'edit' ? 'active' : ''}`}
@@ -762,6 +781,16 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
             boxShadow: activeTab === 'posts' ? 'none' : '0 2px 8px rgba(0,0,0,0.04)',
             transition: 'all 0.2s ease'
           }}>
+
+            {/* TAB: Verify Account */}
+            {activeTab === 'verify' && (
+              <div>
+                <VerificationForm 
+                  isVerified={isVerified}
+                  onVerifySuccess={() => setIsVerified(true)}
+                />
+              </div>
+            )}
 
           {/* TAB: Overview */}
           {activeTab === 'overview' && (
@@ -1095,38 +1124,129 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
             <div>
               <h2 style={{ fontSize: '1.5rem', fontWeight: '800', marginTop: 0, marginBottom: '1.5rem', color: '#111827' }}>Edit Profile</h2>
               <form onSubmit={handleUpdateProfile} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                <md-filled-text-field
-                  label="Display Name"
-                  value={profile.name}
-                  onInput={(e) => setProfile({ ...profile, name: e.target.value })}
-                ></md-filled-text-field>
+                
+                {/* Profile Photo Upload */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>Profile Photo</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div style={{
+                      width: '64px', height: '64px', borderRadius: '50%', overflow: 'hidden', 
+                      backgroundColor: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                      {profile.profileImage ? (
+                        <img src={profile.profileImage} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} referrerPolicy="no-referrer" />
+                      ) : (
+                        <span style={{ fontSize: '24px', color: '#94a3b8' }}>
+                          {profile.name ? profile.name.charAt(0).toUpperCase() : 'U'}
+                        </span>
+                      )}
+                    </div>
+                    <label style={{
+                      padding: '8px 16px', backgroundColor: '#f1f5f9', color: '#334155', 
+                      borderRadius: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500',
+                      border: '1px solid #e2e8f0', transition: 'all 0.2s'
+                    }}>
+                      Upload New Photo
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        style={{ display: 'none' }}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          
+                          const formData = new FormData();
+                          formData.append('file', file);
+                          
+                          try {
+                            const res = await axios.post(`${API_BASE_URL}/upload/image`, formData, {
+                              headers: { 'Content-Type': 'multipart/form-data' }
+                            });
+                            setProfile({ ...profile, profileImage: res.data.url });
+                          } catch (err) {
+                            console.error('Image upload failed', err);
+                            alert('Failed to upload image.');
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
 
-                <md-filled-text-field
-                  label="Phone Number (10 digits)"
-                  type="tel"
-                  maxLength={10}
-                  value={profile.phoneNo}
-                  error={profile.phoneNo ? !/^0\d{9}$/.test(profile.phoneNo) : false}
-                  error-text={profile.phoneNo && !/^0\d{9}$/.test(profile.phoneNo) ? "Must be 10 digits starting with 0" : ""}
-                  onInput={(e) => {
-                    const clean = e.target.value.replace(/\D/g, '').slice(0, 10);
-                    setProfile({ ...profile, phoneNo: clean });
-                  }}
-                ></md-filled-text-field>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>Display Name</label>
+                  <input
+                    type="text"
+                    value={profile.name || ''}
+                    onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                    style={{
+                      padding: '12px 16px', borderRadius: '8px', border: '1px solid #e2e8f0',
+                      fontSize: '15px', outline: 'none', backgroundColor: '#f8fafc', color: '#0f172a',
+                      transition: 'border-color 0.2s'
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = '#000000'}
+                    onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
+                  />
+                </div>
 
-                <md-filled-text-field
-                  label="Physical Address"
-                  value={profile.address}
-                  onInput={(e) => setProfile({ ...profile, address: e.target.value })}
-                ></md-filled-text-field>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>Phone Number (10 digits)</label>
+                  <input
+                    type="tel"
+                    maxLength={10}
+                    value={profile.phoneNo || ''}
+                    onChange={(e) => {
+                      const clean = e.target.value.replace(/\D/g, '').slice(0, 10);
+                      setProfile({ ...profile, phoneNo: clean });
+                    }}
+                    style={{
+                      padding: '12px 16px', borderRadius: '8px', 
+                      border: `1px solid ${profile.phoneNo && !/^0\d{9}$/.test(profile.phoneNo) ? '#ef4444' : '#e2e8f0'}`,
+                      fontSize: '15px', outline: 'none', backgroundColor: '#f8fafc', color: '#0f172a',
+                      transition: 'border-color 0.2s'
+                    }}
+                    onFocus={(e) => {
+                      if (!profile.phoneNo || /^0\d{9}$/.test(profile.phoneNo)) e.target.style.borderColor = '#000000';
+                    }}
+                    onBlur={(e) => {
+                      if (!profile.phoneNo || /^0\d{9}$/.test(profile.phoneNo)) e.target.style.borderColor = '#e2e8f0';
+                    }}
+                  />
+                  {profile.phoneNo && !/^0\d{9}$/.test(profile.phoneNo) && (
+                    <span style={{ fontSize: '12px', color: '#ef4444' }}>Must be 10 digits starting with 0</span>
+                  )}
+                </div>
 
-                <div style={{ marginTop: '1rem' }}>
-                  <md-filled-button
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>Physical Address</label>
+                  <input
+                    type="text"
+                    value={profile.address || ''}
+                    onChange={(e) => setProfile({ ...profile, address: e.target.value })}
+                    style={{
+                      padding: '12px 16px', borderRadius: '8px', border: '1px solid #e2e8f0',
+                      fontSize: '15px', outline: 'none', backgroundColor: '#f8fafc', color: '#0f172a',
+                      transition: 'border-color 0.2s'
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = '#000000'}
+                    onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
+                  />
+                </div>
+
+                <div style={{ marginTop: '1rem', display: 'flex' }}>
+                  <button
                     type="submit"
-                    style={{ '--md-sys-color-primary': '#009688', '--md-sys-color-on-primary': '#ffffff', height: '48px', fontSize: '16px', '--md-filled-button-container-shape': '50px', padding: '0 32px' }}
+                    style={{
+                      padding: '12px 32px', backgroundColor: '#000000', color: '#ffffff',
+                      borderRadius: '8px', fontSize: '15px', fontWeight: '600',
+                      border: 'none', cursor: 'pointer', transition: 'background-color 0.2s',
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
+                    }}
+                    onMouseOver={(e) => e.target.style.backgroundColor = '#333333'}
+                    onMouseOut={(e) => e.target.style.backgroundColor = '#000000'}
                   >
                     Save Changes
-                  </md-filled-button>
+                  </button>
                 </div>
               </form>
             </div>

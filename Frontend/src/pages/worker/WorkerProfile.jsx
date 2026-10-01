@@ -4,6 +4,8 @@ import axios from 'axios';
 import { API_BASE_URL } from '../../config.js';
 import { WORKER_SERVICES_CATALOG, getSkillsForService, getCategoryByName } from '../../data/workerServicesCatalog.js';
 import sriLankaDistricts from '../../data/sriLankaDistricts.json';
+import VerificationForm from '../../components/VerificationForm.jsx';
+import VerifiedBadge from '../../components/VerifiedBadge.jsx';
 
 export default function WorkerProfile({ defaultTab = 'bio' }) {
   const urlParams = new URLSearchParams(window.location.search);
@@ -31,7 +33,7 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
     location: '',
     experience: '',
     description: '',
-    isVerified: true
+    isVerified: false
   });
 
   // Services & Skills State (hierarchical list matching backend & mobile app)
@@ -84,7 +86,7 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
             location: w.primaryServiceArea || '',
             experience: w.completedJobs > 0 ? `${w.completedJobs} Jobs Completed` : 'Registered Worker',
             description: w.description || '',
-            isVerified: true
+            isVerified: false
           });
           if (w.pricingModel) setPricingModel(w.pricingModel);
           if (w.hourlyRate != null) setHourlyRate(w.hourlyRate);
@@ -427,6 +429,14 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
       {/* Profile Top Tab Navigation (Uber Pill Style) */}
       <div className="profile-tabs-nav">
         <button 
+          className={`profile-tab-btn ${activeTab === 'verify' ? 'active' : ''}`}
+          onClick={() => setActiveTab('verify')}
+        >
+          <i className="fa-solid fa-user-check"></i>
+          Verify Account
+        </button>
+        
+        <button 
           className={`profile-tab-btn ${activeTab === 'bio' ? 'active' : ''}`}
           onClick={() => setActiveTab('bio')}
         >
@@ -467,6 +477,16 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
         </button>
       </div>
 
+      {/* Tab: Verify Account */}
+      {activeTab === 'verify' && (
+        <div className="worker-card">
+          <VerificationForm 
+            isVerified={bio.isVerified}
+            onVerifySuccess={() => setBio({ ...bio, isVerified: true })}
+          />
+        </div>
+      )}
+
       {/* Tab 1: Personal Details & Bio */}
       {activeTab === 'bio' && (
         <div className="worker-card" style={{ padding: '30px', borderRadius: '18px' }}>
@@ -493,22 +513,7 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
                 <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#000000', margin: 0, letterSpacing: '-0.02em' }}>
                   {bio.name || 'Worker Profile'}
                 </h3>
-                {bio.isVerified && (
-                  <span style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    fontSize: '0.74rem',
-                    fontWeight: 700,
-                    color: '#16a34a',
-                    backgroundColor: '#f0fdf4',
-                    border: '1px solid #bbf7d0',
-                    borderRadius: '9999px',
-                    padding: '3px 10px'
-                  }}>
-                    <i className="fa-solid fa-shield-check"></i> Verified Worker
-                  </span>
-                )}
+                {bio.isVerified && <VerifiedBadge />}
               </div>
               <p style={{ fontSize: '0.88rem', color: '#737373', marginTop: '4px', margin: 0 }}>
                 {bio.location || 'Location not set'} • Experience: {bio.experience || 'Verified Professional'}

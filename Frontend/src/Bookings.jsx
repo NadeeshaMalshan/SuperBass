@@ -7,6 +7,7 @@ import M3TopNavbar from './components/M3TopNavbar.jsx';
 import UserMenu from './components/UserMenu.jsx';
 import Loader from './components/Loader.jsx';
 import { API_BASE_URL } from './config.js';
+import { showToast } from './utils/toast.js';
 
 import '@material/web/button/filled-button.js';
 import '@material/web/button/outlined-button.js';
@@ -128,6 +129,8 @@ const getGoogleMapsUrl = (booking) => {
 export default function Bookings() {
   const [bookings, setBookings] = useState([]);
   const [bookingSearch, setBookingSearch] = useState('');
+  const [sortBy, setSortBy] = useState('newest');
+  const [viewMode, setViewMode] = useState('list');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -160,6 +163,7 @@ export default function Bookings() {
 
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [bookingToCancel, setBookingToCancel] = useState(null);
+  const [cancelReason, setCancelReason] = useState('');
   const [cancelLoading, setCancelLoading] = useState(false);
   const cancelDialogRef = useRef(null);
 
@@ -228,6 +232,21 @@ export default function Bookings() {
       await axios.post(`${API_BASE_URL}/bookings/${bookingId}/${action}`, {}, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
+      showToast(`Booking ${action}ed successfully!`);
+      fetchBookings(); // Refresh list after action
+    } catch (err) {
+      console.error(`Error performing action ${action}:`, err);
+      const msg = err.response?.data?.message || `Failed to ${action} booking.`;
+      alert(msg);
+    }
+  };
+
+  const handleActionWithReason = async (bookingId, action, reason) => {
+    try {
+      await axios.post(`${API_BASE_URL}/bookings/${bookingId}/${action}`, { reason }, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      showToast(`Booking ${action}ed successfully!`);
       fetchBookings(); // Refresh list after action
     } catch (err) {
       console.error(`Error performing action ${action}:`, err);
@@ -246,12 +265,14 @@ export default function Bookings() {
     setCancelLoading(true);
     try {
       await axios.post(`${API_BASE_URL}/bookings/${bookingToCancel.id}/cancel`, {
-        reason: 'Cancelled by resident'
+        reason: cancelReason || (activeRole === 'Resident' ? 'Cancelled by resident' : 'Cancelled by worker')
       }, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       setCancelDialogOpen(false);
       setBookingToCancel(null);
+      setCancelReason('');
+      showToast('Booking cancelled successfully.');
       fetchBookings();
     } catch (err) {
       console.error('Error cancelling booking:', err);
@@ -293,6 +314,7 @@ export default function Bookings() {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       setReviewModalOpen(false);
+      showToast('Review submitted successfully!');
       fetchBookings();
     } catch (err) {
       console.error('Error submitting review:', err);
@@ -426,18 +448,17 @@ export default function Bookings() {
     );
   });
 
+  const sortedBookings = [...filteredBookings].sort((a, b) => {
+    if (sortBy === 'oldest') {
+      return new Date(a.scheduledDate) - new Date(b.scheduledDate);
+    }
+    // default newest
+    return new Date(b.scheduledDate) - new Date(a.scheduledDate);
+  });
+
   return (
     <div className="bookings-page-container">
-      {/* Google Workspace / Material 3 Top Navbar */}
-      <M3TopNavbar
-        activePage="bookings"
-        searchValue={bookingSearch}
-        onSearchChange={setBookingSearch}
-        searchPlaceholder="Search bookings by job, worker, location, status..."
-        showSidebarToggle={true}
-        isSidebarCollapsed={isSidebarCollapsed}
-        onToggleSidebar={() => setIsSidebarCollapsed(prev => !prev)}
-      />
+      {/* Google Workspace / Material 3 Top Navbar (Rendered Globally) */}
 
       <div className="bookings-layout">
         {/* Left Sidebar Navigation */}
@@ -501,12 +522,66 @@ export default function Bookings() {
         </aside>
 
         <main className="bookings-main">
-          <div className="bookings-main-header">
-            <div>
-              <h1 className="bookings-title">My Bookings ({activeRole})</h1>
-              <p className="bookings-subtitle">
+          <div className="bookings-main-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '16px', paddingTop: '24px' }}>
+            <div style={{ textAlign: 'left' }}>
+              <h1 className="bookings-title" style={{ textAlign: 'left', margin: '0 0 8px 0' }}>My Bookings ({activeRole})</h1>
+              <p className="bookings-subtitle" style={{ textAlign: 'left', margin: 0 }}>
                 Manage your home service requests and appointments
               </p>
+            </div>
+
+            {/* Uber Styled Search & Sort Bar matching Community */}
+            <div className="uber-search-card">
+              <div className="uber-search-input-wrap">
+                <i className="fa-solid fa-magnifying-glass uber-search-icon"></i>
+                <input
+                  type="text"
+                  className="uber-search-input"
+                  placeholder="Search bookings by job, worker, location, status..."
+                  value={bookingSearch}
+                  onChange={(e) => setBookingSearch(e.target.value)}
+                />
+                {bookingSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setBookingSearch('')}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#757575', padding: '4px' }}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              <div className="uber-toolbar-actions">
+                <select
+                  className="uber-sort-select"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                >
+                  <option value="newest">Sort: Newest First</option>
+                  <option value="oldest">Sort: Oldest First</option>
+                </select>
+
+                {/* Grid View Mode Switcher Button Group (Icon Only) */}
+                <div className="uber-view-mode-group" role="group" aria-label="Card grid view mode">
+                  <button
+                    type="button"
+                    className={`uber-view-mode-btn ${viewMode === 'large' ? 'active' : ''}`}
+                    onClick={() => setViewMode('large')}
+                    title="Grid View"
+                  >
+                    <i className="fa-solid fa-table-cells-large"></i>
+                  </button>
+                  <button
+                    type="button"
+                    className={`uber-view-mode-btn ${viewMode === 'list' ? 'active' : ''}`}
+                    onClick={() => setViewMode('list')}
+                    title="List View"
+                  >
+                    <i className="fa-solid fa-list-ul"></i>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -570,8 +645,8 @@ export default function Bookings() {
               )}
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {filteredBookings.map((booking) => (
+            <div style={{ display: 'grid', gridTemplateColumns: viewMode === 'large' ? 'repeat(auto-fill, minmax(340px, 1fr))' : '1fr', gap: '16px' }}>
+              {sortedBookings.map((booking) => (
                 <div key={booking.id} className="booking-card">
                   <div className="booking-card-header">
                     <div>
@@ -676,19 +751,32 @@ export default function Bookings() {
                     )}
 
                     {activeRole === 'Worker' && booking.status === 'Confirmed' && (
-                      <button
-                        type="button"
-                        className="booking-btn-black"
-                        onClick={() => handleAction(booking.id, 'start')}
-                        disabled={hasInProgressJob}
-                        title={hasInProgressJob ? "Finish your current in-progress job before starting another." : ""}
-                        style={{
-                          opacity: hasInProgressJob ? 0.4 : 1,
-                          cursor: hasInProgressJob ? 'not-allowed' : 'pointer'
-                        }}
-                      >
-                        Start Job
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          className="booking-btn-outlined"
+                          onClick={() => {
+                            setBookingToCancel(booking);
+                            setCancelReason('');
+                            setCancelDialogOpen(true);
+                          }}
+                        >
+                          Cancel Job
+                        </button>
+                        <button
+                          type="button"
+                          className="booking-btn-black"
+                          onClick={() => handleAction(booking.id, 'start')}
+                          disabled={hasInProgressJob}
+                          title={hasInProgressJob ? "Finish your current in-progress job before starting another." : ""}
+                          style={{
+                            opacity: hasInProgressJob ? 0.4 : 1,
+                            cursor: hasInProgressJob ? 'not-allowed' : 'pointer'
+                          }}
+                        >
+                          Start Job
+                        </button>
+                      </>
                     )}
 
                     {activeRole === 'Worker' && booking.status === 'InProgress' && (
@@ -1441,9 +1529,15 @@ export default function Bookings() {
             color: '#52525b',
             lineHeight: 1.6,
             padding: '8px 24px 20px 24px',
-            fontFamily: "var(--font-body, 'DM Sans', sans-serif)"
+            fontFamily: "var(--font-body, 'DM Sans', sans-serif)",
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px'
           }}>
-            Are you sure you want to cancel the request for <strong style={{ color: '#000000' }}>"{bookingToCancel?.jobTitle}"</strong>? This will notify the worker that the job has been cancelled.
+            <p style={{ margin: 0 }}>Are you sure you want to cancel the request for <strong style={{ color: '#000000' }}>"{bookingToCancel?.jobTitle}"</strong>?</p>
+            {activeRole === 'Resident' && (
+              <p style={{ margin: 0, marginTop: '8px', fontSize: '0.85rem' }}>This will notify the worker that the job has been cancelled.</p>
+            )}
           </div>
 
           {/* Actions */}
