@@ -24,7 +24,7 @@ export default function VerificationForm({ isVerified, onVerifySuccess }) {
     }
 
     if (onVerifySuccess) {
-      onVerifySuccess();
+      onVerifySuccess(result.data);
     }
   };
 

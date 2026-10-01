@@ -87,7 +87,8 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
             location: w.primaryServiceArea || '',
             experience: w.completedJobs > 0 ? `${w.completedJobs} Jobs Completed` : 'Registered Worker',
             description: w.description || '',
-            isVerified: false,
+            isVerified: w.isVerified ?? false,
+            nicNumber: w.nicNumber || '',
             profileImage: w.profileImage || ''
           });
           if (w.pricingModel) setPricingModel(w.pricingModel);
@@ -404,7 +405,7 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
             margin: 0,
             maxWidth: '680px'
           }}>
-            Manage your personal bio, trade skills, rates, coverage area, working hours, and password.
+            Manage your personal bio, trade skills, rates, coverage area, working hours, and identity verification.
           </p>
         </div>
       </div>
@@ -436,6 +437,7 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
         >
           <i className="fa-solid fa-user-check"></i>
           Verify Account
+          {bio.isVerified && <span style={{ marginLeft: 6, fontSize: '0.85rem', color: '#16a34a' }}>✓</span>}
         </button>
         
         <button 
@@ -484,7 +486,25 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
         <div className="worker-card">
           <VerificationForm 
             isVerified={bio.isVerified}
-            onVerifySuccess={() => setBio({ ...bio, isVerified: true })}
+            onVerifySuccess={async (data) => {
+              try {
+                if (currentWorkerId) {
+                  await axios.post(`${API_BASE_URL}/workers/${currentWorkerId}/verify`, {
+                    nicNumber: data?.nic || '',
+                    dateOfBirth: data?.dateOfBirth || '',
+                    gender: data?.gender || ''
+                  });
+                }
+                setBio(prev => ({ ...prev, isVerified: true, nicNumber: data?.nic || prev.nicNumber }));
+                setSaveStatus('Identity verified and saved successfully!');
+                setTimeout(() => setSaveStatus(null), 3500);
+              } catch (err) {
+                console.error('Error saving verification status:', err);
+                setBio(prev => ({ ...prev, isVerified: true, nicNumber: data?.nic || prev.nicNumber }));
+                setSaveStatus('Identity verified! (Note: Could not update server)');
+                setTimeout(() => setSaveStatus(null), 3500);
+              }
+            }}
           />
         </div>
       )}
