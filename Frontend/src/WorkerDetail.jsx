@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
 import './App.css';
+import './Community.css';
 
 import '@material/web/button/filled-button.js';
 import '@material/web/button/outlined-button.js';
@@ -391,11 +392,11 @@ export default function WorkerDetail() {
     }
   };
 
-  const renderGoogleRatingBar = (label, iconName, rating, completedJobs) => {
-    const hasData = completedJobs > 0 && rating != null && rating > 0;
-    const scoreVal = hasData ? rating : (worker?.overallRating || 5.0);
-    const scoreText = hasData ? scoreVal.toFixed(1) : `${scoreVal.toFixed(1)}`;
-    const percentage = hasData ? Math.min(100, Math.max(0, (scoreVal / 5) * 100)) : 100;
+  const renderGoogleRatingBar = (label, iconName, rating) => {
+    const hasData = rating != null && rating > 0;
+    const scoreVal = hasData ? Number(rating) : null;
+    const scoreText = hasData ? scoreVal.toFixed(1) : 'Not rated';
+    const percentage = hasData ? Math.min(100, Math.max(0, (scoreVal / 5) * 100)) : 0;
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -405,53 +406,51 @@ export default function WorkerDetail() {
               width: '32px',
               height: '32px',
               borderRadius: '10px',
-              backgroundColor: '#fef3c7',
-              color: '#000000',
+              backgroundColor: '#000000',
+              color: '#ffffff',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
             }}>
-              <md-icon style={{ fontSize: '18px', color: '#000000' }}>{iconName}</md-icon>
+              <md-icon style={{ fontSize: '18px', color: '#ffffff' }}>{iconName}</md-icon>
             </div>
-            <span style={{ color: '#1e293b', fontWeight: 700, fontSize: '0.95rem' }}>{label}</span>
+            <span style={{ color: '#000000', fontWeight: 700, fontSize: '0.95rem' }}>{label}</span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {/* 5 Google Stars */}
+            {/* 5 Stars */}
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
               {[1, 2, 3, 4, 5].map((star) => {
-                const diff = scoreVal - star;
+                const diff = (scoreVal || 0) - star;
                 const isFull = diff >= 0;
                 const isHalf = !isFull && diff >= -0.5;
 
                 return (
-                  <md-icon
+                  <i
                     key={star}
+                    className="fa-solid fa-star"
                     style={{
-                      fontSize: '18px',
-                      color: isFull || isHalf ? '#FDC101' : '#e2e8f0',
-                      fontVariationSettings: isFull ? "'FILL' 1" : "'FILL' 0"
+                      fontSize: '14px',
+                      color: hasData && (isFull || isHalf) ? '#f59e0b' : '#e5e7eb'
                     }}
-                  >
-                    {isHalf ? 'star_half' : 'star'}
-                  </md-icon>
+                  />
                 );
               })}
             </div>
 
-            <span style={{ color: '#0f172a', fontWeight: 800, fontSize: '0.95rem', minWidth: '40px', textAlign: 'right' }}>
+            <span style={{ color: hasData ? '#000000' : '#737373', fontWeight: 800, fontSize: '0.88rem', minWidth: '40px', textAlign: 'right' }}>
               {scoreText}
             </span>
           </div>
         </div>
 
-        {/* Google Style Progress Bar */}
-        <div style={{ width: '100%', height: '8px', backgroundColor: '#f1f5f9', borderRadius: '9999px', overflow: 'hidden' }}>
+        {/* Uber/Community Style Progress Bar */}
+        <div style={{ width: '100%', height: '7px', backgroundColor: '#f1f5f9', borderRadius: '9999px', overflow: 'hidden' }}>
           <div
             style={{
               width: `${percentage}%`,
               height: '100%',
-              backgroundColor: '#FDC101',
+              backgroundColor: '#000000',
               borderRadius: '9999px',
               transition: 'width 0.4s ease'
             }}
@@ -463,55 +462,163 @@ export default function WorkerDetail() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: '#f9fafb', color: '#6b7280' }}>
+      <div className="community-page-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '16px', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', color: '#6b7280' }}>
         <Loader />
-        <div style={{ fontSize: '1.2rem', fontWeight: 600 }}>Loading worker profile...</div>
+        <div style={{ fontSize: '1.2rem', fontWeight: 600, color: '#000000' }}>Loading worker profile...</div>
       </div>
     );
   }
 
   if (error || !worker) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: '#f9fafb', color: '#111827', padding: '20px', textAlign: 'center', fontFamily: "var(--font-body, 'DM Sans', sans-serif)" }}>
-        <h2 style={{ fontFamily: "var(--font-heading, 'DM Sans', sans-serif)", fontWeight: 800 }}>Worker Profile Not Found</h2>
+      <div className="community-page-wrapper" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', padding: '20px', textAlign: 'center' }}>
+        <h2 style={{ fontWeight: 800, fontSize: '1.8rem', color: '#000000' }}>Worker Profile Not Found</h2>
         <p style={{ color: '#6b7280', marginBottom: '24px' }}>{error || 'The requested worker could not be found.'}</p>
-        <md-filled-button onClick={() => navigate('/find')}>
-          <md-icon slot="icon">arrow_back</md-icon>
-          Back to Services
-        </md-filled-button>
+        <button className="uber-btn-primary" onClick={() => navigate('/find')}>
+          <i className="fa-solid fa-arrow-left"></i>
+          <span>Back to Services</span>
+        </button>
       </div>
     );
   }
 
   return (
-    <div style={{ backgroundColor: '#f9fafb', minHeight: '100vh', color: '#111827', fontFamily: "var(--font-body, 'DM Sans', sans-serif)" }}>
-      {/* Google Workspace / Material 3 Top Navbar */}
-      
+    <div className="community-page-wrapper">
+      {/* 1. Community-Style Pitch Black Hero Showcase Banner */}
+      <section className="community-hero-banner" style={{ padding: '40px 32px 48px', marginBottom: '32px' }}>
+        <div className="community-hero-container" style={{ maxWidth: '1160px', margin: '0 auto' }}>
+          <div className="community-hero-left" style={{ maxWidth: '720px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="community-hero-secondary-btn"
+                onClick={() => navigate('/find')}
+                style={{ padding: '8px 18px', fontSize: '0.85rem' }}
+              >
+                <i className="fa-solid fa-arrow-left"></i>
+                <span>Back to Services</span>
+              </button>
+              <span className="community-hero-overline" style={{ margin: 0 }}>
+                WORKIO PRO NETWORK • CRAFTSMAN PROFILE
+              </span>
+            </div>
+
+            <h1 className="community-hero-title" style={{ fontSize: 'clamp(2.2rem, 4vw, 3.1rem)', margin: '0 0 12px 0' }}>
+              {worker.name}
+            </h1>
+
+            <p className="community-hero-desc" style={{ margin: '0 0 24px 0', maxWidth: '640px' }}>
+              {worker.description || `Certified professional handyman & craftsman serving ${worker.primaryServiceArea || 'Colombo'} and nearby regions.`}
+            </p>
+
+            <div className="community-hero-actions">
+              {!isWorker && isLoggedIn && (
+                <button
+                  type="button"
+                  className="community-hero-primary-btn"
+                  onClick={handleOpenHireModal}
+                >
+                  <i className="fa-solid fa-handshake"></i>
+                  <span>Hire / Request Worker</span>
+                </button>
+              )}
+
+              {!isWorker && isLoggedIn && (
+                <button
+                  type="button"
+                  className="community-hero-secondary-btn"
+                  onClick={handleChatWithWorker}
+                >
+                  <i className="fa-regular fa-comment-dots"></i>
+                  <span>Chat with {getFirstName(worker.name)}</span>
+                </button>
+              )}
+
+              {/* Status pill in Hero */}
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                borderRadius: '9999px',
+                padding: '8px 16px',
+                color: '#ffffff',
+                fontSize: '0.88rem',
+                fontWeight: 700
+              }}>
+                <span style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  backgroundColor: worker.isAvailable !== false ? '#4ade80' : '#facc15'
+                }}></span>
+                <span>{worker.isAvailable !== false ? 'Available for Hire' : 'Currently on Job'}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="community-hero-right" style={{ flex: '0 0 280px', maxWidth: '300px', display: 'flex', justifyContent: 'center' }}>
+            <div style={{
+              width: '160px',
+              height: '160px',
+              borderRadius: '28px',
+              backgroundColor: '#1f1f1f',
+              border: '3px solid rgba(255, 255, 255, 0.15)',
+              boxShadow: '0 12px 36px rgba(0, 0, 0, 0.4)',
+              overflow: 'hidden',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#ffffff',
+              fontSize: '4rem',
+              fontWeight: 800
+            }}>
+              {(worker.profileImage && !imgError) ? (
+                <img 
+                  src={worker.profileImage} 
+                  alt={worker.name} 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                  onError={() => setImgError(true)} 
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                worker.name ? worker.name.charAt(0).toUpperCase() : 'W'
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Main Container */}
-      <main style={{ maxWidth: '1100px', margin: '0 auto', padding: '2rem 1rem' }}>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+      <main style={{ maxWidth: '1160px', margin: '0 auto', padding: '0 24px 60px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '28px', alignItems: 'start' }}>
 
           {/* Left Column: Worker Bio & Skills */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
 
             {/* Main Profile Header Card */}
-            <div style={{ backgroundColor: '#ffffff', borderRadius: '28px', padding: '32px', border: '1px solid #f1f5f9', boxShadow: 'none' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '24px', marginBottom: '24px' }}>
+            <div style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '20px',
+              padding: '32px',
+              border: '1px solid #e5e5e5',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.03)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '24px', flexWrap: 'wrap' }}>
                 <div style={{
-                  width: '100px',
-                  height: '100px',
-                  borderRadius: '32px',
+                  width: '76px',
+                  height: '76px',
+                  borderRadius: '20px',
                   backgroundColor: '#000000',
                   color: '#ffffff',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '3rem',
+                  fontSize: '2.4rem',
                   fontWeight: 800,
                   overflow: 'hidden',
-                  fontFamily: "var(--font-heading, 'DM Sans', sans-serif)"
+                  flexShrink: 0
                 }}>
                   {(worker.profileImage && !imgError) ? (
                     <img 
@@ -526,51 +633,110 @@ export default function WorkerDetail() {
                   )}
                 </div>
 
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <h1 style={{ fontSize: '2rem', fontWeight: 800, margin: 0, color: '#0f172a', letterSpacing: '-0.02em', fontFamily: "var(--font-heading, 'DM Sans', sans-serif)" }}>{worker.name}</h1>
-                    <span style={{ backgroundColor: '#fffbeb', color: '#b45309', border: '1px solid #fef08a', fontSize: '0.75rem', padding: '6px 12px', borderRadius: '16px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                      <md-icon style={{ fontSize: '16px', color: '#b45309' }}>verified</md-icon> VERIFIED PRO
-                    </span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    <h2 style={{ fontSize: '1.65rem', fontWeight: 800, margin: 0, color: '#000000', letterSpacing: '-0.02em' }}>
+                      {worker.name}
+                    </h2>
+                    {worker.isVerified ? (
+                      <span style={{
+                        backgroundColor: '#000000',
+                        color: '#ffffff',
+                        padding: '4px 12px',
+                        borderRadius: '9999px',
+                        fontSize: '0.75rem',
+                        fontWeight: 800,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px'
+                      }}>
+                        <i className="fa-solid fa-circle-check" style={{ color: '#4ade80' }}></i>
+                        VERIFIED PRO
+                      </span>
+                    ) : (
+                      <span style={{
+                        backgroundColor: '#f5f5f5',
+                        color: '#737373',
+                        padding: '4px 12px',
+                        borderRadius: '9999px',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        border: '1px solid #e5e5e5'
+                      }}>
+                        <i className="fa-regular fa-clock" style={{ color: '#737373' }}></i>
+                        PENDING VERIFICATION
+                      </span>
+                    )}
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px', fontSize: '1rem', color: '#475569' }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                      <md-icon style={{ fontSize: '18px', color: '#b45309' }}>location_on</md-icon>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px', fontSize: '0.92rem', color: '#737373', flexWrap: 'wrap' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <i className="fa-solid fa-location-dot" style={{ color: '#000000' }}></i>
                       {worker.primaryServiceArea || 'Colombo'}
                     </span>
-                    <span style={{ color: '#cbd5e1' }}>•</span>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                      <md-icon style={{ fontSize: '18px', color: '#b45309' }}>radar</md-icon>
-                      {worker.coverageRadiusKm || 10} km radius
+                    <span style={{ color: '#d4d4d4' }}>•</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <i className="fa-solid fa-bullseye" style={{ color: '#737373' }}></i>
+                      {worker.coverageRadiusKm || 10} km service radius
                     </span>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#fffbeb', border: '1px solid #fef08a', padding: '6px 12px', borderRadius: '12px' }}>
-                      <md-icon style={{ fontSize: '18px', color: '#FDC101', fontVariationSettings: "'FILL' 1" }}>star</md-icon>
-                      <span style={{ color: '#0f172a', fontWeight: 800, fontSize: '1.05rem' }}>
-                        {worker.completedJobs > 0 && worker.overallRating ? worker.overallRating.toFixed(1) : (worker.overallRating ? worker.overallRating.toFixed(1) : '5.0')}
-                      </span>
-                      <span style={{ color: '#b45309', fontSize: '0.85rem', fontWeight: 700, borderLeft: '1px solid #fde047', paddingLeft: '8px', marginLeft: '4px' }}>
-                        {worker.completedJobs > 0 ? `${worker.completedJobs} jobs` : 'New Pro'}
-                      </span>
-                    </div>
-
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '16px', flexWrap: 'wrap' }}>
+                    {/* Rating Pill */}
                     <div style={{
-                      backgroundColor: worker.isAvailable !== false ? '#ecfccb' : '#fef3c7',
-                      color: worker.isAvailable !== false ? '#4d7c0f' : '#b45309',
-                      border: worker.isAvailable !== false ? '1px solid #d9f99d' : '1px solid #fde047',
-                      padding: '8px 16px',
-                      borderRadius: '16px',
-                      fontSize: '0.85rem',
-                      fontWeight: 800,
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: '6px'
+                      gap: '6px',
+                      backgroundColor: '#f5f5f5',
+                      border: '1px solid #e5e5e5',
+                      padding: '6px 14px',
+                      borderRadius: '9999px',
+                      fontWeight: 800,
+                      color: '#000000',
+                      fontSize: '0.9rem'
                     }}>
-                      <md-icon style={{ fontSize: '16px' }}>{worker.isAvailable !== false ? 'check_circle' : 'engineering'}</md-icon>
-                      {worker.isAvailable !== false ? 'Available for Hire' : 'Currently Busy (On Job)'}
+                      {worker.overallRating != null && worker.overallRating > 0 ? (
+                        <>
+                          <i className="fa-solid fa-star" style={{ color: '#f59e0b' }}></i>
+                          <span>{worker.overallRating.toFixed(1)}</span>
+                          <span style={{ color: '#737373', fontWeight: 600, borderLeft: '1px solid #d4d4d4', paddingLeft: '8px', marginLeft: '2px', fontSize: '0.82rem' }}>
+                            {worker.completedJobs > 0 ? `${worker.completedJobs} jobs` : 'Verified Pro'}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <i className="fa-regular fa-star" style={{ color: '#9ca3af' }}></i>
+                          <span style={{ color: '#525252' }}>No ratings yet</span>
+                          <span style={{ color: '#737373', fontWeight: 600, borderLeft: '1px solid #d4d4d4', paddingLeft: '8px', marginLeft: '2px', fontSize: '0.82rem' }}>
+                            {worker.completedJobs > 0 ? `${worker.completedJobs} jobs` : 'New Pro'}
+                          </span>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Availability Pill */}
+                    <div style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      backgroundColor: worker.isAvailable !== false ? '#ecfdf5' : '#fef2f2',
+                      color: worker.isAvailable !== false ? '#047857' : '#b91c1c',
+                      border: worker.isAvailable !== false ? '1px solid #a7f3d0' : '1px solid #fecaca',
+                      padding: '6px 14px',
+                      borderRadius: '9999px',
+                      fontSize: '0.85rem',
+                      fontWeight: 700
+                    }}>
+                      <span style={{
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        backgroundColor: worker.isAvailable !== false ? '#10b981' : '#ef4444'
+                      }}></span>
+                      {worker.isAvailable !== false ? 'Available for Hire' : 'Currently Busy'}
                     </div>
                   </div>
                 </div>
@@ -578,9 +744,19 @@ export default function WorkerDetail() {
 
               {/* Bio / Description */}
               {worker.description && (
-                <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '20px', marginTop: '20px' }}>
-                  <h4 style={{ fontSize: '0.9rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px', fontWeight: 800, fontFamily: "var(--font-heading, 'DM Sans', sans-serif)" }}>About {worker.name}</h4>
-                  <p style={{ color: '#334155', fontSize: '1rem', lineHeight: '1.7', margin: 0 }}>
+                <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: '20px', marginTop: '20px' }}>
+                  <span style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 800,
+                    color: '#a3a3a3',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                    display: 'block',
+                    marginBottom: '8px'
+                  }}>
+                    ABOUT {worker.name}
+                  </span>
+                  <p style={{ color: '#374151', fontSize: '0.98rem', lineHeight: '1.65', margin: 0 }}>
                     {worker.description}
                   </p>
                 </div>
@@ -588,10 +764,26 @@ export default function WorkerDetail() {
             </div>
 
             {/* WHAT HE CAN DO (SKILLS) CARD */}
-            <div style={{ backgroundColor: '#ffffff', borderRadius: '28px', padding: '32px', border: '1px solid #f1f5f9', boxShadow: 'none' }}>
-              <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: '0 0 20px 0', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '12px', fontFamily: "var(--font-heading, 'DM Sans', sans-serif)" }}>
-                <span style={{ backgroundColor: '#fffbeb', color: '#b45309', width: '40px', height: '40px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <md-icon style={{ fontSize: '22px', color: '#b45309' }}>construction</md-icon>
+            <div style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '20px',
+              padding: '32px',
+              border: '1px solid #e5e5e5',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.03)'
+            }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: '0 0 20px 0', color: '#000000', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{
+                  backgroundColor: '#000000',
+                  color: '#ffffff',
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.95rem'
+                }}>
+                  <i className="fa-solid fa-screwdriver-wrench"></i>
                 </span>
                 What He Can Do (Trade Skills)
               </h2>
@@ -606,32 +798,54 @@ export default function WorkerDetail() {
                       <div
                         key={idx}
                         style={{
-                          backgroundColor: '#ffffff',
-                          border: '1.5px solid #e2e8f0',
+                          backgroundColor: '#fafafa',
+                          border: '1px solid #e5e5e5',
                           padding: '18px',
-                          borderRadius: '18px',
+                          borderRadius: '16px',
                           display: 'flex',
                           flexDirection: 'column',
-                          gap: '10px',
-                          transition: 'border-color 0.2s'
+                          gap: '12px',
+                          transition: 'border-color 0.2s ease'
                         }}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
                           <div>
-                            <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.1rem', fontFamily: "var(--font-heading, 'DM Sans', sans-serif)" }}>{serviceTitle}</div>
-                            <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '2px', fontWeight: 600 }}>
+                            <div style={{ fontWeight: 800, color: '#000000', fontSize: '1.05rem' }}>{serviceTitle}</div>
+                            <div style={{ fontSize: '0.82rem', color: '#737373', marginTop: '2px', fontWeight: 600 }}>
                               {skill.experienceYears <= 0 ? 'Less than 1 Year Experience' : `${skill.experienceYears || 1}+ Years Experience`}
                             </div>
                           </div>
-                          <span style={{ backgroundColor: '#ecfccb', color: '#4d7c0f', width: '32px', height: '32px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: 800 }}>
+                          <span style={{
+                            backgroundColor: '#000000',
+                            color: '#ffffff',
+                            width: '28px',
+                            height: '28px',
+                            borderRadius: '8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '0.8rem',
+                            fontWeight: 800
+                          }}>
                             ✓
                           </span>
                         </div>
 
                         {subSkills.length > 0 && (
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', paddingTop: '6px', borderTop: '1px dashed #f1f5f9' }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', paddingTop: '8px', borderTop: '1px solid #e5e5e5' }}>
                             {subSkills.map((sub, sIdx) => (
-                              <span key={sIdx} style={{ fontSize: '0.78rem', backgroundColor: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', padding: '3px 9px', borderRadius: '8px', fontWeight: 600 }}>
+                              <span
+                                key={sIdx}
+                                style={{
+                                  fontSize: '0.78rem',
+                                  backgroundColor: '#ffffff',
+                                  color: '#000000',
+                                  border: '1px solid #d4d4d4',
+                                  padding: '4px 12px',
+                                  borderRadius: '9999px',
+                                  fontWeight: 600
+                                }}
+                              >
                                 {sub}
                               </span>
                             ))}
@@ -642,219 +856,315 @@ export default function WorkerDetail() {
                   })}
                 </div>
               ) : (
-                <p style={{ color: '#64748b', margin: 0, fontSize: '1rem' }}>General Handyman & Repair Services.</p>
+                <p style={{ color: '#737373', margin: 0, fontSize: '0.95rem' }}>General Handyman & Repair Services.</p>
               )}
             </div>
 
             {/* Google-Style Client Ratings & Reliability Card */}
-            <div style={{ backgroundColor: '#ffffff', borderRadius: '28px', padding: '32px', border: '1px solid #f1f5f9', boxShadow: 'none' }}>
+            <div style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '20px',
+              padding: '32px',
+              border: '1px solid #e5e5e5',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.03)'
+            }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '28px' }}>
                 <div>
-                  <h3 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a', margin: '0 0 4px 0', fontFamily: "var(--font-heading, 'DM Sans', sans-serif)", display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ backgroundColor: '#fef3c7', color: '#000000', width: '36px', height: '36px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <md-icon style={{ fontSize: '20px', color: '#000000' }}>star</md-icon>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#000000', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{
+                      backgroundColor: '#000000',
+                      color: '#ffffff',
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '10px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '0.95rem'
+                    }}>
+                      <i className="fa-solid fa-star"></i>
                     </span>
                     Client Ratings & Reliability
                   </h3>
-                  <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                  <span style={{ fontSize: '0.85rem', color: '#737373' }}>
                     Verified community performance & satisfaction metrics
                   </span>
                 </div>
 
-                {/* Google Aggregate Rating Badge */}
+                {/* Aggregate Rating Badge */}
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: '14px',
-                  backgroundColor: '#f8fafc',
-                  border: '1px solid #e2e8f0',
+                  backgroundColor: '#fafafa',
+                  border: '1px solid #e5e5e5',
                   padding: '12px 20px',
-                  borderRadius: '20px'
+                  borderRadius: '16px'
                 }}>
-                  <div style={{ fontSize: '2rem', fontWeight: 900, color: '#0f172a', lineHeight: 1, fontFamily: "var(--font-heading, 'DM Sans', sans-serif)" }}>
-                    {worker.completedJobs > 0 && worker.overallRating ? worker.overallRating.toFixed(1) : (worker.overallRating ? worker.overallRating.toFixed(1) : '5.0')}
-                  </div>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <md-icon key={star} style={{ fontSize: '18px', color: '#FDC101', fontVariationSettings: "'FILL' 1" }}>
-                          star
-                        </md-icon>
-                      ))}
-                    </div>
-                    <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', marginTop: '2px' }}>
-                      {worker.completedJobs > 0 ? `${worker.completedJobs} Verified Review${worker.completedJobs > 1 ? 's' : ''}` : 'Verified Workio Pro'}
-                    </div>
-                  </div>
+                  {worker.overallRating != null && worker.overallRating > 0 ? (
+                    <>
+                      <div style={{ fontSize: '2rem', fontWeight: 900, color: '#000000', lineHeight: 1 }}>
+                        {worker.overallRating.toFixed(1)}
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <i
+                              key={star}
+                              className="fa-solid fa-star"
+                              style={{
+                                fontSize: '15px',
+                                color: (worker.overallRating >= star || worker.overallRating >= star - 0.5) ? '#f59e0b' : '#e5e7eb'
+                              }}
+                            />
+                          ))}
+                        </div>
+                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#737373', marginTop: '4px' }}>
+                          Verified Rating • {worker.completedJobs || 0} Jobs Done
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#737373', lineHeight: 1 }}>
+                        —
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <i key={star} className="fa-solid fa-star" style={{ fontSize: '15px', color: '#e5e7eb' }}></i>
+                          ))}
+                        </div>
+                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#737373', marginTop: '4px' }}>
+                          No reviews yet • {worker.completedJobs > 0 ? `${worker.completedJobs} jobs completed` : 'New Professional'}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 
               {/* Rating Bars */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                {renderGoogleRatingBar('Quality & Craftsmanship', 'handyman', worker.qualityRating, worker.completedJobs)}
-                {renderGoogleRatingBar('Punctuality & Timeliness', 'schedule', worker.punctualityRating, worker.completedJobs)}
-                {renderGoogleRatingBar('Communication & Professionalism', 'forum', worker.communicationRating, worker.completedJobs)}
+                {renderGoogleRatingBar('Quality & Craftsmanship', 'handyman', worker.qualityRating)}
+                {renderGoogleRatingBar('Punctuality & Timeliness', 'schedule', worker.punctualityRating)}
+                {renderGoogleRatingBar('Communication & Professionalism', 'forum', worker.communicationRating)}
               </div>
             </div>
 
           </div>
 
           {/* Right Column: Rates, Pricing & Hire CTA Card */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
 
             {/* RATES & PRICING CARD */}
-            <div style={{ backgroundColor: '#ffffff', borderRadius: '28px', padding: '32px', border: '1px solid #f1f5f9', boxShadow: 'none' }}>
-              <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: '0 0 20px 0', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '12px', fontFamily: "var(--font-heading, 'DM Sans', sans-serif)" }}>
-                <span style={{ backgroundColor: '#fef3c7', color: '#b45309', width: '40px', height: '40px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <md-icon style={{ fontSize: '22px', color: '#b45309' }}>payments</md-icon>
+            <div style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '20px',
+              padding: '32px',
+              border: '1px solid #e5e5e5',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.03)'
+            }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: '0 0 20px 0', color: '#000000', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{
+                  backgroundColor: '#000000',
+                  color: '#ffffff',
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.95rem'
+                }}>
+                  <i className="fa-solid fa-receipt"></i>
                 </span>
                 Service Rates & Pricing
               </h2>
 
-              <div style={{ backgroundColor: '#f8fafc', padding: '20px', borderRadius: '20px', border: '1px solid #f1f5f9', marginBottom: '20px' }}>
-                <div style={{ fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px', fontWeight: 700 }}>Pricing Model</div>
-                <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a', fontFamily: "var(--font-heading, 'DM Sans', sans-serif)" }}>{worker.pricingModel || 'Hourly / Daily'}</div>
+              <div style={{ backgroundColor: '#fafafa', padding: '16px 20px', borderRadius: '14px', border: '1px solid #e5e5e5', marginBottom: '20px' }}>
+                <div style={{ fontSize: '0.75rem', color: '#737373', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px', fontWeight: 800 }}>Pricing Model</div>
+                <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#000000' }}>{worker.pricingModel || 'Hourly / Daily'}</div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '28px' }}>
                 {/* Hourly Rate */}
-                <div style={{ backgroundColor: '#fffbebfb', padding: '20px', borderRadius: '20px', border: '1px solid #fef3c7', textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '6px', fontWeight: 600 }}>Hourly Rate</div>
-                  <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#b45309', fontFamily: "var(--font-heading, 'DM Sans', sans-serif)" }}>
+                <div style={{ backgroundColor: '#fafafa', padding: '18px 14px', borderRadius: '16px', border: '1px solid #e5e5e5', textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.8rem', color: '#737373', marginBottom: '6px', fontWeight: 700 }}>Hourly Rate</div>
+                  <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#000000', letterSpacing: '-0.02em' }}>
                     {worker.hourlyRate ? `Rs. ${worker.hourlyRate.toLocaleString()}` : 'Negotiable'}
                   </div>
-                  <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '4px', fontWeight: 500 }}>Per Hour</div>
+                  <div style={{ fontSize: '0.78rem', color: '#a3a3a3', marginTop: '4px', fontWeight: 600 }}>Per Hour</div>
                 </div>
 
                 {/* Daily Rate */}
-                <div style={{ backgroundColor: '#eff6ff', padding: '20px', borderRadius: '20px', border: '1px solid #dbeafe', textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '6px', fontWeight: 600 }}>Daily Rate</div>
-                  <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#1d4ed8', fontFamily: "var(--font-heading, 'DM Sans', sans-serif)" }}>
+                <div style={{ backgroundColor: '#fafafa', padding: '18px 14px', borderRadius: '16px', border: '1px solid #e5e5e5', textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.8rem', color: '#737373', marginBottom: '6px', fontWeight: 700 }}>Daily Rate</div>
+                  <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#000000', letterSpacing: '-0.02em' }}>
                     {worker.dailyRate ? `Rs. ${worker.dailyRate.toLocaleString()}` : 'Negotiable'}
                   </div>
-                  <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '4px', fontWeight: 500 }}>Per Full Day</div>
+                  <div style={{ fontSize: '0.78rem', color: '#a3a3a3', marginTop: '4px', fontWeight: 600 }}>Per Full Day</div>
                 </div>
               </div>
 
               {/* Hire and Chat Buttons or Worker Notice */}
               {isWorker ? (
                 <div style={{
-                  backgroundColor: '#eff6ff',
-                  border: '1px solid #bfdbfe',
-                  borderRadius: '20px',
+                  backgroundColor: '#f5f5f5',
+                  border: '1px solid #e5e5e5',
+                  borderRadius: '16px',
                   padding: '20px',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '12px'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#1d4ed8', fontWeight: 800, fontSize: '1rem' }}>
-                    <md-icon style={{ fontSize: '22px' }}>badge</md-icon>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#000000', fontWeight: 800, fontSize: '0.95rem' }}>
+                    <i className="fa-solid fa-id-badge"></i>
                     Worker Profile Active
                   </div>
-                  <p style={{ margin: 0, color: '#334155', fontSize: '0.9rem', lineHeight: 1.5 }}>
+                  <p style={{ margin: 0, color: '#525252', fontSize: '0.88rem', lineHeight: 1.5 }}>
                     You are viewing this profile as a <strong>Worker</strong>. Direct hiring and chatting are restricted between workers and are exclusively available for <strong>Resident</strong> accounts.
                   </p>
-                  <md-outlined-button
+                  <button
+                    type="button"
+                    className="uber-btn-outline"
                     onClick={() => navigate('/bookings')}
-                    style={{
-                      marginTop: '4px',
-                      '--md-sys-color-primary': '#1d4ed8',
-                      fontWeight: 700
-                    }}
+                    style={{ width: '100%', marginTop: '6px' }}
                   >
-                    <md-icon slot="icon">calendar_today</md-icon>
-                    View My Jobs & Bookings
-                  </md-outlined-button>
+                    <i className="fa-regular fa-calendar"></i>
+                    <span>View My Jobs & Bookings</span>
+                  </button>
                 </div>
               ) : !isLoggedIn ? (
                 <div style={{
-                  backgroundColor: '#f8fafc',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '20px',
+                  backgroundColor: '#f9fafb',
+                  border: '1px solid #e5e5e5',
+                  borderRadius: '16px',
                   padding: '20px',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '12px',
+                  gap: '14px',
                   textAlign: 'center'
                 }}>
-                  <p style={{ margin: 0, color: '#64748b', fontSize: '0.92rem', lineHeight: 1.5 }}>
+                  <p style={{ margin: 0, color: '#737373', fontSize: '0.92rem', lineHeight: 1.5 }}>
                     Please sign in to your account to book services or chat with {getFirstName(worker.name)}.
                   </p>
                   <button
                     type="button"
+                    className="uber-btn-primary"
                     onClick={() => navigate('/find')}
-                    style={{
-                      backgroundColor: '#000000',
-                      color: '#ffffff',
-                      border: 'none',
-                      borderRadius: '9999px',
-                      padding: '12px 24px',
-                      fontWeight: 700,
-                      fontSize: '0.95rem',
-                      cursor: 'pointer',
-                      fontFamily: "var(--font-body, 'DM Sans', sans-serif)"
-                    }}
+                    style={{ width: '100%' }}
                   >
                     Sign In to Book
                   </button>
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', justifyContent: 'center' }}>
-                  <md-filled-button
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <button
+                    type="button"
+                    className="uber-btn-primary"
                     onClick={handleOpenHireModal}
                     style={{
                       width: '100%',
-                      '--md-sys-color-primary': '#FDC101',
-                      '--md-sys-color-on-primary': '#000000',
-                      '--md-filled-button-container-height': '56px',
-                      '--md-filled-button-label-text-font': "var(--font-body, 'DM Sans', sans-serif)",
-                      '--md-filled-button-label-text-size': '1.05rem',
-                      '--md-filled-button-label-text-weight': '800'
+                      padding: '16px 24px',
+                      fontSize: '1.02rem',
+                      fontWeight: 800,
+                      borderRadius: '9999px',
+                      backgroundColor: '#000000',
+                      color: '#ffffff',
+                      border: '1.5px solid #000000',
+                      boxShadow: '0 4px 16px rgba(0, 0, 0, 0.18)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '10px',
+                      cursor: 'pointer'
                     }}
                   >
-                    <md-icon slot="icon">handyman</md-icon>
-                    Hire / Request Worker Now
-                  </md-filled-button>
+                    <i className="fa-solid fa-handshake"></i>
+                    <span>Hire / Request Worker Now</span>
+                  </button>
 
-                  <md-outlined-button
+                  <button
+                    type="button"
+                    className="uber-btn-outline"
                     onClick={handleChatWithWorker}
                     style={{
                       width: '100%',
-                      '--md-sys-color-primary': '#111827',
-                      '--md-outlined-button-container-height': '56px',
-                      '--md-outlined-button-label-text-font': "var(--font-body, 'DM Sans', sans-serif)",
-                      '--md-outlined-button-label-text-size': '1.05rem',
-                      '--md-outlined-button-label-text-weight': '800'
+                      padding: '14px 24px',
+                      fontSize: '1rem',
+                      fontWeight: 700,
+                      borderRadius: '9999px',
+                      backgroundColor: '#ffffff',
+                      color: '#000000',
+                      border: '1.5px solid #000000',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '10px',
+                      cursor: 'pointer'
                     }}
                   >
-                    <md-icon slot="icon">chat</md-icon>
-                    Chat with {getFirstName(worker.name)}
-                  </md-outlined-button>
+                    <i className="fa-regular fa-comment-dots"></i>
+                    <span>Chat with {getFirstName(worker.name)}</span>
+                  </button>
                 </div>
               )}
             </div>
 
             {/* Service Location Card */}
-            <div style={{ backgroundColor: '#ffffff', borderRadius: '28px', padding: '32px', border: '1px solid #f1f5f9', boxShadow: 'none' }}>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px', fontFamily: "var(--font-heading, 'DM Sans', sans-serif)" }}>
-                <md-icon style={{ fontSize: '22px', color: '#b45309' }}>pin_drop</md-icon>
+            <div style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '20px',
+              padding: '32px',
+              border: '1px solid #e5e5e5',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.03)'
+            }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#000000', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{
+                  backgroundColor: '#000000',
+                  color: '#ffffff',
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.95rem'
+                }}>
+                  <i className="fa-solid fa-location-dot"></i>
+                </span>
                 Service Location & Area
               </h3>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', fontSize: '1rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', fontSize: '0.95rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#737373' }}>
                   <span>Primary Location:</span>
-                  <strong style={{ color: '#0f172a' }}>{worker.primaryServiceArea || 'Colombo'}</strong>
+                  <strong style={{ color: '#000000' }}>{worker.primaryServiceArea || 'Colombo'}</strong>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#737373' }}>
                   <span>Travel Radius:</span>
-                  <strong style={{ color: '#0f172a' }}>Up to {worker.coverageRadiusKm || 10} km</strong>
+                  <strong style={{ color: '#000000' }}>Up to {worker.coverageRadiusKm || 10} km</strong>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#737373' }}>
                   <span>Contact Phone:</span>
-                  <strong style={{ color: '#1d4ed8' }}>{worker.phoneNo || 'Available upon booking'}</strong>
+                  <span style={{ 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    gap: '6px', 
+                    color: '#059669', 
+                    backgroundColor: '#ecfdf5', 
+                    border: '1px solid #a7f3d0', 
+                    padding: '3px 10px', 
+                    borderRadius: '8px', 
+                    fontSize: '0.85rem',
+                    fontWeight: 600
+                  }}>
+                    <i className="fa-solid fa-lock" style={{ fontSize: '0.75rem' }}></i>
+                    Private • Shared via chat upon booking
+                  </span>
                 </div>
               </div>
             </div>
