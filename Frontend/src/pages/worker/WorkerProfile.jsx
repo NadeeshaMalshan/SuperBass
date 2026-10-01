@@ -647,6 +647,8 @@ export default function WorkerProfile({ defaultTab = 'bio' }) {
                 setSaveStatus('Saving changes...');
                 await axios.put(`${API_BASE_URL}/workers/${currentWorkerId}`, {
                   name: bio.name,
+                  email: bio.email,
+                  residentEmail: bio.email,
                   phoneNo: bio.phone,
                   description: bio.description,
                   profileImage: bio.profileImage,
