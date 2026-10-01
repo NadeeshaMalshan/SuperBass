@@ -673,7 +673,7 @@ export default function Bookings() {
                       <div className="booking-meta-row">
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                           <md-icon style={{ fontSize: '16px', color: '#000000' }}>calendar_today</md-icon>
-                          {new Date(booking.scheduledDate).toLocaleString()}
+                          {new Date(booking.scheduledDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
                         </span>
                       </div>
                       {cleanDescription(booking.description) && (
@@ -1022,8 +1022,8 @@ export default function Bookings() {
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
                       <md-icon style={{ color: '#000000', fontSize: '20px', marginTop: '2px' }}>calendar_today</md-icon>
                       <div>
-                        <label style={{ fontSize: '0.75rem', color: '#71717a', fontWeight: 800, textTransform: 'uppercase' }}>Date & Time</label>
-                        <div style={{ fontSize: '0.95rem', fontWeight: 600, color: '#000000' }}>{new Date(selectedViewBooking.scheduledDate).toLocaleString()}</div>
+                        <label style={{ fontSize: '0.75rem', color: '#71717a', fontWeight: 800, textTransform: 'uppercase' }}>Date</label>
+                        <div style={{ fontSize: '0.95rem', fontWeight: 600, color: '#000000' }}>{new Date(selectedViewBooking.scheduledDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</div>
                       </div>
                     </div>
 

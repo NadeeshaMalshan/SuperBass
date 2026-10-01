@@ -20,6 +20,7 @@ import './components/M3Navbar.css';
 import { API_BASE_URL } from './config.js';
 import categoriesData from './data/categories.json';
 import sriLankaDistricts from './data/sriLankaDistricts.json';
+import { getCoordinatesForCity, matchesWorkerLocation, extractCityFromAddress } from './data/cityCoordinates.js';
 import workioLogoWhite from './assets/Workio_Logo/Workio_Logo_White_With_Text.png';
 import craftsmanHeroImg from './assets/workersBackgrond.png';
 
@@ -55,7 +56,7 @@ export default function Find() {
     try {
       const raw = new URLSearchParams(window.location.search).get('location');
       if (raw) return sanitizeLocationParam(raw);
-      return localStorage.getItem('community_selected_district') || 'Colombo';
+      return localStorage.getItem('userCity') || localStorage.getItem('community_selected_district') || 'Colombo';
     } catch {
       return 'Colombo';
     }
@@ -64,10 +65,12 @@ export default function Find() {
   const [selectedProvince, setSelectedProvince] = useState('all');
   const [selectedDistrict, setSelectedDistrict] = useState('all');
 
-  // Real User Geolocation State
-  const [userLocation, setUserLocation] = useState([6.9271, 79.8612]); // Default Colombo [lat, lng]
+  // Real User Geolocation State (initialized to selected city or Colombo)
+  const [userLocation, setUserLocation] = useState(() => {
+    return getCoordinatesForCity(locationQuery || 'Colombo');
+  });
   const [isLocating, setIsLocating] = useState(false);
-  const [locationName, setLocationName] = useState('My Location');
+  const [locationName, setLocationName] = useState(locationQuery || 'Colombo');
 
   // Sidebar Filter States
   const [rateType, setRateType] = useState('Any'); // 'Any' | 'Per day' | 'Per hour'
@@ -147,6 +150,13 @@ export default function Find() {
       setAppliedSearchQuery(q);
       setLocationQuery(loc);
       setAppliedLocationQuery(loc);
+      if (loc) {
+        const coords = getCoordinatesForCity(loc);
+        if (coords) {
+          setUserLocation(coords);
+          setLocationName(loc);
+        }
+      }
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
@@ -178,6 +188,80 @@ export default function Find() {
   };
 
   useEffect(() => {
+    const initUserProfileLocation = async () => {
+      const token = localStorage.getItem('token');
+      const email = localStorage.getItem('email') || localStorage.getItem('workerEmail');
+      const activeRole = localStorage.getItem('activeRole') || 'Resident';
+
+      // Check if URL has an explicit location param: if so, user explicitly navigated to it
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlLoc = urlParams.get('location');
+      if (urlLoc) {
+        return; // Don't override explicit URL query
+      }
+
+      // Check if user is logged in and fetch their account city
+      if (email) {
+        try {
+          let userCity = null;
+          let userCoords = null;
+
+          // 1. If worker, check worker profile
+          if (activeRole.toLowerCase() === 'worker') {
+            const workerRes = await axios.get(`${API_BASE_URL}/workers/me?email=${encodeURIComponent(email)}`, {
+              headers: token ? { Authorization: `Bearer ${token}` } : {}
+            });
+            const workerData = workerRes.data?.worker;
+            if (workerData?.primaryServiceArea) {
+              userCity = extractCityFromAddress(workerData.primaryServiceArea) || workerData.primaryServiceArea;
+            }
+            if (workerData?.locationLat && workerData?.locationLng) {
+              userCoords = [workerData.locationLat, workerData.locationLng];
+            }
+          }
+
+          // 2. If not worker or worker has no primaryServiceArea, check resident profile
+          if (!userCity) {
+            const residentRes = await axios.get(`${API_BASE_URL}/residents/${encodeURIComponent(email)}`, {
+              headers: token ? { Authorization: `Bearer ${token}` } : {}
+            });
+            const address = residentRes.data?.address;
+            if (address && address.trim()) {
+              userCity = extractCityFromAddress(address);
+            }
+            if (residentRes.data?.locationLat && residentRes.data?.locationLng) {
+              userCoords = [residentRes.data.locationLat, residentRes.data.locationLng];
+            }
+          }
+
+          // If a city is found in user account, auto-pick it!
+          if (userCity) {
+            setLocationQuery(userCity);
+            setAppliedLocationQuery(userCity);
+            localStorage.setItem('userCity', userCity);
+            localStorage.setItem('community_selected_district', userCity);
+            const coords = userCoords || getCoordinatesForCity(userCity);
+            if (coords) {
+              setUserLocation(coords);
+              setLocationName(userCity);
+              if (mapInstanceRef.current) {
+                mapInstanceRef.current.setView(coords, 12);
+              }
+            }
+            return;
+          }
+        } catch (err) {
+          console.warn('Could not auto-fetch user account city:', err);
+        }
+      }
+
+      // Fallback: cached city or real device geolocation
+      const cachedCity = localStorage.getItem('userCity') || localStorage.getItem('community_selected_district');
+      if (!cachedCity) {
+        getRealUserLocation();
+      }
+    };
+
     setIsLoggedIn(!!localStorage.getItem('token'));
     setUserName(localStorage.getItem('userName') || '');
     setUserPicture(localStorage.getItem('userPicture') || '');
@@ -202,6 +286,20 @@ export default function Find() {
       });
     }
   }, []);
+
+  // When appliedLocationQuery changes (user chooses city or clears location)
+  useEffect(() => {
+    if (appliedLocationQuery && appliedLocationQuery.trim() !== '') {
+      const coords = getCoordinatesForCity(appliedLocationQuery);
+      if (coords) {
+        setUserLocation(coords);
+        setLocationName(appliedLocationQuery);
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.setView(coords, 12);
+        }
+      }
+    }
+  }, [appliedLocationQuery]);
 
   // Close worker search dropdown when clicking outside
   useEffect(() => {
@@ -379,14 +477,8 @@ export default function Find() {
 
     // 1.6 Location Query Filter (PrimaryServiceArea, address, name, city)
     if (appliedLocationQuery.trim() !== '') {
-      const loc = appliedLocationQuery.toLowerCase().trim();
-      if (loc !== 'current location' && loc !== 'my location') {
-        const locMatch =
-          (w.primaryServiceArea && w.primaryServiceArea.toLowerCase().includes(loc)) ||
-          (w.resident?.address && w.resident.address.toLowerCase().includes(loc)) ||
-          (w.description && w.description.toLowerCase().includes(loc)) ||
-          (w.name && w.name.toLowerCase().includes(loc));
-        if (!locMatch) return false;
+      if (!matchesWorkerLocation(w, appliedLocationQuery)) {
+        return false;
       }
     }
 
@@ -1073,13 +1165,21 @@ export default function Find() {
               </div>
             </div>
 
-            <div className="location-selector-wrap" style={{ padding: '6px 8px 6px' }}>
+            <div className="location-selector-wrap" style={{ padding: '6px 8px 6px', position: 'relative', zIndex: 1200 }}>
               <LocationSelector
                 location={appliedLocationQuery || 'Colombo'}
                 onChange={(newLoc) => {
                   setLocationQuery(newLoc);
                   setAppliedLocationQuery(newLoc);
                   localStorage.setItem('community_selected_district', newLoc);
+                  const coords = getCoordinatesForCity(newLoc);
+                  if (coords) {
+                    setUserLocation(coords);
+                    setLocationName(newLoc);
+                    if (mapInstanceRef.current) {
+                      mapInstanceRef.current.setView(coords, 12);
+                    }
+                  }
                   const params = new URLSearchParams(window.location.search);
                   if (newLoc) {
                     params.set('location', newLoc);

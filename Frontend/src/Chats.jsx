@@ -100,6 +100,15 @@ export default function Chats() {
     setDialogConfig({ isOpen: true, title, message, type: 'confirm', onConfirm, confirmText, isDestructive });
   };
 
+  // Prevent whole window/body scrolling on /chats page so left and right panes scroll independently
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, []);
+
   // New UI states for Search and Menu
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [searchMessageKeyword, setSearchMessageKeyword] = useState('');

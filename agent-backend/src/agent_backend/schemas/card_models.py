@@ -192,7 +192,65 @@ class WorkerListCard(BaseModel):
     workers: List[WorkerSummary] = Field(default_factory=list, description="List of matching workers")
 
 
+class BookingFormCard(BaseModel):
+    """UI Card rendered when initiating or filling out a service booking request."""
+    workerId: Union[int, str] = Field(description="Target worker identifier")
+    workerName: str = Field(description="Name of the worker being booked")
+    workerAvatar: Optional[str] = Field(default=None, description="Worker avatar image URL")
+    category: Optional[str] = Field(default="General", description="Service category")
+    hourlyRate: Optional[float] = Field(default=None, description="Worker hourly rate in LKR")
+    location: Optional[str] = Field(default="Colombo", description="Resident service location")
+    contactPhone: Optional[str] = Field(default=None, description="Contact phone number")
+    selectedDate: Optional[str] = Field(default=None, description="Pre-filled date (YYYY-MM-DD)")
+    selectedStartTime: Optional[str] = Field(default="09:00", description="Pre-filled start time (HH:MM)")
+    durationHours: Optional[int] = Field(default=2, description="Duration in hours")
+    jobTitle: Optional[str] = Field(default=None, description="Service title or problem description")
+    notes: Optional[str] = Field(default=None, description="Additional instructions for the worker")
+    isAvailable: Optional[bool] = Field(default=True, description="Whether worker is currently verified available")
+    availabilityStatus: Optional[str] = Field(default="Available", description="'Available', 'Busy', 'Checking'")
+    availabilityReason: Optional[str] = Field(default=None, description="Explanation of availability")
+
+
+class BookingConfirmedCard(BaseModel):
+    """UI Card rendered when a booking appointment is successfully created."""
+    bookingId: Union[int, str] = Field(description="Created Booking ID")
+    workerId: Union[int, str] = Field(description="Worker ID")
+    workerName: str = Field(description="Worker display name")
+    jobTitle: str = Field(description="Service job title")
+    scheduledDate: str = Field(description="Scheduled appointment date & time")
+    locationAddress: str = Field(description="Service location")
+    contactPhone: str = Field(description="Contact phone number")
+    status: str = Field(default="Confirmed", description="Booking status")
+
+
+class BookingSummary(BaseModel):
+    """Summary of an individual booking appointment."""
+    id: Union[int, str] = Field(description="Booking ID")
+    workerId: Union[int, str] = Field(description="Worker ID")
+    workerName: str = Field(default="Verified Technician", description="Worker display name")
+    workerProfileImage: Optional[str] = Field(default=None, description="Worker avatar/photo URL")
+    workerPhone: Optional[str] = Field(default=None, description="Worker contact phone")
+    jobTitle: str = Field(default="Home Service", description="Job title / service description")
+    scheduledDate: Optional[str] = Field(default=None, description="Scheduled appointment date & time")
+    locationAddress: Optional[str] = Field(default="Colombo", description="Service location")
+    contactPhone: Optional[str] = Field(default=None, description="Resident contact phone")
+    pricingModel: Optional[str] = Field(default="Hourly", description="Pricing model")
+    estimatedPrice: Optional[float] = Field(default=None, description="Estimated price in LKR")
+    agreedPrice: Optional[float] = Field(default=None, description="Agreed price in LKR")
+    status: str = Field(default="Requested", description="Booking status: Requested, Confirmed, InProgress, Completed, Cancelled")
+    createdAt: Optional[str] = Field(default=None, description="Timestamp created")
+
+
+class BookingListCard(BaseModel):
+    """UI Card rendered when displaying resident's bookings or appointment history."""
+    totalCount: int = Field(default=0, description="Total count of bookings found")
+    statusFilter: Optional[str] = Field(default="Upcoming", description="Filter applied: 'Upcoming', 'All', etc.")
+    bookings: List[BookingSummary] = Field(default_factory=list, description="List of bookings")
+
+
 ResponseTypeLiteral = Literal[
+    "create_community_post",
+    "edit_community_post",
     "post_confirmation",
     "post_created",
     "post_list",
@@ -202,6 +260,9 @@ ResponseTypeLiteral = Literal[
     "user_profile",
     "service_categories",
     "worker_list",
+    "booking_form",
+    "booking_confirmed",
+    "booking_list",
     "text_message",
     "error"
 ]

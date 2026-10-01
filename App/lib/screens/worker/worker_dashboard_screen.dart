@@ -912,8 +912,8 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
               itemBuilder: (context, index) {
                 final req = displayBookings[index];
                 final dateStr = req.scheduledDate != null
-                    ? '${req.scheduledDate!.day}/${req.scheduledDate!.month} at ${req.scheduledDate!.hour.toString().padLeft(2, '0')}:${req.scheduledDate!.minute.toString().padLeft(2, '0')}'
-                    : '27/9 at 21:00';
+                    ? '${req.scheduledDate!.day}/${req.scheduledDate!.month}/${req.scheduledDate!.year}'
+                    : '27/09/2026';
 
                 return Container(
                   padding: const EdgeInsets.all(18),

@@ -23,9 +23,10 @@ const CATEGORY_OPTIONS = SERVICE_CATEGORIES.map((cat) => ({
   icon: cat.illustration,
 }));
 
-export default function CreateCommunityPostCard({ data = {}, onAction }) {
+export default function EditCommunityPostCard({ data = {}, onAction }) {
   const cardRef = useRef(null);
-  const [currentStep, setCurrentStep] = useState(1); // 1: Details, 2: Review, 3: Publish
+  const postId = data.postId || data.id;
+  const [currentStep, setCurrentStep] = useState(1); // 1: Details, 2: Review, 3: Update Success
   const [selectedCategory, setSelectedCategory] = useState(
     data.communityId || data.category || (CATEGORY_OPTIONS[0]?.label || 'General')
   );
@@ -47,7 +48,7 @@ export default function CreateCommunityPostCard({ data = {}, onAction }) {
     if (data.location) setLocation(resolveDistrict(data.location));
   }, [data.communityId, data.category, data.title, data.content, data.description, data.location]);
 
-  // Initial photos start empty so user can attach real photos
+  // Initial photos
   const [photos, setPhotos] = useState(
     Array.isArray(data.photos) ? data.photos : (Array.isArray(data.images) ? data.images.map((img, i) => ({ id: `init-${i}`, url: img })) : [])
   );
@@ -108,14 +109,17 @@ export default function CreateCommunityPostCard({ data = {}, onAction }) {
       setCurrentStep(2);
     } else if (currentStep === 2) {
       setCurrentStep(3);
-      // Trigger confirmation action to Agent backend with current values and real attached images
-      const promptToExecute = `CONFIRM_PUBLISH: Yes, please publish the community post '${title}' in ${selectedCategory} for ${location}. Description: ${description}`;
+      // Trigger confirmation action to Agent backend with updated values
+      const promptToExecute = postId
+        ? `CONFIRM_UPDATE: Yes, please update post ID ${postId} with title '${title}' in ${selectedCategory} for ${location}. Description: ${description}`
+        : `CONFIRM_UPDATE: Yes, please update post with title '${title}' in ${selectedCategory} for ${location}. Description: ${description}`;
 
       const payloadObj = {
         prompt: promptToExecute,
-        action: 'create',
-        postId: null,
+        action: 'update',
+        postId: postId,
         postData: {
+          id: postId,
           title,
           content: description,
           communityId: selectedCategory,
@@ -123,7 +127,7 @@ export default function CreateCommunityPostCard({ data = {}, onAction }) {
           images: photos.map((p) => p.url),
         },
       };
-      onAction && onAction('confirm_post', payloadObj);
+      onAction && onAction('confirm_update', payloadObj);
     }
   };
 
@@ -141,8 +145,10 @@ export default function CreateCommunityPostCard({ data = {}, onAction }) {
           <img src={craftsmanAvatar} alt="Workio Assistant" className="create-post-avatar-img" />
         </div>
         <div className="create-post-header-text">
-          <h2 className="create-post-title">Create Community Post</h2>
-          <p className="create-post-subtitle">Share your service needs with the Workio community</p>
+          <h2 className="create-post-title">Edit Community Post</h2>
+          <p className="create-post-subtitle">
+            Update your service request details{postId ? ` (Post #${postId})` : ''}
+          </p>
         </div>
       </div>
 
@@ -177,7 +183,7 @@ export default function CreateCommunityPostCard({ data = {}, onAction }) {
         {/* Step 3 */}
         <div className={`create-post-step-item ${currentStep === 3 ? 'active' : ''}`}>
           <div className="step-circle">3</div>
-          <span className="step-label">Publish</span>
+          <span className="step-label">Update</span>
         </div>
       </div>
 
@@ -376,29 +382,29 @@ export default function CreateCommunityPostCard({ data = {}, onAction }) {
               <span>Back to Edit</span>
             </button>
             <button type="button" className="create-post-continue-btn" onClick={handleContinue}>
-              <span>Publish Post</span>
-              <i className="fa-solid fa-paper-plane"></i>
+              <span>Update Post</span>
+              <i className="fa-solid fa-check"></i>
             </button>
           </div>
         </div>
       )}
 
-      {/* STEP 3: Published Screen */}
+      {/* STEP 3: Updated Screen */}
       {currentStep === 3 && (
         <div className="create-post-published-body">
           <div className="published-success-icon">
             <i className="fa-solid fa-circle-check"></i>
           </div>
-          <h3 className="published-title">Post Published to Community!</h3>
+          <h3 className="published-title">Post Updated Successfully!</h3>
           <p className="published-subtitle">
-            Your request for <strong>{selectedCategory}</strong> has been posted. Local craftsmen will receive your notification and can send quotes.
+            Your request for <strong>{selectedCategory}</strong> has been updated. Local craftsmen will see your updated post details.
           </p>
 
           <div className="create-post-actions-row published-actions">
             <button
               type="button"
               className="create-post-continue-btn"
-              onClick={() => onAction && onAction('view_community', {})}
+              onClick={() => onAction && onAction('view_community', { id: postId })}
             >
               <span>View in Community Feed</span>
               <i className="fa-solid fa-arrow-right"></i>

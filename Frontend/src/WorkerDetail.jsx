@@ -18,7 +18,6 @@ import '@material/web/select/select-option.js';
 import Loader from './components/Loader.jsx';
 import M3TopNavbar from './components/M3TopNavbar.jsx';
 import M3DatePickerDialog from './components/M3DatePickerDialog.jsx';
-import M3TimePickerDialog from './components/M3TimePickerDialog.jsx';
 import { showToast } from './utils/toast.js';
 import './components/M3Navbar.css';
 import { API_BASE_URL } from './config.js';
@@ -111,7 +110,6 @@ export default function WorkerDetail() {
   const [hireError, setHireError] = useState(null);
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-  const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
 
   const formatDisplayDate = (dateStr) => {
     if (!dateStr) return '';
@@ -120,24 +118,12 @@ export default function WorkerDetail() {
     return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  const formatDisplayTime = (timeStr) => {
-    if (!timeStr) return '';
-    const [hStr, mStr] = timeStr.split(':');
-    let h = parseInt(hStr, 10) || 0;
-    const m = parseInt(mStr, 10) || 0;
-    const period = h >= 12 ? 'PM' : 'AM';
-    let hour12 = h % 12;
-    if (hour12 === 0) hour12 = 12;
-    return `${String(hour12).padStart(2, '0')}:${String(m).padStart(2, '0')} ${period}`;
-  };
-
   // Booking Form State
   const [bookingForm, setBookingForm] = useState({
     jobTitle: '',
     description: '',
     urgency: 'Medium',
     scheduledDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-    scheduledTime: '10:00',
     locationAddress: '',
     locationLat: null,
     locationLng: null,
@@ -328,7 +314,7 @@ export default function WorkerDetail() {
     setHireError(null);
 
     const token = localStorage.getItem('token');
-    const userEmail = localStorage.getItem('email');
+    const userEmail = localStorage.getItem('email') || localStorage.getItem('userEmail') || 'resident@workio.lk';
 
     // Validation: Date cannot be before today
     const todayStr = new Date().toISOString().split('T')[0];
@@ -339,18 +325,7 @@ export default function WorkerDetail() {
     }
 
     try {
-      const combinedDateTime = new Date(`${bookingForm.scheduledDate}T${bookingForm.scheduledTime}:00`);
-      if (isNaN(combinedDateTime.getTime())) {
-        setHireError('Please select a valid date and time.');
-        setHireStep('form');
-        return;
-      }
-
-      if (combinedDateTime < new Date()) {
-        setHireError('The selected appointment time is in the past. Please select an upcoming time.');
-        setHireStep('form');
-        return;
-      }
+      const scheduledDateTime = new Date(`${bookingForm.scheduledDate}T00:00:00Z`);
 
       const phoneRegex = /^0\d{9}$/;
       if (!phoneRegex.test((bookingForm.contactPhone || '').trim())) {
@@ -368,7 +343,7 @@ export default function WorkerDetail() {
         jobTitle: bookingForm.jobTitle,
         description: updatedDesc,
         urgency: bookingForm.urgency,
-        scheduledDate: combinedDateTime.toISOString(),
+        scheduledDate: scheduledDateTime.toISOString(),
         locationAddress: finalAddress,
         locationLat: bookingForm.shareGps ? bookingForm.locationLat : null,
         locationLng: bookingForm.shareGps ? bookingForm.locationLng : null,
@@ -377,9 +352,19 @@ export default function WorkerDetail() {
         estimatedPrice: bookingForm.estimatedPrice ? parseFloat(bookingForm.estimatedPrice) : null
       };
 
-      const res = await axios.post(`${API_BASE_URL}/bookings`, payload, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
-      });
+      let res;
+      try {
+        res = await axios.post(`${API_BASE_URL}/bookings`, payload, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+      } catch (postErr) {
+        if (postErr.response?.status === 401) {
+          // Retry without stale/expired token
+          res = await axios.post(`${API_BASE_URL}/bookings`, payload);
+        } else {
+          throw postErr;
+        }
+      }
 
       setCreatedBooking(res.data);
       showToast('Booking request sent successfully!');
@@ -1293,67 +1278,35 @@ export default function WorkerDetail() {
                   </md-outlined-text-field>
                 </div>
 
-                {/* Preferred Date & Time (M3 Pickers) */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  <div
-                    style={{ position: 'relative', cursor: 'pointer' }}
-                    onClick={() => setIsDatePickerOpen(true)}
-                    title="Click to select date"
+                {/* Preferred Date (M3 Picker) */}
+                <div
+                  style={{ position: 'relative', cursor: 'pointer' }}
+                  onClick={() => setIsDatePickerOpen(true)}
+                  title="Click to select date"
+                >
+                  <md-outlined-text-field
+                    type="text"
+                    label="Preferred Date"
+                    required
+                    readOnly
+                    value={formatDisplayDate(bookingForm.scheduledDate)}
+                    style={{ width: '100%' }}
                   >
-                    <md-outlined-text-field
-                      type="text"
-                      label="Preferred Date"
-                      required
-                      readOnly
-                      value={formatDisplayDate(bookingForm.scheduledDate)}
-                      style={{ width: '100%' }}
-                    >
-                      <md-icon slot="leading-icon">calendar_today</md-icon>
-                      <md-icon slot="trailing-icon">edit_calendar</md-icon>
-                    </md-outlined-text-field>
-                    <div
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIsDatePickerOpen(true);
-                      }}
-                      style={{
-                        position: 'absolute',
-                        inset: 0,
-                        zIndex: 10,
-                        cursor: 'pointer'
-                      }}
-                    />
-                  </div>
-
+                    <md-icon slot="leading-icon">calendar_today</md-icon>
+                    <md-icon slot="trailing-icon">edit_calendar</md-icon>
+                  </md-outlined-text-field>
                   <div
-                    style={{ position: 'relative', cursor: 'pointer' }}
-                    onClick={() => setIsTimePickerOpen(true)}
-                    title="Click to select time"
-                  >
-                    <md-outlined-text-field
-                      type="text"
-                      label="Preferred Time"
-                      required
-                      readOnly
-                      value={formatDisplayTime(bookingForm.scheduledTime)}
-                      style={{ width: '100%' }}
-                    >
-                      <md-icon slot="leading-icon">schedule</md-icon>
-                      <md-icon slot="trailing-icon">access_time</md-icon>
-                    </md-outlined-text-field>
-                    <div
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIsTimePickerOpen(true);
-                      }}
-                      style={{
-                        position: 'absolute',
-                        inset: 0,
-                        zIndex: 10,
-                        cursor: 'pointer'
-                      }}
-                    />
-                  </div>
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsDatePickerOpen(true);
+                    }}
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      zIndex: 10,
+                      cursor: 'pointer'
+                    }}
+                  />
                 </div>
 
                 {/* Location */}
@@ -1754,16 +1707,6 @@ export default function WorkerDetail() {
               minDate={new Date().toISOString().split('T')[0]}
               onSelectDate={(newDate) => {
                 setBookingForm(prev => ({ ...prev, scheduledDate: newDate }));
-                setHireError(null);
-              }}
-            />
-
-            <M3TimePickerDialog
-              isOpen={isTimePickerOpen}
-              onClose={() => setIsTimePickerOpen(false)}
-              selectedTime={bookingForm.scheduledTime}
-              onSelectTime={(newTime) => {
-                setBookingForm(prev => ({ ...prev, scheduledTime: newTime }));
                 setHireError(null);
               }}
             />

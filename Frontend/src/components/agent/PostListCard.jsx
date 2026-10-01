@@ -34,25 +34,32 @@ export default function PostListCard({ data, onAction }) {
           </div>
         ) : (
           <div className="agent-post-list">
-            {posts.map((post, idx) => (
-              <div
-                key={post.id || idx}
-                className="agent-post-item"
-                onClick={() => onAction && onAction('send_prompt', `Show details for post #${post.id}`)}
-              >
-                <div className="agent-post-item-top">
-                  <span className="agent-post-item-title">{post.title}</span>
-                  <span className="agent-post-item-cat">{post.communityId || 'General'}</span>
+            {posts.map((post, idx) => {
+              const targetPostId = post.id || post.postId || post.PostId;
+              const promptToSend = targetPostId
+                ? `Show details for post #${targetPostId}`
+                : `Show details for post '${post.title}'`;
+
+              return (
+                <div
+                  key={targetPostId || idx}
+                  className="agent-post-item"
+                  onClick={() => onAction && onAction('send_prompt', promptToSend)}
+                >
+                  <div className="agent-post-item-top">
+                    <span className="agent-post-item-title">{post.title}</span>
+                    <span className="agent-post-item-cat">{post.communityId || 'General'}</span>
+                  </div>
+                  <div className="agent-post-item-body">{post.content}</div>
+                  <div className="agent-card-meta" style={{ marginTop: '2px', fontSize: '0.75rem' }}>
+                    <span><i className="fa-solid fa-location-dot"></i> {post.location || 'Colombo'}</span>
+                    {post.authorName && <span><i className="fa-regular fa-user"></i> {post.authorName}</span>}
+                    <span><i className="fa-regular fa-thumbs-up"></i> {post.likesCount || 0}</span>
+                    <span><i className="fa-regular fa-comment"></i> {post.commentsCount || 0}</span>
+                  </div>
                 </div>
-                <div className="agent-post-item-body">{post.content}</div>
-                <div className="agent-card-meta" style={{ marginTop: '2px', fontSize: '0.75rem' }}>
-                  <span><i className="fa-solid fa-location-dot"></i> {post.location || 'Colombo'}</span>
-                  {post.authorName && <span><i className="fa-regular fa-user"></i> {post.authorName}</span>}
-                  <span><i className="fa-regular fa-thumbs-up"></i> {post.likesCount || 0}</span>
-                  <span><i className="fa-regular fa-comment"></i> {post.commentsCount || 0}</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

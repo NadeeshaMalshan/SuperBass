@@ -642,6 +642,8 @@
    ========================================================================== */
 .sidebar-map-wrapper {
   margin: 12px 6px 6px 6px;
+  position: relative;
+  z-index: 1;
 }
 
 .sidebar-map-container {

@@ -41,7 +41,21 @@ namespace Superbass.Controllers
             var email = User.FindFirstValue(ClaimTypes.Email)
                      ?? User.FindFirstValue("email")
                      ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-            return email;
+            if (!string.IsNullOrEmpty(email)) return email;
+
+            var authHeader = Request.Headers["Authorization"].FirstOrDefault();
+            if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    var token = authHeader.Substring("Bearer ".Length).Trim();
+                    var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+                    var jwtToken = handler.ReadJwtToken(token);
+                    return jwtToken.Claims.FirstOrDefault(c => c.Type == "email" || c.Type == ClaimTypes.Email || c.Type == ClaimTypes.NameIdentifier)?.Value;
+                }
+                catch { }
+            }
+            return null;
         }
 
         private static BookingResponseDto MapToDto(Booking b)
@@ -86,6 +100,7 @@ namespace Superbass.Controllers
 
         // POST: /api/bookings
         [HttpPost]
+        [AllowAnonymous]
         public async Task<IActionResult> CreateBooking([FromBody] CreateBookingRequest request)
         {
             try
@@ -140,7 +155,7 @@ namespace Superbass.Controllers
                         WorkerName = worker.Name,
                         WorkerAvatar = worker.ProfileImage,
                         ResidentEmail = residentEmail,
-                        InitialMessage = $"New Hire Request: {request.JobTitle} scheduled for {(request.ScheduledDate ?? DateTime.UtcNow.AddDays(1)):dd MMM yyyy, hh:mm tt}."
+                        InitialMessage = $"New Hire Request: {request.JobTitle} scheduled for {(request.ScheduledDate ?? DateTime.UtcNow.AddDays(1)):dd MMM yyyy}."
                     }, residentEmail);
                     conversationId = convSummary.Id;
                 }
@@ -150,10 +165,8 @@ namespace Superbass.Controllers
                 }
 
                 var scheduledUtc = request.ScheduledDate.HasValue 
-                    ? (request.ScheduledDate.Value.Kind == DateTimeKind.Utc 
-                        ? request.ScheduledDate.Value 
-                        : DateTime.SpecifyKind(request.ScheduledDate.Value, DateTimeKind.Utc))
-                    : DateTime.UtcNow.AddDays(1);
+                    ? DateTime.SpecifyKind(request.ScheduledDate.Value.Date, DateTimeKind.Utc)
+                    : DateTime.SpecifyKind(DateTime.UtcNow.AddDays(1).Date, DateTimeKind.Utc);
 
                 var booking = new Booking
                 {
@@ -231,6 +244,7 @@ namespace Superbass.Controllers
 
         // GET: /api/bookings/{id}
         [HttpGet("{id:int}")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetBookingById(int id)
         {
             var booking = await _context.Bookings
@@ -248,6 +262,7 @@ namespace Superbass.Controllers
 
         // GET: /api/bookings/resident?email=...
         [HttpGet("resident")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetResidentBookings([FromQuery] string? email)
         {
             var userEmail = email ?? GetCurrentUserEmail();
@@ -268,6 +283,7 @@ namespace Superbass.Controllers
 
         // GET: /api/bookings/worker?email=... or ?workerId=...
         [HttpGet("worker")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetWorkerBookings([FromQuery] string? email, [FromQuery] int? workerId)
         {
             var query = _context.Bookings
@@ -583,9 +599,7 @@ namespace Superbass.Controllers
                 return NotFound(new { message = "Booking not found." });
             }
 
-            var rescheduleUtc = request.ScheduledDate.Kind == DateTimeKind.Utc
-                ? request.ScheduledDate
-                : DateTime.SpecifyKind(request.ScheduledDate, DateTimeKind.Utc);
+            var rescheduleUtc = DateTime.SpecifyKind(request.ScheduledDate.Date, DateTimeKind.Utc);
 
             booking.ScheduledDate = rescheduleUtc;
             booking.UpdatedAt = DateTime.UtcNow;
@@ -600,7 +614,7 @@ namespace Superbass.Controllers
                         SenderEmail = booking.ResidentEmail,
                         SenderRole = "Resident",
                         MessageType = "BookingUpdate",
-                        Content = $"📅 Booking Rescheduled to: {request.ScheduledDate:dd MMM yyyy, hh:mm tt}. {request.Note}"
+                        Content = $"📅 Booking Rescheduled to: {request.ScheduledDate:dd MMM yyyy}. {request.Note}"
                     });
                 }
                 catch { }
