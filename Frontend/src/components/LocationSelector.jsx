@@ -130,7 +130,7 @@ export default function LocationSelector({
   const displayLocation = location || 'Colombo';
 
   return (
-    <div className={`landing-hero-location-row ${className}`} style={{ position: 'relative' }}>
+    <div className={`landing-hero-location-row ${className}`} style={{ position: 'relative', zIndex: isChangingCity ? 1300 : 'auto' }}>
       {/* Pin icon with fallback if web component not defined */}
       <md-icon className="landing-hero-location-pin">location_on</md-icon>
       <span className="landing-hero-location-name">{displayLocation}</span>

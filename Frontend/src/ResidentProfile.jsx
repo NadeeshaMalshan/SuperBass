@@ -16,6 +16,7 @@ import { API_BASE_URL } from './config.js';
 import { showToast } from './utils/toast.js';
 import VerificationForm from './components/VerificationForm.jsx';
 import VerifiedBadge from './components/VerifiedBadge.jsx';
+import { extractCityFromAddress } from './data/cityCoordinates.js';
 
 export default function ResidentProfile({ defaultTab = 'overview' }) {
   const urlParams = new URLSearchParams(window.location.search);
@@ -144,6 +145,14 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
           address: response.data.address || '',
           profileImage: response.data.profileImage || ''
         });
+
+        if (response.data.address) {
+          const detectedCity = extractCityFromAddress(response.data.address);
+          if (detectedCity) {
+            localStorage.setItem('userCity', detectedCity);
+            localStorage.setItem('community_selected_district', detectedCity);
+          }
+        }
       } catch (err) {
         console.error('Failed to fetch profile', err);
         setProfile(prev => ({
@@ -442,6 +451,13 @@ export default function ResidentProfile({ defaultTab = 'overview' }) {
       }
       if (profile.profileImage) {
         localStorage.setItem('userPicture', profile.profileImage);
+      }
+      if (profile.address) {
+        const detectedCity = extractCityFromAddress(profile.address);
+        if (detectedCity) {
+          localStorage.setItem('userCity', detectedCity);
+          localStorage.setItem('community_selected_district', detectedCity);
+        }
       }
       
       // Notify other components (like UserMenu) to re-read localStorage
