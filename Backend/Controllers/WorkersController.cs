@@ -80,9 +80,10 @@ namespace Superbass.Controllers
             [FromQuery] double? residentLat,
             [FromQuery] double? residentLng,
             [FromQuery] decimal? maxHourlyRate = null,
-            [FromQuery] decimal? minHourlyRate = null)
+            [FromQuery] decimal? minHourlyRate = null,
+            [FromQuery] bool onlyVerified = true)
         {
-            var results = await _workerRepository.SearchWorkersAsync(skill, location, null, residentLat, residentLng, maxHourlyRate, minHourlyRate, province, district);
+            var results = await _workerRepository.SearchWorkersAsync(skill, location, null, residentLat, residentLng, maxHourlyRate, minHourlyRate, province, district, onlyVerified);
             foreach (var w in results)
             {
                 w.PhoneNo = null; // Privacy: Worker contact is hidden on public search
