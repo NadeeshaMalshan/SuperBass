@@ -19,6 +19,7 @@ import LocationSelector from './components/LocationSelector.jsx';
 import './components/M3Navbar.css';
 import { API_BASE_URL } from './config.js';
 import categoriesData from './data/categories.json';
+import sriLankaDistricts from './data/sriLankaDistricts.json';
 import { getCoordinatesForCity, matchesWorkerLocation, extractCityFromAddress } from './data/cityCoordinates.js';
 import workioLogoWhite from './assets/Workio_Logo/Workio_Logo_White_With_Text.png';
 import craftsmanHeroImg from './assets/workersBackgrond.png';
@@ -61,6 +62,8 @@ export default function Find() {
     }
   });
   const [appliedLocationQuery, setAppliedLocationQuery] = useState(locationQuery);
+  const [selectedProvince, setSelectedProvince] = useState('all');
+  const [selectedDistrict, setSelectedDistrict] = useState('all');
 
   // Real User Geolocation State (initialized to selected city or Colombo)
   const [userLocation, setUserLocation] = useState(() => {
@@ -262,7 +265,26 @@ export default function Find() {
     setIsLoggedIn(!!localStorage.getItem('token'));
     setUserName(localStorage.getItem('userName') || '');
     setUserPicture(localStorage.getItem('userPicture') || '');
-    initUserProfileLocation();
+    getRealUserLocation();
+
+    // Auto-load logged-in resident's home Province/District
+    const userEmail = localStorage.getItem('email');
+    const token = localStorage.getItem('token');
+    if (userEmail) {
+      axios.get(`${API_BASE_URL}/residents/${encodeURIComponent(userEmail)}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      }).then(res => {
+        if (res.data) {
+          if (res.data.province) setSelectedProvince(res.data.province);
+          if (res.data.district) setSelectedDistrict(res.data.district);
+          if (res.data.locationLat && res.data.locationLng) {
+            setUserLocation([res.data.locationLat, res.data.locationLng]);
+          }
+        }
+      }).catch(err => {
+        console.warn('Could not load resident profile location', err);
+      });
+    }
   }, []);
 
   // When appliedLocationQuery changes (user chooses city or clears location)
@@ -295,7 +317,17 @@ export default function Find() {
       try {
         setLoading(true);
         const [lat, lng] = userLocation;
-        const res = await axios.get(`${API_BASE_URL}/workers/search?residentLat=${lat}&residentLng=${lng}`);
+        const params = {
+          residentLat: lat,
+          residentLng: lng,
+        };
+        if (selectedProvince && selectedProvince !== 'all') {
+          params.province = selectedProvince;
+        }
+        if (selectedDistrict && selectedDistrict !== 'all') {
+          params.district = selectedDistrict;
+        }
+        const res = await axios.get(`${API_BASE_URL}/workers/search`, { params });
         setWorkers(res.data || []);
       } catch (err) {
         console.error('Error fetching workers:', err);
@@ -304,7 +336,7 @@ export default function Find() {
       }
     };
     fetchWorkers();
-  }, [userLocation]);
+  }, [userLocation, selectedProvince, selectedDistrict]);
 
   const getInitial = (name) => {
     if (!name) return 'U';
@@ -326,7 +358,9 @@ export default function Find() {
     minRating !== 'Any' ||
     selectedBadge !== 'all' ||
     appliedSearchQuery !== '' ||
-    appliedLocationQuery !== '';
+    appliedLocationQuery !== '' ||
+    selectedProvince !== 'all' ||
+    selectedDistrict !== 'all';
 
   const handleResetFilters = () => {
     setRateType('Any');
@@ -341,6 +375,8 @@ export default function Find() {
     setAppliedSearchQuery('');
     setLocationQuery('');
     setAppliedLocationQuery('');
+    setSelectedProvince('all');
+    setSelectedDistrict('all');
     setSortBy('recommended');
     setCurrentPage(1);
     navigate('/find');
@@ -420,7 +456,26 @@ export default function Find() {
       if (!nameMatch && !locMatch && !skillMatch && !descMatch) return false;
     }
 
-    // 1.5 Location Query Filter (PrimaryServiceArea, address, name, city, distance / coverage)
+    // 1.5 Province & District Filter
+    if (selectedProvince && selectedProvince !== 'all') {
+      const provDistricts = sriLankaDistricts[selectedProvince] || [];
+      const provKey = selectedProvince.toLowerCase().replace(' province', '');
+      const matchProv = (w.province && w.province.toLowerCase().includes(provKey)) ||
+                        (w.district && provDistricts.some(d => d.toLowerCase() === w.district.toLowerCase())) ||
+                        (w.primaryServiceArea && provDistricts.some(d => w.primaryServiceArea.toLowerCase().includes(d.toLowerCase()))) ||
+                        (w.description && w.description.toLowerCase().includes(provKey));
+      if (!matchProv) return false;
+    }
+
+    if (selectedDistrict && selectedDistrict !== 'all') {
+      const distLower = selectedDistrict.toLowerCase();
+      const matchDist = (w.district && w.district.toLowerCase() === distLower) ||
+                        (w.primaryServiceArea && w.primaryServiceArea.toLowerCase().includes(distLower)) ||
+                        (w.description && w.description.toLowerCase().includes(distLower));
+      if (!matchDist) return false;
+    }
+
+    // 1.6 Location Query Filter (PrimaryServiceArea, address, name, city)
     if (appliedLocationQuery.trim() !== '') {
       if (!matchesWorkerLocation(w, appliedLocationQuery)) {
         return false;
@@ -515,6 +570,8 @@ export default function Find() {
     selectedCategories,
     minRating,
     selectedBadge,
+    selectedProvince,
+    selectedDistrict,
     sortBy
   ]);
 
@@ -1086,13 +1143,15 @@ export default function Find() {
                   <span>{showMap ? 'Hide map' : 'Map'}</span>
                 </button>
 
-                {appliedLocationQuery && (
+                {(appliedLocationQuery || selectedProvince !== 'all' || selectedDistrict !== 'all') && (
                   <button
                     type="button"
                     className="uber-sidebar-clear-btn"
                     onClick={() => {
                       setLocationQuery('');
                       setAppliedLocationQuery('');
+                      setSelectedProvince('all');
+                      setSelectedDistrict('all');
                       const params = new URLSearchParams(window.location.search);
                       params.delete('location');
                       const qs = params.toString();
@@ -1131,6 +1190,50 @@ export default function Find() {
                   navigate(newQs ? `/find?${newQs}` : '/find');
                 }}
               />
+            </div>
+
+            {/* Province & District Dropdown Selectors */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '6px 8px 12px' }}>
+              <div>
+                <label style={{ fontSize: '0.72rem', fontWeight: 800, color: '#737373', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>
+                  Province
+                </label>
+                <select
+                  className="uber-sidebar-select"
+                  value={selectedProvince}
+                  onChange={(e) => {
+                    const newProv = e.target.value;
+                    setSelectedProvince(newProv);
+                    setSelectedDistrict('all');
+                  }}
+                >
+                  <option value="all">All Sri Lanka Provinces</option>
+                  {Object.keys(sriLankaDistricts).map((prov) => (
+                    <option key={prov} value={prov}>{prov}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.72rem', fontWeight: 800, color: '#737373', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>
+                  District
+                </label>
+                <select
+                  className="uber-sidebar-select"
+                  value={selectedDistrict}
+                  onChange={(e) => setSelectedDistrict(e.target.value)}
+                >
+                  <option value="all">
+                    {selectedProvince !== 'all' ? `All ${selectedProvince} Districts` : 'All 25 Districts'}
+                  </option>
+                  {(selectedProvince !== 'all'
+                    ? (sriLankaDistricts[selectedProvince] || [])
+                    : Object.values(sriLankaDistricts).flat()
+                  ).map((dist) => (
+                    <option key={dist} value={dist}>{dist}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* Interactive Map in Left Sidebar */}

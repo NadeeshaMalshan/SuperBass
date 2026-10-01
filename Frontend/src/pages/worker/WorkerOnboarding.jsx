@@ -592,6 +592,8 @@ export default function WorkerOnboarding() {
         locationLng: lng,
         description: description || null,
         primaryServiceArea: personal.area || personal.district || 'Colombo',
+        province: personal.province || null,
+        district: personal.district || null,
         coverageRadiusKm: 10.0,
         pricingModel: pricing.pricingModel,
         hourlyRate: pricing.hourlyRate ? Number(pricing.hourlyRate) : null,

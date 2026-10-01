@@ -389,6 +389,9 @@ namespace Superbass.Migrations
                     b.Property<string>("Address")
                         .HasColumnType("text");
 
+                    b.Property<string>("District")
+                        .HasColumnType("text");
+
                     b.Property<double?>("LocationLat")
                         .HasColumnType("double precision");
 
@@ -405,6 +408,9 @@ namespace Superbass.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("ProfileImage")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Province")
                         .HasColumnType("text");
 
                     b.HasKey("Email");
@@ -444,6 +450,9 @@ namespace Superbass.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("text");
 
+                    b.Property<string>("District")
+                        .HasColumnType("text");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("text");
@@ -454,6 +463,9 @@ namespace Superbass.Migrations
                     b.Property<bool>("IsAvailable")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsVerified")
+                        .HasColumnType("boolean");
+
                     b.Property<double?>("LocationLat")
                         .HasColumnType("double precision");
 
@@ -462,6 +474,9 @@ namespace Superbass.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("NicNumber")
                         .HasColumnType("text");
 
                     b.Property<double?>("OverallRating")
@@ -481,6 +496,9 @@ namespace Superbass.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("ProfileImage")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Province")
                         .HasColumnType("text");
 
                     b.Property<int?>("PunctualityRating")
