@@ -47,6 +47,25 @@ namespace Superbass.Controllers
             return Ok(new { message = "Profile updated successfully." });
         }
 
+        [HttpPost("{id}/verify")]
+        public async Task<IActionResult> VerifyResident(string id, [FromBody] VerifyResidentDto dto)
+        {
+            var decodedId = System.Uri.UnescapeDataString(id);
+            var success = await _repository.VerifyResidentAsync(decodedId, dto.NicNumber);
+            if (!success)
+            {
+                return BadRequest(new { message = "Failed to verify resident account." });
+            }
+
+            return Ok(new 
+            { 
+                message = "Resident account verified successfully!", 
+                isVerified = true,
+                email = decodedId,
+                nicNumber = dto.NicNumber
+            });
+        }
+
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteProfile(string id)
         {

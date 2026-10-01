@@ -333,6 +333,10 @@ namespace Superbass.Services
                 return existingWorker;
             }
 
+            var resident = await _context.Residents.FirstOrDefaultAsync(r => r.Email.ToLower() == residentEmail.ToLower());
+            var isResidentVerified = resident?.IsVerified ?? false;
+            var residentNic = resident?.NicNumber;
+
             var worker = new Worker
             {
                 ResidentEmail = residentEmail,
@@ -345,6 +349,8 @@ namespace Superbass.Services
                 HourlyRate = hourlyRate,
                 DailyRate = dailyRate,
                 IsAvailable = true,
+                IsVerified = isResidentVerified,
+                NicNumber = residentNic,
                 Skills = skills ?? new List<WorkerSkill>()
             };
 

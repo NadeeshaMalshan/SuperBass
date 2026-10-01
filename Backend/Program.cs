@@ -166,6 +166,20 @@ using (var scope = app.Services.CreateScope())
 
                 IF NOT EXISTS (
                     SELECT 1 FROM information_schema.columns 
+                    WHERE table_name='Residents' AND column_name='IsVerified'
+                ) THEN
+                    ALTER TABLE ""Residents"" ADD COLUMN ""IsVerified"" boolean NOT NULL DEFAULT false;
+                END IF;
+
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name='Residents' AND column_name='NicNumber'
+                ) THEN
+                    ALTER TABLE ""Residents"" ADD COLUMN ""NicNumber"" text NULL;
+                END IF;
+
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
                     WHERE table_name='Bookings' AND column_name='IsContactShared'
                 ) THEN
                     ALTER TABLE ""Bookings"" ADD COLUMN ""IsContactShared"" boolean NOT NULL DEFAULT false;
@@ -186,12 +200,14 @@ using (var scope = app.Services.CreateScope())
         Console.WriteLine($"Database migration status/warning: {ex.Message}");
     }
     
-    // Fallback: manually ensure ProfileImage exists since migrations are broken
+    // Fallback: manually ensure ProfileImage, IsVerified, and NicNumber exist since migrations may be partial
     try 
     {
         var context = scope.ServiceProvider.GetRequiredService<SuperbassDbContext>();
-        context.Database.ExecuteSqlRaw("ALTER TABLE \"Residents\" ADD COLUMN \"ProfileImage\" text;");
-        Console.WriteLine("Added ProfileImage column manually.");
+        context.Database.ExecuteSqlRaw("ALTER TABLE \"Residents\" ADD COLUMN IF NOT EXISTS \"ProfileImage\" text;");
+        context.Database.ExecuteSqlRaw("ALTER TABLE \"Residents\" ADD COLUMN IF NOT EXISTS \"IsVerified\" boolean NOT NULL DEFAULT false;");
+        context.Database.ExecuteSqlRaw("ALTER TABLE \"Residents\" ADD COLUMN IF NOT EXISTS \"NicNumber\" text;");
+        Console.WriteLine("Ensured ProfileImage, IsVerified, and NicNumber columns on Residents.");
     }
     catch (Exception ex)
     {
