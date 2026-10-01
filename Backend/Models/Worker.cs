@@ -18,6 +18,10 @@ namespace Superbass.Models
         public string? Description { get; set; }
         public string? PasswordHash { get; set; }
         
+        // Verification & Identity
+        public bool IsVerified { get; set; } = false;
+        public string? NicNumber { get; set; }
+        
         // Location & Service Area
         public string? PrimaryServiceArea { get; set; }
         public double? LocationLat { get; set; } //latitude
