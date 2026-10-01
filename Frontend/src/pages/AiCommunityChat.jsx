@@ -255,6 +255,9 @@ export default function AiCommunityChat() {
           extraMeta.post_images = textToSend.postData.images;
         }
       }
+      if (textToSend.bookingData) {
+        extraMeta.booking_data = textToSend.bookingData;
+      }
     } else {
       prompt = (textToSend || inputText).trim();
     }
@@ -362,6 +365,30 @@ export default function AiCommunityChat() {
         },
       };
       setMessages((prev) => [...prev, editCardMsg]);
+    } else if (actionType === 'confirm_booking') {
+      handleSendMessage(payload?.prompt || payload);
+    } else if (actionType === 'book_worker') {
+      const worker = payload || {};
+      const workerId = worker.id || worker.workerId || '44';
+      const workerName = worker.name || worker.workerName || 'Verified Technician';
+      const bookingCardMsg = {
+        id: 'asst-book-' + Date.now(),
+        sender: 'assistant',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        cardResponse: {
+          response_type: 'booking_form',
+          message: `Booking form for ${workerName} (Worker ID: ${workerId}):`,
+          card_data: {
+            workerId: workerId,
+            workerName: workerName,
+            workerAvatar: worker.profileImage || worker.avatarUrl,
+            category: worker.primaryRole || worker.category || 'General Service',
+            hourlyRate: worker.hourlyRate || worker.dailyRate || 2800,
+            location: worker.primaryServiceArea || worker.location || 'Colombo',
+          },
+        },
+      };
+      setMessages((prev) => [...prev, bookingCardMsg]);
     } else if (actionType === 'send_prompt' || actionType === 'confirm_post' || actionType === 'confirm_update' || actionType === 'cancel_post') {
       handleSendMessage(payload);
     } else if (actionType === 'view_community') {

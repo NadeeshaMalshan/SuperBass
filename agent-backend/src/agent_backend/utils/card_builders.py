@@ -29,7 +29,9 @@ from agent_backend.schemas.card_models import (
     CommunityPostSummary,
     WorkerListCard,
     WorkerSummary,
-    SpecialistConversationalOutput
+    SpecialistConversationalOutput,
+    BookingFormCard,
+    BookingConfirmedCard
 )
 
 logger = logging.getLogger("agent_backend.card_builders")
@@ -685,10 +687,65 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
             )
 
         # 8. Booking Tools
-        if tool_name in ["get_resident_bookings", "create_booking", "cancel_booking", "reschedule_booking", "check_worker_availability"]:
+        if tool_name == "create_booking":
+            booking_id = data.get("bookingId") or data.get("id") or "new"
+            worker_id = data.get("workerId") or ""
+            worker_name = data.get("workerName") or "Verified Technician"
+            job_title = data.get("jobTitle") or "Service Appointment"
+            scheduled_date = data.get("scheduledDate") or data.get("startTime") or ""
+            location_addr = data.get("locationAddress") or "Colombo"
+            contact_ph = data.get("contactPhone") or ""
+            status_val = data.get("status") or "Confirmed"
+
+            card = BookingConfirmedCard(
+                bookingId=booking_id,
+                workerId=worker_id,
+                workerName=worker_name,
+                jobTitle=job_title,
+                scheduledDate=str(scheduled_date),
+                locationAddress=location_addr,
+                contactPhone=contact_ph,
+                status=status_val
+            )
+            clean_msg = f"Your appointment with {worker_name} has been successfully scheduled! Booking #{booking_id}."
+            return AgentCardResponse(
+                response_type="booking_confirmed",
+                message=clean_msg,
+                card_data=card.model_dump(),
+                metadata={"agent": "booking_agent", "user_email": email}
+            )
+
+        if tool_name == "check_worker_availability":
+            worker_id = data.get("workerId") or ""
+            worker_name = data.get("workerName") or "Verified Technician"
+            is_avail = data.get("isSlotAvailable", data.get("isAvailable", True))
+            status_val = "Available" if is_avail else "Unavailable"
+            reason_val = data.get("reason") or ("Technician is available for this slot." if is_avail else "Technician is not available for this slot.")
+
+            card = BookingFormCard(
+                workerId=worker_id,
+                workerName=worker_name,
+                category=data.get("category", "General"),
+                hourlyRate=float(data.get("hourlyRate", 2800)),
+                location=data.get("location", "Colombo"),
+                contactPhone=data.get("contactPhone"),
+                selectedDate=data.get("requestedDate"),
+                selectedStartTime=data.get("requestedStartTime", "09:00"),
+                durationHours=int(data.get("durationHours", 2)),
+                isAvailable=is_avail,
+                availabilityStatus=status_val,
+                availabilityReason=reason_val
+            )
+            clean_msg = f"{worker_name} is {status_val.lower()} for your requested time slot."
+            return AgentCardResponse(
+                response_type="booking_form",
+                message=clean_msg,
+                card_data=card.model_dump(),
+                metadata={"agent": "booking_agent", "user_email": email}
+            )
+
+        if tool_name in ["get_resident_bookings", "cancel_booking", "reschedule_booking"]:
             suggestions = ["Book a technician", "View upcoming bookings", "Cancel a booking"]
-            if tool_name == "create_booking":
-                suggestions = ["View booking details", "Browse community feed"]
             msg = last_ai_content
             if not msg:
                 booking_id = data.get("bookingId") or data.get("id") or ""
@@ -696,8 +753,6 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                     msg = f"Booking #{booking_id} has been successfully rescheduled." if booking_id else "Booking has been rescheduled."
                 elif tool_name == "cancel_booking":
                     msg = f"Booking #{booking_id} has been cancelled." if booking_id else "Booking has been cancelled."
-                elif tool_name == "create_booking":
-                    msg = f"Booking #{booking_id} has been confirmed." if booking_id else "Your booking has been confirmed."
                 else:
                     msg = f"Booking action {tool_name} completed."
             card = TextMessageCard(
@@ -740,6 +795,146 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
     # 2. CONVERSATIONAL / DRAFTING TURNS (No tool executed in this current turn)
     # =========================================================================
     lower_content = last_ai_content.lower()
+
+    # -------------------------------------------------------------------------
+    # 0. BOOKING FORM INTENT (e.g. user asks to book a worker / technician)
+    # -------------------------------------------------------------------------
+    user_query = ""
+    for msg in reversed(messages):
+        if getattr(msg, "type", "") in ("human", "user"):
+            user_query = extract_text_content(getattr(msg, "content", ""))
+            break
+
+    user_query_lower = user_query.lower()
+    last_ai_lower = last_ai_content.lower()
+
+    # Detect booking intent keywords
+    has_book_kw = any(w in user_query_lower for w in [
+        "book", "booking", "hire", "reserve", "appointment", "schedule a service", "schedule with"
+    ]) or any(w in last_ai_lower for w in [
+        "help book", "booking for", "schedule an appointment", "book bandara", "book worker", "prefer? i'll check", "start time would you prefer", "what date and start time"
+    ])
+
+    # Extract worker ID from user query or AI response
+    extracted_worker_id = None
+    w_id_m = re.search(r'(?:worker\s*id|worker\s*#|worker)\s*[:#]?\s*(\d+)', user_query, re.IGNORECASE)
+    if not w_id_m:
+        w_id_m = re.search(r'\(?(?:ID|Worker ID)\s*[:#]?\s*(\d+)\)?', user_query, re.IGNORECASE)
+    if not w_id_m:
+        w_id_m = re.search(r'(?:worker\s*id|worker\s*#|worker)\s*[:#]?\s*(\d+)', last_ai_content, re.IGNORECASE)
+    if not w_id_m:
+        w_id_m = re.search(r'\(?(?:ID|Worker ID)\s*[:#]?\s*(\d+)\)?', last_ai_content, re.IGNORECASE)
+
+    if w_id_m:
+        extracted_worker_id = w_id_m.group(1)
+
+    # Extract worker name from user query or AI response
+    extracted_worker_name = None
+    name_m = re.search(r'(?:book|hire|with)\s+([A-Z][a-zA-Z\s]+?)(?:\s*\(|\s*,\s*worker|\s+for\s+|\s+on\s+|\s*$)', user_query)
+    if name_m:
+        cand = name_m.group(1).strip()
+        if cand and len(cand) > 2 and cand.lower() not in ["a worker", "a technician", "someone", "worker", "the worker"]:
+            extracted_worker_name = cand
+
+    if not extracted_worker_name:
+        name_m_ai = re.search(r'(?:help book|booking with|book)\s+([A-Z][a-zA-Z\s]+?)(?:\s*\(|\s+on\s+|\s*\.|\s*,)', last_ai_content)
+        if name_m_ai:
+            cand = name_m_ai.group(1).strip()
+            if cand and len(cand) > 2 and cand.lower() not in ["a worker", "a technician", "someone", "worker", "the worker"]:
+                extracted_worker_name = cand
+
+    is_booking_flow = has_book_kw and (extracted_worker_id is not None or extracted_worker_name is not None or metadata.get("agent") == "booking_agent")
+
+    if is_booking_flow and (extracted_worker_id or extracted_worker_name):
+        worker_id_val = extracted_worker_id or "44"
+        worker_name_val = extracted_worker_name or f"Technician #{worker_id_val}"
+        hourly_rate_val = 2800.0
+        worker_cat_val = metadata.get("inferred_category") or "General Service"
+        worker_avatar_val = None
+        worker_location_val = "Colombo"
+
+        # Search prior messages for worker metadata (from search_workers or get_worker_details)
+        for prev_msg in reversed(messages):
+            if getattr(prev_msg, "type", "") == "tool" or isinstance(prev_msg, ToolMessage):
+                content_val = getattr(prev_msg, "content", "")
+                data_val = {}
+                if isinstance(content_val, str):
+                    try:
+                        data_val = json.loads(content_val)
+                    except Exception:
+                        continue
+                elif isinstance(content_val, dict):
+                    data_val = content_val
+
+                cand_workers = []
+                if isinstance(data_val, list):
+                    cand_workers = data_val
+                elif isinstance(data_val, dict):
+                    w_items = data_val.get("workers") or data_val.get("items") or data_val.get("value")
+                    if isinstance(w_items, list):
+                        cand_workers = w_items
+                    elif data_val.get("id") or data_val.get("name"):
+                        cand_workers = [data_val]
+
+                for cw in cand_workers:
+                    if not isinstance(cw, dict):
+                        continue
+                    cw_id = str(cw.get("id") or "")
+                    cw_name = str(cw.get("name") or "")
+                    matched = False
+                    if extracted_worker_id and cw_id == str(extracted_worker_id):
+                        matched = True
+                    elif extracted_worker_name and extracted_worker_name.lower() in cw_name.lower():
+                        matched = True
+
+                    if matched:
+                        worker_id_val = cw_id or worker_id_val
+                        worker_name_val = cw_name or worker_name_val
+                        if cw.get("hourlyRate"):
+                            try:
+                                hourly_rate_val = float(cw["hourlyRate"])
+                            except Exception:
+                                pass
+                        worker_cat_val = cw.get("primaryRole") or cw.get("category") or worker_cat_val
+                        worker_avatar_val = cw.get("avatarUrl") or cw.get("profileImage") or cw.get("profilePicture")
+                        worker_location_val = cw.get("primaryServiceArea") or cw.get("location") or worker_location_val
+                        break
+
+                if worker_avatar_val or (worker_id_val and worker_name_val != f"Technician #{worker_id_val}"):
+                    break
+
+        user_loc_default = metadata.get("location") or user_profile.get("address") or worker_location_val or "Colombo"
+        user_phone_default = user_profile.get("phoneNo") or "0771234567"
+
+        from datetime import datetime, timedelta
+        tomorrow_str = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+
+        booking_card = BookingFormCard(
+            workerId=worker_id_val,
+            workerName=worker_name_val,
+            workerAvatar=worker_avatar_val,
+            category=worker_cat_val,
+            hourlyRate=hourly_rate_val,
+            location=user_loc_default,
+            contactPhone=user_phone_default,
+            selectedDate=tomorrow_str,
+            selectedStartTime="09:00",
+            durationHours=2,
+            jobTitle=f"{worker_cat_val} Service Request",
+            notes="",
+            isAvailable=True,
+            availabilityStatus="Available",
+            availabilityReason=f"{worker_name_val} is available for booking."
+        )
+
+        clean_msg = f"I've prepared the booking form for {worker_name_val} (Worker ID: {worker_id_val}). Please check the availability and customize your appointment details below:"
+
+        return AgentCardResponse(
+            response_type="booking_form",
+            message=clean_msg,
+            card_data=booking_card.model_dump(),
+            metadata={"agent": "booking_agent", "user_email": email, "workerId": worker_id_val}
+        )
 
     # A. Check if the agent prepared a draft community post awaiting confirmation
     is_choice_turn = any(kw in lower_content for kw in [
