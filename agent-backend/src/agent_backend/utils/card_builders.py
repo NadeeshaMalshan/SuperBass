@@ -53,6 +53,50 @@ def _normalize_skills(raw: Any) -> List[str]:
     return result
 
 
+def generate_issue_title(raw_title: Optional[str] = None, issue_text: str = "", category: str = "", content: str = "") -> str:
+    """
+    Ensures community post title is always specific to the actual issue/problem,
+    and never generic like 'Community Service Request'.
+    """
+    generic_titles = [
+        "community service request", "service request", "community post", "draft post",
+        "draft community post", "post title", "title", "<title>", "<pre-filled title>",
+        "n/a", "new post", "help needed", "general request", "general service request"
+    ]
+    if raw_title:
+        clean = re.sub(r'^(?:[\*\#\-\s•]*title[\*\s]*[:\-]\s*)', '', raw_title.strip(), flags=re.IGNORECASE)
+        clean = clean.strip().strip("*#\"'").strip()
+        if clean and clean.lower() not in generic_titles and len(clean) >= 3:
+            return clean
+
+    candidate_text = issue_text or content or ""
+    # Strip conversational request/post prefixes
+    cleaned = re.sub(
+        r'^(?:i want to|i need to|please|can you|help me to|help me)?\s*(?:create|make|post|publish)\s+(?:a\s+)?(?:community\s+)?(?:post)?\s*[:\-]?\s*',
+        '',
+        candidate_text.strip(),
+        flags=re.IGNORECASE
+    ).strip()
+    cleaned = re.sub(
+        r'^(?:i have a problem with|i have an issue with|there is an issue with|my|i need help with|i need to repair|i need someone to|please help me with|can you help me with|i want to fix|fix my|repair my|i need|help me|please)\s+',
+        '',
+        cleaned,
+        flags=re.IGNORECASE
+    ).strip()
+
+    first_clause = re.split(r'[\.\n\r;!?]', cleaned)[0].strip()
+    first_clause = re.sub(r'\s+(?:in|at|near)\s+(?:colombo|kandy|galle|my area|my house|my home|my place|my room|home)$', '', first_clause, flags=re.IGNORECASE).strip()
+
+    if first_clause and len(first_clause) >= 4 and len(first_clause) <= 60:
+        words = first_clause.split()
+        title_cased = ' '.join([w.capitalize() if not w.isupper() else w for w in words])
+        return title_cased
+
+    if category and category.lower() != 'general':
+        return f"{category} Repair & Service Request"
+    return "Home Maintenance Service Request"
+
+
 def _clean_card_intro_message(raw_msg: str, default_intro: str, card_type: str = "card") -> str:
     """
     Strips raw field headers and empty bracket tokens from conversational bubbles
@@ -613,12 +657,31 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
     ))
 
     if is_draft:
-        draft_title = "Community Service Request"
+        draft_title = ""
         draft_category = metadata.get("inferred_category") or "General"
         draft_location = "Colombo"
         draft_content = ""
 
-        # Extract structured fields if present in output
+        # 1. Regex search on full text for structured draft fields (handles markdown bolding, bullets, and casing)
+        title_m = re.search(r'(?:^|[•\*\-\#\d\.\s])(?:title)\s*[\*]*\s*[:\-]\s*([^\n\r•]+)', last_ai_content, re.IGNORECASE)
+        if title_m:
+            draft_title = title_m.group(1).strip().strip("*#\"'").strip()
+
+        cat_m = re.search(r'(?:^|[•\*\-\#\d\.\s])(?:category|service)\s*[\*]*\s*[:\-]\s*([^\n\r•]+)', last_ai_content, re.IGNORECASE)
+        if cat_m:
+            cat_val = cat_m.group(1).strip().strip("*#\"'").strip()
+            if cat_val and cat_val.lower() != "general":
+                draft_category = cat_val
+
+        loc_m = re.search(r'(?:^|[•\*\-\#\d\.\s])(?:location|city)\s*[\*]*\s*[:\-]\s*([^\n\r•]+)', last_ai_content, re.IGNORECASE)
+        if loc_m:
+            draft_location = loc_m.group(1).strip().strip("*#\"'").strip()
+
+        desc_m = re.search(r'(?:^|[•\*\-\#\d\.\s])(?:content|description)\s*[\*]*\s*[:\-]\s*([^\n\r•]+)', last_ai_content, re.IGNORECASE)
+        if desc_m:
+            draft_content = desc_m.group(1).strip().strip("*#\"'").strip()
+
+        # 2. Line-by-line fallback parsing if any field was missed
         chunks = []
         for c in last_ai_content.splitlines():
             if "•" in c:
@@ -629,24 +692,24 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
         for line in chunks:
             line_str = line.strip().lstrip("•-* \t").strip()
             line_lower = line_str.lower()
-            if line_lower.startswith("title:") or ("title:" in line_lower and "category:" not in line_lower):
+            if not draft_title and (line_lower.startswith("title:") or ("title:" in line_lower and "category:" not in line_lower)):
                 parts = line_str.split(":", 1)
                 if len(parts) > 1:
-                    draft_title = parts[1].strip().strip("*").strip()
-            elif "category:" in line_lower and "title:" not in line_lower:
+                    draft_title = parts[1].strip().strip("*#\"'").strip()
+            elif (not draft_category or draft_category == "General") and ("category:" in line_lower and "title:" not in line_lower):
                 parts = line_str.split(":", 1)
                 if len(parts) > 1:
-                    cat_val = parts[1].strip().strip("*").strip()
+                    cat_val = parts[1].strip().strip("*#\"'").strip()
                     if cat_val and cat_val.lower() != "general":
                         draft_category = cat_val
-            elif (line_lower.startswith("location:") or "location:" in line_lower) and "title:" not in line_lower:
+            elif (not draft_location or draft_location == "Colombo") and ((line_lower.startswith("location:") or "location:" in line_lower) and "title:" not in line_lower):
                 parts = line_str.split(":", 1)
                 if len(parts) > 1:
-                    draft_location = parts[1].strip().strip("*").strip()
-            elif line_lower.startswith("content:") or line_lower.startswith("description:"):
+                    draft_location = parts[1].strip().strip("*#\"'").strip()
+            elif not draft_content and (line_lower.startswith("content:") or line_lower.startswith("description:")):
                 parts = line_str.split(":", 1)
                 if len(parts) > 1:
-                    draft_content = parts[1].strip().strip("*").strip()
+                    draft_content = parts[1].strip().strip("*#\"'").strip()
 
         # Clean trailing questions or instructions from draft_content
         for trail in [
@@ -657,24 +720,50 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                 idx = draft_content.lower().find(trail)
                 draft_content = draft_content[:idx].strip().rstrip(". ")
 
+        # Locate the original user issue/problem text from conversation history
+        user_problem_txt = ""
+        for msg in reversed(messages):
+            if getattr(msg, "type", "") in ("human", "user"):
+                content_str = extract_text_content(getattr(msg, "content", ""))
+                clean_msg_lower = content_str.strip().lower()
+                if clean_msg_lower in ["confirm", "publish", "confirm_publish", "yes", "proceed", "1", "2"]:
+                    continue
+                if clean_msg_lower.startswith("confirm_publish:"):
+                    continue
+                if len(content_str) > 5:
+                    user_problem_txt = content_str
+                    break
+
+        if not draft_category or draft_category.lower() == "general":
+            if metadata.get("inferred_category"):
+                draft_category = metadata["inferred_category"]
+
+        user_loc_default = metadata.get("location") or user_profile.get("address") or "Colombo"
+        if not draft_location or draft_location.lower() in ["your location", "location", "n/a", "unknown", "none", "{location}"]:
+            draft_location = user_loc_default
+
+        # ALWAYS ensure title is specific to the actual issue, never generic
+        draft_title = generate_issue_title(
+            raw_title=draft_title,
+            issue_text=user_problem_txt,
+            category=draft_category,
+            content=draft_content
+        )
+
         # Ensure draft content is articulate, detailed, and never conversational meta-speech
         is_bad_content = not draft_content or any(p in draft_content.lower() for p in [
             "here is your draft", "draft community post", "review the details", "draft card", "you can edit them", "confirm to publish"
         ])
         if is_bad_content or len(draft_content) < 30:
-            user_problem_txt = ""
-            for msg in reversed(messages):
-                if getattr(msg, "type", "") in ("human", "user"):
-                    content_str = extract_text_content(getattr(msg, "content", ""))
-                    if len(content_str) > 8 and not any(kw in content_str.lower() for kw in [
-                        "confirm", "publish", "create a post", "post on community", "1", "2"
-                    ]):
-                        user_problem_txt = content_str
-                        break
-
             target_issue = user_problem_txt or draft_content or draft_title
             target_issue = re.sub(
-                r'^(?:i need|i want|please|can you|help me)\s+(?:to\s+)?(?:create|make|post|publish)?\s*(?:a\s+)?(?:community\s+)?(?:post\s+)?(?:for|about|to)?\s*',
+                r'^(?:i want to|i need to|please|can you|help me to|help me)?\s*(?:create|make|post|publish)\s+(?:a\s+)?(?:community\s+)?(?:post)?\s*[:\-]?\s*',
+                '',
+                target_issue,
+                flags=re.IGNORECASE
+            ).strip()
+            target_issue = re.sub(
+                r'^(?:i have a problem with|i have an issue with|there is an issue with|my|i need help with|i need to repair|i need someone to|please help me with|can you help me with|i want to fix|fix my|repair my|i need|help me|please)\s+',
                 '',
                 target_issue,
                 flags=re.IGNORECASE
