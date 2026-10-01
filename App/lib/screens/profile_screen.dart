@@ -22,10 +22,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       valueListenable: AuthService().currentUserNotifier,
       builder: (context, user, child) {
         if (user == null) {
-          // If the session hasn't loaded yet
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
+          return const JoinScreen();
         }
 
         return Scaffold(

@@ -357,8 +357,10 @@ class _FindTabScreenState extends State<FindTabScreen> {
   Future<void> _loadInitialLocation() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      final isManual = prefs.getBool('is_manual_location') ?? false;
       final saved = prefs.getString('selected_find_location');
-      if (saved != null && saved.isNotEmpty) {
+
+      if (isManual && saved != null && saved.isNotEmpty) {
         if (mounted) {
           setState(() {
             _selectedCity = saved;
@@ -368,7 +370,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
       } else {
         // Default must be taken from GPS
         final gpsCity = await LocationService.detectGpsCity();
-        final cityToUse = (gpsCity != null && gpsCity.isNotEmpty) ? gpsCity : 'Colombo';
+        final cityToUse = (gpsCity != null && gpsCity.isNotEmpty) ? gpsCity : (saved ?? 'Colombo');
         if (mounted) {
           setState(() {
             _selectedCity = cityToUse;
@@ -437,11 +439,12 @@ class _FindTabScreenState extends State<FindTabScreen> {
     }
   }
 
-  void _updateCity(String newCity) {
+  void _updateCity(String newCity, {bool isManual = true}) {
     setState(() {
       _selectedCity = newCity;
     });
     LocationService.setSelectedCity(newCity);
+    SharedPreferences.getInstance().then((prefs) => prefs.setBool('is_manual_location', isManual));
     _fetchWorkers();
   }
 
@@ -578,14 +581,14 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                 try {
                                   final city = await LocationService.detectGpsCity();
                                   if (mounted && city != null && city.isNotEmpty) {
-                                    _updateCity(city);
+                                    _updateCity(city, isManual: false);
                                     if (ctx.mounted) Navigator.pop(ctx);
                                   } else {
                                     setModalState(() => isDetecting = false);
                                     if (mounted) {
                                       ScaffoldMessenger.of(context).showSnackBar(
                                         const SnackBar(
-                                          content: Text('Could not detect GPS location. Please select your city below.'),
+                                          content: Text('Could not detect GPS location. Please check location permissions in settings.'),
                                         ),
                                       );
                                     }
@@ -2218,86 +2221,29 @@ class _FindTabScreenState extends State<FindTabScreen> {
     return Scaffold(
       appBar: AppBar(
         actions: [
-          NotificationBellButton(
-            onNotificationTap: (n) {
-              if (n.type == NotificationType.chat && n.referenceId != null) {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => ChatScreen(
-                      conversationId: n.referenceId!,
-                      name: n.metadata?['name']?.toString() ?? 'Conversation',
-                      profileImage: n.metadata?['profileImage']?.toString(),
-                    ),
-                  ),
-                );
-              } else if (n.type == NotificationType.communityLike || n.type == NotificationType.communityComment) {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const Scaffold(
-                      body: SafeArea(child: CommunityScreen()),
-                    ),
-                  ),
-                );
-              }
-            },
-          ),
           Padding(
-            padding: const EdgeInsets.only(right: 16.0, left: 4.0),
-            child: ValueListenableBuilder<AuthUser?>(
-              valueListenable: AuthService().currentUserNotifier,
-              builder: (context, user, _) {
-                final displayName = user?.name.isNotEmpty == true
-                    ? user!.name
-                    : 'User';
-                final initial = displayName.isNotEmpty
-                    ? displayName[0].toUpperCase()
-                    : 'U';
-                return InkWell(
-                  borderRadius: BorderRadius.circular(18),
-                  onTap: () {
-                    if (user == null) {
-                      Navigator.pushNamed(context, '/join');
-                    }
-                  },
-                  child: Container(
-                    width: 36,
-                    height: 36,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.primaryContainer,
+            padding: const EdgeInsets.only(right: 8.0),
+            child: NotificationBellButton(
+              onNotificationTap: (n) {
+                if (n.type == NotificationType.chat && n.referenceId != null) {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => ChatScreen(
+                        conversationId: n.referenceId!,
+                        name: n.metadata?['name']?.toString() ?? 'Conversation',
+                        profileImage: n.metadata?['profileImage']?.toString(),
+                      ),
                     ),
-                    child: ClipOval(
-                      child:
-                          (user?.picture != null && user!.picture!.isNotEmpty)
-                          ? Image.network(
-                              user.picture!,
-                              width: 36,
-                              height: 36,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, _, _) => Center(
-                                child: Text(
-                                  initial,
-                                  style: GoogleFonts.dmSans(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 14,
-                                    color: AppColors.onPrimaryContainer,
-                                  ),
-                                ),
-                              ),
-                            )
-                          : Center(
-                              child: Text(
-                                initial,
-                                style: GoogleFonts.dmSans(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 14,
-                                  color: AppColors.onPrimaryContainer,
-                                ),
-                              ),
-                            ),
+                  );
+                } else if (n.type == NotificationType.communityLike || n.type == NotificationType.communityComment) {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const Scaffold(
+                        body: SafeArea(child: CommunityScreen()),
+                      ),
                     ),
-                  ),
-                );
+                  );
+                }
               },
             ),
           ),

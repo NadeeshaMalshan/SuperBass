@@ -114,6 +114,8 @@ class _WorkerPortalScreenState extends State<WorkerPortalScreen> {
     final pages = [
       WorkerDashboardScreen(
         worker: _worker,
+        isOnline: _isOnline,
+        onToggleOnline: _toggleAvailability,
         onNavigateTab: (index) => setState(() => _currentIndex = index),
       ),
       const WorkerJobsScreen(),
@@ -224,59 +226,7 @@ class _WorkerPortalScreenState extends State<WorkerPortalScreen> {
               ),
             ),
           ),
-          const SizedBox(width: 8),
-
-          // Account Log Out button
-          IconButton(
-            onPressed: () async {
-              final confirm = await showDialog<bool>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: Text(
-                    'Log Out',
-                    style: GoogleFonts.dmSans(
-                      fontWeight: FontWeight.w800,
-                      color: WorkerColors.onSurface,
-                    ),
-                  ),
-                  content: Text(
-                    'Are you sure you want to log out of SuperBass?',
-                    style: GoogleFonts.dmSans(fontSize: 14),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(ctx).pop(false),
-                      child: Text(
-                        'Cancel',
-                        style: GoogleFonts.dmSans(color: WorkerColors.onSurfaceVariant),
-                      ),
-                    ),
-                    ElevatedButton(
-                      onPressed: () => Navigator.of(ctx).pop(true),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: WorkerColors.error,
-                        foregroundColor: Colors.white,
-                      ),
-                      child: Text(
-                        'Log Out',
-                        style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-
-              if (confirm == true) {
-                await AuthService().logout();
-                if (context.mounted) {
-                  Navigator.of(context).pushNamedAndRemoveUntil('/join', (route) => false);
-                }
-              }
-            },
-            tooltip: 'Log Out',
-            icon: const Icon(Icons.logout_rounded, color: WorkerColors.onSurfaceVariant, size: 20),
-          ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 16),
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
