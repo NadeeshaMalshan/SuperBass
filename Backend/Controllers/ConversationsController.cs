@@ -1,12 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using Superbass.Models;
 using Superbass.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -26,19 +28,22 @@ namespace Superbass.Controllers
         private readonly IWebHostEnvironment _environment;
         private readonly IPushNotificationService _pushNotificationService;
         private readonly IConfiguration _configuration;
+        private readonly SuperbassDbContext _context;
 
         public ConversationsController(
             ICommunicationRepository communicationRepo,
             IHubContext<ChatHub> hubContext,
             IWebHostEnvironment environment,
             IPushNotificationService pushNotificationService,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            SuperbassDbContext context)
         {
             _communicationRepo = communicationRepo;
             _hubContext = hubContext;
             _environment = environment;
             _pushNotificationService = pushNotificationService;
             _configuration = configuration;
+            _context = context;
         }
 
         private string? GetCurrentUserEmail()
@@ -46,7 +51,31 @@ namespace Superbass.Controllers
             var email = User.FindFirstValue(ClaimTypes.Email) 
                      ?? User.FindFirstValue("email") 
                      ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-            return email;
+            if (!string.IsNullOrEmpty(email)) return email;
+
+            var authHeader = Request.Headers["Authorization"].FirstOrDefault();
+            if (authHeader != null && authHeader.StartsWith("Bearer "))
+            {
+                var token = authHeader.Substring("Bearer ".Length).Trim();
+                var tokenHandler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+                var key = System.Text.Encoding.ASCII.GetBytes(_configuration["Authentication:Jwt:Secret"] ?? "super_secret_key_that_must_be_long_enough_12345");
+                try
+                {
+                    tokenHandler.ValidateToken(token, new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+                    {
+                        ValidateIssuerSigningKey = true,
+                        IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(key),
+                        ValidateIssuer = false,
+                        ValidateAudience = false,
+                        ClockSkew = TimeSpan.Zero
+                    }, out Microsoft.IdentityModel.Tokens.SecurityToken validatedToken);
+
+                    var jwtToken = (System.IdentityModel.Tokens.Jwt.JwtSecurityToken)validatedToken;
+                    return jwtToken.Claims.FirstOrDefault(x => x.Type == ClaimTypes.Email || x.Type == "email" || x.Type == "sub")?.Value;
+                }
+                catch { }
+            }
+            return null;
         }
 
         // GET: /api/conversations?userEmail=test@example.com or ?email=test@example.com
@@ -164,6 +193,132 @@ namespace Superbass.Controllers
             {
                 return NotFound(new { message = ex.Message });
             }
+        }
+
+        // POST: /api/conversations/5/share-contact
+        // Secure worker contact-sharing: only verified phone already in DB, only by assigned worker, only for valid booking.
+        [HttpPost("{id:int}/share-contact")]
+        public async Task<IActionResult> ShareContact(int id)
+        {
+            var requesterEmail = GetCurrentUserEmail();
+            if (string.IsNullOrWhiteSpace(requesterEmail))
+            {
+                return Unauthorized(new { message = "You must be logged in to share contact details." });
+            }
+
+            var cleanRequester = requesterEmail.Trim().ToLower();
+
+            var conv = await _context.Conversations
+                .Include(c => c.Worker)
+                .Include(c => c.Resident)
+                .FirstOrDefaultAsync(c => c.Id == id);
+
+            if (conv == null)
+            {
+                return NotFound(new { message = "Conversation not found." });
+            }
+
+            // 1. Only allow the correct worker
+            var isCorrectWorker = conv.Worker != null && (
+                string.Equals(conv.Worker.Email?.Trim().ToLower(), cleanRequester, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(conv.Worker.ResidentEmail?.Trim().ToLower(), cleanRequester, StringComparison.OrdinalIgnoreCase)
+            );
+
+            if (!isCorrectWorker)
+            {
+                return StatusCode(403, new { message = "Only the assigned worker for this conversation can share contact details." });
+            }
+
+            // 2. Validate valid booking
+            Booking? booking = null;
+            if (conv.BookingId.HasValue)
+            {
+                booking = await _context.Bookings.FirstOrDefaultAsync(b => b.Id == conv.BookingId.Value);
+            }
+
+            if (booking == null)
+            {
+                booking = await _context.Bookings
+                    .Where(b => b.WorkerId == conv.WorkerId && b.ResidentEmail.ToLower() == conv.ResidentEmail.ToLower())
+                    .OrderByDescending(b => b.CreatedAt)
+                    .FirstOrDefaultAsync();
+            }
+
+            if (booking == null)
+            {
+                return BadRequest(new { message = "No booking exists between this worker and resident." });
+            }
+
+            var allowedStatuses = new[] { "Confirmed", "InProgress", "Completed" };
+            if (!allowedStatuses.Contains(booking.Status))
+            {
+                return BadRequest(new { message = $"Contact can only be shared after the booking is accepted. Current status: '{booking.Status}'." });
+            }
+
+            // 3. Get the worker's verified phone number stored in the system (cannot be manually entered or modified)
+            var worker = await _context.Workers.FirstOrDefaultAsync(w => w.Id == conv.WorkerId);
+            if (worker == null || string.IsNullOrWhiteSpace(worker.PhoneNo))
+            {
+                return BadRequest(new { message = "No verified phone number found on your worker profile. Please update your profile with a valid phone number first." });
+            }
+
+            var verifiedPhone = worker.PhoneNo.Trim();
+
+            // Mark booking contact shared
+            booking.IsContactShared = true;
+            await _context.SaveChangesAsync();
+
+            // 4. Construct Worker Contact Card message payload
+            var cardPayload = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                type = "WorkerContactCard",
+                workerId = worker.Id,
+                workerName = worker.Name,
+                phoneNo = verifiedPhone,
+                service = worker.PrimaryServiceArea,
+                avatar = worker.ProfileImage,
+                bookingId = booking.Id,
+                jobTitle = booking.JobTitle,
+                sharedAt = DateTime.UtcNow
+            });
+
+            var msgRequest = new SendMessageRequest
+            {
+                SenderEmail = requesterEmail,
+                SenderRole = "Worker",
+                ReceiverEmail = conv.ResidentEmail,
+                ReceiverRole = "Resident",
+                MessageType = "ContactCard",
+                Content = cardPayload
+            };
+
+            var messageDto = await _communicationRepo.SendMessageAsync(id, requesterEmail, "Worker", msgRequest);
+
+            // 5. Broadcast live via SignalR to conversation room
+            var groupName = $"conversation_{id}";
+            await _hubContext.Clients.Group(groupName).SendAsync("ReceiveMessage", messageDto);
+
+            // 6. Send push notification to resident
+            if (!string.IsNullOrWhiteSpace(conv.ResidentEmail))
+            {
+                _ = _pushNotificationService.SendPushNotificationAsync(
+                    recipientEmail: conv.ResidentEmail,
+                    title: "Worker Contact Shared 📞",
+                    message: $"{worker.Name} has shared their verified phone number with you in chat.",
+                    data: new Dictionary<string, string>
+                    {
+                        { "conversationId", id.ToString() },
+                        { "type", "contact_card" },
+                        { "bookingId", booking.Id.ToString() }
+                    }
+                );
+            }
+
+            return Ok(new
+            {
+                message = "Worker contact card shared successfully.",
+                chatMessage = messageDto
+            });
         }
 
         // PUT/POST: /api/conversations/5/read

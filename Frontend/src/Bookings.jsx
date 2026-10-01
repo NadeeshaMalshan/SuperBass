@@ -229,11 +229,22 @@ export default function Bookings() {
 
   const handleAction = async (bookingId, action) => {
     try {
-      await axios.post(`${API_BASE_URL}/bookings/${bookingId}/${action}`, {}, {
+      const res = await axios.post(`${API_BASE_URL}/bookings/${bookingId}/${action}`, {}, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       showToast(`Booking ${action}ed successfully!`);
       fetchBookings(); // Refresh list after action
+
+      if (action === 'accept') {
+        const convId = res.data?.conversationId;
+        if (convId) {
+          window.history.pushState({}, '', `/chats?conversationId=${convId}&bookingId=${bookingId}`);
+          window.dispatchEvent(new PopStateEvent('popstate'));
+        } else {
+          window.history.pushState({}, '', `/chats?bookingId=${bookingId}`);
+          window.dispatchEvent(new PopStateEvent('popstate'));
+        }
+      }
     } catch (err) {
       console.error(`Error performing action ${action}:`, err);
       const msg = err.response?.data?.message || `Failed to ${action} booking.`;
@@ -522,7 +533,7 @@ export default function Bookings() {
         </aside>
 
         <main className="bookings-main">
-          <div className="bookings-main-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '16px', paddingTop: '24px' }}>
+          <div className="bookings-main-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '16px' }}>
             <div style={{ textAlign: 'left' }}>
               <h1 className="bookings-title" style={{ textAlign: 'left', margin: '0 0 8px 0' }}>My Bookings ({activeRole})</h1>
               <p className="bookings-subtitle" style={{ textAlign: 'left', margin: 0 }}>
@@ -686,7 +697,7 @@ export default function Bookings() {
                       </div>
                       <div className="booking-details-phone">
                         <md-icon style={{ fontSize: '14px', color: '#000000' }}>call</md-icon>
-                        {activeRole === 'Resident' ? booking.workerPhone || 'N/A' : booking.residentPhone || booking.contactPhone}
+                        {activeRole === 'Resident' ? (booking.workerPhone || (booking.isContactShared ? 'Shared in chat' : 'Private • Shared in chat')) : (booking.residentPhone || booking.contactPhone)}
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
@@ -1031,7 +1042,7 @@ export default function Bookings() {
                       <div style={{ fontWeight: 700, color: '#000000', fontSize: '1rem', marginTop: '2px' }}>{activeRole === 'Resident' ? selectedViewBooking.workerName : selectedViewBooking.residentName}</div>
                       <div style={{ fontSize: '0.85rem', color: '#71717a', marginTop: '4px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                         <md-icon style={{ fontSize: '14px', color: '#000000' }}>call</md-icon>
-                        {activeRole === 'Resident' ? selectedViewBooking.workerPhone || 'N/A' : selectedViewBooking.residentPhone || selectedViewBooking.contactPhone}
+                        {activeRole === 'Resident' ? (selectedViewBooking.workerPhone || (selectedViewBooking.isContactShared ? 'Shared in chat' : 'Private • Shared in chat')) : (selectedViewBooking.residentPhone || selectedViewBooking.contactPhone)}
                       </div>
                     </div>
                     <div>

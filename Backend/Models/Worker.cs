@@ -24,6 +24,8 @@ namespace Superbass.Models
         
         // Location & Service Area
         public string? PrimaryServiceArea { get; set; }
+        public string? Province { get; set; }
+        public string? District { get; set; }
         public double? LocationLat { get; set; } //latitude
         public double? LocationLng { get; set; } //longitude
         public double CoverageRadiusKm { get; set; } = 10.0; //coverage radius in kilometers

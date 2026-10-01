@@ -135,6 +135,47 @@ using (var scope = app.Services.CreateScope())
                 ) THEN
                     ALTER TABLE ""Workers"" ADD COLUMN ""NicNumber"" text NULL;
                 END IF;
+
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name='Workers' AND column_name='Province'
+                ) THEN
+                    ALTER TABLE ""Workers"" ADD COLUMN ""Province"" text NULL;
+                END IF;
+
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name='Workers' AND column_name='District'
+                ) THEN
+                    ALTER TABLE ""Workers"" ADD COLUMN ""District"" text NULL;
+                END IF;
+
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name='Residents' AND column_name='Province'
+                ) THEN
+                    ALTER TABLE ""Residents"" ADD COLUMN ""Province"" text NULL;
+                END IF;
+
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name='Residents' AND column_name='District'
+                ) THEN
+                    ALTER TABLE ""Residents"" ADD COLUMN ""District"" text NULL;
+                END IF;
+
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name='Bookings' AND column_name='IsContactShared'
+                ) THEN
+                    ALTER TABLE ""Bookings"" ADD COLUMN ""IsContactShared"" boolean NOT NULL DEFAULT false;
+                END IF;
+
+                -- Backfill existing workers with District & Province based on their service area
+                UPDATE ""Workers""
+                SET ""District"" = 'Colombo', ""Province"" = 'Western Province'
+                WHERE (""District"" IS NULL OR ""Province"" IS NULL)
+                  AND (""PrimaryServiceArea"" ILIKE '%colombo%' OR ""PrimaryServiceArea"" ILIKE '%homagama%');
             END $$;
         ");
 

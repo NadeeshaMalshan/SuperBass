@@ -10,6 +10,8 @@ namespace Superbass.Models
         public string? PasswordHash { get; set; }
         public string? PhoneNo { get; set; }
         public string? Address { get; set; }
+        public string? Province { get; set; }
+        public string? District { get; set; }
         public double? LocationLat { get; set; }
         public double? LocationLng { get; set; }
         public string? ProfileImage { get; set; }

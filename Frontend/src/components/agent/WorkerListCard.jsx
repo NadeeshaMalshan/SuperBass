@@ -62,12 +62,11 @@ export default function WorkerListCard({ data = {}, onAction }) {
         {workers.map((worker) => {
           const isFav = !!favorites[worker.id];
           const initial = (worker.name || 'W')[0].toUpperCase();
-          const rating = worker.overallRating ? Number(worker.overallRating).toFixed(1) : '5.0';
-          const reviewCount = worker.reviewCount || (worker.completedJobs ? worker.completedJobs * 2 : 24);
-          const completedJobsCount = worker.completedJobs ? `${worker.completedJobs}+ jobs` : '10+ jobs';
+          const rating = worker.overallRating ? Number(worker.overallRating).toFixed(1) : null;
+          const completedJobsCount = worker.completedJobs ? `${worker.completedJobs} jobs` : 'New Pro';
 
-          const rateNum = worker.hourlyRate || worker.dailyRate || 2800;
-          const rateUnit = worker.hourlyRate ? '/ hour' : (worker.dailyRate ? '/ day' : '/ hour');
+          const rateNum = worker.hourlyRate || worker.dailyRate || null;
+          const rateUnit = worker.hourlyRate ? '/ hour' : (worker.dailyRate ? '/ day' : '');
 
           const displayRole = (worker.primaryRole && worker.primaryRole !== 'Verified Community Service Professional')
             ? worker.primaryRole
@@ -114,9 +113,11 @@ export default function WorkerListCard({ data = {}, onAction }) {
                       {initial}
                     </div>
                   </div>
-                  <div className="agent-worker-verified-badge" title="Verified Professional">
-                    <i className="fa-solid fa-check"></i>
-                  </div>
+                  {worker.isVerified && (
+                    <div className="agent-worker-verified-badge" title="Verified Professional">
+                      <i className="fa-solid fa-check"></i>
+                    </div>
+                  )}
                 </div>
 
                 {/* Info Column */}
@@ -162,9 +163,9 @@ export default function WorkerListCard({ data = {}, onAction }) {
               {/* Middle Stats Row: Rating & Jobs */}
               <div className="agent-worker-stats-row">
                 <div className="agent-worker-rating-group">
-                  <i className="fa-solid fa-star worker-star-icon"></i>
-                  <span className="worker-rating-val">{rating}</span>
-                  <span className="worker-reviews-count">({reviewCount} reviews)</span>
+                  <i className="fa-solid fa-star worker-star-icon" style={{ color: rating ? '#f59e0b' : '#d1d5db' }}></i>
+                  <span className="worker-rating-val">{rating || 'New'}</span>
+                  <span className="worker-reviews-count">{rating ? `(${worker.completedJobs || 0} jobs)` : '(No ratings yet)'}</span>
                 </div>
                 <div className="worker-stats-v-divider"></div>
                 <div className="agent-worker-jobs-group">
@@ -180,8 +181,8 @@ export default function WorkerListCard({ data = {}, onAction }) {
               <div className="agent-worker-rate-actions-row">
                 <div className="agent-worker-rate-col">
                   <div className="worker-rate-label">ESTIMATED RATE</div>
-                  <div className="worker-rate-main">Rs. {rateNum}</div>
-                  <div className="worker-rate-sub">{rateUnit}</div>
+                  <div className="worker-rate-main">{rateNum ? `Rs. ${rateNum.toLocaleString()}` : 'Negotiable'}</div>
+                  {rateUnit && <div className="worker-rate-sub">{rateUnit}</div>}
                 </div>
 
                 <div className="agent-worker-actions-group" onClick={(e) => e.stopPropagation()}>

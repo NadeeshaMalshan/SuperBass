@@ -70,6 +70,7 @@ namespace Superbass.Models
         public string? ReviewComment { get; set; }
         public DateTime? ReviewedAt { get; set; }
         public int? ConversationId { get; set; }
+        public bool IsContactShared { get; set; } = false;
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
     }
