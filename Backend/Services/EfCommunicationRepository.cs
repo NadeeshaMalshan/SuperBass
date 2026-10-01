@@ -544,8 +544,7 @@ namespace Superbass.Services
                     cleanResidentName = residentWorker.Name;
                 }
             }
-
-            var residentProfileImage = residentWorker?.ProfileImage;
+            var residentProfileImage = residentWorker?.ProfileImage ?? conv.Resident?.ProfileImage;
 
             var lastMsg = await _context.ChatMessages
                 .Where(m => m.ConversationId == conv.Id && !m.IsDeleted)

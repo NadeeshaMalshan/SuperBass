@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import axios from 'axios';
 import WorkerLayout from './WorkerLayout.jsx';
 import { API_BASE_URL } from '../../config.js';
@@ -6,6 +7,7 @@ import '@material/web/button/filled-button.js';
 import '@material/web/button/outlined-button.js';
 import '@material/web/progress/circular-progress.js';
 import Loader from '../../components/Loader.jsx';
+import { showToast } from '../../utils/toast.js';
 
 export default function WorkerJobs() {
   const [activeTab, setActiveTab] = useState('requests'); // 'requests' | 'active' | 'history'
@@ -64,7 +66,7 @@ export default function WorkerJobs() {
       const res = await axios.post(`${API_BASE_URL}/bookings/${id}/accept`, {}, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
-      alert('✓ Job Request Accepted! Status is now Confirmed.');
+      showToast('✓ Job Request Accepted! Status is now Confirmed.');
       setBookings(prev => prev.map(b => b.id === id ? res.data : b));
       setActiveTab('active');
     } catch (err) {
@@ -85,7 +87,7 @@ export default function WorkerJobs() {
       const res = await axios.post(`${API_BASE_URL}/bookings/${id}/reject`, { reason }, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
-      alert('Booking request has been declined.');
+      showToast('Booking request has been declined.');
       setBookings(prev => prev.map(b => b.id === id ? res.data : b));
     } catch (err) {
       console.error('Error rejecting booking:', err);
@@ -96,13 +98,52 @@ export default function WorkerJobs() {
   };
 
   // 3. Start Job -> InProgress
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [jobToCancel, setJobToCancel] = useState(null);
+  const [cancelReason, setCancelReason] = useState('Worker schedule unavailable');
+  const cancelDialogRef = useRef(null);
+
+  useEffect(() => {
+    if (cancelDialogOpen && jobToCancel) {
+      cancelDialogRef.current?.show();
+    } else {
+      cancelDialogRef.current?.close();
+    }
+  }, [cancelDialogOpen, jobToCancel]);
+
+  const handleCancelJobClick = (job) => {
+    setJobToCancel(job);
+    setCancelReason('Worker schedule unavailable');
+    setCancelDialogOpen(true);
+  };
+
+  const confirmCancelJob = async () => {
+    if (!jobToCancel) return;
+    try {
+      setActionLoading(true);
+      const res = await axios.post(`${API_BASE_URL}/bookings/${jobToCancel.id}/cancel`, { reason: cancelReason }, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      showToast('Booking has been cancelled.');
+      setBookings(prev => prev.map(b => b.id === jobToCancel.id ? res.data : b));
+      setCancelDialogOpen(false);
+      setJobToCancel(null);
+    } catch (err) {
+      console.error('Error cancelling booking:', err);
+      alert(err.response?.data?.message || 'Failed to cancel booking.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // 3.5 Start Job -> InProgress
   const handleStartJob = async (id) => {
     try {
       setActionLoading(true);
       const res = await axios.post(`${API_BASE_URL}/bookings/${id}/start`, {}, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
-      alert('🚀 Job marked as In Progress!');
+      showToast('🚀 Job marked as In Progress!');
       setBookings(prev => prev.map(b => b.id === id ? res.data : b));
     } catch (err) {
       console.error('Error starting job:', err);
@@ -121,7 +162,7 @@ export default function WorkerJobs() {
       const res = await axios.post(`${API_BASE_URL}/bookings/${id}/complete`, {}, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
-      alert('🎉 Job marked as Completed! Resident has been requested for review.');
+      showToast('🎉 Job marked as Completed! Resident has been requested for review.');
       setBookings(prev => prev.map(b => b.id === id ? res.data : b));
       setActiveTab('history');
     } catch (err) {
@@ -147,7 +188,7 @@ export default function WorkerJobs() {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
 
-      alert('📅 Booking rescheduled successfully!');
+      showToast('📅 Booking rescheduled successfully!');
       setBookings(prev => prev.map(b => b.id === rescheduleBooking.id ? res.data : b));
       setRescheduleBooking(null);
     } catch (err) {
@@ -167,7 +208,7 @@ export default function WorkerJobs() {
       await axios.delete(`${API_BASE_URL}/bookings/${id}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
-      alert('🗑️ Job history record deleted successfully.');
+      showToast('🗑️ Job history record deleted successfully.');
       setBookings(prev => prev.filter(b => b.id !== id));
     } catch (err) {
       console.error('Error deleting job:', err);
@@ -410,26 +451,49 @@ export default function WorkerJobs() {
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minWidth: '170px' }}>
                     {job.status === 'Confirmed' ? (
-                      <button 
-                        disabled={actionLoading}
-                        onClick={() => handleStartJob(job.id)}
-                        style={{
-                          width: '100%',
-                          padding: '12px 18px',
-                          backgroundColor: '#2563eb',
-                          color: '#ffffff',
-                          border: 'none',
-                          borderRadius: '10px',
-                          fontWeight: 800,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '6px'
-                        }}
-                      >
-                        🚀 Start Job
-                      </button>
+                      <>
+                        <button 
+                          disabled={actionLoading}
+                          onClick={() => handleStartJob(job.id)}
+                          style={{
+                            width: '100%',
+                            padding: '12px 18px',
+                            backgroundColor: '#2563eb',
+                            color: '#ffffff',
+                            border: 'none',
+                            borderRadius: '10px',
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          🚀 Start Job
+                        </button>
+                        <button 
+                          disabled={actionLoading}
+                          onClick={() => handleCancelJobClick(job)}
+                          style={{
+                            width: '100%',
+                            padding: '12px 18px',
+                            backgroundColor: '#ef4444',
+                            color: '#ffffff',
+                            border: 'none',
+                            borderRadius: '10px',
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            marginTop: '8px'
+                          }}
+                        >
+                          ✖ Cancel Job
+                        </button>
+                      </>
                     ) : (
                       <button 
                         disabled={actionLoading}
@@ -629,6 +693,79 @@ export default function WorkerJobs() {
           </div>
         </div>
       )}
+
+      {/* Cancel Job Dialog */}
+      {createPortal(
+        <md-dialog
+          ref={cancelDialogRef}
+          onClosed={() => { setCancelDialogOpen(false); setJobToCancel(null); }}
+          style={{
+            '--md-dialog-container-color': '#ffffff',
+            '--md-dialog-container-shape': '24px',
+            position: 'fixed',
+            inset: 0,
+            margin: 'auto',
+            zIndex: 10000,
+            minWidth: '320px',
+            maxWidth: '460px',
+            width: 'min(460px, calc(100vw - 32px))'
+          }}
+        >
+          <div slot="headline" style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '14px',
+            padding: '28px 20px 6px 20px',
+            textAlign: 'center',
+            fontFamily: "var(--font-heading, 'DM Sans', sans-serif)"
+          }}>
+            <md-icon style={{ fontSize: '40px', color: '#000000' }}>cancel</md-icon>
+            <span style={{ fontSize: '1.35rem', fontWeight: 800, color: '#000000', lineHeight: 1.25 }}>
+              Cancel Confirmed Job?
+            </span>
+          </div>
+          <div slot="content" style={{
+            textAlign: 'center',
+            fontSize: '0.95rem',
+            color: '#52525b',
+            lineHeight: 1.6,
+            padding: '8px 24px 20px 24px',
+            fontFamily: "var(--font-body, 'DM Sans', sans-serif)",
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '12px'
+          }}>
+            <p style={{ margin: 0 }}>Are you sure you want to cancel <strong>"{jobToCancel?.jobTitle}"</strong>?</p>
+          </div>
+          <div slot="actions" style={{
+            display: 'flex',
+            gap: '12px',
+            justifyContent: 'flex-end',
+            padding: '0 20px 20px 20px',
+            boxSizing: 'border-box'
+          }}>
+            <button
+              type="button"
+              onClick={() => { setCancelDialogOpen(false); setJobToCancel(null); }}
+              disabled={actionLoading}
+              style={{ padding: '10px 20px', borderRadius: '12px', border: '1px solid #000', backgroundColor: 'transparent', color: '#000', cursor: 'pointer', fontWeight: 700 }}
+            >
+              Keep Job
+            </button>
+            <button
+              type="button"
+              onClick={confirmCancelJob}
+              disabled={actionLoading}
+              style={{ padding: '10px 20px', borderRadius: '12px', border: 'none', backgroundColor: '#000', color: '#fff', cursor: 'pointer', fontWeight: 700 }}
+            >
+              {actionLoading ? 'Cancelling...' : 'Yes, Cancel'}
+            </button>
+          </div>
+        </md-dialog>,
+        document.body
+      )}
+
     </WorkerLayout>
   );
 }

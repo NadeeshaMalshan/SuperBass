@@ -7,25 +7,25 @@ export default function TextMessageCard({ data, onAction }) {
   const { text, suggestions = [], is_choice } = data;
   const hasChoiceSuggestions =
     Array.isArray(suggestions) &&
+    suggestions.length === 2 &&
     suggestions.some((s) => {
       const str = String(typeof s === 'object' && s !== null ? (s.text || s.label || '') : s).toLowerCase();
       return str.includes('community') || str.includes('post');
     }) &&
     suggestions.some((s) => {
       const str = String(typeof s === 'object' && s !== null ? (s.text || s.label || '') : s).toLowerCase();
-      return str.includes('worker') || str.includes('find') || str.includes('hire') || str.includes('plumber') || str.includes('electrician') || str.includes('technician') || str.includes('service');
+      return str.includes('worker') || str.includes('find');
     });
 
   const showChoiceCards = Boolean(is_choice || data?.is_choice || hasChoiceSuggestions);
 
-  // If not a choice turn, filter out any generic choice buttons that may have lingered
   const filteredSuggestions = showChoiceCards
     ? suggestions
     : (Array.isArray(suggestions)
         ? suggestions.filter((s) => {
             const str = typeof s === 'object' && s !== null ? (s.text || s.label || '') : String(s);
-            const lower = str.toLowerCase();
-            return !lower.startsWith('find a') && !lower.startsWith('find trusted') && !lower.includes('create a community post');
+            const lower = str.toLowerCase().trim();
+            return lower !== 'find a verified worker' && lower !== 'create a community post';
           })
         : []);
 

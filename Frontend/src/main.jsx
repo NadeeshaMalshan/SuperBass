@@ -12,6 +12,8 @@ import AiCommunityChat from './pages/AiCommunityChat.jsx'
 import LoginPortal from './pages/LoginPortal.jsx'
 
 import WorkerDetail from './WorkerDetail.jsx'
+import M3TopNavbar from './components/M3TopNavbar.jsx'
+import GlobalToast from './components/GlobalToast.jsx'
 
 // Worker Pages
 import WorkerRegister from './pages/worker/WorkerRegister.jsx'
@@ -21,6 +23,7 @@ import WorkerJobs from './pages/worker/WorkerJobs.jsx'
 import WorkerPerformance from './pages/worker/WorkerPerformance.jsx'
 import WorkerProfile from './pages/worker/WorkerProfile.jsx'
 import WorkerCommunityPosts from './pages/worker/WorkerCommunityPosts.jsx'
+import WorkerOnboarding from './pages/worker/WorkerOnboarding.jsx'
 import ResidentProfile from './ResidentProfile.jsx'
 
 class ErrorBoundary extends Component {
@@ -110,78 +113,107 @@ function Router() {
     return () => window.removeEventListener('storage', updateTheme);
   }, [path]);
 
-  // Role Guard: Active Worker trying to access Resident account profile
-  if (path === '/account' || path === '/account.jsx') {
-    if (activeRole === 'Worker') {
+  const isAuthPage = path === '/join' || path === '/login' || path.startsWith('/worker/register') || path.startsWith('/worker/login');
+
+  const getActivePage = (p) => {
+    if (p.startsWith('/find')) return 'find';
+    if (p.startsWith('/community')) return 'community';
+    if (p.startsWith('/ai')) return 'ai';
+    if (p.startsWith('/chats')) return 'chats';
+    if (p.startsWith('/bookings')) return 'bookings';
+    return 'home';
+  };
+
+  const renderComponent = () => {
+    // Role Guard: Active Worker trying to access Resident account profile
+    if (path === '/account' || path === '/account.jsx') {
+      if (activeRole === 'Worker') {
+        return <WorkerDashboard />;
+      }
+      return <ResidentProfile />;
+    }
+
+    if (path === '/find' || path === '/find.jsx') {
+      return <Find />;
+    }
+    if (path === '/worker-detail' || path === '/worker-detail.jsx' || path.startsWith('/worker-detail')) {
+      return <WorkerDetail />;
+    }
+    if (path === '/join' || path === '/join.jsx' || path === '/login' || path === '/login.jsx') {
+      return <LoginPortal />;
+    }
+    if (path === '/ai/chat' || path === '/community/chat' || path === '/ai-chat' || path === '/agent') {
+      return <AiCommunityChat />;
+    }
+    if (path === '/community' || path === '/community.jsx') {
+      return <Community />;
+    }
+    if (path === '/chats' || path === '/chats.jsx') {
+      if (!localStorage.getItem('token')) {
+        window.history.replaceState({}, '', '/login');
+        return <LoginPortal />;
+      }
+      return <Chats />;
+    }
+    if (path === '/bookings' || path === '/bookings.jsx') {
+      if (!localStorage.getItem('token')) {
+        window.history.replaceState({}, '', '/login');
+        return <LoginPortal />;
+      }
+      return <Bookings />;
+    }
+    if (path === '/onboarding' || path === '/onboarding.jsx') {
+      return <Onboarding />;
+    }
+
+    // Worker Routes Role Guard: Resident trying to access Worker pages
+    if (path.startsWith('/worker/')) {
+      if (activeRole !== 'Worker' && path !== '/worker/register' && path !== '/worker/login' && path !== '/worker/onboarding') {
+        return <ResidentProfile defaultTab="become-worker" />;
+      }
+    }
+
+    // Worker Routes
+    if (path === '/worker/register' || path === '/worker/register.jsx') {
+      return <WorkerRegister />;
+    }
+    if (path === '/worker/login' || path === '/worker/login.jsx') {
+      return <WorkerLogin />;
+    }
+    if (path === '/worker/dashboard' || path === '/worker/dashboard.jsx') {
       return <WorkerDashboard />;
     }
-    return <ResidentProfile />;
-  }
-
-  if (path === '/find' || path === '/find.jsx') {
-    return <Find />;
-  }
-  if (path === '/worker-detail' || path === '/worker-detail.jsx' || path.startsWith('/worker-detail')) {
-    return <WorkerDetail />;
-  }
-  if (path === '/join' || path === '/join.jsx' || path === '/login' || path === '/login.jsx') {
-    return <LoginPortal />;
-  }
-  if (path === '/ai/chat' || path === '/community/chat' || path === '/ai-chat' || path === '/agent') {
-    return <AiCommunityChat />;
-  }
-  if (path === '/community' || path === '/community.jsx') {
-    return <Community />;
-  }
-  if (path === '/chats' || path === '/chats.jsx') {
-    if (!localStorage.getItem('token')) {
-      window.history.replaceState({}, '', '/login');
-      return <LoginPortal />;
+    if (path === '/worker/jobs' || path === '/worker/jobs.jsx') {
+      return <WorkerJobs />;
     }
-    return <Chats />;
-  }
-  if (path === '/bookings' || path === '/bookings.jsx') {
-    if (!localStorage.getItem('token')) {
-      window.history.replaceState({}, '', '/login');
-      return <LoginPortal />;
+    if (path === '/worker/performance' || path === '/worker/performance.jsx') {
+      return <WorkerPerformance />;
     }
-    return <Bookings />;
-  }
-  if (path === '/onboarding' || path === '/onboarding.jsx') {
-    return <Onboarding />;
-  }
-
-  // Worker Routes Role Guard: Resident trying to access Worker pages
-  if (path.startsWith('/worker/')) {
-    if (activeRole !== 'Worker' && path !== '/worker/register' && path !== '/worker/login') {
-      return <ResidentProfile defaultTab="become-worker" />;
+    if (path === '/worker/profile' || path === '/worker/profile.jsx') {
+      return <WorkerProfile />;
     }
-  }
+    if (path === '/worker/onboarding' || path === '/worker/onboarding.jsx') {
+      return <WorkerOnboarding />;
+    }
+    if (path === '/worker/community-posts' || path === '/worker/community-posts.jsx') {
+      return <WorkerCommunityPosts />;
+    }
 
-  // Worker Routes
-  if (path === '/worker/register' || path === '/worker/register.jsx') {
-    return <WorkerRegister />;
-  }
-  if (path === '/worker/login' || path === '/worker/login.jsx') {
-    return <WorkerLogin />;
-  }
-  if (path === '/worker/dashboard' || path === '/worker/dashboard.jsx') {
-    return <WorkerDashboard />;
-  }
-  if (path === '/worker/jobs' || path === '/worker/jobs.jsx') {
-    return <WorkerJobs />;
-  }
-  if (path === '/worker/performance' || path === '/worker/performance.jsx') {
-    return <WorkerPerformance />;
-  }
-  if (path === '/worker/profile' || path === '/worker/profile.jsx') {
-    return <WorkerProfile />;
-  }
-  if (path === '/worker/community-posts' || path === '/worker/community-posts.jsx') {
-    return <WorkerCommunityPosts />;
-  }
+    return <App />;
+  };
 
-  return <App />;
+  return (
+    <>
+      {!isAuthPage && (
+        <M3TopNavbar 
+          activePage={getActivePage(path)} 
+          theme={path === '/' || path === '' || path === '/index.html' ? 'dark' : 'light'} 
+        />
+      )}
+      {renderComponent()}
+      <GlobalToast />
+    </>
+  );
 }
 
 createRoot(document.getElementById('root')).render(

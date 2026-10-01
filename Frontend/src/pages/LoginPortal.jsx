@@ -46,9 +46,9 @@ function LoginPortalContent() {
         localStorage.setItem('activeRole', 'Worker');
 
         if (isNewWorker) {
-          navigate('/worker/profile');
+          navigate('/worker/onboarding');
         } else {
-          navigate('/find');
+          navigate('/worker/dashboard');
         }
         return;
       }
@@ -96,7 +96,7 @@ function LoginPortalContent() {
   return (
     <div className="login-portal-wrapper">
       {/* Standard App Navigation Bar (Same as other pages) */}
-      <M3TopNavbar theme="dark" showSearch={false} />
+      
 
       {/* Hero Banner Section */}
       <section className="login-portal-hero-section">

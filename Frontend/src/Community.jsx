@@ -10,6 +10,7 @@ import M3TopNavbar from './components/M3TopNavbar.jsx';
 import hero2Img from './assets/community.png';
 import sriLankaDistricts from './data/sriLankaDistricts.json';
 import { BACKEND_URL } from './config.js';
+import { showToast } from './utils/toast.js';
 
 const API_BASE_URL = `${BACKEND_URL}/api/community-posts`;
 
@@ -427,6 +428,7 @@ export default function Community() {
 
       // Refetch posts immediately so user sees newly published post
       await fetchPosts();
+      showToast("Ad posted successfully to the community!");
 
       // Close modal and reset fields
       setIsCreateModalOpen(false);
@@ -464,7 +466,7 @@ export default function Community() {
       }, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
-      alert("Thank you. This post has been flagged for community safety and moderation review.");
+      showToast("Thank you. This post has been flagged for community safety and moderation review.");
       setReportingPostId(null);
       setReportReason('');
       fetchPosts();
@@ -507,7 +509,7 @@ export default function Community() {
   return (
     <div className="community-page-wrapper">
       {/* Sleek Dark Top Navbar */}
-      <M3TopNavbar theme="dark" activePage="community" />
+      
 
       {/* 1. Community Hero Showcase Banner (Uber Pitch Black Aesthetic) */}
       <section className="community-hero-banner">

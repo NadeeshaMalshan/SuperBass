@@ -101,18 +101,46 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 var app = builder.Build();
 
-// Auto-apply pending migrations (which creates missing tables)
+// Auto-apply pending migrations and decouple Workers from Residents
 using (var scope = app.Services.CreateScope())
 {
     try
     {
         var services = scope.ServiceProvider;
         var context = services.GetRequiredService<SuperbassDbContext>();
+        
+        // Ensure Workers table is completely decoupled from Residents in database schema
+        context.Database.ExecuteSqlRaw(@"
+            ALTER TABLE ""Workers"" DROP CONSTRAINT IF EXISTS ""FK_Workers_Residents_ResidentEmail"";
+            DROP INDEX IF EXISTS ""IX_Workers_ResidentEmail"";
+            DO $$ 
+            BEGIN 
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.columns 
+                    WHERE table_name='Workers' AND column_name='ResidentEmail' AND is_nullable='NO'
+                ) THEN
+                    ALTER TABLE ""Workers"" ALTER COLUMN ""ResidentEmail"" DROP NOT NULL;
+                END IF;
+            END $$;
+        ");
+
         context.Database.Migrate();
     }
     catch (Exception ex)
     {
         Console.WriteLine($"Database migration status/warning: {ex.Message}");
+    }
+    
+    // Fallback: manually ensure ProfileImage exists since migrations are broken
+    try 
+    {
+        var context = scope.ServiceProvider.GetRequiredService<SuperbassDbContext>();
+        context.Database.ExecuteSqlRaw("ALTER TABLE \"Residents\" ADD COLUMN \"ProfileImage\" text;");
+        Console.WriteLine("Added ProfileImage column manually.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Manual column add status: {ex.Message}");
     }
 }
 

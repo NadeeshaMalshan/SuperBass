@@ -30,7 +30,7 @@ namespace Superbass.Services
 
         public async Task<IEnumerable<Worker>> SearchWorkersAsync(string? skill, string? location, double? maxDistanceKm, double? residentLat = null, double? residentLng = null, decimal? maxHourlyRate = null, decimal? minHourlyRate = null)
         {
-            var query = _context.Workers.Include(w => w.Skills).Include(w => w.Resident).AsQueryable();
+            var query = _context.Workers.Include(w => w.Skills).AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(skill))
             {
@@ -98,16 +98,7 @@ namespace Superbass.Services
 
                     if (!lat.HasValue || !lng.HasValue)
                     {
-                        if (w.Resident != null && w.Resident.LocationLat.HasValue && w.Resident.LocationLng.HasValue)
-                        {
-                            lat = w.Resident.LocationLat;
-                            lng = w.Resident.LocationLng;
-                        }
-                    }
-
-                    if (!lat.HasValue || !lng.HasValue)
-                    {
-                        var cityCoords = GetCityCoordinates(w.PrimaryServiceArea) ?? (w.Resident != null ? GetCityCoordinates(w.Resident.Address) : null);
+                        var cityCoords = GetCityCoordinates(w.PrimaryServiceArea);
                         if (cityCoords.HasValue)
                         {
                             lat = cityCoords.Value.Lat;
@@ -197,18 +188,6 @@ namespace Superbass.Services
 
         public async Task<Worker> CreateWorkerFromResidentAsync(string residentEmail, string? description, string primaryServiceArea, double coverageRadiusKm, string pricingModel, decimal? hourlyRate, decimal? dailyRate, List<WorkerSkill> skills)
         {
-            var resident = await _context.Residents.FindAsync(residentEmail);
-            if (resident == null)
-            {
-                resident = new Resident
-                {
-                    Email = residentEmail,
-                    Name = residentEmail.Split('@')[0]
-                };
-                _context.Residents.Add(resident);
-                await _context.SaveChangesAsync();
-            }
-
             var existingWorker = await _context.Workers.Include(w => w.Skills).FirstOrDefaultAsync(w => w.ResidentEmail == residentEmail || w.Email == residentEmail);
             if (existingWorker != null)
             {
@@ -229,12 +208,9 @@ namespace Superbass.Services
 
             var worker = new Worker
             {
-                ResidentEmail = resident.Email,
-                Email = resident.Email,
-                Name = resident.Name ?? resident.Email,
-                PhoneNo = resident.PhoneNo,
-                LocationLat = resident.LocationLat,
-                LocationLng = resident.LocationLng,
+                ResidentEmail = residentEmail,
+                Email = residentEmail,
+                Name = residentEmail.Split('@')[0],
                 Description = description,
                 PrimaryServiceArea = primaryServiceArea,
                 CoverageRadiusKm = coverageRadiusKm,
