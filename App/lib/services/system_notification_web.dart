@@ -1,6 +1,6 @@
-import 'dart:js_interop';
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
 import 'package:flutter/foundation.dart';
-import 'package:web/web.dart' as web;
 
 class PlatformSystemNotification {
   static bool _initialized = false;
@@ -9,8 +9,8 @@ class PlatformSystemNotification {
     if (_initialized) return;
     _initialized = true;
     try {
-      if (web.Notification.permission == 'granted') {
-        debugPrint('Web Notification permission already granted.');
+      if (html.Notification.supported) {
+        debugPrint('Web Notification supported. Permission: ${html.Notification.permission}');
       }
     } catch (e) {
       debugPrint('Web notification init error: $e');
@@ -19,7 +19,8 @@ class PlatformSystemNotification {
 
   static Future<bool> requestPermission() async {
     try {
-      final perm = (await web.Notification.requestPermission().toDart).toDart;
+      if (!html.Notification.supported) return false;
+      final perm = await html.Notification.requestPermission();
       return perm == 'granted';
     } catch (e) {
       debugPrint('Error requesting web notification permission: $e');
@@ -34,19 +35,14 @@ class PlatformSystemNotification {
     String? payload,
   }) async {
     try {
-      final permission = web.Notification.permission;
+      if (!html.Notification.supported) return;
+      final permission = html.Notification.permission;
       if (permission == 'granted') {
-        web.Notification(
-          title,
-          web.NotificationOptions(body: body, icon: 'favicon.png'),
-        );
+        html.Notification(title, body: body, icon: 'favicon.png');
       } else if (permission != 'denied') {
-        final perm = (await web.Notification.requestPermission().toDart).toDart;
+        final perm = await html.Notification.requestPermission();
         if (perm == 'granted') {
-          web.Notification(
-            title,
-            web.NotificationOptions(body: body, icon: 'favicon.png'),
-          );
+          html.Notification(title, body: body, icon: 'favicon.png');
         }
       }
     } catch (e) {
