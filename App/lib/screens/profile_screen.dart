@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
 import '../models/auth_user.dart';
+import '../theme/app_colors.dart';
 import 'join_screen.dart';
 import 'placeholder_screens.dart';
 import '../widgets/verified_badge.dart';
@@ -22,11 +24,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       valueListenable: AuthService().currentUserNotifier,
       builder: (context, user, child) {
         if (user == null) {
-          // If the session hasn't loaded yet
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
+          return const JoinScreen();
         }
+
+        final isVerified = user.isVerified || _isVerified;
 
         return Scaffold(
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -51,10 +52,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildProfileHeader(user),
                   const SizedBox(height: 32),
 
-
-
                   // --- Verify Account Section ---
-                  if (!_isVerified)
+                  if (!isVerified)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 32.0),
                       child: VerificationForm(
@@ -79,6 +78,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildProfileHeader(AuthUser user) {
+    final isVerified = user.isVerified || _isVerified;
     return Column(
       children: [
         Container(
@@ -96,7 +96,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               user.name,
               style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
-            if (_isVerified) const VerifiedBadge(),
+            if (isVerified) const VerifiedBadge(size: 22),
           ],
         ),
         const SizedBox(height: 6),
@@ -226,21 +226,75 @@ class _ProfileMenu extends StatelessWidget {
     );
   }
 
-  void _handleSignOut(BuildContext context) async {
-    // 1. Show a loading indicator during the logout process
-    showDialog(
+  Future<void> _handleSignOut(BuildContext context) async {
+    final confirm = await showDialog<bool>(
       context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Log Out',
+          style: GoogleFonts.dmSans(
+            fontWeight: FontWeight.w800,
+            color: AppColors.onSurface,
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to log out of SuperBass?',
+          style: GoogleFonts.dmSans(
+            fontSize: 14,
+            color: AppColors.onSurfaceVariant,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.dmSans(
+                fontWeight: FontWeight.w600,
+                color: AppColors.onSurfaceVariant,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text(
+              'Log Out',
+              style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
     );
-    
-    // 2. Perform the async API logout logic via AuthService
-    await AuthService().logout();
-    
-    // 3. Complete navigation and pop the loading dialog by replacing the entire navigation stack
+
+    if (confirm != true) return;
+
+    // Show loading indicator during logout
     if (context.mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const JoinScreen()),
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+      );
+    }
+
+    // Perform async API logout logic via AuthService
+    await AuthService().logout();
+
+    // Complete navigation and pop the loading dialog by replacing the entire navigation stack
+    if (context.mounted) {
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/join',
         (route) => false,
       );
     }

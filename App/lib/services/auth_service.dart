@@ -6,6 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 import '../models/auth_user.dart';
 import 'api_config.dart';
+import 'notification_service.dart';
+import 'chat_signalr_service.dart';
 
 class AuthService {
   // Singleton pattern
@@ -41,10 +43,12 @@ class AuthService {
         picture: prefs.getString('userPicture'),
         activeRole: prefs.getString('activeRole') ?? 'Resident',
         isWorker: prefs.getBool('isWorker') ?? false,
+        isVerified: prefs.getBool('isVerified') ?? false,
       );
       currentUserNotifier.value = user;
       _syncOneSignalUser(user.email);
       _syncWorkerStatusWithBackend(user);
+      _syncVerificationStatusWithBackend(user);
       return user;
     }
     return null;
@@ -63,10 +67,15 @@ class AuthService {
         final data = jsonDecode(response.body);
         final bool isWorkerInDb = data is Map && data['worker'] != null;
         final int? workerId = isWorkerInDb ? data['worker']['id'] as int? : null;
+        final bool isWorkerVerified = isWorkerInDb && (data['worker']['isVerified'] == true || data['worker']['IsVerified'] == true);
         final String roleInDb = isWorkerInDb ? 'Worker' : 'Resident';
 
-        if (user.isWorker != isWorkerInDb || user.activeRole != roleInDb) {
-          final prefs = await SharedPreferences.getInstance();
+        final prefs = await SharedPreferences.getInstance();
+        if (isWorkerVerified) {
+          await prefs.setBool('isVerified', true);
+        }
+
+        if (user.isWorker != isWorkerInDb || user.activeRole != roleInDb || (isWorkerVerified && !user.isVerified)) {
           await prefs.setBool('isWorker', isWorkerInDb);
           await prefs.setString('activeRole', roleInDb);
 
@@ -79,11 +88,41 @@ class AuthService {
             isWorker: isWorkerInDb,
             activeRole: roleInDb,
             workerId: workerId,
+            isVerified: isWorkerVerified || user.isVerified,
           );
         }
       }
     } catch (e) {
       debugPrint('Sync worker status error: $e');
+    }
+  }
+
+  Future<void> _syncVerificationStatusWithBackend(AuthUser user) async {
+    try {
+      final resUri = Uri.parse('${ApiConfig.baseUrl}/api/residents/${Uri.encodeComponent(user.email)}');
+      final res = await http.get(resUri, headers: {
+        'Content-Type': 'application/json',
+        if (user.token.isNotEmpty) 'Authorization': 'Bearer ${user.token}',
+      });
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final data = jsonDecode(res.body);
+        final bool isVerified = data is Map && (data['isVerified'] == true || data['IsVerified'] == true);
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('isVerified', isVerified);
+        if (currentUserNotifier.value != null && currentUserNotifier.value!.isVerified != isVerified) {
+          currentUserNotifier.value = currentUserNotifier.value!.copyWith(isVerified: isVerified);
+        }
+      }
+    } catch (e) {
+      debugPrint('Sync verification status error: $e');
+    }
+  }
+
+  Future<void> markUserVerified() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isVerified', true);
+    if (currentUserNotifier.value != null) {
+      currentUserNotifier.value = currentUserNotifier.value!.copyWith(isVerified: true);
     }
   }
 
@@ -103,6 +142,9 @@ class AuthService {
   /// Perform Google Sign-In and authenticate with the SuperBass backend
   Future<AuthUser> signInWithGoogle({String intendedRole = 'Resident'}) async {
     try {
+      try {
+        await _googleSignIn.signOut();
+      } catch (_) {}
       final GoogleSignInAccount? googleAccount = await _googleSignIn.signIn();
       if (googleAccount == null) {
         throw Exception('Google sign-in was cancelled by user');
@@ -291,10 +333,13 @@ class AuthService {
     );
   }
 
-  /// Sign out and clear stored session
+  /// Sign out and clear stored session completely
   Future<void> logout() async {
     try {
       await _googleSignIn.signOut();
+    } catch (_) {}
+    try {
+      await _googleSignIn.disconnect();
     } catch (_) {}
 
     final prefs = await SharedPreferences.getInstance();
@@ -304,8 +349,36 @@ class AuthService {
     await prefs.remove('email');
     await prefs.remove('activeRole');
     await prefs.remove('isWorker');
+    await prefs.remove('isVerified');
+    await prefs.remove('workerId');
+    await prefs.remove('workerAuth');
+    await prefs.remove('workerEmail');
+    await prefs.remove('phoneNo');
+    await prefs.remove('address');
+    await prefs.remove('locationLat');
+    await prefs.remove('locationLng');
+    await prefs.remove('superbass_app_notifications');
+    await prefs.remove('is_manual_location');
 
-    _syncOneSignalUser(null);
+    try {
+      await _syncOneSignalUser(null);
+    } catch (e) {
+      debugPrint('Error syncing OneSignal on logout: $e');
+    }
+
+    try {
+      await NotificationService().onUserLogout();
+    } catch (e) {
+      debugPrint('Error resetting notifications on logout: $e');
+    }
+
+    try {
+      await ChatSignalRService().disconnect();
+      ChatSignalRService().setUnreadChatCount(0);
+    } catch (e) {
+      debugPrint('Error disconnecting chat on logout: $e');
+    }
+
     currentUserNotifier.value = null;
   }
 }

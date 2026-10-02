@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_colors.dart';
+import 'verified_badge.dart';
 
 /// The signature Workio brand badge
 class BrandBadge extends StatelessWidget {
@@ -340,6 +341,7 @@ class WorkerCard extends StatelessWidget {
   final VoidCallback? onBookTap;
   final VoidCallback? onProfileTap;
   final bool showBookNow;
+  final bool isVerified;
 
   const WorkerCard({
     super.key,
@@ -354,6 +356,7 @@ class WorkerCard extends StatelessWidget {
     this.onBookTap,
     this.onProfileTap,
     this.showBookNow = true,
+    this.isVerified = false,
   });
 
   @override
@@ -419,13 +422,21 @@ class WorkerCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  name,
-                  style: GoogleFonts.dmSans(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                    color: AppColors.onSurface,
-                  ),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        name,
+                        style: GoogleFonts.dmSans(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                          color: AppColors.onSurface,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (isVerified) const VerifiedBadge(size: 15),
+                  ],
                 ),
                 const SizedBox(height: 2),
                 Text(

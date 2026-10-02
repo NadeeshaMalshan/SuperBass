@@ -10,9 +10,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:superbass/main.dart';
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 void main() {
-  setUpAll(() {
+  setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
     GoogleFonts.config.allowRuntimeFetching = false;
+    SharedPreferences.setMockInitialValues({});
+    await dotenv.load(fileName: '.env').catchError((_) {
+      dotenv.loadFromString(env: 'API_URL=http://localhost:5000\n');
+    });
   });
 
   testWidgets('SuperBassApp smoke test', (WidgetTester tester) async {

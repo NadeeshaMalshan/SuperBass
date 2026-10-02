@@ -479,17 +479,17 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
     }
   }
 
-  // 6. Revert to Resident
-  Future<void> _handleRevertToResident() async {
+  // 6. Delete Worker Profile
+  Future<void> _handleDeleteWorkerProfile() async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(
-          'Revert to Resident?',
+          'Delete Worker Profile?',
           style: GoogleFonts.dmSans(fontWeight: FontWeight.w800, color: WorkerColors.error),
         ),
         content: Text(
-          'Are you sure you want to revert back to a Resident? Your worker profile will be removed and you will return to resident mode.',
+          'Are you sure you want to delete your worker profile? Your worker listings, services, and profile will be permanently removed.',
           style: GoogleFonts.dmSans(fontSize: 13),
         ),
         actions: [
@@ -503,7 +503,7 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
               backgroundColor: WorkerColors.error,
               foregroundColor: Colors.white,
             ),
-            child: Text('Revert to Resident', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+            child: Text('Delete Worker Profile', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -524,22 +524,70 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
           activeRole: 'Resident',
           workerId: null,
         );
-        _showFeedback('Worker profile removed. Returned to Resident mode.');
+        _showFeedback('Worker profile permanently deleted.');
         widget.onExitWorkerMode?.call();
       } else {
-        _showFeedback('Failed to revert to resident.', isError: true);
+        _showFeedback('Failed to delete worker profile.', isError: true);
+      }
+    }
+  }
+
+  Future<void> _handleLogOut(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          'Log Out',
+          style: GoogleFonts.dmSans(
+            fontWeight: FontWeight.w800,
+            color: WorkerColors.onSurface,
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to log out of SuperBass?',
+          style: GoogleFonts.dmSans(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.dmSans(color: WorkerColors.onSurfaceVariant),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: WorkerColors.error,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(
+              'Log Out',
+              style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await AuthService().logout();
+      if (context.mounted) {
+        Navigator.of(context).pushNamedAndRemoveUntil('/join', (route) => false);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isVerified = widget.worker?.isVerified == true || AuthService().currentUser?.isVerified == true || _isVerified;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (!_isVerified)
+          if (!isVerified)
             Padding(
               padding: const EdgeInsets.only(bottom: 24.0),
               child: VerificationForm(
@@ -560,7 +608,7 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
                   color: WorkerColors.onSurface,
                 ),
               ),
-              if (_isVerified) const VerifiedBadge(),
+              if (isVerified) const VerifiedBadge(size: 20),
             ],
           ),
           const SizedBox(height: 4),
@@ -1013,8 +1061,30 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
             title: 'Account Settings',
             icon: Icons.manage_accounts_rounded,
             children: [
+              // Log Out Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => _handleLogOut(context),
+                  icon: const Icon(Icons.logout_rounded, size: 18),
+                  label: Text(
+                    'Log Out',
+                    style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 14),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                    foregroundColor: Colors.white,
+                    shape: const StadiumBorder(),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    elevation: 0,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Divider(height: 1),
+              const SizedBox(height: 20),
 
-              // Danger Zone: Revert to Resident
+              // Danger Zone: Delete Worker Profile
               Text(
                 'Danger Zone',
                 style: GoogleFonts.dmSans(
@@ -1025,7 +1095,7 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Delete your worker profile and revert your account to a standard resident.',
+                'Permanently delete your worker profile and revert your account to a standard resident.',
                 style: GoogleFonts.dmSans(
                   fontSize: 12,
                   color: WorkerColors.onSurfaceVariant,
@@ -1034,16 +1104,17 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: _isSaving ? null : _handleRevertToResident,
+                child: OutlinedButton.icon(
+                  onPressed: _isSaving ? null : _handleDeleteWorkerProfile,
+                  icon: const Icon(Icons.delete_outline_rounded, size: 18),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: WorkerColors.error,
                     side: const BorderSide(color: WorkerColors.error),
                     shape: const StadiumBorder(),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
-                  child: Text(
-                    'Revert to Resident Mode',
+                  label: Text(
+                    'Delete Worker Profile',
                     style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
                   ),
                 ),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../utils/nic_validation_util.dart';
+import '../services/api_service.dart';
+import '../services/auth_service.dart';
 
 class VerificationForm extends StatefulWidget {
   final VoidCallback onVerifySuccess;
@@ -46,6 +48,16 @@ class _VerificationFormState extends State<VerificationForm> {
       _showError('Verification failed: The entered details do not match the official NIC records.');
       return;
     }
+
+    final nic = _nicController.text.trim();
+    final user = AuthService().currentUser;
+    if (user != null && user.email.isNotEmpty) {
+      ApiService().verifyResident(user.email, nicNumber: nic);
+      if (user.workerId != null && user.workerId! > 0) {
+        ApiService().verifyWorker(user.workerId!, nicNumber: nic);
+      }
+    }
+    AuthService().markUserVerified();
 
     setState(() {
       _isVerified = true;

@@ -27,13 +27,19 @@ class NotificationBellButton extends StatelessWidget {
                   right: -2,
                   top: -2,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 1,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.accentBlue,
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: AppColors.surface, width: 1.5),
                     ),
-                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
                     child: Text(
                       unreadCount > 9 ? '9+' : '$unreadCount',
                       style: const TextStyle(
@@ -54,7 +60,8 @@ class NotificationBellButton extends StatelessWidget {
               onNotificationTap: (n) {
                 if (onNotificationTap != null) {
                   onNotificationTap!(n);
-                } else if (n.type == NotificationType.communityLike || n.type == NotificationType.communityComment) {
+                } else if (n.type == NotificationType.communityLike ||
+                    n.type == NotificationType.communityComment) {
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => const Scaffold(
@@ -75,17 +82,18 @@ class NotificationBellButton extends StatelessWidget {
 class NotificationsSheet extends StatefulWidget {
   final Function(AppNotification) onNotificationTap;
 
-  const NotificationsSheet({
-    super.key,
-    required this.onNotificationTap,
-  });
+  const NotificationsSheet({super.key, required this.onNotificationTap});
 
-  static void show(BuildContext context, {required Function(AppNotification) onNotificationTap}) {
+  static void show(
+    BuildContext context, {
+    required Function(AppNotification) onNotificationTap,
+  }) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => NotificationsSheet(onNotificationTap: onNotificationTap),
+      builder: (context) =>
+          NotificationsSheet(onNotificationTap: onNotificationTap),
     );
   }
 
@@ -151,7 +159,10 @@ class _NotificationsSheetState extends State<NotificationsSheet> {
                   builder: (context, unread, _) {
                     if (unread == 0) return const SizedBox.shrink();
                     return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.brandYellow,
                         borderRadius: BorderRadius.circular(12),
@@ -206,58 +217,6 @@ class _NotificationsSheetState extends State<NotificationsSheet> {
           ),
 
           // System notification banner
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: AppColors.brandYellow.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.notifications_active_rounded, size: 20, color: AppColors.brandYellow),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Get OS alerts even when minimized',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.onSurface,
-                    ),
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    final granted = await _service.requestSystemNotificationPermission();
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(granted
-                              ? 'System notifications enabled!'
-                              : 'Please allow notification permission in your browser or device settings.'),
-                          duration: const Duration(seconds: 3),
-                        ),
-                      );
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.brandYellow,
-                    foregroundColor: const Color(0xFF111827),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                  child: Text(
-                    'Enable',
-                    style: GoogleFonts.dmSans(fontSize: 11, fontWeight: FontWeight.w800),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
           const SizedBox(height: 6),
           const Divider(height: 1, color: AppColors.outlineVariant),
 
@@ -323,8 +282,13 @@ class _NotificationsSheetState extends State<NotificationsSheet> {
                           widget.onNotificationTap(n);
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                          color: n.isRead ? Colors.transparent : AppColors.brandYellow.withValues(alpha: 0.04),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 14,
+                          ),
+                          color: n.isRead
+                              ? Colors.transparent
+                              : AppColors.brandYellow.withValues(alpha: 0.04),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -355,7 +319,9 @@ class _NotificationsSheetState extends State<NotificationsSheet> {
                                           child: Text(
                                             n.title,
                                             style: GoogleFonts.dmSans(
-                                              fontWeight: n.isRead ? FontWeight.w600 : FontWeight.w800,
+                                              fontWeight: n.isRead
+                                                  ? FontWeight.w600
+                                                  : FontWeight.w800,
                                               fontSize: 14,
                                               color: AppColors.onSurface,
                                             ),

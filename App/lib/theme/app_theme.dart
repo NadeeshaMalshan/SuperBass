@@ -136,6 +136,34 @@ class AppTheme {
         ),
         margin: EdgeInsets.zero,
       ),
+      switchTheme: SwitchThemeData(
+        thumbIcon: WidgetStateProperty.resolveWith<Icon?>((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const Icon(Icons.check, size: 16, color: Colors.black);
+          }
+          return const Icon(Icons.close, size: 16, color: Color(0xFF94A3B8));
+        }),
+        thumbColor: WidgetStateProperty.resolveWith<Color>((states) {
+          if (states.contains(WidgetState.selected)) {
+            return Colors.white;
+          }
+          return const Color(0xFFF8FAFC);
+        }),
+        trackColor: WidgetStateProperty.resolveWith<Color>((states) {
+          if (states.contains(WidgetState.selected)) {
+            return Colors.black;
+          }
+          return const Color(0xFFE2E8F0);
+        }),
+        trackOutlineColor: WidgetStateProperty.resolveWith<Color?>((states) {
+          if (states.contains(WidgetState.selected)) {
+            return Colors.black;
+          }
+          return const Color(0xFFCBD5E1);
+        }),
+        trackOutlineWidth: WidgetStateProperty.all(1.5),
+        overlayColor: WidgetStateProperty.all(Colors.transparent),
+      ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: AppColors.surface,
         indicatorColor: AppColors.primaryContainer,

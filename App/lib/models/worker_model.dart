@@ -82,9 +82,16 @@ class WorkerModel {
   final List<String> skills;
   final List<WorkerSkillItem> skillItems;
   final double? distance;
+  final bool isVerified;
 
   List<String> get serviceNames =>
       skillItems.map((s) => s.serviceName).where((s) => s.isNotEmpty).toSet().toList();
+
+  String get residentEmail => email;
+  double get rating => overallRating ?? 0.0;
+  String get trade => serviceNames.isNotEmpty
+      ? serviceNames.first
+      : (skills.isNotEmpty ? skills.first : 'Pro');
 
   WorkerModel({
     required this.id,
@@ -113,6 +120,7 @@ class WorkerModel {
     this.skills = const [],
     this.skillItems = const [],
     this.distance,
+    this.isVerified = false,
   });
 
   factory WorkerModel.fromJson(Map<String, dynamic> json) {
@@ -179,7 +187,8 @@ class WorkerModel {
       availabilityScheduleJson: json['availabilityScheduleJson'] as String?,
       skills: parsedSkills,
       skillItems: parsedSkillItems,
-      distance: (json['distance'] as num?)?.toDouble(),
+      distance: (json['distance'] as num?)?.toDouble() ?? (json['Distance'] as num?)?.toDouble(),
+      isVerified: json['isVerified'] == true || json['IsVerified'] == true,
     );
   }
 
@@ -210,6 +219,7 @@ class WorkerModel {
       'availabilityScheduleJson': availabilityScheduleJson,
       'skills': skillItems.map((s) => s.toJson()).toList(),
       'distance': distance,
+      'isVerified': isVerified,
     };
   }
 }

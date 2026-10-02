@@ -8,13 +8,13 @@ import '../App.css';
  * Clicking "Change city" opens the popover with 9 provinces & 25 districts, search, and GPS detection.
  */
 export default function LocationSelector({
-  location = 'Colombo',
+  location = 'All Sri Lanka',
   onChange,
   className = '',
 }) {
   const [isChangingCity, setIsChangingCity] = useState(false);
   const [districtSearch, setDistrictSearch] = useState('');
-  const [tempCity, setTempCity] = useState(location || 'Colombo');
+  const [tempCity, setTempCity] = useState(location || 'All Sri Lanka');
   const [isLocating, setIsLocating] = useState(false);
 
   const cityModalRef = useRef(null);
@@ -127,12 +127,13 @@ export default function LocationSelector({
     );
   };
 
-  const displayLocation = location || 'Colombo';
+  const displayLocation = location || 'All Sri Lanka';
+  const isAllSelected = !location || displayLocation.toLowerCase().includes('all');
 
   return (
     <div className={`landing-hero-location-row ${className}`} style={{ position: 'relative', zIndex: isChangingCity ? 1300 : 'auto' }}>
       {/* Pin icon with fallback if web component not defined */}
-      <md-icon className="landing-hero-location-pin">location_on</md-icon>
+      <md-icon className="landing-hero-location-pin">{isAllSelected ? 'public' : 'location_on'}</md-icon>
       <span className="landing-hero-location-name">{displayLocation}</span>
       <button
         type="button"
@@ -152,7 +153,7 @@ export default function LocationSelector({
       {isChangingCity && (
         <div className="landing-city-popover" ref={cityModalRef}>
           <div className="landing-city-popover-header">
-            <span>Select District (Sri Lanka)</span>
+            <span>Select Location (Sri Lanka)</span>
             <button
               type="button"
               className="landing-city-close-btn"
@@ -190,6 +191,30 @@ export default function LocationSelector({
                 Set
               </button>
             )}
+          </div>
+
+          {/* All Sri Lanka Islandwide Chip */}
+          <div style={{ padding: '0 12px 10px 12px', borderBottom: '1px solid #e2e8f0' }}>
+            <button
+              type="button"
+              className={`landing-district-chip ${isAllSelected ? 'active' : ''}`}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                justifyContent: 'center',
+                cursor: 'pointer'
+              }}
+              onClick={() => handleSelect('All Sri Lanka')}
+            >
+              <md-icon style={{ fontSize: '18px' }}>public</md-icon>
+              <span>All of Sri Lanka (All Locations)</span>
+            </button>
           </div>
 
           {/* 9 Provinces & 25 Districts Grouped List */}

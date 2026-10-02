@@ -23,12 +23,15 @@ import 'services/notification_service.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
 import 'widgets/app_components.dart';
+import 'widgets/verified_badge.dart';
 import 'widgets/notifications_sheet.dart';
 import 'widgets/m3_bottom_nav_bar.dart';
 import 'package:loading_indicator_m3e/loading_indicator_m3e.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'data/sri_lanka_locations.dart';
 import 'services/location_service.dart';
+import 'widgets/superbass_map.dart';
+import 'utils/url_launcher_helper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -133,7 +136,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
       ChatSignalRService().connect(user.email);
       _checkUnreadChats(user.email);
     } else {
-      NotificationService().stopListening();
+      NotificationService().onUserLogout();
       ChatSignalRService().disconnect();
       ChatSignalRService().setUnreadChatCount(0);
     }
@@ -239,6 +242,8 @@ class _FindTabScreenState extends State<FindTabScreen> {
   bool _isLoading = true;
   String _selectedCity = 'Colombo';
   String? _primaryAddressCity;
+  double? _residentLat;
+  double? _residentLng;
 
   final List<Map<String, dynamic>> _categories = [
     {
@@ -356,9 +361,19 @@ class _FindTabScreenState extends State<FindTabScreen> {
 
   Future<void> _loadInitialLocation() async {
     try {
+      final coords = await LocationService.getCurrentCoordinates();
+      if (coords != null && coords['lat'] != null && coords['lng'] != null) {
+        _residentLat = coords['lat'];
+        _residentLng = coords['lng'];
+      }
+    } catch (_) {}
+
+    try {
       final prefs = await SharedPreferences.getInstance();
+      final isManual = prefs.getBool('is_manual_location') ?? false;
       final saved = prefs.getString('selected_find_location');
-      if (saved != null && saved.isNotEmpty) {
+
+      if (isManual && saved != null && saved.isNotEmpty) {
         if (mounted) {
           setState(() {
             _selectedCity = saved;
@@ -368,7 +383,9 @@ class _FindTabScreenState extends State<FindTabScreen> {
       } else {
         // Default must be taken from GPS
         final gpsCity = await LocationService.detectGpsCity();
-        final cityToUse = (gpsCity != null && gpsCity.isNotEmpty) ? gpsCity : 'Colombo';
+        final cityToUse = (gpsCity != null && gpsCity.isNotEmpty)
+            ? gpsCity
+            : (saved ?? 'Colombo');
         if (mounted) {
           setState(() {
             _selectedCity = cityToUse;
@@ -395,6 +412,81 @@ class _FindTabScreenState extends State<FindTabScreen> {
     } catch (_) {}
   }
 
+  String _getWorkerDistanceText(WorkerModel worker) {
+    if (worker.distance != null && worker.distance! >= 0) {
+      if (worker.distance! < 0.5) {
+        return '< 1 km';
+      }
+      return '${worker.distance!.toStringAsFixed(1)} km';
+    }
+
+    double? resLat = _residentLat;
+    double? resLng = _residentLng;
+
+    if (resLat == null || resLng == null) {
+      if (_selectedCity != 'All Locations' && _selectedCity.trim().isNotEmpty) {
+        final c = LocationService.getCoordinatesForPlace(_selectedCity);
+        if (c != null) {
+          resLat = c['lat'];
+          resLng = c['lng'];
+        }
+      }
+      if (resLat == null || resLng == null) {
+        final c = LocationService.getCoordinatesForPlace(_primaryAddressCity);
+        if (c != null) {
+          resLat = c['lat'];
+          resLng = c['lng'];
+        }
+      }
+      if (resLat == null || resLng == null) {
+        final user = AuthService().currentUserNotifier.value;
+        resLat = user?.locationLat;
+        resLng = user?.locationLng;
+      }
+      if (resLat == null || resLng == null) {
+        resLat = 6.9271;
+        resLng = 79.8612;
+      }
+    }
+
+    double? wLat = worker.locationLat;
+    double? wLng = worker.locationLng;
+
+    if (wLat == null || wLng == null) {
+      final wCoords = LocationService.getCoordinatesForPlace(
+        worker.primaryServiceArea,
+      );
+      if (wCoords != null) {
+        wLat = wCoords['lat'];
+        wLng = wCoords['lng'];
+      }
+    }
+
+    if (wLat != null && wLng != null) {
+      final dist = LocationService.calculateDistanceKm(
+        resLat,
+        resLng,
+        wLat,
+        wLng,
+      );
+      if (dist < 0.5) {
+        return '< 1 km';
+      }
+      return '${dist.toStringAsFixed(1)} km';
+    }
+
+    if (worker.primaryServiceArea != null &&
+        _selectedCity != 'All Locations' &&
+        LocationService.workerMatchesLocation(
+          worker.primaryServiceArea,
+          _selectedCity,
+        )) {
+      return '< 3 km';
+    }
+
+    return 'Nearby';
+  }
+
   Future<void> _fetchWorkers() async {
     setState(() {
       _isLoading = true;
@@ -408,9 +500,47 @@ class _FindTabScreenState extends State<FindTabScreen> {
           _selectedCity == 'All Locations' || _selectedCity.trim().isEmpty;
       final locationQuery = isAllLocations ? null : _selectedCity.trim();
 
+      // Resolve resident coordinates to send to backend search
+      double? resLat = _residentLat;
+      double? resLng = _residentLng;
+
+      if (resLat == null || resLng == null) {
+        if (!isAllLocations) {
+          final placeCoords = LocationService.getCoordinatesForPlace(
+            _selectedCity,
+          );
+          if (placeCoords != null) {
+            resLat = placeCoords['lat'];
+            resLng = placeCoords['lng'];
+          }
+        }
+        if (resLat == null || resLng == null) {
+          final placeCoords = LocationService.getCoordinatesForPlace(
+            _primaryAddressCity,
+          );
+          if (placeCoords != null) {
+            resLat = placeCoords['lat'];
+            resLng = placeCoords['lng'];
+          }
+        }
+        if (resLat == null || resLng == null) {
+          final user = AuthService().currentUserNotifier.value;
+          resLat = user?.locationLat;
+          resLng = user?.locationLng;
+        }
+        if (resLat == null || resLng == null) {
+          resLat = 6.9271;
+          resLng = 79.8612;
+        }
+        _residentLat = resLat;
+        _residentLng = resLng;
+      }
+
       final list = await ApiService().fetchWorkers(
         skill: selectedSkill,
         location: locationQuery,
+        residentLat: resLat,
+        residentLng: resLng,
       );
 
       final filtered = isAllLocations
@@ -437,11 +567,21 @@ class _FindTabScreenState extends State<FindTabScreen> {
     }
   }
 
-  void _updateCity(String newCity) {
+  void _updateCity(String newCity, {bool isManual = true}) {
     setState(() {
       _selectedCity = newCity;
+      if (newCity != 'All Locations' && newCity.trim().isNotEmpty) {
+        final coords = LocationService.getCoordinatesForPlace(newCity);
+        if (coords != null) {
+          _residentLat = coords['lat'];
+          _residentLng = coords['lng'];
+        }
+      }
     });
     LocationService.setSelectedCity(newCity);
+    SharedPreferences.getInstance().then(
+      (prefs) => prefs.setBool('is_manual_location', isManual),
+    );
     _fetchWorkers();
   }
 
@@ -563,11 +703,18 @@ class _FindTabScreenState extends State<FindTabScreen> {
                     ],
                   ),
                 ),
-                const Divider(height: 1, thickness: 1, color: Color(0xFFEEEEEE)),
+                const Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: Color(0xFFEEEEEE),
+                ),
 
                 Expanded(
                   child: ListView(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
                     children: [
                       // Option 1: Use Current Location (GPS)
                       InkWell(
@@ -576,16 +723,23 @@ class _FindTabScreenState extends State<FindTabScreen> {
                             : () async {
                                 setModalState(() => isDetecting = true);
                                 try {
-                                  final city = await LocationService.detectGpsCity();
-                                  if (mounted && city != null && city.isNotEmpty) {
-                                    _updateCity(city);
+                                  final city =
+                                      await LocationService.detectGpsCity();
+                                  if (mounted &&
+                                      city != null &&
+                                      city.isNotEmpty) {
+                                    _updateCity(city, isManual: false);
                                     if (ctx.mounted) Navigator.pop(ctx);
                                   } else {
                                     setModalState(() => isDetecting = false);
                                     if (mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
                                         const SnackBar(
-                                          content: Text('Could not detect GPS location. Please select your city below.'),
+                                          content: Text(
+                                            'Could not detect GPS location. Please check location permissions in settings.',
+                                          ),
                                         ),
                                       );
                                     }
@@ -596,7 +750,10 @@ class _FindTabScreenState extends State<FindTabScreen> {
                               },
                         borderRadius: BorderRadius.circular(12),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
                           decoration: BoxDecoration(
                             border: Border.all(color: const Color(0xFFE2E8F0)),
                             borderRadius: BorderRadius.circular(12),
@@ -641,8 +798,8 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                     const SizedBox(height: 2),
                                     Text(
                                       isDetecting
-                                          ? 'Detecting via GPS / Network...'
-                                          : 'Detect your city using device GPS',
+                                          ? 'Detecting your district via GPS...'
+                                          : 'Detect your district using device GPS',
                                       style: GoogleFonts.dmSans(
                                         fontSize: 12,
                                         color: Colors.grey[600],
@@ -666,12 +823,16 @@ class _FindTabScreenState extends State<FindTabScreen> {
                       // Option 2: Use Primary Address City
                       InkWell(
                         onTap: () async {
-                          if (_primaryAddressCity != null && _primaryAddressCity!.isNotEmpty) {
+                          if (_primaryAddressCity != null &&
+                              _primaryAddressCity!.isNotEmpty) {
                             _updateCity(_primaryAddressCity!);
                             Navigator.pop(ctx);
                           } else {
                             final user = AuthService().currentUser;
-                            final city = await LocationService.getPrimaryAddressCity(user?.email);
+                            final city =
+                                await LocationService.getPrimaryAddressCity(
+                                  user?.email,
+                                );
                             if (city != null && city.isNotEmpty) {
                               _primaryAddressCity = city;
                               _updateCity(city);
@@ -680,7 +841,9 @@ class _FindTabScreenState extends State<FindTabScreen> {
                               if (mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                    content: Text('No primary address found. Please enter or select a city below.'),
+                                    content: Text(
+                                      'No primary address found. Please enter or select a city below.',
+                                    ),
                                   ),
                                 );
                               }
@@ -689,7 +852,10 @@ class _FindTabScreenState extends State<FindTabScreen> {
                         },
                         borderRadius: BorderRadius.circular(12),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
                           decoration: BoxDecoration(
                             border: Border.all(color: const Color(0xFFE2E8F0)),
                             borderRadius: BorderRadius.circular(12),
@@ -725,7 +891,8 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      (_primaryAddressCity != null && _primaryAddressCity!.isNotEmpty)
+                                      (_primaryAddressCity != null &&
+                                              _primaryAddressCity!.isNotEmpty)
                                           ? 'Saved: $_primaryAddressCity'
                                           : 'From your resident account profile',
                                       style: GoogleFonts.dmSans(
@@ -752,11 +919,22 @@ class _FindTabScreenState extends State<FindTabScreen> {
                       TextField(
                         controller: searchController,
                         onChanged: (_) => setModalState(() {}),
-                        style: GoogleFonts.dmSans(fontSize: 14, color: Colors.black),
+                        style: GoogleFonts.dmSans(
+                          fontSize: 14,
+                          color: Colors.black,
+                        ),
                         decoration: InputDecoration(
-                          hintText: 'Search city or district (e.g. Ratnapura, Erathna)...',
-                          hintStyle: GoogleFonts.dmSans(fontSize: 13, color: Colors.grey[500]),
-                          prefixIcon: const Icon(Icons.search, size: 20, color: Colors.black87),
+                          hintText:
+                              'Search city or district (e.g. Ratnapura, Erathna)...',
+                          hintStyle: GoogleFonts.dmSans(
+                            fontSize: 13,
+                            color: Colors.grey[500],
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            size: 20,
+                            color: Colors.black87,
+                          ),
                           suffixIcon: searchController.text.isNotEmpty
                               ? IconButton(
                                   icon: const Icon(Icons.clear, size: 18),
@@ -768,7 +946,10 @@ class _FindTabScreenState extends State<FindTabScreen> {
                               : null,
                           filled: true,
                           fillColor: const Color(0xFFF1F5F9),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide.none,
@@ -781,7 +962,9 @@ class _FindTabScreenState extends State<FindTabScreen> {
                         const SizedBox(height: 10),
                         InkWell(
                           onTap: () {
-                            final custom = LocationService.cleanLocationName(searchController.text.trim());
+                            final custom = LocationService.cleanLocationName(
+                              searchController.text.trim(),
+                            );
                             if (custom.isNotEmpty) {
                               _updateCity(custom);
                               Navigator.pop(ctx);
@@ -789,14 +972,21 @@ class _FindTabScreenState extends State<FindTabScreen> {
                           },
                           borderRadius: BorderRadius.circular(10),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.black,
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.location_on, size: 18, color: Colors.white),
+                                const Icon(
+                                  Icons.location_on,
+                                  size: 18,
+                                  color: Colors.white,
+                                ),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
@@ -809,7 +999,11 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                                const Icon(Icons.arrow_forward, size: 16, color: Colors.white),
+                                const Icon(
+                                  Icons.arrow_forward,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
                               ],
                             ),
                           ),
@@ -832,7 +1026,9 @@ class _FindTabScreenState extends State<FindTabScreen> {
                           spacing: 8,
                           runSpacing: 8,
                           children: sriLankaDistricts.map((city) {
-                            final isSelected = _selectedCity.toLowerCase() == city.toLowerCase();
+                            final isSelected =
+                                _selectedCity.toLowerCase() ==
+                                city.toLowerCase();
                             return ChoiceChip(
                               label: Text(city),
                               selected: isSelected,
@@ -844,11 +1040,17 @@ class _FindTabScreenState extends State<FindTabScreen> {
                               backgroundColor: const Color(0xFFF1F5F9),
                               labelStyle: GoogleFonts.dmSans(
                                 fontSize: 12.5,
-                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                color: isSelected ? Colors.white : Colors.black87,
+                                fontWeight: isSelected
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                                color: isSelected
+                                    ? Colors.white
+                                    : Colors.black87,
                               ),
                               side: BorderSide(
-                                color: isSelected ? Colors.black : const Color(0xFFE2E8F0),
+                                color: isSelected
+                                    ? Colors.black
+                                    : const Color(0xFFE2E8F0),
                               ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(20),
@@ -889,29 +1091,45 @@ class _FindTabScreenState extends State<FindTabScreen> {
                           ...matchingPlaces.map((place) {
                             final name = place['name']!;
                             final type = place['type']!;
-                            final isSelected = _selectedCity.toLowerCase() == name.toLowerCase();
+                            final isSelected =
+                                _selectedCity.toLowerCase() ==
+                                name.toLowerCase();
                             return ListTile(
                               dense: true,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 0,
+                              ),
                               leading: Icon(
                                 Icons.location_on_outlined,
                                 size: 20,
-                                color: isSelected ? Colors.black : Colors.grey[600],
+                                color: isSelected
+                                    ? Colors.black
+                                    : Colors.grey[600],
                               ),
                               title: Text(
                                 name,
                                 style: GoogleFonts.dmSans(
                                   fontSize: 14,
-                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
                                   color: Colors.black,
                                 ),
                               ),
                               subtitle: Text(
                                 type,
-                                style: GoogleFonts.dmSans(fontSize: 11.5, color: Colors.grey[600]),
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 11.5,
+                                  color: Colors.grey[600],
+                                ),
                               ),
                               trailing: isSelected
-                                  ? const Icon(Icons.check, size: 18, color: Colors.black)
+                                  ? const Icon(
+                                      Icons.check,
+                                      size: 18,
+                                      color: Colors.black,
+                                    )
                                   : null,
                               onTap: () {
                                 _updateCity(name);
@@ -1529,9 +1747,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
                             label: Text(
                               showMapPicker
                                   ? 'Hide Map'
-                                  : (hasSavedCoordinates
-                                        ? 'View / Change Pin'
-                                        : 'Pick on Map'),
+                                  : (hasSavedCoordinates ? 'View' : 'Pick'),
                               style: GoogleFonts.dmSans(
                                 fontWeight: FontWeight.w700,
                                 fontSize: 13,
@@ -1626,78 +1842,21 @@ class _FindTabScreenState extends State<FindTabScreen> {
                           ],
                         ),
                         const SizedBox(height: 10),
-                        Container(
-                          height: 180,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFCBD5E1)),
-                            color: const Color(0xFFE5E7EB),
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: GestureDetector(
-                            onTapDown: (details) {
-                              final normX =
-                                  (details.localPosition.dx / 280.0) - 0.5;
-                              final normY =
-                                  (details.localPosition.dy / 180.0) - 0.5;
-                              setModalState(() {
-                                locationLat = locationLat + (normY * 0.02);
-                                locationLng = locationLng + (normX * 0.02);
-                                hasSavedCoordinates = true;
-                                shareGps = true;
-                              });
-                            },
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                Container(
-                                  decoration: const BoxDecoration(
-                                    image: DecorationImage(
-                                      image: NetworkImage(
-                                        'https://tile.openstreetmap.org/13/4688/3187.png',
-                                      ),
-                                      fit: BoxFit.cover,
-                                    ),
-                                  ),
-                                ),
-                                Container(
-                                  color: Colors.black.withValues(alpha: 0.03),
-                                ),
-                                Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(6),
-                                      decoration: const BoxDecoration(
-                                        color: Colors.black,
-                                        shape: BoxShape.circle,
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black26,
-                                            blurRadius: 6,
-                                            offset: Offset(0, 3),
-                                          ),
-                                        ],
-                                      ),
-                                      child: const Icon(
-                                        Icons.location_on,
-                                        color: Colors.white,
-                                        size: 18,
-                                      ),
-                                    ),
-                                    Container(
-                                      width: 6,
-                                      height: 3,
-                                      decoration: const BoxDecoration(
-                                        color: Colors.black38,
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
+                        SuperBassMap(
+                          latitude: locationLat,
+                          longitude: locationLng,
+                          height: 190,
+                          borderRadius: 12,
+                          isInteractive: true,
+                          markerTitle: '',
+                          onLocationPicked: (point) {
+                            setModalState(() {
+                              locationLat = point.latitude;
+                              locationLng = point.longitude;
+                              hasSavedCoordinates = true;
+                              shareGps = true;
+                            });
+                          },
                         ),
                         const SizedBox(height: 8),
                         Container(
@@ -1904,7 +2063,11 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                 },
                           icon: isSubmitting
                               ? const SizedBox.shrink()
-                              : const Icon(Icons.send, size: 20, color: Colors.white),
+                              : const Icon(
+                                  Icons.send,
+                                  size: 20,
+                                  color: Colors.white,
+                                ),
                           label: isSubmitting
                               ? const SizedBox(
                                   width: 22,
@@ -2031,12 +2194,10 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 6),
-                            const Icon(
-                              Icons.verified,
-                              size: 18,
-                              color: AppColors.brandYellowHover,
-                            ),
+                            if (worker.isVerified) ...[
+                              const SizedBox(width: 4),
+                              const VerifiedBadge(size: 18),
+                            ],
                           ],
                         ),
                         const SizedBox(height: 4),
@@ -2088,7 +2249,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
                             const SizedBox(width: 2),
                             Flexible(
                               child: Text(
-                                worker.primaryServiceArea ?? 'Colombo',
+                                '${worker.primaryServiceArea ?? 'Colombo'} • ${_getWorkerDistanceText(worker)}',
                                 style: GoogleFonts.dmSans(
                                   fontSize: 13,
                                   color: AppColors.onSurfaceVariant,
@@ -2218,86 +2379,30 @@ class _FindTabScreenState extends State<FindTabScreen> {
     return Scaffold(
       appBar: AppBar(
         actions: [
-          NotificationBellButton(
-            onNotificationTap: (n) {
-              if (n.type == NotificationType.chat && n.referenceId != null) {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => ChatScreen(
-                      conversationId: n.referenceId!,
-                      name: n.metadata?['name']?.toString() ?? 'Conversation',
-                      profileImage: n.metadata?['profileImage']?.toString(),
-                    ),
-                  ),
-                );
-              } else if (n.type == NotificationType.communityLike || n.type == NotificationType.communityComment) {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const Scaffold(
-                      body: SafeArea(child: CommunityScreen()),
-                    ),
-                  ),
-                );
-              }
-            },
-          ),
           Padding(
-            padding: const EdgeInsets.only(right: 16.0, left: 4.0),
-            child: ValueListenableBuilder<AuthUser?>(
-              valueListenable: AuthService().currentUserNotifier,
-              builder: (context, user, _) {
-                final displayName = user?.name.isNotEmpty == true
-                    ? user!.name
-                    : 'User';
-                final initial = displayName.isNotEmpty
-                    ? displayName[0].toUpperCase()
-                    : 'U';
-                return InkWell(
-                  borderRadius: BorderRadius.circular(18),
-                  onTap: () {
-                    if (user == null) {
-                      Navigator.pushNamed(context, '/join');
-                    }
-                  },
-                  child: Container(
-                    width: 36,
-                    height: 36,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.primaryContainer,
+            padding: const EdgeInsets.only(right: 8.0),
+            child: NotificationBellButton(
+              onNotificationTap: (n) {
+                if (n.type == NotificationType.chat && n.referenceId != null) {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => ChatScreen(
+                        conversationId: n.referenceId!,
+                        name: n.metadata?['name']?.toString() ?? 'Conversation',
+                        profileImage: n.metadata?['profileImage']?.toString(),
+                      ),
                     ),
-                    child: ClipOval(
-                      child:
-                          (user?.picture != null && user!.picture!.isNotEmpty)
-                          ? Image.network(
-                              user.picture!,
-                              width: 36,
-                              height: 36,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, _, _) => Center(
-                                child: Text(
-                                  initial,
-                                  style: GoogleFonts.dmSans(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 14,
-                                    color: AppColors.onPrimaryContainer,
-                                  ),
-                                ),
-                              ),
-                            )
-                          : Center(
-                              child: Text(
-                                initial,
-                                style: GoogleFonts.dmSans(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 14,
-                                  color: AppColors.onPrimaryContainer,
-                                ),
-                              ),
-                            ),
+                  );
+                } else if (n.type == NotificationType.communityLike ||
+                    n.type == NotificationType.communityComment) {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const Scaffold(
+                        body: SafeArea(child: CommunityScreen()),
+                      ),
                     ),
-                  ),
-                );
+                  );
+                }
               },
             ),
           ),
@@ -2579,10 +2684,9 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                   reviewCount: worker.completedJobs,
                                   location:
                                       worker.primaryServiceArea ?? 'Colombo',
-                                  distance: worker.distance != null
-                                      ? '${worker.distance!.toStringAsFixed(1)} km'
-                                      : 'Unknown',
+                                  distance: _getWorkerDistanceText(worker),
                                   profileImage: worker.profileImage,
+                                  isVerified: worker.isVerified,
                                   showBookNow: isLoggedIn,
                                   onBookTap: isLoggedIn
                                       ? () => _showBookingSheet(worker)
@@ -2641,6 +2745,46 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  Map<String, double> _extractBookingCoordinates(BookingModel b) {
+    if (b.locationAddress.isNotEmpty) {
+      final gpsRegex = RegExp(r'\[GPS:\s*([-\d.]+),\s*([-\d.]+)\]', caseSensitive: false);
+      final match = gpsRegex.firstMatch(b.locationAddress);
+      if (match != null) {
+        final lat = double.tryParse(match.group(1) ?? '');
+        final lng = double.tryParse(match.group(2) ?? '');
+        if (lat != null && lng != null && lat != 0 && lng != 0) {
+          return {'lat': lat, 'lng': lng};
+        }
+      }
+      final rawRegex = RegExp(r'([-\d.]+)\s*,\s*([-\d.]+)');
+      final rawMatch = rawRegex.firstMatch(b.locationAddress);
+      if (rawMatch != null) {
+        final lat = double.tryParse(rawMatch.group(1) ?? '');
+        final lng = double.tryParse(rawMatch.group(2) ?? '');
+        if (lat != null && lng != null && lat.abs() <= 90 && lng.abs() <= 180 && lat != 0 && lng != 0) {
+          return {'lat': lat, 'lng': lng};
+        }
+      }
+    }
+    if (b.description.isNotEmpty) {
+      final gmapRegex = RegExp(r'maps\.google\.com\/\?q=([-\d.]+),([-\d.]+)', caseSensitive: false);
+      final gmapMatch = gmapRegex.firstMatch(b.description);
+      if (gmapMatch != null) {
+        final lat = double.tryParse(gmapMatch.group(1) ?? '');
+        final lng = double.tryParse(gmapMatch.group(2) ?? '');
+        if (lat != null && lng != null) return {'lat': lat, 'lng': lng};
+      }
+      final gpsDescRegex = RegExp(r'\[GPS:\s*([-\d.]+),\s*([-\d.]+)\]', caseSensitive: false);
+      final gpsDescMatch = gpsDescRegex.firstMatch(b.description);
+      if (gpsDescMatch != null) {
+        final lat = double.tryParse(gpsDescMatch.group(1) ?? '');
+        final lng = double.tryParse(gpsDescMatch.group(2) ?? '');
+        if (lat != null && lng != null) return {'lat': lat, 'lng': lng};
+      }
+    }
+    return {'lat': 6.9271, 'lng': 79.8612};
   }
 
   void _showBookingDetails(BookingModel b) {
@@ -2956,13 +3100,22 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 4),
-                                Text(
-                                  b.workerName,
-                                  style: GoogleFonts.dmSans(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w800,
-                                    color: const Color(0xFF111827),
-                                  ),
+                                Row(
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        b.workerName,
+                                        style: GoogleFonts.dmSans(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w800,
+                                          color: const Color(0xFF111827),
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    if (b.isWorkerVerified)
+                                      const VerifiedBadge(size: 14),
+                                  ],
                                 ),
                               ],
                             ),
@@ -3151,80 +3304,65 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                                   ],
                                 ),
                               ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.black,
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.open_in_new,
-                                      color: Colors.white,
-                                      size: 16,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      'View on Google Maps',
-                                      style: GoogleFonts.dmSans(
+                              InkWell(
+                                onTap: () {
+                                  final coords = _extractBookingCoordinates(b);
+                                  final lat = coords['lat'];
+                                  final lng = coords['lng'];
+                                  final url =
+                                      'https://www.google.com/maps/search/?api=1&query=$lat,$lng';
+                                  if (kIsWeb) {
+                                    openUrl(url);
+                                  }
+                                },
+                                borderRadius: BorderRadius.circular(20),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black,
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.open_in_new,
                                         color: Colors.white,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w700,
+                                        size: 16,
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'View on Google Maps',
+                                        style: GoogleFonts.dmSans(
+                                          color: Colors.white,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 16),
-                          Container(
-                            height: 200,
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE4E4E7),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.location_on,
-                                    color: Colors.black,
-                                    size: 48,
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(4),
-                                      boxShadow: const [
-                                        BoxShadow(
-                                          color: Colors.black12,
-                                          blurRadius: 4,
-                                        ),
-                                      ],
-                                    ),
-                                    child: Text(
-                                      'Service Location',
-                                      style: GoogleFonts.dmSans(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w700,
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                          Builder(
+                            builder: (context) {
+                              final coords = _extractBookingCoordinates(b);
+                              return SuperBassMap(
+                                latitude: coords['lat']!,
+                                longitude: coords['lng']!,
+                                zoom: 15.0,
+                                height: 220,
+                                borderRadius: 16,
+                                isInteractive: true,
+                                markerTitle: b.locationAddress.isNotEmpty
+                                    ? b.locationAddress
+                                    : 'Service Location',
+                              );
+                            },
                           ),
                         ],
                       ),
@@ -3399,9 +3537,12 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
 
     if (confirmed == true) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Cancelling booking...'), backgroundColor: Colors.black));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cancelling booking...'),
+          backgroundColor: Colors.black,
+        ),
+      );
 
       final success = await ApiService().cancelBooking(b.id);
       if (mounted) {
@@ -3621,41 +3762,109 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
     ).whenComplete(() => commentController.dispose());
   }
 
+  Color _getStatusDotColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'requested':
+      case 'pending':
+        return const Color(0xFFF59E0B);
+      case 'accepted':
+      case 'confirmed':
+        return const Color(0xFF3B82F6);
+      case 'in progress':
+      case 'inprogress':
+        return const Color(0xFF8B5CF6);
+      case 'completed':
+      case 'reviewed':
+        return const Color(0xFF10B981);
+      case 'cancelled':
+      case 'rejected':
+        return const Color(0xFFEF4444);
+      default:
+        return const Color(0xFF94A3B8);
+    }
+  }
+
+  String _formatStatus(String status) {
+    if (status.isEmpty) return 'Requested';
+    final lower = status.toLowerCase();
+    if (lower == 'requested') return 'Requested';
+    if (lower == 'pending') return 'Pending';
+    if (lower == 'accepted') return 'Accepted';
+    if (lower == 'confirmed') return 'Confirmed';
+    if (lower == 'in progress' || lower == 'inprogress') return 'In Progress';
+    if (lower == 'completed') return 'Completed';
+    if (lower == 'reviewed') return 'Reviewed';
+    if (lower == 'cancelled') return 'Cancelled';
+    return status[0].toUpperCase() + status.substring(1);
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = AuthService().currentUser;
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        titleSpacing: 16,
         title: Text(
           'My Bookings',
-          style: GoogleFonts.dmSans(fontWeight: FontWeight.w800),
+          style: GoogleFonts.dmSans(
+            fontWeight: FontWeight.w800,
+            fontSize: 20,
+            color: Colors.black,
+            letterSpacing: -0.5,
+          ),
         ),
         actions: [
-          NotificationBellButton(
-            onNotificationTap: (n) {
-              if (n.type == NotificationType.chat && n.referenceId != null) {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => ChatScreen(
-                      conversationId: n.referenceId!,
-                      name: n.metadata?['name']?.toString() ?? 'Conversation',
-                      profileImage: n.metadata?['profileImage']?.toString(),
-                    ),
-                  ),
-                );
-              } else if (n.type == NotificationType.communityLike || n.type == NotificationType.communityComment) {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const Scaffold(
-                      body: SafeArea(child: CommunityScreen()),
-                    ),
-                  ),
-                );
-              }
-            },
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: const BoxDecoration(
+                color: Color(0xFFF1F5F9),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: NotificationBellButton(
+                  onNotificationTap: (n) {
+                    if (n.type == NotificationType.chat &&
+                        n.referenceId != null) {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => ChatScreen(
+                            conversationId: n.referenceId!,
+                            name:
+                                n.metadata?['name']?.toString() ??
+                                'Conversation',
+                            profileImage: n.metadata?['profileImage']
+                                ?.toString(),
+                          ),
+                        ),
+                      );
+                    } else if (n.type == NotificationType.communityLike ||
+                        n.type == NotificationType.communityComment) {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const Scaffold(
+                            body: SafeArea(child: CommunityScreen()),
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ),
+            ),
           ),
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(color: const Color(0xFFE2E8F0), height: 1),
+        ),
       ),
       body: user == null
           ? Center(
@@ -3689,8 +3898,15 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
             )
           : RefreshIndicator(
               onRefresh: _fetchBookings,
+              color: Colors.black,
+              backgroundColor: Colors.white,
               child: _isLoading
-                  ? const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.black,
+                      ),
+                    )
                   : _bookings.isEmpty
                   ? ListView(
                       children: [
@@ -3698,24 +3914,23 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                           margin: const EdgeInsets.all(24),
                           padding: const EdgeInsets.all(32),
                           decoration: BoxDecoration(
-                            color: AppColors.surfaceVariant.withValues(
-                              alpha: 0.5,
-                            ),
-                            borderRadius: BorderRadius.circular(16),
+                            color: const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(20),
                           ),
                           child: Column(
                             children: [
                               const Icon(
                                 Icons.calendar_month_outlined,
                                 size: 48,
-                                color: AppColors.onSurfaceVariant,
+                                color: Color(0xFF94A3B8),
                               ),
                               const SizedBox(height: 12),
                               Text(
                                 'No bookings yet',
                                 style: GoogleFonts.dmSans(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 18,
+                                  color: Colors.black,
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -3723,7 +3938,7 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                                 'When you book a professional from the Find tab, your booking history will appear here.',
                                 style: GoogleFonts.dmSans(
                                   fontSize: 13,
-                                  color: AppColors.onSurfaceVariant,
+                                  color: const Color(0xFF64748B),
                                 ),
                                 textAlign: TextAlign.center,
                               ),
@@ -3733,211 +3948,294 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                       ],
                     )
                   : ListView.separated(
-                      padding: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
                       itemCount: _bookings.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 14),
+                      separatorBuilder: (_, _) => const SizedBox(height: 16),
                       itemBuilder: (context, index) {
                         final b = _bookings[index];
                         final scheduled = b.scheduledDate != null
                             ? '${b.scheduledDate!.day}/${b.scheduledDate!.month}/${b.scheduledDate!.year}'
-                            : 'Upcoming';
+                            : 'Flexible / ASAP';
+                        final isCancellable =
+                            b.status.toLowerCase() == 'requested' ||
+                            b.status.toLowerCase() == 'pending';
+                        final isCompleted =
+                            b.status.toLowerCase() == 'completed';
 
-                        return Container(
-                          padding: const EdgeInsets.all(18),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(18),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.04),
-                                blurRadius: 12,
-                                offset: const Offset(0, 3),
+                        return Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () => _showBookingDetails(b),
+                            borderRadius: BorderRadius.circular(24),
+                            child: Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF4F6F8),
+                                borderRadius: BorderRadius.circular(24),
                               ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Expanded(
-                                    child: Text(
-                                      b.workerName,
-                                      style: GoogleFonts.dmSans(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 16,
+                                  // Top Row: Worker Name + Status Pill
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: [
+                                      Expanded(
+                                        child: Row(
+                                          children: [
+                                            Flexible(
+                                              child: Text(
+                                                b.workerName,
+                                                style: GoogleFonts.dmSans(
+                                                  fontWeight: FontWeight.w800,
+                                                  fontSize: 20,
+                                                  color: Colors.black,
+                                                  letterSpacing: -0.4,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                            if (b.isWorkerVerified)
+                                              const VerifiedBadge(size: 18),
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: (b.status.toLowerCase() ==
-                                                  'confirmed' ||
-                                              b.status.toLowerCase() ==
-                                                  'accepted' ||
-                                              b.status.toLowerCase() ==
-                                                  'completed')
-                                          ? Colors.black
-                                          : Colors.white,
-                                      border: Border.all(
-                                        color: Colors.black,
-                                        width: 1.2,
-                                      ),
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: Text(
-                                      b.status,
-                                      style: GoogleFonts.dmSans(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 12,
-                                        color: (b.status.toLowerCase() ==
-                                                    'confirmed' ||
-                                                b.status.toLowerCase() ==
-                                                    'accepted' ||
-                                                b.status.toLowerCase() ==
-                                                    'completed')
-                                            ? Colors.white
-                                            : Colors.black,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                b.jobTitle,
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.onSurface,
-                                ),
-                              ),
-                              if (b.description.isNotEmpty) ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                  b.description,
-                                  style: GoogleFonts.dmSans(
-                                    fontSize: 12,
-                                    color: AppColors.onSurfaceVariant,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                              const Divider(
-                                height: 24,
-                                color: AppColors.outlineVariant,
-                              ),
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.schedule,
-                                    size: 16,
-                                    color: AppColors.onSurfaceVariant,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    scheduled,
-                                    style: GoogleFonts.dmSans(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const Spacer(),
-                                  Text(
-                                    'Rs. ${b.estimatedPrice.toStringAsFixed(0)}',
-                                    style: GoogleFonts.dmSans(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 14,
-                                      color: AppColors.onSurface,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 14),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    flex:
-                                        (b.status.toLowerCase() ==
-                                                'requested' ||
-                                            b.status.toLowerCase() == 'pending')
-                                        ? 3
-                                        : 1,
-                                    child: SizedBox(
-                                      height: 42,
-                                      child: ElevatedButton.icon(
-                                        onPressed: () => _showBookingDetails(b),
-                                        icon: const Icon(
-                                          Icons.visibility_outlined,
-                                          size: 16,
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
                                           color: Colors.white,
-                                        ),
-                                        label: Text(
-                                          'View Booking',
-                                          style: GoogleFonts.dmSans(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w700,
-                                            color: Colors.white,
+                                          borderRadius: BorderRadius.circular(
+                                            20,
                                           ),
                                         ),
-                                        style: ElevatedButton.styleFrom(
-                                          elevation: 0,
-                                          tapTargetSize:
-                                              MaterialTapTargetSize.shrinkWrap,
-                                          foregroundColor: Colors.white,
-                                          backgroundColor: Colors.black,
-                                          shape: const StadiumBorder(),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Container(
+                                              width: 7,
+                                              height: 7,
+                                              decoration: BoxDecoration(
+                                                color: _getStatusDotColor(
+                                                  b.status,
+                                                ),
+                                                shape: BoxShape.circle,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              _formatStatus(b.status),
+                                              style: GoogleFonts.dmSans(
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 12,
+                                                color: Colors.black,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+
+                                  // Job Title
+                                  Text(
+                                    b.jobTitle,
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black,
                                     ),
                                   ),
-                                  if (b.status.toLowerCase() == 'requested' ||
-                                      b.status.toLowerCase() == 'pending') ...[
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      flex: 2,
-                                      child: SizedBox(
-                                        height: 42,
-                                        child: OutlinedButton.icon(
-                                          onPressed: () =>
-                                              _confirmCancelBooking(b),
-                                          icon: const Icon(
-                                            Icons.cancel_outlined,
-                                            size: 16,
-                                            color: Colors.black,
-                                          ),
-                                          label: Text(
-                                            'Cancel',
-                                            style: GoogleFonts.dmSans(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w700,
-                                              color: Colors.black,
-                                            ),
-                                          ),
-                                          style: OutlinedButton.styleFrom(
-                                            elevation: 0,
-                                            tapTargetSize: MaterialTapTargetSize
-                                                .shrinkWrap,
-                                            foregroundColor: Colors.black,
-                                            side: const BorderSide(
-                                              color: Colors.black,
-                                            ),
-                                            shape: const StadiumBorder(),
-                                          ),
-                                        ),
+
+                                  // Description / notes
+                                  if (b.description.isNotEmpty) ...[
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      b.description,
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w400,
+                                        color: const Color(0xFF64748B),
                                       ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ],
+
+                                  const SizedBox(height: 16),
+                                  const Divider(
+                                    color: Color(0xFFE2E8F0),
+                                    thickness: 1,
+                                    height: 1,
+                                  ),
+                                  const SizedBox(height: 16),
+
+                                  // Date & Price Row
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.access_time_rounded,
+                                            size: 18,
+                                            color: Color(0xFF475569),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            scheduled,
+                                            style: GoogleFonts.dmSans(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w500,
+                                              color: const Color(0xFF475569),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      Text(
+                                        'Rs. ${b.estimatedPrice.toStringAsFixed(0)}',
+                                        style: GoogleFonts.dmSans(
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 22,
+                                          color: Colors.black,
+                                          letterSpacing: -0.5,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+
+                                  const SizedBox(height: 18),
+
+                                  // Action Buttons Row: View & Cancel/Review
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: InkWell(
+                                          onTap: () => _showBookingDetails(b),
+                                          borderRadius: BorderRadius.circular(
+                                            26,
+                                          ),
+                                          child: Container(
+                                            height: 48,
+                                            decoration: BoxDecoration(
+                                              color: Colors.black,
+                                              borderRadius:
+                                                  BorderRadius.circular(26),
+                                            ),
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                const Icon(
+                                                  Icons.visibility_outlined,
+                                                  size: 17,
+                                                  color: Colors.white,
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Text(
+                                                  'View',
+                                                  style: GoogleFonts.dmSans(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      if (isCancellable) ...[
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: InkWell(
+                                            onTap: () =>
+                                                _confirmCancelBooking(b),
+                                            borderRadius: BorderRadius.circular(
+                                              26,
+                                            ),
+                                            child: Container(
+                                              height: 48,
+                                              decoration: BoxDecoration(
+                                                color: Colors.white,
+                                                borderRadius:
+                                                    BorderRadius.circular(26),
+                                              ),
+                                              child: Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  const Icon(
+                                                    Icons.cancel_outlined,
+                                                    size: 17,
+                                                    color: Colors.black,
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Text(
+                                                    'Cancel',
+                                                    style: GoogleFonts.dmSans(
+                                                      fontSize: 14,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color: Colors.black,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ] else if (isCompleted) ...[
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: InkWell(
+                                            onTap: () => _showReviewSheet(b),
+                                            borderRadius: BorderRadius.circular(
+                                              26,
+                                            ),
+                                            child: Container(
+                                              height: 48,
+                                              decoration: BoxDecoration(
+                                                color: Colors.white,
+                                                borderRadius:
+                                                    BorderRadius.circular(26),
+                                              ),
+                                              child: Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  const Icon(
+                                                    Icons.star_outline_rounded,
+                                                    size: 17,
+                                                    color: Colors.black,
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Text(
+                                                    'Review',
+                                                    style: GoogleFonts.dmSans(
+                                                      fontSize: 14,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color: Colors.black,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
                                 ],
                               ),
-                            ],
+                            ),
                           ),
                         );
                       },
@@ -4167,12 +4465,25 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
                                   )
                                 : null,
                           ),
-                          title: Text(
-                            name,
-                            style: GoogleFonts.dmSans(
-                              fontWeight: FontWeight.w500,
-                              fontSize: 16,
-                            ),
+                          title: Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  name,
+                                  style: GoogleFonts.dmSans(
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 16,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (c['isVerified'] == true ||
+                                  c['IsVerified'] == true ||
+                                  c['isWorkerVerified'] == true ||
+                                  c['isResidentVerified'] == true ||
+                                  c['isOtherPartyVerified'] == true)
+                                const VerifiedBadge(size: 14),
+                            ],
                           ),
                           subtitle: Padding(
                             padding: const EdgeInsets.only(top: 4.0),
@@ -4252,6 +4563,12 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
                                   name: name,
                                   profileImage: c['workerProfileImage']
                                       ?.toString(),
+                                  isVerified:
+                                      c['isVerified'] == true ||
+                                      c['IsVerified'] == true ||
+                                      c['isWorkerVerified'] == true ||
+                                      c['isResidentVerified'] == true ||
+                                      c['isOtherPartyVerified'] == true,
                                 ),
                               ),
                             );
@@ -4405,11 +4722,61 @@ class AccountTabScreen extends StatelessWidget {
               title: 'Sign Out',
               isDestructive: true,
               onTap: () async {
-                await AuthService().logout();
-                if (context.mounted) {
-                  Navigator.of(
-                    context,
-                  ).pushNamedAndRemoveUntil('/join', (route) => false);
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    title: Text(
+                      'Log Out',
+                      style: GoogleFonts.dmSans(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.onSurface,
+                      ),
+                    ),
+                    content: Text(
+                      'Are you sure you want to log out of SuperBass?',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 14,
+                        color: AppColors.onSurfaceVariant,
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                        child: Text(
+                          'Cancel',
+                          style: GoogleFonts.dmSans(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                      ElevatedButton(
+                        onPressed: () => Navigator.of(ctx).pop(true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.error,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: Text(
+                          'Log Out',
+                          style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (confirm == true) {
+                  await AuthService().logout();
+                  if (context.mounted) {
+                    Navigator.of(
+                      context,
+                    ).pushNamedAndRemoveUntil('/join', (route) => false);
+                  }
                 }
               },
             ),

@@ -93,6 +93,8 @@ namespace Superbass.Controllers
                 ReviewedAt = b.ReviewedAt,
                 ConversationId = b.ConversationId,
                 IsContactShared = b.IsContactShared,
+                IsWorkerVerified = b.Worker?.IsVerified ?? false,
+                IsResidentVerified = b.Resident?.IsVerified ?? false,
                 CreatedAt = b.CreatedAt,
                 UpdatedAt = b.UpdatedAt
             };

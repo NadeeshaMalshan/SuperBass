@@ -1,38 +1,25 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../data/sri_lanka_locations.dart';
 import '../../models/booking_model.dart';
 import '../../models/worker_model.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
-import '../../theme/worker_colors.dart';
-
-class _ProTipItem {
-  final String category;
-  final String badge;
-  final String text;
-  final IconData icon;
-  final Color iconColor;
-  final Color iconBg;
-
-  const _ProTipItem({
-    required this.category,
-    required this.badge,
-    required this.text,
-    required this.icon,
-    required this.iconColor,
-    required this.iconBg,
-  });
-}
+import 'worker_performance_screen.dart';
 
 
 class WorkerDashboardScreen extends StatefulWidget {
   final WorkerModel? worker;
+  final bool isOnline;
+  final VoidCallback? onToggleOnline;
   final Function(int tabIndex)? onNavigateTab;
 
   const WorkerDashboardScreen({
     super.key,
     this.worker,
+    this.isOnline = false,
+    this.onToggleOnline,
     this.onNavigateTab,
   });
 
@@ -43,75 +30,23 @@ class WorkerDashboardScreen extends StatefulWidget {
 class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
   WorkerModel? _worker;
   Map<String, dynamic>? _performance;
-  List<BookingModel> _pendingBookings = [];
   BookingModel? _recentReview;
   bool _isLoading = true;
-  String _selectedOverviewPeriod = 'All Time';
-  String _currentLocation = 'Colombo, Western Province';
-
-  static const List<_ProTipItem> _proTips = [
-    _ProTipItem(
-      category: 'PRO TIP',
-      badge: 'Setup 60%',
-      text: 'Add all your specific sub-skills to rank higher when residents search for emergency repairs.',
-      icon: Icons.lightbulb_outline_rounded,
-      iconColor: Color(0xFF059669),
-      iconBg: Color(0xFFECFDF5),
-    ),
-    _ProTipItem(
-      category: 'SPEED & RELIABILITY',
-      badge: '2x Priority',
-      text: 'Accepting job requests within 10 minutes boosts your algorithm priority by 2x.',
-      icon: Icons.bolt_rounded,
-      iconColor: Color(0xFF2563EB),
-      iconBg: Color(0xFFEFF6FF),
-    ),
-    _ProTipItem(
-      category: 'AVAILABILITY',
-      badge: 'Peak Hours',
-      text: 'Keep your status toggled to \'Online\' during peak morning hours (8 AM - 11 AM) for maximum booking volume.',
-      icon: Icons.schedule_rounded,
-      iconColor: Color(0xFFD97706),
-      iconBg: Color(0xFFFFFBEB),
-    ),
-    _ProTipItem(
-      category: 'COMMUNITY ENGAGEMENT',
-      badge: 'Direct Leads',
-      text: 'Share helpful advice in Community Discussions to attract direct bookings without commission.',
-      icon: Icons.forum_outlined,
-      iconColor: Color(0xFF9333EA),
-      iconBg: Color(0xFFF3E8FF),
-    ),
-  ];
-
-  Timer? _tipRotationTimer;
-  int _currentTipIndex = 0;
+  String _selectedOverviewPeriod = 'All time';
+  String _currentLocation = 'Colombo';
 
   @override
   void initState() {
     super.initState();
     _worker = widget.worker;
-    if (_worker?.primaryServiceArea != null && _worker!.primaryServiceArea!.isNotEmpty) {
-      _currentLocation = '${_worker!.primaryServiceArea}, Western Province';
+    if (_worker?.primaryServiceArea != null && _worker!.primaryServiceArea!.trim().isNotEmpty) {
+      _currentLocation = _worker!.primaryServiceArea!.trim();
     }
     _loadDashboardData();
-    _startTipRotation();
-  }
-
-  void _startTipRotation() {
-    _tipRotationTimer?.cancel();
-    _tipRotationTimer = Timer.periodic(const Duration(seconds: 6), (timer) {
-      if (mounted) {
-        setState(() {
-          _currentTipIndex = (_currentTipIndex + 1) % _proTips.length;
-        });
-      }
-    });
   }
 
   @override
   void dispose() {
-    _tipRotationTimer?.cancel();
     super.dispose();
   }
 
@@ -121,8 +56,8 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
     super.didUpdateWidget(oldWidget);
     if (widget.worker != oldWidget.worker) {
       _worker = widget.worker;
-      if (_worker?.primaryServiceArea != null && _worker!.primaryServiceArea!.isNotEmpty) {
-        _currentLocation = '${_worker!.primaryServiceArea}, Western Province';
+      if (_worker?.primaryServiceArea != null && _worker!.primaryServiceArea!.trim().isNotEmpty) {
+        _currentLocation = _worker!.primaryServiceArea!.trim();
       }
     }
   }
@@ -140,12 +75,6 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
         final perf = await ApiService().fetchWorkerPerformance(worker.id);
         final allBookings = await ApiService().fetchWorkerBookings(email);
 
-        final pending = allBookings
-            .where((b) =>
-                b.status.toLowerCase() == 'requested' ||
-                b.status.toLowerCase() == 'pending')
-            .toList();
-
         final reviewed = allBookings
             .where((b) =>
                 (b.status.toLowerCase() == 'reviewed' || b.reviewRating != null) &&
@@ -156,12 +85,11 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
           setState(() {
             _worker = worker;
             _performance = perf;
-            _pendingBookings = pending;
             if (reviewed.isNotEmpty) {
               _recentReview = reviewed.first;
             }
-            if (worker.primaryServiceArea != null && worker.primaryServiceArea!.isNotEmpty) {
-              _currentLocation = '${worker.primaryServiceArea}, Western Province';
+            if (worker.primaryServiceArea != null && worker.primaryServiceArea!.trim().isNotEmpty) {
+              _currentLocation = worker.primaryServiceArea!.trim();
             }
             _isLoading = false;
           });
@@ -177,149 +105,27 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
 
   String _getTimeGreeting() {
     final hour = DateTime.now().hour;
-    if (hour < 12) return 'GOOD MORNING';
-    if (hour < 17) return 'GOOD AFTERNOON';
-    return 'GOOD EVENING';
-  }
-
-  Future<void> _handleAccept(BookingModel booking) async {
-    if (booking.id == 9999) {
-      // Demo booking action
-      setState(() {
-        _pendingBookings.removeWhere((b) => b.id == booking.id);
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('✓ Request Accepted! Moved to My Jobs.',
-              style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
-          backgroundColor: WorkerColors.success,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      widget.onNavigateTab?.call(1);
-      return;
-    }
-
-    final updated = await ApiService().acceptBooking(booking.id);
-    if (mounted) {
-      if (updated != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('✓ Request Accepted! Moved to My Jobs.',
-                style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
-            backgroundColor: WorkerColors.success,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        _loadDashboardData();
-        widget.onNavigateTab?.call(1);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to accept booking. Please try again.',
-                style: GoogleFonts.dmSans()),
-            backgroundColor: WorkerColors.error,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _handleDecline(BookingModel booking) async {
-    final reasonController = TextEditingController(text: 'Worker schedule unavailable');
-    final shouldDecline = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Decline Booking Request',
-            style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Optionally provide a reason for declining:',
-                style: GoogleFonts.dmSans(fontSize: 13)),
-            const SizedBox(height: 12),
-            TextField(
-              controller: reasonController,
-              decoration: const InputDecoration(
-                hintText: 'e.g. Busy on this date / outside service area',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('Cancel',
-                style: GoogleFonts.dmSans(color: WorkerColors.onSurfaceVariant)),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: WorkerColors.error,
-              foregroundColor: Colors.white,
-            ),
-            child: Text('Decline', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
-    );
-
-    if (shouldDecline != true) return;
-
-    if (booking.id == 9999) {
-      setState(() {
-        _pendingBookings.removeWhere((b) => b.id == booking.id);
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Booking request declined.', style: GoogleFonts.dmSans()),
-            backgroundColor: WorkerColors.onSurface,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-      return;
-    }
-
-    final updated = await ApiService().rejectBooking(booking.id,
-        reason: reasonController.text.trim());
-    if (mounted) {
-      if (updated != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Booking request declined.', style: GoogleFonts.dmSans()),
-            backgroundColor: WorkerColors.onSurface,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        _loadDashboardData();
-      }
-    }
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
   }
 
   void _showChangeLocationSheet() {
-    final areas = [
-      'Colombo, Western Province',
-      'Colombo 03, Western Province',
-      'Colombo Central, Western Province',
-      'Gampaha, Western Province',
-      'Kalutara, Western Province',
-      'Kandy, Central Province',
-      'Galle, Southern Province',
-    ];
+    final areas = SriLankaLocations.districts;
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        return Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.75,
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -343,38 +149,54 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                   color: const Color(0xFF0F172A),
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               Text(
-                'Resident job alerts will prioritize this operational zone.',
+                'Saved in your worker table for job matching & alerts.',
                 style: GoogleFonts.dmSans(fontSize: 13, color: const Color(0xFF64748B)),
               ),
-              const SizedBox(height: 16),
-              ...areas.map((area) {
-                final isSelected = area == _currentLocation;
-                return ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  leading: Icon(
-                    Icons.near_me_outlined,
-                    color: isSelected ? const Color(0xFF059669) : const Color(0xFF94A3B8),
-                    size: 20,
-                  ),
-                  title: Text(
-                    area,
-                    style: GoogleFonts.dmSans(
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                      color: isSelected ? const Color(0xFF0F172A) : const Color(0xFF475569),
-                    ),
-                  ),
-                  trailing: isSelected
-                      ? const Icon(Icons.check_circle_rounded,
-                          color: Color(0xFF059669), size: 20)
-                      : null,
-                  onTap: () {
-                    setState(() => _currentLocation = area);
-                    Navigator.of(ctx).pop();
+              const SizedBox(height: 12),
+              Expanded(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: areas.length,
+                  itemBuilder: (context, index) {
+                    final area = areas[index];
+                    final isSelected = area.toLowerCase() == _currentLocation.toLowerCase();
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      leading: Icon(
+                        Icons.near_me_outlined,
+                        color: isSelected ? Colors.black : const Color(0xFF94A3B8),
+                        size: 20,
+                      ),
+                      title: Text(
+                        area,
+                        style: GoogleFonts.dmSans(
+                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                          color: isSelected ? Colors.black : const Color(0xFF475569),
+                        ),
+                      ),
+                      trailing: isSelected
+                          ? const Icon(Icons.check_circle_rounded, color: Colors.black, size: 20)
+                          : null,
+                      onTap: () async {
+                        setState(() => _currentLocation = area);
+                        Navigator.of(ctx).pop();
+                        final workerId = (_worker ?? widget.worker)?.id;
+                        if (workerId != null) {
+                          final currentRadius = (_worker ?? widget.worker)?.coverageRadiusKm ?? 10.0;
+                          await ApiService().updateWorkerServiceArea(
+                            workerId,
+                            serviceArea: area,
+                            radiusKm: currentRadius,
+                          );
+                          _loadDashboardData();
+                        }
+                      },
+                    );
                   },
-                );
-              }),
+                ),
+              ),
             ],
           ),
         );
@@ -383,7 +205,7 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
   }
 
   void _showPeriodFilterMenu() {
-    final periods = ['All Time', 'This Month', 'This Week', 'Today'];
+    final periods = ['All time', 'This month', 'This week', 'Today'];
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -413,7 +235,7 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                 style: GoogleFonts.dmSans(
                   fontSize: 17,
                   fontWeight: FontWeight.w800,
-                  color: const Color(0xFF0F172A),
+                  color: Colors.black,
                 ),
               ),
               const SizedBox(height: 12),
@@ -422,18 +244,18 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                 return ListTile(
                   leading: Icon(
                     Icons.calendar_today_outlined,
-                    color: isSelected ? const Color(0xFF2563EB) : const Color(0xFF94A3B8),
+                    color: isSelected ? Colors.black : const Color(0xFF94A3B8),
                     size: 18,
                   ),
                   title: Text(
                     p,
                     style: GoogleFonts.dmSans(
                       fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                      color: isSelected ? const Color(0xFF2563EB) : const Color(0xFF334155),
+                      color: isSelected ? Colors.black : const Color(0xFF334155),
                     ),
                   ),
                   trailing: isSelected
-                      ? const Icon(Icons.check_rounded, color: Color(0xFF2563EB), size: 20)
+                      ? const Icon(Icons.check_rounded, color: Colors.black, size: 20)
                       : null,
                   onTap: () {
                     setState(() => _selectedOverviewPeriod = p);
@@ -452,33 +274,13 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: WorkerColors.primary),
+        child: CircularProgressIndicator(color: Colors.black),
       );
     }
 
     final worker = _worker ?? widget.worker;
-    final fullName = worker?.name ?? AuthService().currentUser?.name ?? 'Kasun';
-    final firstName = fullName.trim().split(' ').first;
-
-    // Display bookings: real bookings if available, otherwise match screenshot sample
-    final List<BookingModel> displayBookings = _pendingBookings.isNotEmpty
-        ? _pendingBookings
-        : [
-            BookingModel(
-              id: 9999,
-              residentEmail: 'jayashan@example.com',
-              residentName: 'JAYASHAN MANODYA',
-              workerId: worker?.id ?? 1,
-              workerName: fullName,
-              jobTitle: 'Need help with Electrical',
-              urgency: 'Medium',
-              scheduledDate: DateTime.now().add(const Duration(days: 2, hours: 4)),
-              locationAddress: 'Colombo 03',
-              estimatedPrice: 2000.0,
-              status: 'Pending',
-              createdAt: DateTime.now(),
-            ),
-          ];
+    final fullName = worker?.name ?? AuthService().currentUser?.name ?? 'Super';
+    final firstName = (fullName.trim().split(' ').first).isNotEmpty ? fullName.trim().split(' ').first : 'Super';
 
     // Performance metrics
     final rawOverall = _performance?['overallRating'] ??
@@ -507,313 +309,190 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
 
     return RefreshIndicator(
       onRefresh: _loadDashboardData,
-      color: WorkerColors.primary,
+      color: Colors.black,
+      backgroundColor: Colors.white,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 100),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. Welcome Header Card
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF0F172A).withValues(alpha: 0.04),
-                    blurRadius: 14,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+            // 1. Time-based Greeting
+            Text(
+              _getTimeGreeting(),
+              style: GoogleFonts.dmSans(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF64748B),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Status Row: Icon + GOOD MORNING • FIELD READY
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.wb_sunny_outlined,
-                        size: 16,
-                        color: Color(0xFF2563EB),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        '${_getTimeGreeting()} • FIELD READY',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: const Color(0xFF2563EB),
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
+            ),
+            const SizedBox(height: 6),
 
-                  // Welcome back, Kasun!
-                  Text(
-                    'Welcome back, $firstName!',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w900,
-                      color: const Color(0xFF0F172A),
-                      letterSpacing: -0.6,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
+            // 2. Welcome back, \n Super
+            Text(
+              'Welcome back,\n$firstName',
+              style: GoogleFonts.dmSans(
+                fontSize: 32,
+                fontWeight: FontWeight.w900,
+                color: Colors.black,
+                height: 1.15,
+                letterSpacing: -0.8,
+              ),
+            ),
+            const SizedBox(height: 16),
 
-                  // Location Row: Compass Icon + Colombo, Western Province + Change ⌵
-                  Row(
+            // 3. Location Pill
+            Align(
+              alignment: Alignment.centerLeft,
+              child: InkWell(
+                onTap: _showChangeLocationSheet,
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(
                         Icons.near_me_outlined,
                         size: 16,
-                        color: Color(0xFF059669),
+                        color: Colors.black,
                       ),
                       const SizedBox(width: 6),
                       Text(
                         _currentLocation,
                         style: GoogleFonts.dmSans(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: const Color(0xFF475569),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black,
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      InkWell(
-                        onTap: _showChangeLocationSheet,
-                        borderRadius: BorderRadius.circular(6),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'Change',
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF2563EB),
-                                ),
-                              ),
-                              const SizedBox(width: 2),
-                              const Icon(
-                                Icons.keyboard_arrow_down_rounded,
-                                size: 16,
-                                color: Color(0xFF2563EB),
-                              ),
-                            ],
+                      const SizedBox(width: 4),
+                      const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        size: 18,
+                        color: Colors.black,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // 4. Online Availability Black Card
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+              decoration: BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.circular(22),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: widget.isOnline
+                                  ? const Color(0xFF00C853)
+                                  : const Color(0xFF71717A),
+                              shape: BoxShape.circle,
+                            ),
                           ),
+                          const SizedBox(width: 8),
+                          Text(
+                            widget.isOnline ? "You're online" : "You're offline",
+                            style: GoogleFonts.dmSans(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        widget.isOnline
+                            ? 'Residents can book your services'
+                            : 'Toggle on when ready to work',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w400,
+                          color: const Color(0xFF94A3B8),
                         ),
                       ),
                     ],
                   ),
+                  Transform.scale(
+                    scale: 0.95,
+                    child: Switch(
+                      value: widget.isOnline,
+                      onChanged: (_) => widget.onToggleOnline?.call(),
+                      trackColor: WidgetStateProperty.resolveWith<Color>((states) {
+                        if (states.contains(WidgetState.selected)) {
+                          return const Color(0xFF00C853);
+                        }
+                        return const Color(0xFF27272A);
+                      }),
+                      thumbColor: WidgetStateProperty.all(Colors.white),
+                      trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
+                      thumbIcon: WidgetStateProperty.all(const Icon(null)),
+                    ),
+                  ),
                 ],
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 28),
 
-            // 2. Rotating PRO TIP Card
-            Builder(
-              builder: (context) {
-                final currentTip = _proTips[_currentTipIndex];
-
-                return InkWell(
-                  onTap: () {
-                    setState(() {
-                      _currentTipIndex = (_currentTipIndex + 1) % _proTips.length;
-                    });
-                    _startTipRotation();
-                  },
-                  borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 320),
-                          transitionBuilder: (child, animation) => FadeTransition(
-                            opacity: animation,
-                            child: SlideTransition(
-                              position: Tween<Offset>(
-                                begin: const Offset(0.03, 0),
-                                end: Offset.zero,
-                              ).animate(animation),
-                              child: child,
-                            ),
-                          ),
-                          child: Row(
-                            key: ValueKey<int>(_currentTipIndex),
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    width: 32,
-                                    height: 32,
-                                    decoration: BoxDecoration(
-                                      color: currentTip.iconBg,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Icon(
-                                      currentTip.icon,
-                                      color: currentTip.iconColor,
-                                      size: 18,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Text(
-                                    currentTip.category,
-                                    style: GoogleFonts.dmSans(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w800,
-                                      color: currentTip.iconColor,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Text(
-                                  currentTip.badge,
-                                  style: GoogleFonts.dmSans(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: const Color(0xFF334155),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 320),
-                          transitionBuilder: (child, animation) => FadeTransition(
-                            opacity: animation,
-                            child: child,
-                          ),
-                          child: SizedBox(
-                            key: ValueKey<int>(_currentTipIndex),
-                            width: double.infinity,
-                            child: Text(
-                              currentTip.text,
-                              style: GoogleFonts.dmSans(
-                                fontSize: 13,
-                                height: 1.45,
-                                fontWeight: FontWeight.w400,
-                                color: const Color(0xFF475569),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        // Sleek indicator dots
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: List.generate(_proTips.length, (idx) {
-                            final isActive = idx == _currentTipIndex;
-                            return GestureDetector(
-                              onTap: () {
-                                setState(() => _currentTipIndex = idx);
-                                _startTipRotation();
-                              },
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 250),
-                                margin: const EdgeInsets.symmetric(horizontal: 3),
-                                width: isActive ? 18 : 6,
-                                height: 5,
-                                decoration: BoxDecoration(
-                                  color: isActive
-                                      ? currentTip.iconColor
-                                      : const Color(0xFFCBD5E1),
-                                  borderRadius: BorderRadius.circular(3),
-                                ),
-                              ),
-                            );
-                          }),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-
-            const SizedBox(height: 22),
-
-            // 3. Overview Header & 4 Metrics
+            // 5. Overview Header
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Overview',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xFF0F172A),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Live operational metrics',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF64748B),
-                      ),
-                    ),
-                  ],
+                Text(
+                  'Overview',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.black,
+                    letterSpacing: -0.5,
+                  ),
                 ),
                 InkWell(
                   onTap: _showPeriodFilterMenu,
                   borderRadius: BorderRadius.circular(20),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: const Color(0xFFF1F5F9),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
-                          Icons.calendar_today_outlined,
-                          size: 13,
-                          color: Color(0xFF64748B),
-                        ),
-                        const SizedBox(width: 6),
                         Text(
                           _selectedOverviewPeriod,
                           style: GoogleFonts.dmSans(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF334155),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black,
                           ),
                         ),
                         const SizedBox(width: 4),
                         const Icon(
                           Icons.keyboard_arrow_down_rounded,
-                          size: 16,
-                          color: Color(0xFF64748B),
+                          size: 18,
+                          color: Colors.black,
                         ),
                       ],
                     ),
@@ -821,408 +500,38 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
 
-            // 4 Metrics Grid (2x2)
+            // 6. 2x2 Grid of Metric Cards (Clone)
             GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               crossAxisCount: 2,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 1.62,
+              mainAxisSpacing: 14,
+              crossAxisSpacing: 14,
+              childAspectRatio: 1.05,
               children: [
                 _buildOverviewMetricCard(
                   icon: Icons.star_outline_rounded,
-                  iconBg: const Color(0xFFFEF3C7),
-                  iconColor: const Color(0xFFF59E0B),
-                  prefix: '★ ',
                   value: overallStr,
-                  label: 'Overall Rating',
+                  label: 'Overall rating',
                 ),
                 _buildOverviewMetricCard(
-                  icon: Icons.verified_outlined,
-                  iconBg: const Color(0xFFEFF6FF),
-                  iconColor: const Color(0xFF2563EB),
-                  value: completionStr,
-                  label: 'Completion R...',
+                  icon: Icons.check_circle_outline_rounded,
+                  value: (completionStr == '0.0%' || completionStr.isEmpty) ? 'N/A' : completionStr,
+                  label: 'Completion rate',
                 ),
                 _buildOverviewMetricCard(
                   icon: Icons.work_outline_rounded,
-                  iconBg: const Color(0xFFECFDF5),
-                  iconColor: const Color(0xFF10B981),
                   value: '$rawCompletedJobs',
-                  label: 'Completed J...',
+                  label: 'Completed jobs',
                 ),
                 _buildOverviewMetricCard(
                   icon: Icons.thumb_up_alt_outlined,
-                  iconBg: const Color(0xFFF3E8FF),
-                  iconColor: const Color(0xFF9333EA),
-                  value: acceptanceStr,
-                  label: 'Acceptance ...',
+                  value: (acceptanceStr.isEmpty || acceptanceStr == '0.0%') ? 'N/A' : acceptanceStr,
+                  label: 'Acceptance rate',
                 ),
               ],
-            ),
-            const SizedBox(height: 22),
-
-            // 4. Pending Requests Section
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.notifications_active_rounded,
-                      color: Color(0xFF2563EB),
-                      size: 22,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Pending Requests (${displayBookings.length})',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xFF0F172A),
-                      ),
-                    ),
-                  ],
-                ),
-                InkWell(
-                  onTap: () => widget.onNavigateTab?.call(1),
-                  child: Text(
-                    'VIEW ALL',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF2563EB),
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // Pending Request Card(s)
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: displayBookings.take(2).length,
-              separatorBuilder: (_, _) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final req = displayBookings[index];
-                final dateStr = req.scheduledDate != null
-                    ? '${req.scheduledDate!.day}/${req.scheduledDate!.month}/${req.scheduledDate!.year}'
-                    : '27/09/2026';
-
-                return Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(22),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF0F172A).withValues(alpha: 0.03),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Job Title + Urgency Pill
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              req.jobTitle,
-                              style: GoogleFonts.dmSans(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: const Color(0xFF0F172A),
-                              ),
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFFFBEB),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Text(
-                              req.urgency,
-                              style: GoogleFonts.dmSans(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFFB45309),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-
-                      // Resident Name
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.person_outline_rounded,
-                            size: 16,
-                            color: Color(0xFF64748B),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            req.residentName.toUpperCase(),
-                            style: GoogleFonts.dmSans(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF334155),
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Schedule & Location Container
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.access_time_rounded,
-                              size: 15,
-                              color: Color(0xFF64748B),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              dateStr,
-                              style: GoogleFonts.dmSans(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF334155),
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            const Icon(
-                              Icons.near_me_outlined,
-                              size: 15,
-                              color: Color(0xFF059669),
-                            ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                '${req.locationAddress} • 2.4 km away',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF334155),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-
-                      const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                      const SizedBox(height: 14),
-
-                      // Bottom Payout and Buttons
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'ESTIMATED\nPAYOUT',
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 9,
-                                  height: 1.1,
-                                  fontWeight: FontWeight.w800,
-                                  color: const Color(0xFF64748B),
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'Rs. ${req.estimatedPrice.round() > 0 ? req.estimatedPrice.round().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},') : '2,000'}',
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w900,
-                                  color: const Color(0xFF1D4ED8),
-                                ),
-                              ),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              // Decline Button
-                              InkWell(
-                                onTap: () => _handleDecline(req),
-                                borderRadius: BorderRadius.circular(20),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 10),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF1F5F9),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Text(
-                                    'Decline',
-                                    style: GoogleFonts.dmSans(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      color: const Color(0xFF475569),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-
-                              // Accept Job Button (Styled exactly like screenshot)
-                              InkWell(
-                                onTap: () => _handleAccept(req),
-                                borderRadius: BorderRadius.circular(24),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF1D68D8),
-                                    borderRadius: BorderRadius.circular(24),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: const Color(0xFF1D68D8)
-                                            .withValues(alpha: 0.28),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 3),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(Icons.check_rounded,
-                                          color: Colors.white, size: 18),
-                                      const SizedBox(width: 6),
-                                      Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        crossAxisAlignment: CrossAxisAlignment.center,
-                                        children: [
-                                          Text(
-                                            'Accept',
-                                            style: GoogleFonts.dmSans(
-                                              fontSize: 12,
-                                              height: 1.1,
-                                              fontWeight: FontWeight.w700,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                          Text(
-                                            'Job',
-                                            style: GoogleFonts.dmSans(
-                                              fontSize: 12,
-                                              height: 1.1,
-                                              fontWeight: FontWeight.w700,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 22),
-
-            // 5. Quick Actions Section
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Quick Actions',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFF0F172A),
-                  ),
-                ),
-                Text(
-                  'Worker Setup',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF64748B),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // 4 Distinct Quick Action Cards
-            _buildQuickActionCard(
-              icon: Icons.chat_bubble_outline_rounded,
-              iconBg: const Color(0xFFECFDF5),
-              iconColor: const Color(0xFF10B981),
-              title: 'Explore Community Dis...',
-              badgeText: 'Active',
-              badgeBg: const Color(0xFFECFDF5),
-              badgeTextColor: const Color(0xFF059669),
-              subtitle: 'Connect with 1,200+ local Colombo...',
-              onTap: () => widget.onNavigateTab?.call(2), // Community
-            ),
-            const SizedBox(height: 10),
-
-            _buildQuickActionCard(
-              icon: Icons.handyman_outlined,
-              iconBg: const Color(0xFFEFF6FF),
-              iconColor: const Color(0xFF2563EB),
-              title: 'Update Skills & Rates',
-              badgeText: '2x Faster',
-              badgeBg: const Color(0xFFDBEAFE),
-              badgeTextColor: const Color(0xFF1D4ED8),
-              subtitle: 'Plumbing, Electrical, Handyman services',
-              onTap: () => widget.onNavigateTab?.call(4), // Profile / Skills
-            ),
-            const SizedBox(height: 10),
-
-            _buildQuickActionCard(
-              icon: Icons.access_time_rounded,
-              iconBg: const Color(0xFFF1F5F9),
-              iconColor: const Color(0xFF475569),
-              title: 'Set Working Hours & Availability',
-              subtitle: 'Mon - Sat • 8:00 AM - 6:00 PM',
-              onTap: () => widget.onNavigateTab?.call(4), // Profile / Availability
-            ),
-            const SizedBox(height: 10),
-
-            _buildQuickActionCard(
-              icon: Icons.trending_up_rounded,
-              iconBg: const Color(0xFFF3E8FF),
-              iconColor: const Color(0xFF9333EA),
-              title: 'View Detailed Rating Analytics',
-              subtitle: 'Track client feedback, tips &...',
-              onTap: () => widget.onNavigateTab?.call(3), // Performance
             ),
 
             // Optional: Recent Review if present
@@ -1233,7 +542,7 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                 style: GoogleFonts.dmSans(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
-                  color: const Color(0xFF0F172A),
+                  color: Colors.black,
                 ),
               ),
               const SizedBox(height: 10),
@@ -1242,9 +551,10 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF0F172A).withValues(alpha: 0.02),
+                      color: Colors.black.withValues(alpha: 0.02),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -1261,7 +571,7 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                           style: GoogleFonts.dmSans(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
-                            color: const Color(0xFF0F172A),
+                            color: Colors.black,
                           ),
                         ),
                         Row(
@@ -1271,7 +581,7 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                               starIdx < rating.round()
                                   ? Icons.star_rounded
                                   : Icons.star_border_rounded,
-                              color: const Color(0xFFF59E0B),
+                              color: Colors.black,
                               size: 16,
                             );
                           }),
@@ -1291,6 +601,88 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                 ),
               ),
             ],
+
+            const SizedBox(height: 24),
+
+            // Bottom Performance & Reviews Navigation Button
+            InkWell(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => WorkerPerformanceScreen(worker: widget.worker),
+                  ),
+                );
+              },
+              borderRadius: BorderRadius.circular(24),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.star_outline_rounded,
+                          color: Colors.black,
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Performance',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            'Ratings, stats and client reviews',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w400,
+                              color: const Color(0xFF94A3B8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF262626),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.chevron_right_rounded,
+                          color: Colors.white,
+                          size: 22,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -1299,195 +691,59 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
 
   Widget _buildOverviewMetricCard({
     required IconData icon,
-    required Color iconBg,
-    required Color iconColor,
-    String? prefix,
     required String value,
     required String label,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFF1F5F9).withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0F172A).withValues(alpha: 0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: iconBg,
+            width: 36,
+            height: 36,
+            decoration: const BoxDecoration(
+              color: Colors.white,
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: iconColor, size: 22),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (prefix != null)
-                      Text(
-                        prefix,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                          color: const Color(0xFFF59E0B),
-                        ),
-                      ),
-                    Flexible(
-                      child: Text(
-                        value,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: const Color(0xFF0F172A),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF64748B),
-                  ),
-                ),
-              ],
+            child: Center(
+              child: Icon(icon, color: Colors.black, size: 18),
             ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.dmSans(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.black,
+                  height: 1.1,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.dmSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF64748B),
+                ),
+              ),
+            ],
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildQuickActionCard({
-    required IconData icon,
-    required Color iconBg,
-    required Color iconColor,
-    required String title,
-    String? badgeText,
-    Color? badgeBg,
-    Color? badgeTextColor,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF0F172A).withValues(alpha: 0.02),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: iconBg,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(icon, color: iconColor, size: 22),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.dmSans(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF0F172A),
-                          ),
-                        ),
-                      ),
-                      if (badgeText != null) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: badgeBg ?? const Color(0xFFEFF6FF),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            badgeText,
-                            style: GoogleFonts.dmSans(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: badgeTextColor ?? const Color(0xFF2563EB),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.dmSans(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w400,
-                      color: const Color(0xFF64748B),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              width: 32,
-              height: 32,
-              decoration: const BoxDecoration(
-                color: Color(0xFFF1F5F9),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.arrow_forward_rounded,
-                size: 15,
-                color: Color(0xFF475569),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
