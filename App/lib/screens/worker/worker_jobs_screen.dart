@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:web/web.dart' as web;
+import '../../utils/url_launcher_helper.dart';
 import '../../models/booking_model.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
@@ -1464,7 +1464,7 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen> with SingleTickerPr
                                   final url =
                                       'https://www.google.com/maps/search/?api=1&query=$lat,$lng';
                                   if (kIsWeb) {
-                                    web.window.open(url, '_blank');
+                                    openUrl(url);
                                   }
                                 },
                                 borderRadius: BorderRadius.circular(20),

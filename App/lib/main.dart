@@ -31,7 +31,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'data/sri_lanka_locations.dart';
 import 'services/location_service.dart';
 import 'widgets/superbass_map.dart';
-import 'package:web/web.dart' as web;
+import 'utils/url_launcher_helper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -3312,7 +3312,7 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                                   final url =
                                       'https://www.google.com/maps/search/?api=1&query=$lat,$lng';
                                   if (kIsWeb) {
-                                    web.window.open(url, '_blank');
+                                    openUrl(url);
                                   }
                                 },
                                 borderRadius: BorderRadius.circular(20),

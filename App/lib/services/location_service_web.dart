@@ -1,25 +1,25 @@
 import 'dart:async';
-import 'dart:js_interop';
-import 'package:web/web.dart' as web;
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
 
 class PlatformLocationService {
   static Future<Map<String, double>?> getCurrentCoordinates() async {
     try {
       final completer = Completer<Map<String, double>?>();
-      web.window.navigator.geolocation.getCurrentPosition(
-        ((web.GeolocationPosition pos) {
+      html.window.navigator.geolocation.getCurrentPosition(
+        (html.Geoposition pos) {
           if (!completer.isCompleted) {
             completer.complete({
-              'lat': pos.coords.latitude,
-              'lng': pos.coords.longitude,
+              'lat': pos.coords!.latitude!.toDouble(),
+              'lng': pos.coords!.longitude!.toDouble(),
             });
           }
-        }).toJS,
-        ((web.GeolocationPositionError _) {
+        },
+        (html.PositionError _) {
           if (!completer.isCompleted) {
             completer.complete(null);
           }
-        }).toJS,
+        },
       );
 
       return await completer.future.timeout(
