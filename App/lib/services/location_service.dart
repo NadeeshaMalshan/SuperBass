@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
@@ -587,5 +588,110 @@ class LocationService {
     }
 
     return false;
+  }
+
+  /// Calculate Haversine distance in kilometers between two geographic coordinates
+  static double calculateDistanceKm(double lat1, double lon1, double lat2, double lon2) {
+    const double r = 6371.0;
+    final dLat = (lat2 - lat1) * (math.pi / 180.0);
+    final dLon = (lon2 - lon1) * (math.pi / 180.0);
+    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(lat1 * (math.pi / 180.0)) *
+            math.cos(lat2 * (math.pi / 180.0)) *
+            math.sin(dLon / 2) *
+            math.sin(dLon / 2);
+    final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+    return r * c;
+  }
+
+  /// Get geographic coordinates {lat, lng} for any town, city, district, or location name in Sri Lanka
+  static Map<String, double>? getCoordinatesForPlace(String? placeName) {
+    if (placeName == null || placeName.trim().isEmpty) return null;
+    final clean = cleanLocationName(placeName).trim();
+    final lower = clean.toLowerCase();
+
+    // Specific town coordinates
+    const townCoords = <String, Map<String, double>>{
+      'colombo': {'lat': 6.9271, 'lng': 79.8612},
+      'dehiwala': {'lat': 6.8402, 'lng': 79.8712},
+      'mount lavinia': {'lat': 6.8402, 'lng': 79.8712},
+      'moratuwa': {'lat': 6.7730, 'lng': 79.8816},
+      'kotte': {'lat': 6.9107, 'lng': 79.8997},
+      'rajagiriya': {'lat': 6.9107, 'lng': 79.8997},
+      'nugegoda': {'lat': 6.8649, 'lng': 79.8997},
+      'maharagama': {'lat': 6.8480, 'lng': 79.9265},
+      'battaramulla': {'lat': 6.8997, 'lng': 79.9197},
+      'malabe': {'lat': 6.9038, 'lng': 79.9550},
+      'homagama': {'lat': 6.8436, 'lng': 80.0031},
+      'kaduwela': {'lat': 6.9333, 'lng': 79.9833},
+      'piliyandala': {'lat': 6.8018, 'lng': 79.9227},
+      'kesbewa': {'lat': 6.7865, 'lng': 79.9560},
+      'padukka': {'lat': 6.8500, 'lng': 80.1000},
+      'gampaha': {'lat': 7.0840, 'lng': 79.9925},
+      'negombo': {'lat': 7.2008, 'lng': 79.8737},
+      'kelaniya': {'lat': 6.9553, 'lng': 79.9153},
+      'wattala': {'lat': 6.9897, 'lng': 79.8917},
+      'ja-ela': {'lat': 7.0755, 'lng': 79.8913},
+      'kadawatha': {'lat': 7.0016, 'lng': 79.9525},
+      'kiribathgoda': {'lat': 6.9808, 'lng': 79.9272},
+      'ratnapura': {'lat': 6.6828, 'lng': 80.4034},
+      'erathna': {'lat': 6.7725, 'lng': 80.3708},
+      'kuruwita': {'lat': 6.7725, 'lng': 80.3708},
+      'balangoda': {'lat': 6.6508, 'lng': 80.7022},
+      'embilipitiya': {'lat': 6.3431, 'lng': 80.8494},
+      'pelmadulla': {'lat': 6.6219, 'lng': 80.5489},
+      'kandy': {'lat': 7.2906, 'lng': 80.6337},
+      'peradeniya': {'lat': 7.2608, 'lng': 80.5969},
+      'katugastota': {'lat': 7.3275, 'lng': 80.6186},
+      'gampola': {'lat': 7.1644, 'lng': 80.5694},
+      'galle': {'lat': 6.0535, 'lng': 80.2210},
+      'hikkaduwa': {'lat': 6.1408, 'lng': 80.1011},
+      'matara': {'lat': 5.9549, 'lng': 80.5550},
+      'weligama': {'lat': 5.9722, 'lng': 80.4286},
+      'kurunegala': {'lat': 7.4863, 'lng': 80.3623},
+      'anuradhapura': {'lat': 8.3114, 'lng': 80.4037},
+      'badulla': {'lat': 6.9934, 'lng': 81.0550},
+      'bandarawela': {'lat': 6.8333, 'lng': 80.9833},
+      'nuwara eliya': {'lat': 6.9497, 'lng': 80.7891},
+      'jaffna': {'lat': 9.6615, 'lng': 80.0255},
+      'kalutara': {'lat': 6.5854, 'lng': 79.9607},
+      'panadura': {'lat': 6.7132, 'lng': 79.9074},
+      'horana': {'lat': 6.7161, 'lng': 80.0631},
+      'hambantota': {'lat': 6.1429, 'lng': 81.1212},
+      'trincomalee': {'lat': 8.5874, 'lng': 81.2152},
+      'batticaloa': {'lat': 7.7310, 'lng': 81.6747},
+      'ampara': {'lat': 7.2975, 'lng': 81.6747},
+      'kegalle': {'lat': 7.2513, 'lng': 80.3464},
+      'puttalam': {'lat': 8.0362, 'lng': 79.8283},
+      'polonnaruwa': {'lat': 7.9403, 'lng': 81.0188},
+      'monaragala': {'lat': 6.8728, 'lng': 81.3507},
+      'matale': {'lat': 7.4675, 'lng': 80.6234},
+      'vavuniya': {'lat': 8.7542, 'lng': 80.4982},
+      'mannar': {'lat': 8.9810, 'lng': 79.9044},
+      'kilinochchi': {'lat': 9.3803, 'lng': 80.3770},
+      'mullaitivu': {'lat': 9.2671, 'lng': 80.8142},
+    };
+
+    // 1. Direct town lookup
+    for (final entry in townCoords.entries) {
+      if (lower == entry.key || lower.contains(entry.key)) {
+        return entry.value;
+      }
+    }
+
+    // 2. Resolve to District and check districtCoordinates
+    final resolvedDistrict = resolveToDistrict(clean);
+    if (resolvedDistrict != null && districtCoordinates.containsKey(resolvedDistrict)) {
+      return districtCoordinates[resolvedDistrict];
+    }
+
+    // 3. Substring check in districtCoordinates
+    for (final entry in districtCoordinates.entries) {
+      if (lower.contains(entry.key.toLowerCase())) {
+        return entry.value;
+      }
+    }
+
+    return null;
   }
 }

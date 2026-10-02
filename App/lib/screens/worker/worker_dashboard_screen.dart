@@ -6,6 +6,7 @@ import '../../models/booking_model.dart';
 import '../../models/worker_model.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import 'worker_performance_screen.dart';
 
 
 class WorkerDashboardScreen extends StatefulWidget {
@@ -532,77 +533,6 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 28),
-
-            // 4. Quick Actions Section
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Quick Actions',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.black,
-                  ),
-                ),
-                Text(
-                  'Worker Setup',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF64748B),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // 4 Distinct Quick Action Cards (Monochrome)
-            _buildQuickActionCard(
-              icon: Icons.chat_bubble_outline_rounded,
-              iconBg: const Color(0xFFF1F5F9),
-              iconColor: Colors.black,
-              title: 'Explore Community Discussions',
-              badgeText: 'Active',
-              badgeBg: const Color(0xFFF1F5F9),
-              badgeTextColor: Colors.black,
-              subtitle: 'Connect with local residents & pros',
-              onTap: () => widget.onNavigateTab?.call(2), // Community
-            ),
-            const SizedBox(height: 10),
-
-            _buildQuickActionCard(
-              icon: Icons.handyman_outlined,
-              iconBg: const Color(0xFFF1F5F9),
-              iconColor: Colors.black,
-              title: 'Update Skills & Rates',
-              badgeText: 'Profile',
-              badgeBg: const Color(0xFFF1F5F9),
-              badgeTextColor: Colors.black,
-              subtitle: 'Manage skills, tools, and pricing',
-              onTap: () => widget.onNavigateTab?.call(4), // Profile / Skills
-            ),
-            const SizedBox(height: 10),
-
-            _buildQuickActionCard(
-              icon: Icons.access_time_rounded,
-              iconBg: const Color(0xFFF1F5F9),
-              iconColor: Colors.black,
-              title: 'Set Working Hours & Availability',
-              subtitle: 'Adjust your weekly service schedule',
-              onTap: () => widget.onNavigateTab?.call(4), // Profile / Availability
-            ),
-            const SizedBox(height: 10),
-
-            _buildQuickActionCard(
-              icon: Icons.trending_up_rounded,
-              iconBg: const Color(0xFFF1F5F9),
-              iconColor: Colors.black,
-              title: 'View Detailed Rating Analytics',
-              subtitle: 'Track client reviews and performance',
-              onTap: () => widget.onNavigateTab?.call(3), // Performance
-            ),
 
             // Optional: Recent Review if present
             if (_recentReview != null) ...[
@@ -671,6 +601,88 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                 ),
               ),
             ],
+
+            const SizedBox(height: 24),
+
+            // Bottom Performance & Reviews Navigation Button
+            InkWell(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => WorkerPerformanceScreen(worker: widget.worker),
+                  ),
+                );
+              },
+              borderRadius: BorderRadius.circular(24),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.star_outline_rounded,
+                          color: Colors.black,
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Performance',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            'Ratings, stats and client reviews',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w400,
+                              color: const Color(0xFF94A3B8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF262626),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.chevron_right_rounded,
+                          color: Colors.white,
+                          size: 22,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -732,120 +744,6 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
             ],
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildQuickActionCard({
-    required IconData icon,
-    required Color iconBg,
-    required Color iconColor,
-    required String title,
-    String? badgeText,
-    Color? badgeBg,
-    Color? badgeTextColor,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: iconBg,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(icon, color: iconColor, size: 22),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.dmSans(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.black,
-                          ),
-                        ),
-                      ),
-                      if (badgeText != null) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: badgeBg ?? const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: const Color(0xFFCBD5E1)),
-                          ),
-                          child: Text(
-                            badgeText,
-                            style: GoogleFonts.dmSans(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: badgeTextColor ?? Colors.black,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.dmSans(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w400,
-                      color: const Color(0xFF64748B),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              width: 32,
-              height: 32,
-              decoration: const BoxDecoration(
-                color: Color(0xFFF1F5F9),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.arrow_forward_rounded,
-                size: 15,
-                color: Colors.black,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

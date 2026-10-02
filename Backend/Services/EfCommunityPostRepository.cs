@@ -104,7 +104,16 @@ namespace Superbass.Services
                     query = query.OrderByDescending(p => p.CreatedAt);
                 }
 
-                return query.ToList();
+                var list = query.ToList();
+                foreach (var p in list)
+                {
+                    if (!p.IsAuthorVerified)
+                    {
+                        p.IsAuthorVerified = _context.Residents.Any(r => r.Email == p.UserId && r.IsVerified) ||
+                                             _context.Workers.Any(w => (w.ResidentEmail == p.UserId || w.Email == p.UserId) && w.IsVerified);
+                    }
+                }
+                return list;
             }
             catch (Exception ex)
             {
@@ -172,6 +181,9 @@ namespace Superbass.Services
                     resolvedAvatar = $"https://api.dicebear.com/7.x/avataaars/svg?seed={userId}";
                 }
 
+                var isAuthorVerified = _context.Residents.Any(r => r.Email == userId && r.IsVerified) ||
+                                       _context.Workers.Any(w => (w.ResidentEmail == userId || w.Email == userId) && w.IsVerified);
+
                 var post = new CommunityPost
                 {
                     UserId = userId,
@@ -187,7 +199,8 @@ namespace Superbass.Services
                     Status = "Active",
                     LikesCount = 0,
                     CommentsCount = 0,
-                    LikedByUsers = new List<string>()
+                    LikedByUsers = new List<string>(),
+                    IsAuthorVerified = isAuthorVerified
                 };
 
                 _context.CommunityPosts.Add(post);
@@ -284,6 +297,9 @@ namespace Superbass.Services
                     throw new KeyNotFoundException("Post not found.");
                 }
 
+                var isUserVerified = _context.Residents.Any(r => r.Email == userId && r.IsVerified) ||
+                                     _context.Workers.Any(w => (w.ResidentEmail == userId || w.Email == userId) && w.IsVerified);
+
                 var comment = new CommunityComment
                 {
                     PostId = postId,
@@ -291,7 +307,8 @@ namespace Superbass.Services
                     UserName = !string.IsNullOrWhiteSpace(request.UserName) ? request.UserName : "Resident",
                     UserAvatar = !string.IsNullOrWhiteSpace(request.UserAvatar) ? request.UserAvatar : $"https://api.dicebear.com/7.x/avataaars/svg?seed={userId}",
                     Content = request.Content,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.UtcNow,
+                    IsUserVerified = isUserVerified
                 };
 
                 _context.CommunityComments.Add(comment);

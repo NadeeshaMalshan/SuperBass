@@ -7,18 +7,21 @@ import '../theme/app_colors.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/chat_signalr_service.dart';
+import '../widgets/verified_badge.dart';
 import 'package:loading_indicator_m3e/loading_indicator_m3e.dart';
 
 class ChatScreen extends StatefulWidget {
   final int conversationId;
   final String name;
   final String? profileImage;
+  final bool isVerified;
 
   const ChatScreen({
     super.key,
     required this.conversationId,
     required this.name,
     this.profileImage,
+    this.isVerified = false,
   });
 
   @override
@@ -747,13 +750,21 @@ class _ChatScreenState extends State<ChatScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    widget.name,
-                    style: GoogleFonts.dmSans(
-                      fontWeight: FontWeight.w400,
-                      fontSize: 18,
-                      color: AppColors.onSurface,
-                    ),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          widget.name,
+                          style: GoogleFonts.dmSans(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 17,
+                            color: AppColors.onSurface,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (widget.isVerified) const VerifiedBadge(size: 16),
+                    ],
                   ),
                   if (_isOtherTyping)
                     Text(

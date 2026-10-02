@@ -377,6 +377,26 @@ class NotificationService {
     _savePersistedNotifications();
   }
 
+  /// Completely clear all user notification state and cancel timers on logout
+  Future<void> onUserLogout() async {
+    stopListening();
+    _notifications.clear();
+    _lastKnownBookingStatuses.clear();
+    _lastKnownMessageKeys.clear();
+    _lastKnownPostLikes.clear();
+    _lastKnownPostComments.clear();
+    _initialBookingFetchDone = false;
+    _initialChatFetchDone = false;
+    _initialCommunityFetchDone = false;
+    unreadCountNotifier.value = 0;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_prefsKey);
+    } catch (e) {
+      debugPrint('Error removing persisted notifications: $e');
+    }
+  }
+
   void _updateUnreadCount() {
     final count = _notifications.where((n) => !n.isRead).length;
     unreadCountNotifier.value = count;

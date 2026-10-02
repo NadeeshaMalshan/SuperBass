@@ -1,17 +1,34 @@
 import 'package:flutter/material.dart';
 
 class VerifiedBadge extends StatelessWidget {
-  const VerifiedBadge({Key? key}) : super(key: key);
+  final double size;
+  final Color? color;
+  final String tooltip;
+
+  const VerifiedBadge({
+    super.key,
+    this.size = 18.0,
+    this.color,
+    this.tooltip = 'Verified User',
+  });
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.only(left: 4.0),
+    final icon = Padding(
+      padding: const EdgeInsets.only(left: 4.0),
       child: Icon(
         Icons.verified,
-        color: Colors.blue,
-        size: 20.0,
+        color: color ?? const Color(0xFF2563EB),
+        size: size,
       ),
     );
+
+    if (tooltip.isNotEmpty) {
+      return Tooltip(
+        message: tooltip,
+        child: icon,
+      );
+    }
+    return icon;
   }
 }
