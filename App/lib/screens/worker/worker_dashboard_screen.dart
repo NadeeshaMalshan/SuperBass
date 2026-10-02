@@ -1,28 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../data/sri_lanka_locations.dart';
 import '../../models/booking_model.dart';
 import '../../models/worker_model.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
-
-class _ProTipItem {
-  final String category;
-  final String badge;
-  final String text;
-  final IconData icon;
-  final Color iconColor;
-  final Color iconBg;
-
-  const _ProTipItem({
-    required this.category,
-    required this.badge,
-    required this.text,
-    required this.icon,
-    required this.iconColor,
-    required this.iconBg,
-  });
-}
 
 
 class WorkerDashboardScreen extends StatefulWidget {
@@ -48,72 +31,21 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
   Map<String, dynamic>? _performance;
   BookingModel? _recentReview;
   bool _isLoading = true;
-  String _selectedOverviewPeriod = 'All Time';
-  String _currentLocation = 'Colombo, Western Province';
-
-  static const List<_ProTipItem> _proTips = [
-    _ProTipItem(
-      category: 'PRO TIP',
-      badge: 'Setup 60%',
-      text: 'Add all your specific sub-skills to rank higher when residents search for emergency repairs.',
-      icon: Icons.lightbulb_outline_rounded,
-      iconColor: Colors.black,
-      iconBg: Color(0xFFF1F5F9),
-    ),
-    _ProTipItem(
-      category: 'SPEED & RELIABILITY',
-      badge: '2x Priority',
-      text: 'Accepting job requests within 10 minutes boosts your algorithm priority by 2x.',
-      icon: Icons.bolt_rounded,
-      iconColor: Colors.black,
-      iconBg: Color(0xFFF1F5F9),
-    ),
-    _ProTipItem(
-      category: 'AVAILABILITY',
-      badge: 'Peak Hours',
-      text: 'Keep your status toggled to \'Online\' during peak morning hours (8 AM - 11 AM) for maximum booking volume.',
-      icon: Icons.schedule_rounded,
-      iconColor: Colors.black,
-      iconBg: Color(0xFFF1F5F9),
-    ),
-    _ProTipItem(
-      category: 'COMMUNITY ENGAGEMENT',
-      badge: 'Direct Leads',
-      text: 'Share helpful advice in Community Discussions to attract direct bookings without commission.',
-      icon: Icons.forum_outlined,
-      iconColor: Colors.black,
-      iconBg: Color(0xFFF1F5F9),
-    ),
-  ];
-
-  Timer? _tipRotationTimer;
-  int _currentTipIndex = 0;
+  String _selectedOverviewPeriod = 'All time';
+  String _currentLocation = 'Colombo';
 
   @override
   void initState() {
     super.initState();
     _worker = widget.worker;
-    if (_worker?.primaryServiceArea != null && _worker!.primaryServiceArea!.isNotEmpty) {
-      _currentLocation = '${_worker!.primaryServiceArea}, Western Province';
+    if (_worker?.primaryServiceArea != null && _worker!.primaryServiceArea!.trim().isNotEmpty) {
+      _currentLocation = _worker!.primaryServiceArea!.trim();
     }
     _loadDashboardData();
-    _startTipRotation();
-  }
-
-  void _startTipRotation() {
-    _tipRotationTimer?.cancel();
-    _tipRotationTimer = Timer.periodic(const Duration(seconds: 6), (timer) {
-      if (mounted) {
-        setState(() {
-          _currentTipIndex = (_currentTipIndex + 1) % _proTips.length;
-        });
-      }
-    });
   }
 
   @override
   void dispose() {
-    _tipRotationTimer?.cancel();
     super.dispose();
   }
 
@@ -123,8 +55,8 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
     super.didUpdateWidget(oldWidget);
     if (widget.worker != oldWidget.worker) {
       _worker = widget.worker;
-      if (_worker?.primaryServiceArea != null && _worker!.primaryServiceArea!.isNotEmpty) {
-        _currentLocation = '${_worker!.primaryServiceArea}, Western Province';
+      if (_worker?.primaryServiceArea != null && _worker!.primaryServiceArea!.trim().isNotEmpty) {
+        _currentLocation = _worker!.primaryServiceArea!.trim();
       }
     }
   }
@@ -155,8 +87,8 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
             if (reviewed.isNotEmpty) {
               _recentReview = reviewed.first;
             }
-            if (worker.primaryServiceArea != null && worker.primaryServiceArea!.isNotEmpty) {
-              _currentLocation = '${worker.primaryServiceArea}, Western Province';
+            if (worker.primaryServiceArea != null && worker.primaryServiceArea!.trim().isNotEmpty) {
+              _currentLocation = worker.primaryServiceArea!.trim();
             }
             _isLoading = false;
           });
@@ -172,31 +104,27 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
 
   String _getTimeGreeting() {
     final hour = DateTime.now().hour;
-    if (hour < 12) return 'GOOD MORNING';
-    if (hour < 17) return 'GOOD AFTERNOON';
-    return 'GOOD EVENING';
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
   }
 
   void _showChangeLocationSheet() {
-    final areas = [
-      'Colombo, Western Province',
-      'Colombo 03, Western Province',
-      'Colombo Central, Western Province',
-      'Gampaha, Western Province',
-      'Kalutara, Western Province',
-      'Kandy, Central Province',
-      'Galle, Southern Province',
-    ];
+    final areas = SriLankaLocations.districts;
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        return Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.75,
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -220,38 +148,54 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                   color: const Color(0xFF0F172A),
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               Text(
-                'Resident job alerts will prioritize this operational zone.',
+                'Saved in your worker table for job matching & alerts.',
                 style: GoogleFonts.dmSans(fontSize: 13, color: const Color(0xFF64748B)),
               ),
-              const SizedBox(height: 16),
-              ...areas.map((area) {
-                final isSelected = area == _currentLocation;
-                return ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  leading: Icon(
-                    Icons.near_me_outlined,
-                    color: isSelected ? Colors.black : const Color(0xFF94A3B8),
-                    size: 20,
-                  ),
-                  title: Text(
-                    area,
-                    style: GoogleFonts.dmSans(
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                      color: isSelected ? Colors.black : const Color(0xFF475569),
-                    ),
-                  ),
-                  trailing: isSelected
-                      ? const Icon(Icons.check_circle_rounded,
-                          color: Colors.black, size: 20)
-                      : null,
-                  onTap: () {
-                    setState(() => _currentLocation = area);
-                    Navigator.of(ctx).pop();
+              const SizedBox(height: 12),
+              Expanded(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: areas.length,
+                  itemBuilder: (context, index) {
+                    final area = areas[index];
+                    final isSelected = area.toLowerCase() == _currentLocation.toLowerCase();
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      leading: Icon(
+                        Icons.near_me_outlined,
+                        color: isSelected ? Colors.black : const Color(0xFF94A3B8),
+                        size: 20,
+                      ),
+                      title: Text(
+                        area,
+                        style: GoogleFonts.dmSans(
+                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                          color: isSelected ? Colors.black : const Color(0xFF475569),
+                        ),
+                      ),
+                      trailing: isSelected
+                          ? const Icon(Icons.check_circle_rounded, color: Colors.black, size: 20)
+                          : null,
+                      onTap: () async {
+                        setState(() => _currentLocation = area);
+                        Navigator.of(ctx).pop();
+                        final workerId = (_worker ?? widget.worker)?.id;
+                        if (workerId != null) {
+                          final currentRadius = (_worker ?? widget.worker)?.coverageRadiusKm ?? 10.0;
+                          await ApiService().updateWorkerServiceArea(
+                            workerId,
+                            serviceArea: area,
+                            radiusKm: currentRadius,
+                          );
+                          _loadDashboardData();
+                        }
+                      },
+                    );
                   },
-                );
-              }),
+                ),
+              ),
             ],
           ),
         );
@@ -260,7 +204,7 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
   }
 
   void _showPeriodFilterMenu() {
-    final periods = ['All Time', 'This Month', 'This Week', 'Today'];
+    final periods = ['All time', 'This month', 'This week', 'Today'];
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -334,8 +278,8 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
     }
 
     final worker = _worker ?? widget.worker;
-    final fullName = worker?.name ?? AuthService().currentUser?.name ?? 'Kasun';
-    final firstName = fullName.trim().split(' ').first;
+    final fullName = worker?.name ?? AuthService().currentUser?.name ?? 'Super';
+    final firstName = (fullName.trim().split(' ').first).isNotEmpty ? fullName.trim().split(' ').first : 'Super';
 
     // Performance metrics
     final rawOverall = _performance?['overallRating'] ??
@@ -368,130 +312,48 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
       backgroundColor: Colors.white,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 100),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. Welcome Header Card
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.03),
-                    blurRadius: 14,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+            // 1. Time-based Greeting
+            Text(
+              _getTimeGreeting(),
+              style: GoogleFonts.dmSans(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF64748B),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Online / Offline Availability Toggle (Above Good Morning)
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 16),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 10,
-                              height: 10,
-                              decoration: BoxDecoration(
-                                color: widget.isOnline ? Colors.black : const Color(0xFF94A3B8),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  widget.isOnline ? 'Online • Available for Jobs' : 'Offline • Unavailable',
-                                  style: GoogleFonts.dmSans(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  widget.isOnline
-                                      ? 'Residents can book your services'
-                                      : 'Toggle on when you are ready to work',
-                                  style: GoogleFonts.dmSans(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w500,
-                                    color: const Color(0xFF64748B),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        Transform.scale(
-                          scale: 0.85,
-                          child: Switch(
-                            value: widget.isOnline,
-                            onChanged: (_) => widget.onToggleOnline?.call(),
-                            activeThumbColor: Colors.white,
-                            activeTrackColor: Colors.black,
-                            inactiveThumbColor: Colors.white,
-                            inactiveTrackColor: const Color(0xFFCBD5E1),
-                            trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+            ),
+            const SizedBox(height: 6),
 
-                  // Status Row: Icon + GOOD MORNING • FIELD READY
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.wb_sunny_outlined,
-                        size: 16,
-                        color: Colors.black,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        '${_getTimeGreeting()} • FIELD READY',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.black,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
+            // 2. Welcome back, \n Super
+            Text(
+              'Welcome back,\n$firstName',
+              style: GoogleFonts.dmSans(
+                fontSize: 32,
+                fontWeight: FontWeight.w900,
+                color: Colors.black,
+                height: 1.15,
+                letterSpacing: -0.8,
+              ),
+            ),
+            const SizedBox(height: 16),
 
-                  // Welcome back, Kasun!
-                  Text(
-                    'Welcome back, $firstName!',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.black,
-                      letterSpacing: -0.6,
-                    ),
+            // 3. Location Pill
+            Align(
+              alignment: Alignment.centerLeft,
+              child: InkWell(
+                onTap: _showChangeLocationSheet,
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                  const SizedBox(height: 8),
-
-                  // Location Row: Compass Icon + Colombo, Western Province + Change ⌵
-                  Row(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(
                         Icons.near_me_outlined,
@@ -502,235 +364,125 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                       Text(
                         _currentLocation,
                         style: GoogleFonts.dmSans(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: const Color(0xFF475569),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black,
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      InkWell(
-                        onTap: _showChangeLocationSheet,
-                        borderRadius: BorderRadius.circular(6),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'Change',
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.black,
-                                ),
-                              ),
-                              const SizedBox(width: 2),
-                              const Icon(
-                                Icons.keyboard_arrow_down_rounded,
-                                size: 16,
-                                color: Colors.black,
-                              ),
-                            ],
+                      const SizedBox(width: 4),
+                      const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        size: 18,
+                        color: Colors.black,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // 4. Online Availability Black Card
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+              decoration: BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.circular(22),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: widget.isOnline
+                                  ? const Color(0xFF00C853)
+                                  : const Color(0xFF71717A),
+                              shape: BoxShape.circle,
+                            ),
                           ),
+                          const SizedBox(width: 8),
+                          Text(
+                            widget.isOnline ? "You're online" : "You're offline",
+                            style: GoogleFonts.dmSans(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        widget.isOnline
+                            ? 'Residents can book your services'
+                            : 'Toggle on when ready to work',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w400,
+                          color: const Color(0xFF94A3B8),
                         ),
                       ),
                     ],
                   ),
+                  Transform.scale(
+                    scale: 0.95,
+                    child: Switch(
+                      value: widget.isOnline,
+                      onChanged: (_) => widget.onToggleOnline?.call(),
+                      trackColor: WidgetStateProperty.resolveWith<Color>((states) {
+                        if (states.contains(WidgetState.selected)) {
+                          return const Color(0xFF00C853);
+                        }
+                        return const Color(0xFF27272A);
+                      }),
+                      thumbColor: WidgetStateProperty.all(Colors.white),
+                      trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
+                      thumbIcon: WidgetStateProperty.all(const Icon(null)),
+                    ),
+                  ),
                 ],
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 28),
 
-            // 2. Rotating PRO TIP Card
-            Builder(
-              builder: (context) {
-                final currentTip = _proTips[_currentTipIndex];
-
-                return InkWell(
-                  onTap: () {
-                    setState(() {
-                      _currentTipIndex = (_currentTipIndex + 1) % _proTips.length;
-                    });
-                    _startTipRotation();
-                  },
-                  borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 320),
-                          transitionBuilder: (child, animation) => FadeTransition(
-                            opacity: animation,
-                            child: SlideTransition(
-                              position: Tween<Offset>(
-                                begin: const Offset(0.03, 0),
-                                end: Offset.zero,
-                              ).animate(animation),
-                              child: child,
-                            ),
-                          ),
-                          child: Row(
-                            key: ValueKey<int>(_currentTipIndex),
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    width: 32,
-                                    height: 32,
-                                    decoration: BoxDecoration(
-                                      color: currentTip.iconBg,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Icon(
-                                      currentTip.icon,
-                                      color: currentTip.iconColor,
-                                      size: 18,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Text(
-                                    currentTip.category,
-                                    style: GoogleFonts.dmSans(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w800,
-                                      color: currentTip.iconColor,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(color: const Color(0xFFCBD5E1)),
-                                ),
-                                child: Text(
-                                  currentTip.badge,
-                                  style: GoogleFonts.dmSans(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 320),
-                          transitionBuilder: (child, animation) => FadeTransition(
-                            opacity: animation,
-                            child: child,
-                          ),
-                          child: SizedBox(
-                            key: ValueKey<int>(_currentTipIndex),
-                            width: double.infinity,
-                            child: Text(
-                              currentTip.text,
-                              style: GoogleFonts.dmSans(
-                                fontSize: 13,
-                                height: 1.45,
-                                fontWeight: FontWeight.w400,
-                                color: const Color(0xFF475569),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        // Indicator dots
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: List.generate(_proTips.length, (idx) {
-                            final isActive = idx == _currentTipIndex;
-                            return GestureDetector(
-                              onTap: () {
-                                setState(() => _currentTipIndex = idx);
-                                _startTipRotation();
-                              },
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 250),
-                                margin: const EdgeInsets.symmetric(horizontal: 3),
-                                width: isActive ? 18 : 6,
-                                height: 5,
-                                decoration: BoxDecoration(
-                                  color: isActive
-                                      ? Colors.black
-                                      : const Color(0xFFCBD5E1),
-                                  borderRadius: BorderRadius.circular(3),
-                                ),
-                              ),
-                            );
-                          }),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-
-            const SizedBox(height: 22),
-
-            // 3. Overview Header & 4 Metrics (Monochrome)
+            // 5. Overview Header
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Overview',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.black,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Live operational metrics',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF64748B),
-                      ),
-                    ),
-                  ],
+                Text(
+                  'Overview',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.black,
+                    letterSpacing: -0.5,
+                  ),
                 ),
                 InkWell(
                   onTap: _showPeriodFilterMenu,
                   borderRadius: BorderRadius.circular(20),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: const Color(0xFFF1F5F9),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
-                          Icons.calendar_today_outlined,
-                          size: 13,
-                          color: Colors.black,
-                        ),
-                        const SizedBox(width: 6),
                         Text(
                           _selectedOverviewPeriod,
                           style: GoogleFonts.dmSans(
-                            fontSize: 12,
+                            fontSize: 13,
                             fontWeight: FontWeight.w700,
                             color: Colors.black,
                           ),
@@ -738,7 +490,7 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                         const SizedBox(width: 4),
                         const Icon(
                           Icons.keyboard_arrow_down_rounded,
-                          size: 16,
+                          size: 18,
                           color: Colors.black,
                         ),
                       ],
@@ -747,49 +499,40 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
 
-            // 4 Metrics Grid (2x2 Monochrome)
+            // 6. 2x2 Grid of Metric Cards (Clone)
             GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               crossAxisCount: 2,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 1.62,
+              mainAxisSpacing: 14,
+              crossAxisSpacing: 14,
+              childAspectRatio: 1.05,
               children: [
                 _buildOverviewMetricCard(
                   icon: Icons.star_outline_rounded,
-                  iconBg: const Color(0xFFF1F5F9),
-                  iconColor: Colors.black,
-                  prefix: '★ ',
                   value: overallStr,
-                  label: 'Overall Rating',
+                  label: 'Overall rating',
                 ),
                 _buildOverviewMetricCard(
-                  icon: Icons.verified_outlined,
-                  iconBg: const Color(0xFFF1F5F9),
-                  iconColor: Colors.black,
-                  value: completionStr,
-                  label: 'Completion Rate',
+                  icon: Icons.check_circle_outline_rounded,
+                  value: (completionStr == '0.0%' || completionStr.isEmpty) ? 'N/A' : completionStr,
+                  label: 'Completion rate',
                 ),
                 _buildOverviewMetricCard(
                   icon: Icons.work_outline_rounded,
-                  iconBg: const Color(0xFFF1F5F9),
-                  iconColor: Colors.black,
                   value: '$rawCompletedJobs',
-                  label: 'Completed Jobs',
+                  label: 'Completed jobs',
                 ),
                 _buildOverviewMetricCard(
                   icon: Icons.thumb_up_alt_outlined,
-                  iconBg: const Color(0xFFF1F5F9),
-                  iconColor: Colors.black,
-                  value: acceptanceStr,
-                  label: 'Acceptance Rate',
+                  value: (acceptanceStr.isEmpty || acceptanceStr == '0.0%') ? 'N/A' : acceptanceStr,
+                  label: 'Acceptance rate',
                 ),
               ],
             ),
-            const SizedBox(height: 22),
+            const SizedBox(height: 28),
 
             // 4. Quick Actions Section
             Row(
@@ -936,82 +679,57 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
 
   Widget _buildOverviewMetricCard({
     required IconData icon,
-    required Color iconBg,
-    required Color iconColor,
-    String? prefix,
     required String value,
     required String label,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFF1F5F9).withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: iconBg,
+            width: 36,
+            height: 36,
+            decoration: const BoxDecoration(
+              color: Colors.white,
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: iconColor, size: 22),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (prefix != null)
-                      Text(
-                        prefix,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.black,
-                        ),
-                      ),
-                    Flexible(
-                      child: Text(
-                        value,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.black,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF64748B),
-                  ),
-                ),
-              ],
+            child: Center(
+              child: Icon(icon, color: Colors.black, size: 18),
             ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.dmSans(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.black,
+                  height: 1.1,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.dmSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF64748B),
+                ),
+              ),
+            ],
           ),
         ],
       ),

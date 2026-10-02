@@ -63,15 +63,18 @@ export default function UserMenu({ variant = 'default' }) {
   // Fetch unread count for badge
   useEffect(() => {
     const fetchUnread = async () => {
+      if (!userEmail) return;
+      const token = localStorage.getItem('token');
       try {
         const res = await axios.get(`${API_BASE_URL}/conversations/unread-count`, {
-          params: { userEmail }
+          params: { userEmail },
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
         if (res.data && typeof res.data.unreadCount === 'number') {
           setUnreadCount(res.data.unreadCount);
         }
-      } catch (err) {
-        // Silently ignore if backend offline
+      } catch {
+        // Silently ignore if unauthenticated or backend offline
       }
     };
     fetchUnread();
