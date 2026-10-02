@@ -343,8 +343,8 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                                     const SizedBox(height: 2),
                                     Text(
                                       isDetecting
-                                          ? 'Detecting via GPS / Network...'
-                                          : 'Filter posts near your device GPS',
+                                          ? 'Detecting your district via GPS...'
+                                          : 'Filter posts by your district using device GPS',
                                       style: GoogleFonts.dmSans(
                                         fontSize: 12,
                                         color: Colors.grey[600],

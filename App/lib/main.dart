@@ -644,8 +644,8 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                     const SizedBox(height: 2),
                                     Text(
                                       isDetecting
-                                          ? 'Detecting via GPS / Network...'
-                                          : 'Detect your city using device GPS',
+                                          ? 'Detecting your district via GPS...'
+                                          : 'Detect your district using device GPS',
                                       style: GoogleFonts.dmSans(
                                         fontSize: 12,
                                         color: Colors.grey[600],

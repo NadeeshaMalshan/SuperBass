@@ -74,7 +74,10 @@ class _WorkerPortalScreenState extends State<WorkerPortalScreen> {
         setState(() => _isOnline = !newStatus);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to update availability.', style: GoogleFonts.dmSans()),
+            content: Text(
+              'Failed to update availability.',
+              style: GoogleFonts.dmSans(),
+            ),
             backgroundColor: WorkerColors.error,
           ),
         );
@@ -82,10 +85,14 @@ class _WorkerPortalScreenState extends State<WorkerPortalScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              newStatus ? '✓ You are now Available for new jobs!' : 'You are now Offline.',
+              newStatus
+                  ? '✓ You are now Available for new jobs!'
+                  : 'You are now Offline.',
               style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
             ),
-            backgroundColor: newStatus ? WorkerColors.success : WorkerColors.onSurface,
+            backgroundColor: newStatus
+                ? WorkerColors.success
+                : WorkerColors.onSurface,
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 2),
           ),
@@ -131,115 +138,85 @@ class _WorkerPortalScreenState extends State<WorkerPortalScreen> {
     ];
 
     return Scaffold(
-      backgroundColor: WorkerColors.background,
+      backgroundColor: Colors.white,
       appBar: _currentIndex == 2
           ? null
           : AppBar(
-              backgroundColor: WorkerColors.surface,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        automaticallyImplyLeading: false,
-        titleSpacing: 16,
-        title: Row(
-          children: [
-            // Workio brand + Worker Portal pill
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: Image.asset(
-                'assets/images/icon.png',
-                width: 22,
-                height: 22,
-                errorBuilder: (context, error, stackTrace) => const Icon(Icons.bolt_rounded, size: 20, color: WorkerColors.onSurface),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'Workio',
-              style: GoogleFonts.dmSans(
-                fontWeight: FontWeight.w900,
-                fontSize: 20,
-                color: WorkerColors.onSurface,
-                letterSpacing: -0.5,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: WorkerColors.primaryLight,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                'WORKER',
-                style: GoogleFonts.dmSans(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  color: WorkerColors.primary,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          // Live Availability Switch Pill
-          InkWell(
-            onTap: _toggleAvailability,
-            borderRadius: BorderRadius.circular(20),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: _isOnline ? WorkerColors.onlineLight : WorkerColors.offlineLight,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
+              backgroundColor: Colors.white,
+              elevation: 0,
+              scrolledUnderElevation: 0,
+              automaticallyImplyLeading: false,
+              titleSpacing: 16,
+              title: Row(
                 children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: _isOnline ? WorkerColors.online : WorkerColors.offline,
-                      shape: BoxShape.circle,
-                      boxShadow: _isOnline
-                          ? [
-                              BoxShadow(
-                                color: WorkerColors.online.withValues(alpha: 0.5),
-                                blurRadius: 4,
-                                spreadRadius: 1,
-                              ),
-                            ]
-                          : null,
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: Image.asset(
+                      'assets/images/icon.png',
+                      width: 22,
+                      height: 22,
+                      errorBuilder: (context, error, stackTrace) => const Icon(
+                        Icons.bolt_rounded,
+                        size: 20,
+                        color: Colors.black,
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 8),
                   Text(
-                    _isOnline ? 'Online' : 'Offline',
+                    'Workio',
                     style: GoogleFonts.dmSans(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: _isOnline ? WorkerColors.online : WorkerColors.onSurfaceVariant,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 20,
+                      color: Colors.black,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 3.5,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: const Color(0xFF334155).withValues(alpha: 0.6),
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.12),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(width: 5),
+                        Text(
+                          'WORKER',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-          ),
-          const SizedBox(width: 16),
-        ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(
-            color: WorkerColors.outlineVariant,
-            height: 1,
-          ),
-        ),
-      ),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: pages,
-      ),
+      body: IndexedStack(index: _currentIndex, children: pages),
       bottomNavigationBar: M3BottomNavigationBar(
         selectedIndex: _currentIndex,
         onItemSelected: (index) {
