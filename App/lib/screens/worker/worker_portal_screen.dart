@@ -3,11 +3,12 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../models/worker_model.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/chat_signalr_service.dart';
 import '../../theme/worker_colors.dart';
 import '../../widgets/m3_bottom_nav_bar.dart';
+import 'worker_chats_screen.dart';
 import 'worker_dashboard_screen.dart';
 import 'worker_jobs_screen.dart';
-import 'worker_performance_screen.dart';
 import 'worker_profile_screen.dart';
 import '../community_screen.dart';
 
@@ -127,7 +128,7 @@ class _WorkerPortalScreenState extends State<WorkerPortalScreen> {
       ),
       const WorkerJobsScreen(),
       const CommunityScreen(isWorkerMode: true),
-      WorkerPerformanceScreen(worker: _worker),
+      const WorkerChatsScreen(),
       WorkerProfileScreen(
         worker: _worker,
         isOnline: _isOnline,
@@ -217,40 +218,47 @@ class _WorkerPortalScreenState extends State<WorkerPortalScreen> {
               ),
             ),
       body: IndexedStack(index: _currentIndex, children: pages),
-      bottomNavigationBar: M3BottomNavigationBar(
-        selectedIndex: _currentIndex,
-        onItemSelected: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
+      bottomNavigationBar: ValueListenableBuilder<int>(
+        valueListenable: ChatSignalRService().unreadChatCountNotifier,
+        builder: (context, unreadChats, _) {
+          return M3BottomNavigationBar(
+            selectedIndex: _currentIndex,
+            onItemSelected: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+            items: [
+              const M3BottomNavItem(
+                label: 'Dashboard',
+                icon: Icons.space_dashboard_outlined,
+                selectedIcon: Icons.space_dashboard_rounded,
+              ),
+              const M3BottomNavItem(
+                label: 'My Jobs',
+                icon: Icons.work_outline_rounded,
+                selectedIcon: Icons.work_rounded,
+              ),
+              const M3BottomNavItem(
+                label: 'Community',
+                icon: Icons.groups_outlined,
+                selectedIcon: Icons.groups_rounded,
+              ),
+              M3BottomNavItem(
+                label: 'Chats',
+                icon: Icons.chat_bubble_outline_rounded,
+                selectedIcon: Icons.chat_bubble_rounded,
+                hasBadge: unreadChats > 0,
+                badgeColor: const Color(0xFFEF4444),
+              ),
+              const M3BottomNavItem(
+                label: 'Profile',
+                icon: Icons.manage_accounts_outlined,
+                selectedIcon: Icons.manage_accounts_rounded,
+              ),
+            ],
+          );
         },
-        items: const [
-          M3BottomNavItem(
-            label: 'Dashboard',
-            icon: Icons.space_dashboard_outlined,
-            selectedIcon: Icons.space_dashboard_rounded,
-          ),
-          M3BottomNavItem(
-            label: 'My Jobs',
-            icon: Icons.work_outline_rounded,
-            selectedIcon: Icons.work_rounded,
-          ),
-          M3BottomNavItem(
-            label: 'Community',
-            icon: Icons.groups_outlined,
-            selectedIcon: Icons.groups_rounded,
-          ),
-          M3BottomNavItem(
-            label: 'Performance',
-            icon: Icons.star_outline_rounded,
-            selectedIcon: Icons.star_rounded,
-          ),
-          M3BottomNavItem(
-            label: 'Profile',
-            icon: Icons.manage_accounts_outlined,
-            selectedIcon: Icons.manage_accounts_rounded,
-          ),
-        ],
       ),
     );
   }

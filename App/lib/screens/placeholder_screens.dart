@@ -318,8 +318,10 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
         if (mounted) {
           setState(() => _isLoading = false);
           if (success) {
-            AuthService().logout();
-            Navigator.of(context).popUntil((route) => route.isFirst);
+            await AuthService().logout();
+            if (mounted) {
+              Navigator.of(context).pushNamedAndRemoveUntil('/join', (route) => false);
+            }
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Failed to delete account.')),

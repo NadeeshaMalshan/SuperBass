@@ -71,6 +71,8 @@ namespace Superbass.Models
         public DateTime? ReviewedAt { get; set; }
         public int? ConversationId { get; set; }
         public bool IsContactShared { get; set; } = false;
+        public bool IsWorkerVerified { get; set; } = false;
+        public bool IsResidentVerified { get; set; } = false;
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
     }

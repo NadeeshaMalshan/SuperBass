@@ -58,6 +58,8 @@ namespace Superbass.Models
         public int UnreadCount { get; set; }
         public bool LastMessageIsRead { get; set; }
         public bool IsOnline { get; set; }
+        public bool IsWorkerVerified { get; set; } = false;
+        public bool IsResidentVerified { get; set; } = false;
         public DateTime? LastSeenAt { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
@@ -96,6 +98,8 @@ namespace Superbass.Models
         public string? WorkerProfileImage { get; set; }
         public int? BookingId { get; set; }
         public bool IsOnline { get; set; }
+        public bool IsWorkerVerified { get; set; } = false;
+        public bool IsResidentVerified { get; set; } = false;
         public DateTime? LastSeenAt { get; set; }
         public DateTime CreatedAt { get; set; }
         public List<ChatMessageDto> Messages { get; set; } = new();

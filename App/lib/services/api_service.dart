@@ -24,21 +24,28 @@ class ApiService {
     return headers;
   }
 
-  /// 1. Fetch Workers from /api/workers
-  Future<List<WorkerModel>> fetchWorkers({String? skill, String? location}) async {
+  /// 1. Fetch Workers from /api/workers or /api/workers/search
+  Future<List<WorkerModel>> fetchWorkers({
+    String? skill,
+    String? location,
+    double? residentLat,
+    double? residentLng,
+  }) async {
     try {
       final user = AuthService().currentUserNotifier.value;
+      final lat = residentLat ?? user?.locationLat;
+      final lng = residentLng ?? user?.locationLng;
       Uri uri;
       
       if ((skill != null && skill.isNotEmpty && skill != 'All Pros') ||
           (location != null && location.isNotEmpty) ||
-          (user?.locationLat != null && user?.locationLng != null)) {
+          (lat != null && lng != null)) {
         uri = Uri.parse('${ApiConfig.baseUrl}/api/workers/search').replace(
           queryParameters: {
             if (skill != null && skill.isNotEmpty && skill != 'All Pros') 'skill': skill,
             if (location != null && location.isNotEmpty) 'location': location,
-            if (user?.locationLat != null) 'residentLat': user!.locationLat.toString(),
-            if (user?.locationLng != null) 'residentLng': user!.locationLng.toString(),
+            if (lat != null) 'residentLat': lat.toString(),
+            if (lng != null) 'residentLng': lng.toString(),
           },
         );
       } else {
@@ -169,6 +176,9 @@ class ApiService {
     String? serviceCategoryId,
     String? location,
     List<String>? images,
+    String? authorRole,
+    String? workerTrade,
+    double? workerRating,
   }) async {
     try {
       final user = AuthService().currentUser;
@@ -184,6 +194,9 @@ class ApiService {
         'userAvatar': user?.picture ?? '',
         'userEmail': user?.email ?? 'demo_user_1',
         'userId': user?.email ?? 'demo_user_1',
+        if (authorRole != null && authorRole.isNotEmpty) 'authorRole': authorRole,
+        if (workerTrade != null && workerTrade.isNotEmpty) 'workerTrade': workerTrade,
+        if (workerRating != null && workerRating > 0) 'workerRating': workerRating,
       });
 
       debugPrint('Creating post: $body');
@@ -864,6 +877,37 @@ class ApiService {
     }
   }
 
+  /// 5.1 Create or get existing conversation: POST /api/conversations
+  Future<Map<String, dynamic>?> getOrCreateConversation({
+    int workerId = 0,
+    String? workerEmail,
+    String? workerName,
+    String? workerAvatar,
+    String? residentEmail,
+  }) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/conversations');
+      final response = await http.post(
+        uri,
+        headers: _headers,
+        body: jsonEncode({
+          'workerId': workerId,
+          'workerEmail': workerEmail,
+          'workerName': workerName,
+          'workerAvatar': workerAvatar,
+          'residentEmail': residentEmail,
+        }),
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error creating/getting conversation: $e');
+      return null;
+    }
+  }
+
   /// 5.5 Fetch conversation details: GET /api/conversations/{id}
   Future<Map<String, dynamic>?> fetchConversationDetails(int conversationId, String userEmail) async {
     try {
@@ -1054,6 +1098,46 @@ class ApiService {
       return false;
     } catch (e) {
       debugPrint('Error deleting profile: $e');
+      return false;
+    }
+  }
+
+  /// Verify Resident Account: POST /api/residents/{email}/verify
+  Future<bool> verifyResident(String email, {String? nicNumber}) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/residents/${Uri.encodeComponent(email)}/verify');
+      final response = await http.post(
+        uri,
+        headers: _headers,
+        body: jsonEncode({'nicNumber': nicNumber ?? ''}),
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return true;
+      }
+      debugPrint('Failed to verify resident: ${response.statusCode} - ${response.body}');
+      return false;
+    } catch (e) {
+      debugPrint('Error verifying resident: $e');
+      return false;
+    }
+  }
+
+  /// Verify Worker Account: POST /api/workers/{id}/verify
+  Future<bool> verifyWorker(int workerId, {String? nicNumber}) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/workers/$workerId/verify');
+      final response = await http.post(
+        uri,
+        headers: _headers,
+        body: jsonEncode({'nicNumber': nicNumber ?? ''}),
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return true;
+      }
+      debugPrint('Failed to verify worker: ${response.statusCode} - ${response.body}');
+      return false;
+    } catch (e) {
+      debugPrint('Error verifying worker: $e');
       return false;
     }
   }

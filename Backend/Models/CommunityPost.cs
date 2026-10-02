@@ -24,6 +24,7 @@ namespace Superbass.Models
         public int CommentsCount { get; set; } = 0;
         public List<string> LikedByUsers { get; set; } = new();
         public int ReportCount { get; set; } = 0;
+        public bool IsAuthorVerified { get; set; } = false;
     }
 
     public class CommunityComment
@@ -36,6 +37,7 @@ namespace Superbass.Models
         public string UserAvatar { get; set; } = string.Empty;
         public string Content { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public bool IsUserVerified { get; set; } = false;
     }
 
     public class CommunityReport

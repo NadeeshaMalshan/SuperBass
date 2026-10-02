@@ -7,6 +7,7 @@ import '../models/auth_user.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/superbass_map.dart';
 import '../main.dart';
 import 'package:loading_indicator_m3e/loading_indicator_m3e.dart';
 
@@ -804,88 +805,32 @@ class _OnboardingScreenState extends State<OnboardingScreen> with SingleTickerPr
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: const Color(0xFFE2E8F0)),
-            color: const Color(0xFFE5E7EB),
+            color: const Color(0xFFF1F5F9),
           ),
           clipBehavior: Clip.antiAlias,
           child: Stack(
             children: [
-              // OpenStreetMap tile background representation
-              Positioned.fill(
-                child: GestureDetector(
-                  onTapDown: (details) {
-                    final box = context.findRenderObject() as RenderBox?;
-                    if (box != null) {
-                      // Small coordinate jitter based on tap position for natural pinning
-                      final normX = (details.localPosition.dx / 280.0) - 0.5;
-                      final normY = (details.localPosition.dy / 280.0) - 0.5;
-                      setState(() {
-                        _selectedLat = 6.9271 + (normY * 0.04);
-                        _selectedLng = 79.8612 + (normX * 0.04);
-                        _hasCustomPin = true;
-                      });
-                    }
-                  },
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // Styled map grid / visual representation
-                      Container(
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          image: const DecorationImage(
-                            image: NetworkImage(
-                              'https://tile.openstreetmap.org/13/4688/3187.png',
-                            ),
-                            fit: BoxFit.cover,
-                            onError: null,
-                          ),
-                        ),
-                      ),
-                      Container(
-                        color: Colors.black.withValues(alpha: 0.03),
-                      ),
-                      // Active Pin Marker with shadow
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: const BoxDecoration(
-                              color: AppColors.brandYellow,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black26,
-                                  blurRadius: 8,
-                                  offset: Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: const Icon(
-                              Icons.location_on,
-                              color: Colors.black,
-                              size: 28,
-                            ),
-                          ),
-                          Container(
-                            width: 8,
-                            height: 4,
-                            decoration: const BoxDecoration(
-                              color: Colors.black38,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+              SuperBassMap(
+                latitude: _selectedLat ?? 6.9271,
+                longitude: _selectedLng ?? 79.8612,
+                zoom: 14.0,
+                height: 280,
+                borderRadius: 16,
+                isInteractive: true,
+                markerTitle: 'My Location',
+                onLocationPicked: (point) {
+                  setState(() {
+                    _selectedLat = point.latitude;
+                    _selectedLng = point.longitude;
+                    _hasCustomPin = true;
+                  });
+                },
               ),
 
               // Floating "My Location" Button (matching Onboarding.jsx)
               Positioned(
                 bottom: 16,
-                right: 16,
+                left: 16,
                 child: ElevatedButton.icon(
                   onPressed: _handleGetLocation,
                   icon: const Icon(Icons.my_location, size: 18, color: Colors.black),
