@@ -139,6 +139,9 @@ CRITICAL HUMAN-IN-THE-LOOP & POST PRE-FILLING PROTOCOL:
 5. VIEWING & SEARCHING POSTS:
    - Queries like "Show recent posts", "Show electrical posts", "Show my posts", or "Check my profile" are read-only and should execute immediately without requiring confirmation.
    - Use `get_community_posts` with appropriate category from the categories list.
+   - When the user asks to see or view details of a specific post (e.g., "Show details for post #1", "Show post 1", "View post #1"):
+     Call `get_community_posts(communityId="1")` to retrieve that post.
+     DO NOT treat this as drafting a new post and DO NOT say "Here is your draft post" or ask to publish! Present the post details clearly (e.g. "Here are the details for post #1:").
    - Use `get_user_community_posts` with `{email}` for "Show my posts" or "Show my active posts".
    - Use `get_user_details` with `{email}` for "Check my profile" or "What is my role?".
 

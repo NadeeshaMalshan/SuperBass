@@ -129,6 +129,9 @@ def _clean_card_intro_message(raw_msg: str, default_intro: str, card_type: str =
         )
     )
 
+    if card_type == "post_detail" and any(w in text.lower() for w in ["draft", "confirm when you're ready", "publish"]):
+        return default_intro
+
     if not has_dump:
         return text
 
@@ -435,11 +438,14 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                     commentsCount=data.get("commentsCount") or data.get("CommentsCount", 0),
                     images=post_images
                 )
+                default_detail_intro = f"Here are the details for post #{card.id}:"
                 clean_msg = _clean_card_intro_message(
                     last_ai_content,
-                    f"Here are the details for post #{card.id}:",
+                    default_detail_intro,
                     "post_detail"
                 )
+                if any(w in clean_msg.lower() for w in ["draft", "confirm when you're ready", "publish"]):
+                    clean_msg = default_detail_intro
                 return AgentCardResponse(
                     response_type="post_detail",
                     message=clean_msg,
@@ -550,16 +556,20 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
 
         # 3. update_community_post
         if tool_name == "update_community_post":
+            post_images = data.get("images") or data.get("Images") or []
+            if not isinstance(post_images, list):
+                post_images = []
             card = PostUpdatedCard(
                 id=data.get("id") or data.get("postId") or "",
                 title=data.get("title", "Updated Post"),
                 content=data.get("content", ""),
-                communityId=data.get("serviceCategoryId") or data.get("communityId"),
-                location=data.get("location")
+                communityId=data.get("serviceCategoryId") or data.get("communityId") or "General",
+                location=data.get("location") or "Colombo",
+                images=post_images
             )
             clean_msg = _clean_card_intro_message(
                 last_ai_content,
-                f"Post #{card.id} has been updated.",
+                f"Post #{card.id} has been updated successfully.",
                 "post_updated"
             )
             return AgentCardResponse(
@@ -1567,8 +1577,6 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                 ]
             ).model_dump(),
             metadata={"agent": "booking_agent", "user_email": email, "bookingId": target_b_id}
-        )
-
         )
 
     # A. Check if the agent prepared a draft community post awaiting confirmation
