@@ -1569,8 +1569,6 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
             metadata={"agent": "booking_agent", "user_email": email, "bookingId": target_b_id}
         )
 
-        )
-
     # A. Check if the agent prepared a draft community post awaiting confirmation
     is_choice_turn = any(kw in lower_content for kw in [
         "create a community post or find",
