@@ -889,6 +889,107 @@ def test_title_update_suggestions():
     assert not any("book a service technician" in s for s in suggestions)
 
 
+@pytest.mark.asyncio
+async def test_review_agent_no_completed_bookings_returns_message_not_fake_card():
+    """Verify that when a resident has no completed bookings, asking to review does NOT produce a fake card."""
+    from unittest.mock import patch, AsyncMock
+    from agent_backend.agents.support_review_agent import support_review_agent_node
+    from agent_backend.utils.card_builders import _deterministic_card_builder
+    from agent_backend.tools.mcp_client import mcp_client
+
+    state = {
+        "messages": [
+            HumanMessage(content="I want to leave a review for a worker")
+        ],
+        "email": "user_with_no_jobs@workio.lk",
+        "user_type": "Resident",
+        "user_profile": {"displayName": "New User"},
+        "next": None,
+        "structured_response": None,
+        "metadata": {}
+    }
+    with patch.object(mcp_client, "call_tool", new_callable=AsyncMock) as mock_mcp:
+        mock_mcp.return_value = []  # No bookings
+        res = await support_review_agent_node(state)
+        assert "structured_response" in res
+        card = res["structured_response"]
+        assert card.response_type == "text_message"
+        assert "don't have any completed bookings" in card.message.lower()
+        assert card.response_type != "review_form"
+
+    card_resp = _deterministic_card_builder(state)
+    assert card_resp.response_type == "text_message"
+    assert "don't have any completed bookings" in card_resp.message.lower()
+    assert card_resp.response_type != "review_form"
+
+
+def test_show_booking_details_never_returns_community_post():
+    """Verify that asking for booking details returns a booking card/message, never a community post."""
+    from agent_backend.utils.card_builders import _deterministic_card_builder, build_booking_card
+    from langchain_core.messages import ToolMessage
+
+    # 1. Tool execution turn with get_booking_details
+    state_with_tool = {
+        "messages": [
+            HumanMessage(content="Show details for booking #1"),
+            AIMessage(
+                content="",
+                tool_calls=[{"id": "call_bk_1", "name": "get_booking_details", "args": {"bookingId": "1"}}]
+            ),
+            ToolMessage(
+                content=json.dumps({
+                    "id": 1,
+                    "workerId": 44,
+                    "workerName": "Upul Bandara",
+                    "jobTitle": "Plumbing Pipe Repair",
+                    "scheduledDate": "2026-10-05T10:00:00",
+                    "locationAddress": "Colombo 03",
+                    "contactPhone": "0771234567",
+                    "pricingModel": "Hourly",
+                    "agreedPrice": 5600.0,
+                    "status": "Confirmed"
+                }),
+                tool_call_id="call_bk_1",
+                name="get_booking_details"
+            )
+        ],
+        "email": "resident@workio.lk",
+        "user_type": "Resident",
+        "user_profile": {"displayName": "Resident", "address": "Colombo"},
+        "next": None,
+        "structured_response": None,
+        "metadata": {"agent": "booking_agent"}
+    }
+
+    card_resp = build_booking_card(state_with_tool)
+    assert card_resp.response_type == "booking_list"
+    assert card_resp.response_type != "post_confirmation"
+    assert card_resp.metadata["agent"] == "booking_agent"
+    assert card_resp.card_data["bookings"][0]["id"] == 1
+    assert card_resp.card_data["bookings"][0]["workerName"] == "Upul Bandara"
+    assert "draft" not in card_resp.message.lower()
+    assert "community" not in card_resp.message.lower()
+
+    # 2. Conversational turn with booking details in content
+    state_conversational = {
+        "messages": [
+            HumanMessage(content="Show details for booking #1")
+        ],
+        "email": "resident@workio.lk",
+        "user_type": "Resident",
+        "user_profile": {"displayName": "Resident", "address": "Colombo"},
+        "next": None,
+        "structured_response": None,
+        "metadata": {"agent": "booking_agent"}
+    }
+    ai_msg = AIMessage(content="**Booking #1 Details:**\n- Worker: Upul Bandara\n- Service: Plumbing Pipe Repair\n- Location: Colombo")
+    card_resp_conv = build_booking_card(state_conversational, ai_message=ai_msg)
+    assert card_resp_conv.response_type != "post_confirmation"
+    assert "draft" not in card_resp_conv.message.lower()
+    assert "community" not in card_resp_conv.message.lower()
+    assert card_resp_conv.metadata["agent"] == "booking_agent"
+
+
 if __name__ == "__main__":
     test_card_schemas()
     test_langgraph_compilation()

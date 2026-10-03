@@ -54,4 +54,10 @@ Booking Workflow Rules:
    - When the user asks to cancel (e.g., "Cancel booking #12"):
      Call `cancel_booking(bookingId="...", reason="...")`.
      Confirm the cancellation status to the resident.
+
+5. VIEWING SPECIFIC BOOKING DETAILS:
+   - When the user asks "Show details for booking #1" or "View booking #X":
+     1. Call `get_booking_details(bookingId="1")`.
+     2. Present the full appointment details clearly: Booking ID, Technician Name, Job Title, Scheduled Date & Time, Service Location, Contact Phone, Agreed/Estimated Price, and Status.
+     3. Inform the resident that they can reschedule or cancel this booking directly.
 """

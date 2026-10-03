@@ -55,7 +55,7 @@ async def community_agent_node(state: AgentState) -> Dict[str, Any]:
             result: Dict[str, Any] = {"messages": [response]}
             if not getattr(response, "tool_calls", None):
                 # Final agent turn: enforce Pydantic Structured Output on conversational message
-                response = await format_specialist_structured_message(prompt_messages, response, llm=llm)
+                response = await format_specialist_structured_message(prompt_messages, response, llm=llm, agent_type="community_agent")
                 sim_state = dict(state)
                 sim_state["messages"] = messages + [response]
                 result["messages"] = [response]

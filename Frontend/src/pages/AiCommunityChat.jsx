@@ -696,7 +696,6 @@ export default function AiCommunityChat() {
                   </div>
                   <div className="ai-msg-wrapper">
                     <div className="ai-typing-bubble">
-                      <span>Community agent is thinking</span>
                       <div className="ai-dots">
                         <span className="ai-dot"></span>
                         <span className="ai-dot"></span>
