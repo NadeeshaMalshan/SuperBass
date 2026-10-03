@@ -6,28 +6,21 @@ import './AgentCards.css';
 const ALL_DISTRICTS = Object.values(sriLankaDistrictsData).flat();
 
 const resolveDistrict = (loc) => {
-  if (!loc) return 'Colombo';
+  if (!loc) return 'Ratnapura';
   const clean = String(loc).trim().toLowerCase();
   const exact = ALL_DISTRICTS.find((d) => d.toLowerCase() === clean);
   if (exact) return exact;
   const partial = ALL_DISTRICTS.find((d) => clean.includes(d.toLowerCase()) || d.toLowerCase().includes(clean));
   if (partial) return partial;
-  return 'Colombo';
+  return 'Ratnapura';
 };
 
-const TIME_SLOTS = [
-  { id: 'morning', label: '09:00 AM - 11:00 AM', startTime: '09:00', duration: 2 },
-  { id: 'midday', label: '11:30 AM - 01:30 PM', startTime: '11:30', duration: 2 },
-  { id: 'afternoon', label: '02:00 PM - 04:00 PM', startTime: '14:00', duration: 2 },
-  { id: 'evening', label: '04:30 PM - 06:30 PM', startTime: '16:30', duration: 2 },
-];
-
 export default function BookingFormCard({ data = {}, onAction }) {
-  const workerId = data.workerId || data.id || '44';
-  const workerName = data.workerName || data.name || 'Verified Technician';
-  const workerAvatar = data.workerAvatar || data.avatarUrl || craftsmanAvatar;
-  const category = data.category || 'General Service';
-  const hourlyRate = data.hourlyRate || 2800;
+  const workerId = data.workerId || data.id || '1';
+  const workerName = data.workerName || data.name || 'Super Bass';
+  const workerAvatar = data.workerAvatar || data.avatarUrl || data.profileImage || craftsmanAvatar;
+  const category = data.category || 'Plumbing';
+  const hourlyRate = Number(data.hourlyRate) > 0 ? Number(data.hourlyRate) : 5000;
 
   // Tomorrow as default date (YYYY-MM-DD)
   const tomorrow = new Date();
@@ -35,22 +28,35 @@ export default function BookingFormCard({ data = {}, onAction }) {
   const defaultDateStr = tomorrow.toISOString().split('T')[0];
 
   const [selectedDate, setSelectedDate] = useState(data.selectedDate || defaultDateStr);
-  const [selectedSlot, setSelectedSlot] = useState(TIME_SLOTS[0]);
-  const [durationHours, setDurationHours] = useState(data.durationHours || 2);
   const [jobTitle, setJobTitle] = useState(data.jobTitle || `${category} Service Request`);
   const [notes, setNotes] = useState(data.notes || '');
   const [location, setLocation] = useState(resolveDistrict(data.location));
-  const [contactPhone, setContactPhone] = useState(data.contactPhone || '0771234567');
+  const [specificAddress, setSpecificAddress] = useState(
+    data.specificAddress || data.address || (data.location && data.location.includes(',') ? data.location : '')
+  );
+  const [contactPhone, setContactPhone] = useState(data.contactPhone || '0771756463');
+
+  // Keep state updated if data changes from parent / AI
+  useEffect(() => {
+    if (data.selectedDate) setSelectedDate(data.selectedDate);
+    if (data.jobTitle) setJobTitle(data.jobTitle);
+    if (data.location) setLocation(resolveDistrict(data.location));
+    if (data.contactPhone) setContactPhone(data.contactPhone);
+    if (data.notes) setNotes(data.notes);
+    if (data.specificAddress || data.address) {
+      setSpecificAddress(data.specificAddress || data.address);
+    }
+  }, [data]);
 
   // Availability validation state
   const [checkingAvailability, setCheckingAvailability] = useState(false);
   const [availabilityResult, setAvailabilityResult] = useState({
     isAvailable: data.isAvailable !== false,
     status: data.availabilityStatus || 'Available',
-    reason: data.availabilityReason || `${workerName} is available for booking.`,
+    reason: data.availabilityReason || `${workerName} is available on this date.`,
   });
 
-  // Check availability whenever date, slot, or workerId changes
+  // Check availability whenever date or workerId changes
   useEffect(() => {
     let isCancelled = false;
 
@@ -58,7 +64,7 @@ export default function BookingFormCard({ data = {}, onAction }) {
       setCheckingAvailability(true);
       try {
         const resp = await fetch(
-          `http://localhost:8001/api/workers/${workerId}/availability?date=${selectedDate}&start_time=${selectedSlot.startTime}&duration_hours=${durationHours}`
+          `http://localhost:8001/api/workers/${workerId}/availability?date=${selectedDate}`
         );
         if (resp.ok) {
           const resJson = await resp.json();
@@ -67,7 +73,7 @@ export default function BookingFormCard({ data = {}, onAction }) {
             setAvailabilityResult({
               isAvailable: isAvail,
               status: isAvail ? 'Available' : 'Unavailable',
-              reason: resJson.reason || (isAvail ? `${workerName} is available!` : 'Worker is busy or off duty.'),
+              reason: resJson.reason || (isAvail ? `${workerName} is available on this date!` : 'Worker is busy or off duty.'),
             });
           }
         }
@@ -85,17 +91,11 @@ export default function BookingFormCard({ data = {}, onAction }) {
     return () => {
       isCancelled = true;
     };
-  }, [workerId, selectedDate, selectedSlot, durationHours, workerName]);
-
-  const totalEstimate = (Number(hourlyRate) || 2800) * (Number(durationHours) || 2);
+  }, [workerId, selectedDate, workerName]);
 
   const handleConfirmBooking = () => {
-    // Calculate end time
-    const [hh, mm] = selectedSlot.startTime.split(':').map(Number);
-    const endH = hh + Number(durationHours);
-    const endTimeStr = `${String(endH).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
-
-    const promptToExecute = `CONFIRM_BOOKING: Please book worker ID ${workerId} (${workerName}) for ${selectedDate} from ${selectedSlot.startTime} to ${endTimeStr}. Service: ${jobTitle}. Location: ${location}. Phone: ${contactPhone}. Notes: ${notes || 'Standard booking'}`;
+    const fullAddress = specificAddress ? `${specificAddress}, ${location}` : location;
+    const promptToExecute = `CONFIRM_BOOKING: Please book worker ID ${workerId} (${workerName}) for ${selectedDate}. Service: ${jobTitle}. Location: ${fullAddress}. Phone: ${contactPhone}. Notes: ${notes || 'Standard booking'}`;
 
     const payloadObj = {
       prompt: promptToExecute,
@@ -105,13 +105,13 @@ export default function BookingFormCard({ data = {}, onAction }) {
         workerId,
         workerName,
         date: selectedDate,
-        startTime: `${selectedDate}T${selectedSlot.startTime}:00`,
-        endTime: `${selectedDate}T${endTimeStr}:00`,
+        scheduledDate: `${selectedDate}T09:00:00`,
         jobTitle,
-        locationAddress: location,
+        locationAddress: fullAddress,
         contactPhone,
         notes,
-        totalEstimate,
+        hourlyRate,
+        estimatedPrice: hourlyRate,
       },
     };
 
@@ -139,7 +139,7 @@ export default function BookingFormCard({ data = {}, onAction }) {
                 <i className="fa-solid fa-tag"></i> {category}
               </span>
               <span className="booking-worker-rate">
-                <i className="fa-solid fa-bolt"></i> Rs. {hourlyRate}/hr
+                <i className="fa-solid fa-bolt"></i> Rs. {Number(hourlyRate).toLocaleString()}/hr
               </span>
             </div>
           </div>
@@ -158,17 +158,17 @@ export default function BookingFormCard({ data = {}, onAction }) {
           {checkingAvailability ? (
             <>
               <i className="fa-solid fa-circle-notch fa-spin"></i>
-              <span>Validating {workerName}&apos;s real-time schedule...</span>
+              <span>Checking {workerName}&apos;s schedule for {selectedDate}...</span>
             </>
           ) : availabilityResult.isAvailable ? (
             <>
               <i className="fa-solid fa-circle-check"></i>
-              <span>{availabilityResult.reason || `${workerName} is FREE on this date & time slot!`}</span>
+              <span>{availabilityResult.reason || `${workerName} is available on ${selectedDate}!`}</span>
             </>
           ) : (
             <>
               <i className="fa-solid fa-circle-xmark"></i>
-              <span>{availabilityResult.reason || 'Worker is unavailable on this slot. Please select another time.'}</span>
+              <span>{availabilityResult.reason || 'Worker is unavailable on this date. Please pick another date.'}</span>
             </>
           )}
         </div>
@@ -189,57 +189,25 @@ export default function BookingFormCard({ data = {}, onAction }) {
             />
           </div>
 
-          {/* 2. Time Slot Selection */}
+          {/* 2. Service Description */}
           <div className="booking-form-field">
             <label className="booking-field-label">
-              <i className="fa-regular fa-clock"></i> Select Time Slot
+              <i className="fa-solid fa-wrench"></i> Service Title
             </label>
-            <div className="booking-slots-grid">
-              {TIME_SLOTS.map((slot) => (
-                <button
-                  type="button"
-                  key={slot.id}
-                  className={`booking-slot-pill ${selectedSlot.id === slot.id ? 'active' : ''}`}
-                  onClick={() => setSelectedSlot(slot)}
-                >
-                  <i className="fa-regular fa-clock"></i>
-                  <span>{slot.label}</span>
-                </button>
-              ))}
-            </div>
+            <input
+              type="text"
+              className="booking-text-input"
+              value={jobTitle}
+              onChange={(e) => setJobTitle(e.target.value)}
+              placeholder="e.g. Plumbing Pipe Repair"
+            />
           </div>
 
-          {/* 3. Duration & Service Description */}
-          <div className="booking-form-row">
-            <div className="booking-form-field" style={{ flex: 1 }}>
-              <label className="booking-field-label">Duration (Hours)</label>
-              <select
-                className="booking-select-input"
-                value={durationHours}
-                onChange={(e) => setDurationHours(Number(e.target.value))}
-              >
-                <option value={1}>1 Hour</option>
-                <option value={2}>2 Hours (Recommended)</option>
-                <option value={3}>3 Hours</option>
-                <option value={4}>4 Hours (Half Day)</option>
-                <option value={8}>8 Hours (Full Day)</option>
-              </select>
-            </div>
-            <div className="booking-form-field" style={{ flex: 2 }}>
-              <label className="booking-field-label">Service Title</label>
-              <input
-                type="text"
-                className="booking-text-input"
-                value={jobTitle}
-                onChange={(e) => setJobTitle(e.target.value)}
-                placeholder="e.g. Deep Cleaning / Pipe Repair"
-              />
-            </div>
-          </div>
-
-          {/* 4. Notes & Specific Requirements */}
+          {/* 3. Notes & Specific Instructions */}
           <div className="booking-form-field">
-            <label className="booking-field-label">Notes for Technician (Optional)</label>
+            <label className="booking-field-label">
+              <i className="fa-regular fa-clipboard"></i> Notes for Technician (Optional)
+            </label>
             <textarea
               className="booking-textarea-input"
               rows={2}
@@ -249,7 +217,7 @@ export default function BookingFormCard({ data = {}, onAction }) {
             />
           </div>
 
-          {/* 5. Location & Contact Phone */}
+          {/* 4. Location & Contact Phone */}
           <div className="booking-form-row">
             <div className="booking-form-field" style={{ flex: 1 }}>
               <label className="booking-field-label">
@@ -285,18 +253,35 @@ export default function BookingFormCard({ data = {}, onAction }) {
             </div>
           </div>
 
-          {/* Pricing Estimation Footer */}
+          {/* 5. Specific Address Details */}
+          <div className="booking-form-field">
+            <label className="booking-field-label">
+              <i className="fa-solid fa-map-pin"></i> Specific Address / Street
+            </label>
+            <input
+              type="text"
+              className="booking-text-input"
+              value={specificAddress}
+              onChange={(e) => setSpecificAddress(e.target.value)}
+              placeholder="e.g. 5656, Batuhena, Ratnapura"
+            />
+          </div>
+
+          {/* 6. Pricing Information */}
           <div className="booking-price-summary-card">
             <div className="booking-price-row">
-              <span className="booking-price-label">Estimated Service Fee ({durationHours} hrs × Rs. {hourlyRate})</span>
-              <span className="booking-price-total">Rs. {totalEstimate.toLocaleString()}</span>
+              <span className="booking-price-label">
+                <i className="fa-solid fa-tag" style={{ marginRight: '8px', color: '#10b981' }}></i>
+                Technician Rate
+              </span>
+              <span className="booking-price-total">Rs. {Number(hourlyRate).toLocaleString()} / hr</span>
             </div>
             <p className="booking-price-note">
-              No advance payment required. Pay directly upon satisfactory job completion.
+              <i className="fa-solid fa-shield-halved"></i> No advance payment required. Pay directly upon satisfactory job completion.
             </p>
           </div>
 
-          {/* Confirm Button */}
+          {/* 7. Confirm Button */}
           <div className="booking-form-actions">
             <button
               type="button"
@@ -304,7 +289,7 @@ export default function BookingFormCard({ data = {}, onAction }) {
               disabled={!availabilityResult.isAvailable || checkingAvailability}
               onClick={handleConfirmBooking}
             >
-              <span>{checkingAvailability ? 'Checking Slot...' : 'Confirm & Book Appointment'}</span>
+              <span>{checkingAvailability ? 'Checking Availability...' : 'Confirm & Book Appointment'}</span>
               <i className="fa-solid fa-arrow-right"></i>
             </button>
           </div>
