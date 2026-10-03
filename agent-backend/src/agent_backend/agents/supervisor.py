@@ -92,6 +92,8 @@ async def supervisor_node(state: AgentState) -> Dict[str, Any]:
                 metadata["suggested_actions"] = clean_actions
             if decision.inferred_category:
                 metadata["inferred_category"] = decision.inferred_category
+            if decision.next_agent != "FINISH":
+                metadata["agent"] = decision.next_agent
 
             updates["metadata"] = metadata
 

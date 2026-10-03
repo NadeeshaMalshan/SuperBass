@@ -9,9 +9,10 @@ from typing import Dict, Any, List, Optional, Union
 import json
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from langchain_core.messages import ToolMessage, HumanMessage, AIMessage
 from langchain_openai import ChatOpenAI
+
 from agent_backend.state.state import AgentState
 from agent_backend.utils.sanitizer import extract_text_content
 from agent_backend.schemas.card_models import (
@@ -132,7 +133,7 @@ def _clean_card_intro_message(raw_msg: str, default_intro: str, card_type: str =
         return text
 
     # For draft community post confirmation cards
-    if card_type in ["post_confirmation", "create_community_post", "edit_community_post"] or bool(re.search(r'\*\*(?:Title|Category|Location|Content|Description):\*\*', text, re.IGNORECASE)):
+    if card_type in ["post_confirmation", "create_community_post", "edit_community_post"]:
         intro_match = re.search(
             r'^(.*?)(?=(?:\s*[•\-*]?\s*)\*\*(?:Title|Category|Location|Content|Description|Urgency):\*\*)',
             text,
@@ -163,6 +164,36 @@ def _clean_card_intro_message(raw_msg: str, default_intro: str, card_type: str =
         cleaned = re.sub(r'^(?:\[\s*\]|\(\s*\))\s*', '', cleaned)
         cleaned = re.sub(r'\s{2,}', ' ', cleaned)
         return cleaned
+
+    # For booking detail or list cards
+    if card_type in ["booking_list", "booking_detail", "booking_confirmed", "booking_form"]:
+        intro_match = re.search(
+            r'^(.*?)(?=(?:\s*\n\s*|\s+)(?:1\.\s*\*\*|\d+\.\s*\*\*|[-*•]\s*\*\*|(?:[•\-*]?\s*)\*\*(?:Booking|Worker|Technician|Service|Status|Time|Date|Location|Price|Rate):\*\*|###\s+))',
+            text,
+            re.DOTALL | re.IGNORECASE
+        )
+        intro = intro_match.group(1).strip() if intro_match else ""
+        closing_match = re.search(r'(?:(?:\n|\.\s+|:\s+))([A-Z][^\n]*\?)\s*$', text)
+        closing = closing_match.group(1).strip() if closing_match else ""
+
+        parts = []
+        if intro and len(intro) > 6 and not intro.startswith(("1.", "-", "*", "•")):
+            if not intro.endswith((".", "!", ":", "?")):
+                intro += ":"
+            parts.append(intro)
+        else:
+            parts.append(default_intro)
+
+        if closing and closing not in (parts[0] if parts else ""):
+            parts.append(closing)
+        else:
+            parts.append("You can view your appointment details or manage your booking below.")
+
+        cleaned = " ".join(parts).strip()
+        cleaned = re.sub(r'!\[.*?\]\(.*?\)', '', cleaned).strip()
+        cleaned = re.sub(r'\[(.*?)\]\(tel:.*?\)', r'\1', cleaned).strip()
+        cleaned = re.sub(r'\s{2,}', ' ', cleaned)
+        return cleaned if cleaned else default_intro
 
     # For worker lists or general items
     intro_match = re.search(
@@ -198,7 +229,8 @@ def _clean_card_intro_message(raw_msg: str, default_intro: str, card_type: str =
 async def format_specialist_structured_message(
     prompt: list,
     response: AIMessage,
-    llm: Optional[ChatOpenAI] = None
+    llm: Optional[ChatOpenAI] = None,
+    agent_type: Optional[str] = None
 ) -> AIMessage:
     """
     Validates and formats the specialist agent's conversational output.
@@ -212,7 +244,7 @@ async def format_specialist_structured_message(
         re.search(
             r'(?:'
             r'(?:\n|\s+)(?:1\.\s*\*\*|\d+\.\s*\*\*|[-*•]\s*\*\*)|'
-            r'(?:[•\-*]?\s*)\*\*(?:Title|Category|Location|Content|Description|Urgency|Worker|Price|Rate):\*\*|'
+            r'(?:[•\-*]?\s*)\*\*(?:Title|Category|Location|Content|Description|Urgency|Worker|Price|Rate|Booking|Status|Scheduled):\*\*|'
             r'!\[.*?\]\(.*?\)|\(tel:\d+\)|###\s+[A-Z]'
             r')',
             raw_content,
@@ -228,8 +260,27 @@ async def format_specialist_structured_message(
             )
         return response
 
-    card_type_hint = "post_confirmation" if bool(re.search(r'\*\*(?:Title|Category|Location|Content):\*\*', raw_content, re.IGNORECASE)) else "worker_list"
-    cleaned = _clean_card_intro_message(raw_content, "Here are the recommended service options:", card_type_hint)
+    lower_raw = raw_content.lower()
+    if agent_type == "booking_agent" or any(k in lower_raw for k in ["booking #", "appointment", "booking id", "scheduled for"]):
+        card_type_hint = "booking_list"
+        default_intro = "Here are the details for your booking:"
+    elif agent_type == "community_agent" or any(k in lower_raw for k in ["draft community post", "post confirmation", "publish post"]):
+        card_type_hint = "post_confirmation"
+        default_intro = "Here is your draft community post:"
+    elif agent_type == "support_review_agent" or any(k in lower_raw for k in ["ticket #", "review", "dispute"]):
+        card_type_hint = "support"
+        default_intro = "Here is your support update:"
+    elif agent_type == "worker_matching_agent" or any(k in lower_raw for k in ["technician", "worker", "plumber", "electrician"]):
+        card_type_hint = "worker_list"
+        default_intro = "Here are the recommended service options:"
+    elif bool(re.search(r'\*\*(?:Title|Category|Location|Content):\*\*', raw_content, re.IGNORECASE)):
+        card_type_hint = "post_confirmation"
+        default_intro = "Here is your draft community post:"
+    else:
+        card_type_hint = "worker_list"
+        default_intro = "Here are the recommended service options:"
+
+    cleaned = _clean_card_intro_message(raw_content, default_intro, card_type_hint)
     return AIMessage(
         content=cleaned,
         additional_kwargs=getattr(response, "additional_kwargs", {}),
@@ -839,6 +890,76 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                 metadata={"agent": "booking_agent", "user_email": email}
             )
 
+        if tool_name in ["get_booking", "get_booking_details"]:
+            if isinstance(data, dict) and data.get("error"):
+                err_msg = str(data.get("error"))
+                return AgentCardResponse(
+                    response_type="text_message",
+                    message=err_msg,
+                    card_data=TextMessageCard(text=err_msg, suggestions=["View my bookings", "Book a technician"]).model_dump(),
+                    metadata={"agent": "booking_agent", "user_email": email}
+                )
+
+            b_id = data.get("id") or data.get("bookingId")
+            if not b_id:
+                msg = data.get("message") or last_ai_content or "Booking details could not be found."
+                return AgentCardResponse(
+                    response_type="text_message",
+                    message=msg,
+                    card_data=TextMessageCard(text=msg, suggestions=["View my bookings", "Book a technician"]).model_dump(),
+                    metadata={"agent": "booking_agent", "user_email": email}
+                )
+
+            b_worker_id = data.get("workerId") or 0
+            b_worker_name = data.get("workerName") or "Verified Technician"
+            b_worker_img = data.get("workerProfileImage") or data.get("workerAvatar")
+            b_worker_phone = data.get("workerPhone")
+            b_title = data.get("jobTitle") or data.get("description") or "Home Service Appointment"
+            b_date = data.get("scheduledDate")
+            b_loc = data.get("locationAddress") or "Colombo"
+            b_phone = data.get("contactPhone")
+            b_pricing = data.get("pricingModel") or "Hourly"
+            b_est = float(data["estimatedPrice"]) if data.get("estimatedPrice") is not None else None
+            b_agr = float(data["agreedPrice"]) if data.get("agreedPrice") is not None else None
+            b_status = data.get("status") or "Requested"
+            b_created = data.get("createdAt")
+
+            summary = BookingSummary(
+                id=b_id,
+                workerId=b_worker_id,
+                workerName=b_worker_name,
+                workerProfileImage=b_worker_img,
+                workerPhone=b_worker_phone,
+                jobTitle=b_title,
+                scheduledDate=b_date,
+                locationAddress=b_loc,
+                contactPhone=b_phone,
+                pricingModel=b_pricing,
+                estimatedPrice=b_est,
+                agreedPrice=b_agr,
+                status=b_status,
+                createdAt=b_created
+            )
+
+            card = BookingListCard(
+                totalCount=1,
+                statusFilter=b_status,
+                bookings=[summary]
+            )
+
+            clean_msg = _clean_card_intro_message(
+                last_ai_content,
+                f"Here are the details for booking #{b_id}:",
+                "booking_list"
+            )
+
+            return AgentCardResponse(
+                response_type="booking_list",
+                message=clean_msg,
+                card_data=card.model_dump(),
+                metadata={"agent": "booking_agent", "user_email": email, "bookingId": b_id}
+            )
+
         # 9. Support & Review Tools
         if tool_name == "create_worker_review":
             b_id = data.get("bookingId") or data.get("id") or "0"
@@ -862,11 +983,30 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                 comment=comment_text,
                 submittedAt=rev_at
             )
-            clean_msg = f"Thank you! Your verified review for {w_name} has been published successfully."
+            clean_msg = f"Thank you! Your verified review for {w_name} has been submitted successfully."
+            if data.get("overallRating") or data.get("qualityRating") or data.get("comment"):
+                return AgentCardResponse(
+                    response_type="review_submitted",
+                    message=clean_msg,
+                    card_data=review_card.model_dump(),
+                    metadata={"agent": "support_review_agent", "user_email": email}
+                )
             return AgentCardResponse(
-                response_type="review_submitted",
+                response_type="text_message",
                 message=clean_msg,
-                card_data=review_card.model_dump(),
+                card_data=TextMessageCard(text=clean_msg, suggestions=["View my bookings", "Find a worker"]).model_dump(),
+                metadata={"agent": "support_review_agent", "user_email": email}
+            )
+
+        if tool_name == "get_worker_performance":
+            w_name = data.get("name") or data.get("workerName") or f"Worker #{data.get('workerId', '')}"
+            rating = data.get("overallRating") or data.get("rating") or "N/A"
+            jobs = data.get("completedJobs") or 0
+            msg = last_ai_content or f"{w_name} has an overall rating of {rating} out of 5 across {jobs} completed jobs."
+            return AgentCardResponse(
+                response_type="text_message",
+                message=msg,
+                card_data=TextMessageCard(text=msg, suggestions=["Book this worker", "View more technicians"]).model_dump(),
                 metadata={"agent": "support_review_agent", "user_email": email}
             )
 
@@ -999,8 +1139,12 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
     ]) or metadata.get("agent") == "support_review_agent"
 
     is_asking_other_rating = any(w in user_query_lower for w in [
-        "what is his rating", "what is her rating", "what is their rating", "show rating", "performance"
-    ])
+        "what is his rating", "what is her rating", "what is their rating", "show rating", "performance",
+        "what is the rating", "rating of", "worker rating", "worker's rating", "get rating", "check rating"
+    ]) or any(
+        getattr(m, "type", "") == "tool" and getattr(m, "name", "") == "get_worker_performance"
+        for m in messages
+    )
 
     has_dispute_kw = any(w in user_query_lower for w in [
         "dispute", "file complaint", "file a complaint", "technician didn't show", "no show",
@@ -1028,50 +1172,73 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
         )
 
     if has_review_kw and not is_asking_other_rating:
-        # Extract booking ID
+        # Extract booking ID if mentioned in text
         extracted_booking_id = None
         b_match = re.search(r'(?:booking|order|appointment|#)\s*[:#]?\s*(\d+)', user_query, re.IGNORECASE)
         if not b_match:
             b_match = re.search(r'(?:booking|order|appointment|#)\s*[:#]?\s*(\d+)', last_ai_content, re.IGNORECASE)
         if b_match:
             extracted_booking_id = b_match.group(1)
-        else:
+
+        completed_bookings = metadata.get("completed_bookings") or []
+        target_booking = None
+
+        # 1. Match against completed bookings if available in metadata
+        if extracted_booking_id and completed_bookings:
+            for b in completed_bookings:
+                if str(b.get("id")) == str(extracted_booking_id):
+                    target_booking = b
+                    break
+        elif completed_bookings:
+            target_booking = completed_bookings[0]
+
+        # 2. Check previous tool messages for completed bookings
+        if not target_booking:
             for prev_msg in reversed(messages):
                 if getattr(prev_msg, "type", "") == "tool" or isinstance(prev_msg, ToolMessage):
                     try:
                         p_data = json.loads(getattr(prev_msg, "content", "") or "{}")
-                        if isinstance(p_data, dict) and (p_data.get("bookingId") or p_data.get("id")):
-                            extracted_booking_id = str(p_data.get("bookingId") or p_data.get("id"))
-                            break
-                        elif isinstance(p_data, list) and p_data and isinstance(p_data[0], dict) and p_data[0].get("id"):
-                            extracted_booking_id = str(p_data[0].get("id"))
+                        cand_list = []
+                        if isinstance(p_data, list):
+                            cand_list = p_data
+                        elif isinstance(p_data, dict):
+                            cand_list = p_data.get("bookings") or [p_data]
+
+                        for item in cand_list:
+                            if isinstance(item, dict) and str(item.get("status", "")).strip().lower() in ["completed", "reviewed"]:
+                                if extracted_booking_id:
+                                    if str(item.get("id")) == str(extracted_booking_id) or str(item.get("bookingId")) == str(extracted_booking_id):
+                                        target_booking = item
+                                        break
+                                else:
+                                    target_booking = item
+                                    break
+                        if target_booking:
                             break
                     except Exception:
                         pass
 
-        review_worker_id = extracted_worker_id or "44"
-        review_worker_name = extracted_worker_name or "Verified Technician"
-        review_job_title = "Completed Home Service"
-        review_avatar = None
+        # 3. If NO completed booking exists, DO NOT hallucinate fake "Verified Technician" Booking #8
+        if not target_booking and not (extracted_booking_id and extracted_worker_name):
+            no_b_msg = "You don't have any completed bookings to review workers yet. Once a technician completes your scheduled service, you can leave ratings and feedback here."
+            return AgentCardResponse(
+                response_type="text_message",
+                message=no_b_msg,
+                card_data=TextMessageCard(
+                    text=no_b_msg,
+                    suggestions=["Find a service worker", "View my bookings", "Book a technician"]
+                ).model_dump(),
+                metadata={"agent": "support_review_agent", "user_email": email}
+            )
 
-        for prev_msg in reversed(messages):
-            if getattr(prev_msg, "type", "") == "tool" or isinstance(prev_msg, ToolMessage):
-                try:
-                    p_data = json.loads(getattr(prev_msg, "content", "") or "{}")
-                    if isinstance(p_data, dict):
-                        if p_data.get("workerName"):
-                            review_worker_name = p_data["workerName"]
-                        if p_data.get("workerId"):
-                            review_worker_id = str(p_data["workerId"])
-                        if p_data.get("jobTitle"):
-                            review_job_title = p_data["jobTitle"]
-                        if p_data.get("workerProfileImage") or p_data.get("workerAvatar"):
-                            review_avatar = p_data.get("workerProfileImage") or p_data.get("workerAvatar")
-                except Exception:
-                    pass
+        target_b_id = str((target_booking.get("id") or target_booking.get("bookingId") or extracted_booking_id) if target_booking else extracted_booking_id)
+        review_worker_id = str((target_booking.get("workerId") or extracted_worker_id or "1") if target_booking else (extracted_worker_id or "1"))
+        review_worker_name = (target_booking.get("workerName") or extracted_worker_name or "Technician") if target_booking else (extracted_worker_name or "Technician")
+        review_job_title = (target_booking.get("jobTitle") or "Completed Service") if target_booking else "Completed Service"
+        review_avatar = (target_booking.get("workerProfileImage") or target_booking.get("workerAvatar")) if target_booking else None
 
         review_card = ReviewFormCard(
-            bookingId=extracted_booking_id or "8",
+            bookingId=target_b_id,
             workerId=review_worker_id,
             workerName=review_worker_name,
             workerAvatar=review_avatar,
@@ -1087,6 +1254,7 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
             card_data=review_card.model_dump(),
             metadata={"agent": "support_review_agent", "user_email": email}
         )
+
 
     # -------------------------------------------------------------------------
     # 0B. BOOKING FORM INTENT (e.g. user asks to book a worker / technician)
@@ -1153,8 +1321,6 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
 
         user_loc_default = metadata.get("location") or user_profile.get("address") or worker_location_val or "Colombo"
         user_phone_default = user_profile.get("phoneNo") or "0771234567"
-
-        from datetime import datetime, timedelta
         tomorrow_str = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
 
         booking_card = BookingFormCard(
@@ -1221,6 +1387,34 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                 metadata={"agent": "booking_agent", "user_email": email}
             )
 
+    # -------------------------------------------------------------------------
+    # Conversational Booking Detail Query (e.g. "Show details for booking #1")
+    # -------------------------------------------------------------------------
+    b_id_match = re.search(r'\b(?:booking|order|appointment)\s*[:#]?\s*(\d+)\b', user_query_lower)
+    if not b_id_match and (metadata.get("agent") == "booking_agent" or has_book_kw):
+        b_id_match = re.search(r'\b(?:#\s*|id\s*[:#]?\s*)(\d+)\b', user_query_lower)
+
+    if b_id_match and (metadata.get("agent") == "booking_agent" or has_book_kw) and not has_review_kw:
+        target_b_id = b_id_match.group(1)
+        clean_msg = _clean_card_intro_message(
+            last_ai_content,
+            f"Here are the details for booking #{target_b_id}:",
+            "booking_list"
+        )
+        return AgentCardResponse(
+            response_type="text_message",
+            message=last_ai_content or clean_msg,
+            card_data=TextMessageCard(
+                text=last_ai_content or clean_msg,
+                suggestions=[
+                    f"Reschedule booking #{target_b_id}",
+                    f"Cancel booking #{target_b_id}",
+                    "View all upcoming bookings"
+                ]
+            ).model_dump(),
+            metadata={"agent": "booking_agent", "user_email": email, "bookingId": target_b_id}
+        )
+
     # A. Check if the agent prepared a draft community post awaiting confirmation
     is_choice_turn = any(kw in lower_content for kw in [
         "create a community post or find",
@@ -1231,11 +1425,23 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
         "reply with '1' (find a worker)"
     ])
 
-    is_draft = not is_choice_turn and (any(kw in lower_content for kw in [
-        "draft", "confirm and publish", "would you like me to publish", "reply 'confirm'", "draft community post"
-    ]) or (
-        ("title:" in lower_content or "• title" in lower_content) and ("category:" in lower_content or "• category" in lower_content)
-    ))
+    user_query_community = any(kw in user_query_lower for kw in [
+        "community post", "create post", "make a post", "post request", "publish post", "draft post", "new post", "community board"
+    ])
+    active_agent = metadata.get("agent")
+    is_non_community_agent = active_agent in ["booking_agent", "worker_matching_agent", "support_review_agent"]
+
+    is_draft = (
+        not is_choice_turn
+        and not (is_non_community_agent and not user_query_community)
+        and (
+            any(kw in lower_content for kw in [
+                "draft", "confirm and publish", "would you like me to publish", "reply 'confirm'", "draft community post"
+            ]) or (
+                ("title:" in lower_content or "• title" in lower_content) and ("category:" in lower_content or "• category" in lower_content)
+            )
+        )
+    )
 
     if is_draft:
         draft_title = ""
@@ -1423,7 +1629,7 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                 else f"CONFIRM_PUBLISH: Yes, please publish the post '{draft_title}' in {draft_category} for {draft_location}."
             )
         )
-        resp_type = "edit_community_post" if action_val == "update" else "create_community_post"
+        resp_type = "post_confirmation"
         clean_msg = _clean_card_intro_message(
             last_ai_content,
             ("Please review and edit your community post below:" if action_val == "update" else "Please review your draft community post below and confirm to publish:"),
@@ -1496,7 +1702,11 @@ async def card_formatter_node(state: AgentState) -> Dict[str, Any]:
 
 def build_community_card(state: AgentState, ai_message: Optional[Any] = None) -> AgentCardResponse:
     """Build structured AgentCardResponse for community agent."""
-    res = _deterministic_card_builder(state, ai_message=ai_message)
+    sim_state = dict(state)
+    sim_meta = dict(sim_state.get("metadata") or {})
+    sim_meta.setdefault("agent", "community_agent")
+    sim_state["metadata"] = sim_meta
+    res = _deterministic_card_builder(sim_state, ai_message=ai_message)
     if not res.metadata:
         res.metadata = {}
     res.metadata.setdefault("agent", "community_agent")
@@ -1505,7 +1715,11 @@ def build_community_card(state: AgentState, ai_message: Optional[Any] = None) ->
 
 def build_worker_matching_card(state: AgentState, ai_message: Optional[Any] = None) -> AgentCardResponse:
     """Build structured AgentCardResponse for worker matching agent."""
-    res = _deterministic_card_builder(state, ai_message=ai_message)
+    sim_state = dict(state)
+    sim_meta = dict(sim_state.get("metadata") or {})
+    sim_meta.setdefault("agent", "worker_matching_agent")
+    sim_state["metadata"] = sim_meta
+    res = _deterministic_card_builder(sim_state, ai_message=ai_message)
     if not res.metadata:
         res.metadata = {}
     res.metadata.setdefault("agent", "worker_matching_agent")
@@ -1514,7 +1728,11 @@ def build_worker_matching_card(state: AgentState, ai_message: Optional[Any] = No
 
 def build_booking_card(state: AgentState, ai_message: Optional[Any] = None) -> AgentCardResponse:
     """Build structured AgentCardResponse for booking agent."""
-    res = _deterministic_card_builder(state, ai_message=ai_message)
+    sim_state = dict(state)
+    sim_meta = dict(sim_state.get("metadata") or {})
+    sim_meta.setdefault("agent", "booking_agent")
+    sim_state["metadata"] = sim_meta
+    res = _deterministic_card_builder(sim_state, ai_message=ai_message)
     if not res.metadata:
         res.metadata = {}
     res.metadata.setdefault("agent", "booking_agent")
@@ -1523,7 +1741,11 @@ def build_booking_card(state: AgentState, ai_message: Optional[Any] = None) -> A
 
 def build_support_review_card(state: AgentState, ai_message: Optional[Any] = None) -> AgentCardResponse:
     """Build structured AgentCardResponse for support & review agent."""
-    res = _deterministic_card_builder(state, ai_message=ai_message)
+    sim_state = dict(state)
+    sim_meta = dict(sim_state.get("metadata") or {})
+    sim_meta.setdefault("agent", "support_review_agent")
+    sim_state["metadata"] = sim_meta
+    res = _deterministic_card_builder(sim_state, ai_message=ai_message)
     if not res.metadata:
         res.metadata = {}
     res.metadata.setdefault("agent", "support_review_agent")

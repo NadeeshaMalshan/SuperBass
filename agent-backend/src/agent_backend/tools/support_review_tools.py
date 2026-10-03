@@ -137,14 +137,20 @@ async def escalate_to_human(
         return {"status": "error", "message": f"Failed to escalate: {str(e)}"}
 
 
+from agent_backend.tools.booking_tools import get_resident_bookings
+
+
 @tool
-async def get_user_job_history(limit: Optional[int] = 5) -> Dict[str, Any]:
+async def get_user_job_history(email: Optional[str] = None, limit: Optional[int] = 5) -> Dict[str, Any]:
     """
     Fetches the recent job history for the authenticated user to help identify past workers or bookings.
     Arguments:
+    - email (string, optional): Resident email address.
     - limit (integer, optional): Number of past jobs to fetch (default: 5).
     """
-    args = {"limit": min(limit, 20)} if limit else {"limit": 5}
+    args: Dict[str, Any] = {"limit": min(limit, 20)} if limit else {"limit": 5}
+    if email:
+        args["email"] = email
     try:
         raw = await mcp_client.call_tool("get_user_job_history", args)
         return sanitize_payload(raw)
@@ -184,14 +190,15 @@ async def lookup_platform_policy(
 
 SUPPORT_REVIEW_TOOLS = [
     lookup_platform_policy,
+    get_resident_bookings,
+    get_user_job_history,
     create_worker_review,
     get_worker_performance,
     get_user_details,
     file_dispute_ticket,
-    escalate_to_human,
-    get_user_job_history
+    escalate_to_human
 ]
 
 # Aliases for backward compatibility
 SUPPORT_TOOLS = SUPPORT_REVIEW_TOOLS
-REVIEW_TOOLS = SUPPORT_REVIEW_TOOLS
+REVIEW_TOOLS = SUPPORT_REVIEW_TOOLS
