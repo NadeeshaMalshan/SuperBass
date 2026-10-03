@@ -792,21 +792,82 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
             status_val = "Available" if is_avail else "Unavailable"
             reason_val = data.get("reason") or ("Technician is available for this slot." if is_avail else "Technician is not available for this slot.")
 
+            user_profile = state.get("user_profile") or {}
+            res_dict = user_profile.get("resident") if isinstance(user_profile.get("resident"), dict) else {}
+            metadata = state.get("metadata") or {}
+
+            # Location: prioritize resident's registered district / address from profile
+            loc_val = (
+                res_dict.get("district")
+                or res_dict.get("address")
+                or user_profile.get("address")
+                or metadata.get("location")
+                or metadata.get("user_location_name")
+                or data.get("location")
+                or data.get("primaryServiceArea")
+                or "Ratnapura"
+            )
+
+            # Phone: resident's registered phone
+            phone_val = (
+                res_dict.get("phoneNo")
+                or user_profile.get("phoneNo")
+                or metadata.get("contactPhone")
+                or data.get("contactPhone")
+                or "0771756463"
+            )
+
+            # Category & Job Title
+            cat_val = data.get("category") or metadata.get("inferred_category")
+            conv_text = " ".join([extract_text_content(getattr(m, "content", "")) for m in messages]).lower()
+            if not cat_val or cat_val in ("General", "None", "Others"):
+                if "plumb" in conv_text:
+                    cat_val = "Plumbing"
+                elif "electric" in conv_text:
+                    cat_val = "Electrical"
+                elif "ac" in conv_text or "air" in conv_text:
+                    cat_val = "AC Repair"
+                elif "clean" in conv_text:
+                    cat_val = "Cleaning"
+                else:
+                    cat_val = "Home Service"
+
+            job_title_val = f"{cat_val} Service Request"
+
+            # Parse requested date & time
+            req_date = data.get("requestedDate")
+            req_time = data.get("requestedStartTime", "09:00")
+            dur_hours = int(data.get("durationHours") or 2)
+
+            slot = data.get("requestedSlot") or {}
+            if not req_date and slot.get("startTime"):
+                s_part = str(slot["startTime"])
+                if "T" in s_part:
+                    req_date = s_part.split("T")[0]
+                    req_time = s_part.split("T")[1][:5]
+
+            # Price
+            h_rate = float(data.get("hourlyRate") or 0)
+            if h_rate <= 0:
+                h_rate = 5000.0 if "super" in str(worker_name).lower() else 2800.0
+
             card = BookingFormCard(
                 workerId=worker_id,
                 workerName=worker_name,
-                category=data.get("category", "General"),
-                hourlyRate=float(data.get("hourlyRate", 2800)),
-                location=data.get("location", "Colombo"),
-                contactPhone=data.get("contactPhone"),
-                selectedDate=data.get("requestedDate"),
-                selectedStartTime=data.get("requestedStartTime", "09:00"),
-                durationHours=int(data.get("durationHours", 2)),
+                workerAvatar=data.get("workerAvatar"),
+                category=cat_val,
+                hourlyRate=h_rate,
+                location=loc_val,
+                contactPhone=phone_val,
+                selectedDate=req_date,
+                selectedStartTime=req_time,
+                durationHours=dur_hours,
+                jobTitle=job_title_val,
                 isAvailable=is_avail,
                 availabilityStatus=status_val,
                 availabilityReason=reason_val
             )
-            clean_msg = f"{worker_name} is {status_val.lower()} for your requested time slot."
+            clean_msg = f"{worker_name} is {status_val.lower()} for your requested date."
             return AgentCardResponse(
                 response_type="booking_form",
                 message=clean_msg,
@@ -880,6 +941,38 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                 message=clean_msg,
                 card_data=card.model_dump(),
                 metadata={"agent": "booking_agent", "user_email": email}
+            )
+
+        if tool_name in ["get_booking", "get_booking_details"]:
+            b_id = data.get("id") or data.get("bookingId") or "0"
+            w_id = data.get("workerId") or ""
+            w_name = data.get("workerName") or "Verified Technician"
+            j_title = data.get("jobTitle") or data.get("description") or "Home Service Appointment"
+            s_date = data.get("scheduledDate") or ""
+            loc = data.get("locationAddress") or "Colombo"
+            phone = data.get("contactPhone") or ""
+            status_val = data.get("status") or "Requested"
+
+            card = BookingConfirmedCard(
+                bookingId=b_id,
+                workerId=w_id,
+                workerName=w_name,
+                jobTitle=j_title,
+                scheduledDate=s_date,
+                locationAddress=loc,
+                contactPhone=phone,
+                status=status_val
+            )
+            card_dict = card.model_dump()
+            card_dict["cardTitle"] = f"Booking #{b_id} Details"
+            card_dict["cardSubtitle"] = f"Service appointment details with {w_name}."
+
+            clean_msg = f"Here are the details for Booking #{b_id}:"
+            return AgentCardResponse(
+                response_type="booking_confirmed",
+                message=clean_msg,
+                card_data=card_dict,
+                metadata={"agent": "booking_agent", "user_email": email, "bookingId": b_id}
             )
 
         if tool_name in ["cancel_booking", "reschedule_booking"]:
@@ -1402,6 +1495,53 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
             )
 
     # -------------------------------------------------------------------------
+    # Single Booking Detail Detection in Conversational Turns
+    # -------------------------------------------------------------------------
+    single_booking_m = re.search(r'\*\*Booking\s*#?(\d+)\*\*', last_ai_content, re.IGNORECASE)
+    if not single_booking_m:
+        single_booking_m = re.search(r'\bBooking\s*#?(\d+)\b', last_ai_content, re.IGNORECASE)
+
+    has_single_booking = bool(
+        single_booking_m
+        and any(w in lower_content for w in ["worker:", "technician:", "service:", "scheduled date:"])
+    )
+    if has_single_booking and single_booking_m:
+        b_id_str = single_booking_m.group(1)
+        w_name_m = re.search(r'\*\*Worker:\*\*\s*([^\n\r]+)', last_ai_content, re.IGNORECASE)
+        s_title_m = re.search(r'\*\*Service:\*\*\s*([^\n\r]+)', last_ai_content, re.IGNORECASE)
+        date_m = re.search(r'\*\*Scheduled date:\*\*\s*([^\n\r]+)', last_ai_content, re.IGNORECASE)
+        loc_m = re.search(r'\*\*Location:\*\*\s*([^\n\r]+)', last_ai_content, re.IGNORECASE)
+        phone_m = re.search(r'\*\*Phone:\*\*\s*([^\n\r]+)', last_ai_content, re.IGNORECASE)
+        stat_m = re.search(r'\*\*Status:\*\*\s*([^\n\r]+)', last_ai_content, re.IGNORECASE)
+
+        bk_w_name = w_name_m.group(1).strip() if w_name_m else "Verified Technician"
+        bk_title = s_title_m.group(1).strip() if s_title_m else "Home Service Appointment"
+        bk_date = date_m.group(1).strip() if date_m else ""
+        bk_loc = loc_m.group(1).strip() if loc_m else "Colombo"
+        bk_phone = phone_m.group(1).strip() if phone_m else ""
+        bk_stat = stat_m.group(1).strip() if stat_m else "Requested"
+
+        card = BookingConfirmedCard(
+            bookingId=b_id_str,
+            workerId="",
+            workerName=bk_w_name,
+            jobTitle=bk_title,
+            scheduledDate=bk_date,
+            locationAddress=bk_loc,
+            contactPhone=bk_phone,
+            status=bk_stat
+        )
+        card_dict = card.model_dump()
+        card_dict["cardTitle"] = f"Booking #{b_id_str} Details"
+        card_dict["cardSubtitle"] = f"Service appointment details with {bk_w_name}."
+
+        return AgentCardResponse(
+            response_type="booking_confirmed",
+            message=f"Here are the details for Booking #{b_id_str}:",
+            card_data=card_dict,
+            metadata={"agent": "booking_agent", "user_email": email, "bookingId": b_id_str}
+        )
+
     # Conversational Booking Detail Query (e.g. "Show details for booking #1")
     # -------------------------------------------------------------------------
     b_id_match = re.search(r'\b(?:booking|order|appointment)\s*[:#]?\s*(\d+)\b', user_query_lower)
@@ -1429,6 +1569,8 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
             metadata={"agent": "booking_agent", "user_email": email, "bookingId": target_b_id}
         )
 
+        )
+
     # A. Check if the agent prepared a draft community post awaiting confirmation
     is_choice_turn = any(kw in lower_content for kw in [
         "create a community post or find",
@@ -1439,6 +1581,13 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
         "reply with '1' (find a worker)"
     ])
 
+    is_booking_context = bool(
+        metadata.get("agent") == "booking_agent"
+        or "booking" in user_query_lower
+        or "appointment" in user_query_lower
+        or has_single_booking
+    )
+
     user_query_community = any(kw in user_query_lower for kw in [
         "community post", "create post", "make a post", "post request", "publish post", "draft post", "new post", "community board"
     ])
@@ -1448,6 +1597,7 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
     is_draft = (
         not is_choice_turn
         and not (is_non_community_agent and not user_query_community)
+        and not is_booking_context
         and (
             any(kw in lower_content for kw in [
                 "draft", "confirm and publish", "would you like me to publish", "reply 'confirm'", "draft community post"
@@ -1456,6 +1606,7 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
             )
         )
     )
+
 
     if is_draft:
         draft_title = ""

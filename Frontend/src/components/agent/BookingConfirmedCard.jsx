@@ -32,9 +32,11 @@ export default function BookingConfirmedCard({ data = {}, onAction }) {
             <i className="fa-solid fa-calendar-check"></i>
           </div>
           <div>
-            <h3 className="booking-confirmed-title">Appointment Confirmed!</h3>
+            <h3 className="booking-confirmed-title">
+              {data.cardTitle || (status === 'Confirmed' ? 'Appointment Confirmed!' : `Booking #${bookingId} Details`)}
+            </h3>
             <p className="booking-confirmed-subtitle">
-              Booking #{bookingId} has been successfully scheduled with {workerName}.
+              {data.cardSubtitle || `Booking #${bookingId} with ${workerName}.`}
             </p>
           </div>
         </div>

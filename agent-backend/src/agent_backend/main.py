@@ -1,8 +1,5 @@
-"""
-SuperBass Agent Backend - FastAPI Server Entrypoint.
-Provides REST and chat endpoints for interacting with the LangGraph multi-agent system,
-with persistent conversation history in Neon PostgreSQL.
-"""
+# SuperBass Agent Backend - FastAPI Server Entrypoint.
+# Provides REST and chat endpoints with Neon PostgreSQL persistence (Booking details card support).
 
 from typing import Optional, List, Dict, Any
 from contextlib import asynccontextmanager
