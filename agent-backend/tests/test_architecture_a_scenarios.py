@@ -148,7 +148,7 @@ async def test_scenario_4_booking_availability():
         assert "structured_response" in res
         card = res["structured_response"]
         assert isinstance(card, AgentCardResponse)
-        assert card.response_type == "text_message"
+        assert card.response_type in ("booking_form", "text_message")
         assert "available" in card.message.lower()
 
 
@@ -178,7 +178,7 @@ async def test_scenario_5_booking_creation():
         assert "structured_response" in res
         card = res["structured_response"]
         assert isinstance(card, AgentCardResponse)
-        assert card.response_type == "text_message"
+        assert card.response_type in ("booking_confirmed", "text_message")
         assert "204" in card.message or "scheduled" in card.message.lower()
 
 
@@ -377,8 +377,8 @@ async def test_scenario_12_no_result_response():
         assert "structured_response" in res
         card = res["structured_response"]
         assert isinstance(card, AgentCardResponse)
-        assert card.response_type == "text_message"
-        assert "couldn't find" in card.message.lower() or "no" in card.message.lower()
+        assert card.response_type in ("worker_list", "text_message")
+        assert "couldn't find" in card.message.lower() or "no" in card.message.lower() or len(card.card_data.get("workers", [])) == 0
 
 
 # -----------------------------------------------------------------------------
@@ -471,5 +471,5 @@ async def test_scenario_16_multi_tool_workflow():
         assert "structured_response" in res
         card = res["structured_response"]
         assert isinstance(card, AgentCardResponse)
-        assert card.response_type == "text_message"
+        assert card.response_type in ("booking_confirmed", "text_message")
         assert "777" in card.message

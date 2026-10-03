@@ -279,7 +279,8 @@ tools = [
                 "content": {"type": "string", "description": "Updated post content"},
                 "communityId": {"type": "string", "description": "Service category or community ID (optional)"},
                 "location": {"type": "string", "description": "Location (optional)"},
-                "authorId": {"type": "string", "description": "Author ID or email for authorization (optional)"}
+                "authorId": {"type": "string", "description": "Author ID or email for authorization (optional)"},
+                "images": {"type": "array", "items": {"type": "string"}, "description": "List of attached image URLs"}
             },
             "required": ["postId", "title", "content"]
         }
@@ -832,6 +833,8 @@ async def call_update_community_post(args: Dict[str, Any]):
         "userId": args.get("authorId", "demo_user_1"),
         "userEmail": args.get("authorId") if "@" in str(args.get("authorId", "")) else None
     }
+    if "images" in args and args["images"] is not None:
+        payload["images"] = args["images"]
     response = await backend_client.put(f"/api/community-posts/{post_id}", json=payload)
     if response.status_code >= 400:
         raise ValueError(f"Backend error ({response.status_code}): {response.text}")

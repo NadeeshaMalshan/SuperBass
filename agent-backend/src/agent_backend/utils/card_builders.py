@@ -396,6 +396,10 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                 post_cat = data.get("serviceCategoryId") or data.get("ServiceCategoryId") or data.get("communityId", "General")
                 post_loc = data.get("location") or data.get("Location", "Colombo")
 
+                post_images = data.get("images") or data.get("Images") or []
+                if not isinstance(post_images, list):
+                    post_images = []
+
                 if is_edit_intent:
                     card = PostConfirmationCard(
                         action="update",
@@ -404,6 +408,7 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                         content=post_content,
                         communityId=post_cat,
                         location=post_loc,
+                        images=post_images,
                         authorId=email,
                         authorName=user_name,
                         validationStatus="valid",
@@ -427,7 +432,8 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                     authorName=data.get("userName") or data.get("UserName") or (data.get("userEmail") or data.get("UserEmail", "")).split("@")[0],
                     authorEmail=data.get("userEmail") or data.get("UserEmail"),
                     likesCount=data.get("likesCount") or data.get("LikesCount", 0),
-                    commentsCount=data.get("commentsCount") or data.get("CommentsCount", 0)
+                    commentsCount=data.get("commentsCount") or data.get("CommentsCount", 0),
+                    images=post_images
                 )
                 clean_msg = _clean_card_intro_message(
                     last_ai_content,
@@ -477,6 +483,9 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                     post_content = target_post.get("content") or target_post.get("Content") or ""
                     post_cat = target_post.get("serviceCategoryId") or target_post.get("ServiceCategoryId") or target_post.get("communityId") or "General"
                     post_loc = target_post.get("location") or target_post.get("Location") or "Colombo"
+                    post_images = target_post.get("images") or target_post.get("Images") or []
+                    if not isinstance(post_images, list):
+                        post_images = []
 
                     card = PostConfirmationCard(
                         action="update",
@@ -485,6 +494,7 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                         content=post_content,
                         communityId=post_cat,
                         location=post_loc,
+                        images=post_images,
                         authorId=email,
                         authorName=user_name,
                         validationStatus="valid",
@@ -503,6 +513,9 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
             for item in (raw_posts if isinstance(raw_posts, list) else []):
                 if isinstance(item, dict):
                     raw_post_id = item.get("postId") or item.get("id") or item.get("PostId") or ""
+                    item_images = item.get("images") or item.get("Images") or []
+                    if not isinstance(item_images, list):
+                        item_images = []
                     post_summaries.append(
                         CommunityPostSummary(
                             id=raw_post_id,
@@ -514,7 +527,8 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                             authorEmail=item.get("userEmail") or item.get("UserEmail") or item.get("userId"),
                             createdAt=str(item.get("createdAt") or item.get("CreatedAt") or ""),
                             likesCount=item.get("likesCount") or item.get("LikesCount", 0),
-                            commentsCount=item.get("commentsCount") or item.get("CommentsCount", 0)
+                            commentsCount=item.get("commentsCount") or item.get("CommentsCount", 0),
+                            images=item_images
                         )
                     )
             card = PostListCard(
@@ -1607,6 +1621,16 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
         if action_val == "create":
             post_id_val = None
 
+        post_images = []
+        if isinstance(metadata.get("images"), list):
+            post_images = metadata.get("images")
+        elif isinstance(metadata.get("postData"), dict):
+            post_images = metadata["postData"].get("images") or metadata["postData"].get("Images") or []
+        elif isinstance(metadata.get("photos"), list):
+            post_images = [p.get("url") if isinstance(p, dict) else p for p in metadata.get("photos")]
+        if not isinstance(post_images, list):
+            post_images = []
+
         card = PostConfirmationCard(
             action=action_val,
             postId=post_id_val,
@@ -1615,6 +1639,7 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
             communityId=draft_category,
             location=draft_location,
             urgency=None,
+            images=post_images,
             authorId=email,
             authorName=user_name,
             validationStatus="valid",

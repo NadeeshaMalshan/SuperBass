@@ -130,7 +130,7 @@ CRITICAL HUMAN-IN-THE-LOOP & POST PRE-FILLING PROTOCOL:
 
          You can edit any details in the card above and click 'Update Post' to save your changes!"
      3) When the user confirms the update (e.g. sending "CONFIRM_UPDATE: ..." or clicking "Update Post"):
-        Execute `update_community_post(postId=..., title=..., content=..., communityId=..., location=..., authorId="{email}")`!
+        Execute `update_community_post(postId=..., title=..., content=..., communityId=..., location=..., authorId="{email}", images=...)`!
 
 4. DELETING A POST:
    - Deleting a post removes it from the feed. Always verify the post ID and author before calling `delete_community_post` with `authorId="{email}"`.

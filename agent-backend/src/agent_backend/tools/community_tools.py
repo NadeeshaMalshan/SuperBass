@@ -137,7 +137,8 @@ async def update_community_post(
     content: str,
     communityId: Optional[str] = "General",
     location: Optional[str] = "Colombo",
-    authorId: Optional[str] = None
+    authorId: Optional[str] = None,
+    images: Optional[List[str]] = None
 ) -> Dict[str, Any]:
     """
     Update an existing community post with author authorization via the MCP Server.
@@ -150,7 +151,16 @@ async def update_community_post(
     - communityId (string, optional): Category ID (default: 'General')
     - location (string, optional): Location (default: 'Colombo')
     - authorId (string, optional): Author ID or email for verification
+    - images (list of strings, optional): Updated image URLs attached to the post
     """
+    ctx_images = current_post_images.get()
+    if ctx_images:
+        real_images = ctx_images
+    elif images:
+        real_images = [img for img in images if not str(img).startswith("[attached_image_")]
+    else:
+        real_images = None
+
     args: Dict[str, Any] = {
         "postId": int(postId) if str(postId).isdigit() else postId,
         "title": title,
@@ -160,6 +170,8 @@ async def update_community_post(
     }
     if authorId:
         args["authorId"] = authorId
+    if real_images is not None:
+        args["images"] = real_images
 
     raw = await mcp_client.call_tool("update_community_post", args)
     return sanitize_payload(raw)

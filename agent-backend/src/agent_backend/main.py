@@ -234,6 +234,10 @@ async def chat_endpoint(request: ChatRequest):
         post_images = meta.get("post_images") or []
         if not post_images and meta.get("post_data"):
             post_images = meta.get("post_data", {}).get("images") or []
+        if not post_images and meta.get("postData"):
+            post_images = meta.get("postData", {}).get("images") or []
+        if not post_images and meta.get("images"):
+            post_images = meta.get("images") or []
         if post_images:
             current_post_images.set(post_images)
 

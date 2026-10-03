@@ -35,6 +35,10 @@ async def community_tools_node(state: AgentState):
     post_images = metadata.get("post_images") or []
     if not post_images and metadata.get("post_data"):
         post_images = metadata.get("post_data", {}).get("images") or []
+    if not post_images and metadata.get("postData"):
+        post_images = metadata.get("postData", {}).get("images") or []
+    if not post_images and metadata.get("images"):
+        post_images = metadata.get("images") or []
     if post_images:
         current_post_images.set(post_images)
 
@@ -42,9 +46,10 @@ async def community_tools_node(state: AgentState):
     if messages:
         last_msg = messages[-1]
         if hasattr(last_msg, "tool_calls") and last_msg.tool_calls:
-            post_data = metadata.get("post_data") or {}
+            post_data = metadata.get("post_data") or metadata.get("postData") or {}
             for tc in last_msg.tool_calls:
-                if tc.get("name") == "create_community_post":
+                tool_name = tc.get("name")
+                if tool_name in ("create_community_post", "update_community_post"):
                     args = tc.setdefault("args", {})
                     # Never put raw base64 data into tool_calls args
                     if post_images:
