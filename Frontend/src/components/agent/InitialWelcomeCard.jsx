@@ -5,14 +5,14 @@ import './AgentCards.css';
  * InitialWelcomeCard - matches the modern welcome card with 4 action options:
  * 1. Find Workers (yellow search icon)
  * 2. Create Community Post (coral group icon)
- * 3. Chat with Workers (green chat bubble icon)
- * 4. Schedule Service (purple calendar icon)
+ * 3. See My Bookings (green calendar icon)
+ * 4. Rate Workers (purple star icon)
  */
 export default function InitialWelcomeCard({ data = {}, onAction }) {
   const title = data.title || 'Workio AI';
   const text =
     data.text ||
-    'Hi! I can help you find workers, create a community post, or answer any questions about home services. What would you like to do today?';
+    'Hi! I can help you find workers, create a community post, view your bookings, or rate technicians. What would you like to do today?';
 
   const defaultActions = [
     {
@@ -34,22 +34,22 @@ export default function InitialWelcomeCard({ data = {}, onAction }) {
       payload: 'I want to create a community post',
     },
     {
-      id: 'chat_workers',
-      title: 'Chat with Workers',
-      desc: 'Discuss details and get quotes',
-      icon: 'chat_bubble',
+      id: 'see_bookings',
+      title: 'See My Bookings',
+      desc: 'Check your upcoming and past bookings',
+      icon: 'calendar_month',
       color: '#10b981',
-      actionType: 'navigate',
-      payload: '/chats',
+      actionType: 'send_prompt',
+      payload: 'Show my bookings',
     },
     {
-      id: 'schedule_service',
-      title: 'Schedule Service',
-      desc: 'Choose a time that works for you',
-      icon: 'calendar_month',
+      id: 'rate_workers',
+      title: 'Rate Workers',
+      desc: 'Leave a rating and review for completed services',
+      icon: 'star',
       color: '#8b5cf6',
       actionType: 'send_prompt',
-      payload: 'I want to schedule a service booking',
+      payload: 'I want to rate a worker',
     },
   ];
 

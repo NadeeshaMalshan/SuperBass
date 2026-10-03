@@ -77,10 +77,10 @@ export default function AiCommunityChat() {
     cardResponse: {
       response_type: 'initial_welcome',
       message:
-        'Hi! I can help you find workers, create a community post, or answer any questions about home services. What would you like to do today?',
+        'Hi! I can help you find workers, create a community post, view your bookings, or rate technicians. What would you like to do today?',
       card_data: {
         title: 'Workio AI',
-        text: 'Hi! I can help you find workers, create a community post, or answer any questions about home services. What would you like to do today?',
+        text: 'Hi! I can help you find workers, create a community post, view your bookings, or rate technicians. What would you like to do today?',
       },
     },
   });
