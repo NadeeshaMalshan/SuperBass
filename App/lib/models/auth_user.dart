@@ -10,6 +10,7 @@ class AuthUser {
   final int? workerId;
   final double? locationLat;
   final double? locationLng;
+  final bool isVerified;
 
   AuthUser({
     required this.token,
@@ -23,6 +24,7 @@ class AuthUser {
     this.workerId,
     this.locationLat,
     this.locationLng,
+    this.isVerified = false,
   });
 
   factory AuthUser.fromJson(Map<String, dynamic> json) {
@@ -39,6 +41,7 @@ class AuthUser {
       workerId: json['workerId'] as int?,
       locationLat: (json['locationLat'] as num?)?.toDouble(),
       locationLng: (json['locationLng'] as num?)?.toDouble(),
+      isVerified: json['isVerified'] == true || json['IsVerified'] == true,
     );
   }
 
@@ -55,7 +58,37 @@ class AuthUser {
       'workerId': workerId,
       'locationLat': locationLat,
       'locationLng': locationLng,
+      'isVerified': isVerified,
     };
   }
-}
 
+  AuthUser copyWith({
+    String? token,
+    String? email,
+    String? name,
+    String? picture,
+    bool? isNewUser,
+    bool? isWorker,
+    bool? isNewWorker,
+    String? activeRole,
+    int? workerId,
+    double? locationLat,
+    double? locationLng,
+    bool? isVerified,
+  }) {
+    return AuthUser(
+      token: token ?? this.token,
+      email: email ?? this.email,
+      name: name ?? this.name,
+      picture: picture ?? this.picture,
+      isNewUser: isNewUser ?? this.isNewUser,
+      isWorker: isWorker ?? this.isWorker,
+      isNewWorker: isNewWorker ?? this.isNewWorker,
+      activeRole: activeRole ?? this.activeRole,
+      workerId: workerId ?? this.workerId,
+      locationLat: locationLat ?? this.locationLat,
+      locationLng: locationLng ?? this.locationLng,
+      isVerified: isVerified ?? this.isVerified,
+    );
+  }
+}

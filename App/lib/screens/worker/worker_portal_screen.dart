@@ -3,11 +3,12 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../models/worker_model.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/chat_signalr_service.dart';
 import '../../theme/worker_colors.dart';
 import '../../widgets/m3_bottom_nav_bar.dart';
+import 'worker_chats_screen.dart';
 import 'worker_dashboard_screen.dart';
 import 'worker_jobs_screen.dart';
-import 'worker_performance_screen.dart';
 import 'worker_profile_screen.dart';
 import '../community_screen.dart';
 
@@ -74,7 +75,10 @@ class _WorkerPortalScreenState extends State<WorkerPortalScreen> {
         setState(() => _isOnline = !newStatus);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to update availability.', style: GoogleFonts.dmSans()),
+            content: Text(
+              'Failed to update availability.',
+              style: GoogleFonts.dmSans(),
+            ),
             backgroundColor: WorkerColors.error,
           ),
         );
@@ -82,10 +86,14 @@ class _WorkerPortalScreenState extends State<WorkerPortalScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              newStatus ? '✓ You are now Available for new jobs!' : 'You are now Offline.',
+              newStatus
+                  ? '✓ You are now Available for new jobs!'
+                  : 'You are now Offline.',
               style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
             ),
-            backgroundColor: newStatus ? WorkerColors.success : WorkerColors.onSurface,
+            backgroundColor: newStatus
+                ? WorkerColors.success
+                : WorkerColors.onSurface,
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 2),
           ),
@@ -114,11 +122,13 @@ class _WorkerPortalScreenState extends State<WorkerPortalScreen> {
     final pages = [
       WorkerDashboardScreen(
         worker: _worker,
+        isOnline: _isOnline,
+        onToggleOnline: _toggleAvailability,
         onNavigateTab: (index) => setState(() => _currentIndex = index),
       ),
       const WorkerJobsScreen(),
       const CommunityScreen(isWorkerMode: true),
-      WorkerPerformanceScreen(worker: _worker),
+      const WorkerChatsScreen(),
       WorkerProfileScreen(
         worker: _worker,
         isOnline: _isOnline,
@@ -129,201 +139,126 @@ class _WorkerPortalScreenState extends State<WorkerPortalScreen> {
     ];
 
     return Scaffold(
-      backgroundColor: WorkerColors.background,
+      backgroundColor: Colors.white,
       appBar: _currentIndex == 2
           ? null
           : AppBar(
-              backgroundColor: WorkerColors.surface,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        automaticallyImplyLeading: false,
-        titleSpacing: 16,
-        title: Row(
-          children: [
-            // Workio brand + Worker Portal pill
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: Image.asset(
-                'assets/images/icon.png',
-                width: 22,
-                height: 22,
-                errorBuilder: (context, error, stackTrace) => const Icon(Icons.bolt_rounded, size: 20, color: WorkerColors.onSurface),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'Workio',
-              style: GoogleFonts.dmSans(
-                fontWeight: FontWeight.w900,
-                fontSize: 20,
-                color: WorkerColors.onSurface,
-                letterSpacing: -0.5,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: WorkerColors.primaryLight,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                'WORKER',
-                style: GoogleFonts.dmSans(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  color: WorkerColors.primary,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          // Live Availability Switch Pill
-          InkWell(
-            onTap: _toggleAvailability,
-            borderRadius: BorderRadius.circular(20),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: _isOnline ? WorkerColors.onlineLight : WorkerColors.offlineLight,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
+              backgroundColor: Colors.white,
+              elevation: 0,
+              scrolledUnderElevation: 0,
+              automaticallyImplyLeading: false,
+              titleSpacing: 16,
+              title: Row(
                 children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: _isOnline ? WorkerColors.online : WorkerColors.offline,
-                      shape: BoxShape.circle,
-                      boxShadow: _isOnline
-                          ? [
-                              BoxShadow(
-                                color: WorkerColors.online.withValues(alpha: 0.5),
-                                blurRadius: 4,
-                                spreadRadius: 1,
-                              ),
-                            ]
-                          : null,
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: Image.asset(
+                      'assets/images/icon.png',
+                      width: 22,
+                      height: 22,
+                      errorBuilder: (context, error, stackTrace) => const Icon(
+                        Icons.bolt_rounded,
+                        size: 20,
+                        color: Colors.black,
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 8),
                   Text(
-                    _isOnline ? 'Online' : 'Offline',
+                    'Workio',
                     style: GoogleFonts.dmSans(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: _isOnline ? WorkerColors.online : WorkerColors.onSurfaceVariant,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 20,
+                      color: Colors.black,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 3.5,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: const Color(0xFF334155).withValues(alpha: 0.6),
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.12),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(width: 5),
+                        Text(
+                          'WORKER',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-          ),
-          const SizedBox(width: 8),
-
-          // Account Log Out button
-          IconButton(
-            onPressed: () async {
-              final confirm = await showDialog<bool>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: Text(
-                    'Log Out',
-                    style: GoogleFonts.dmSans(
-                      fontWeight: FontWeight.w800,
-                      color: WorkerColors.onSurface,
-                    ),
-                  ),
-                  content: Text(
-                    'Are you sure you want to log out of SuperBass?',
-                    style: GoogleFonts.dmSans(fontSize: 14),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(ctx).pop(false),
-                      child: Text(
-                        'Cancel',
-                        style: GoogleFonts.dmSans(color: WorkerColors.onSurfaceVariant),
-                      ),
-                    ),
-                    ElevatedButton(
-                      onPressed: () => Navigator.of(ctx).pop(true),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: WorkerColors.error,
-                        foregroundColor: Colors.white,
-                      ),
-                      child: Text(
-                        'Log Out',
-                        style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-
-              if (confirm == true) {
-                await AuthService().logout();
-                if (context.mounted) {
-                  Navigator.of(context).pushNamedAndRemoveUntil('/join', (route) => false);
-                }
-              }
+      body: IndexedStack(index: _currentIndex, children: pages),
+      bottomNavigationBar: ValueListenableBuilder<int>(
+        valueListenable: ChatSignalRService().unreadChatCountNotifier,
+        builder: (context, unreadChats, _) {
+          return M3BottomNavigationBar(
+            selectedIndex: _currentIndex,
+            onItemSelected: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
             },
-            tooltip: 'Log Out',
-            icon: const Icon(Icons.logout_rounded, color: WorkerColors.onSurfaceVariant, size: 20),
-          ),
-          const SizedBox(width: 8),
-        ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(
-            color: WorkerColors.outlineVariant,
-            height: 1,
-          ),
-        ),
-      ),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: pages,
-      ),
-      bottomNavigationBar: M3BottomNavigationBar(
-        selectedIndex: _currentIndex,
-        onItemSelected: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
+            items: [
+              const M3BottomNavItem(
+                label: 'Dashboard',
+                icon: Icons.space_dashboard_outlined,
+                selectedIcon: Icons.space_dashboard_rounded,
+              ),
+              const M3BottomNavItem(
+                label: 'My Jobs',
+                icon: Icons.work_outline_rounded,
+                selectedIcon: Icons.work_rounded,
+              ),
+              const M3BottomNavItem(
+                label: 'Community',
+                icon: Icons.groups_outlined,
+                selectedIcon: Icons.groups_rounded,
+              ),
+              M3BottomNavItem(
+                label: 'Chats',
+                icon: Icons.chat_bubble_outline_rounded,
+                selectedIcon: Icons.chat_bubble_rounded,
+                hasBadge: unreadChats > 0,
+                badgeColor: const Color(0xFFEF4444),
+              ),
+              const M3BottomNavItem(
+                label: 'Profile',
+                icon: Icons.manage_accounts_outlined,
+                selectedIcon: Icons.manage_accounts_rounded,
+              ),
+            ],
+          );
         },
-        items: const [
-          M3BottomNavItem(
-            label: 'Dashboard',
-            icon: Icons.space_dashboard_outlined,
-            selectedIcon: Icons.space_dashboard_rounded,
-          ),
-          M3BottomNavItem(
-            label: 'My Jobs',
-            icon: Icons.work_outline_rounded,
-            selectedIcon: Icons.work_rounded,
-          ),
-          M3BottomNavItem(
-            label: 'Community',
-            icon: Icons.groups_outlined,
-            selectedIcon: Icons.groups_rounded,
-          ),
-          M3BottomNavItem(
-            label: 'Performance',
-            icon: Icons.star_outline_rounded,
-            selectedIcon: Icons.star_rounded,
-          ),
-          M3BottomNavItem(
-            label: 'Profile',
-            icon: Icons.manage_accounts_outlined,
-            selectedIcon: Icons.manage_accounts_rounded,
-          ),
-        ],
       ),
     );
   }

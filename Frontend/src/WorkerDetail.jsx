@@ -620,8 +620,11 @@ export default function WorkerDetail() {
 
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                    <h2 style={{ fontSize: '1.65rem', fontWeight: 800, margin: 0, color: '#000000', letterSpacing: '-0.02em' }}>
+                    <h2 style={{ fontSize: '1.65rem', fontWeight: 800, margin: 0, color: '#000000', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       {worker.name}
+                      {worker.isVerified && (
+                        <md-icon style={{ fontSize: '20px', color: '#000000' }} title="Verified Home Craftsman">verified</md-icon>
+                      )}
                     </h2>
                     {worker.isVerified ? (
                       <span style={{
@@ -635,7 +638,7 @@ export default function WorkerDetail() {
                         alignItems: 'center',
                         gap: '5px'
                       }}>
-                        <i className="fa-solid fa-circle-check" style={{ color: '#4ade80' }}></i>
+                        <md-icon style={{ fontSize: '15px', color: '#ffffff' }}>verified</md-icon>
                         VERIFIED PRO
                       </span>
                     ) : (

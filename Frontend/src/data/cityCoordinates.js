@@ -122,7 +122,15 @@ export function matchesWorkerLocation(worker, selectedCity) {
   if (!selectedCity || !selectedCity.trim()) return true;
   const clean = selectedCity.trim().toLowerCase();
 
-  if (clean === 'current location' || clean === 'my location' || clean === 'all') {
+  if (
+    clean === 'current location' ||
+    clean === 'my location' ||
+    clean === 'all' ||
+    clean === 'all sri lanka' ||
+    clean === 'all of sri lanka' ||
+    clean === 'all locations' ||
+    clean === 'islandwide'
+  ) {
     return true;
   }
 

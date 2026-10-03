@@ -6,10 +6,13 @@ import 'package:loading_indicator_m3e/loading_indicator_m3e.dart';
 import '../data/sri_lanka_locations.dart';
 import '../models/auth_user.dart';
 import '../models/community_post_model.dart';
+import '../models/worker_model.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/location_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/verified_badge.dart';
+import 'chat_screen.dart';
 
 class CommunityScreen extends StatefulWidget {
   final bool isWorkerMode;
@@ -30,12 +33,16 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
   String _sortBy = 'latest'; // 'latest' or 'popular'
   String _selectedLocation = 'All Locations';
   String? _primaryAddressCity;
+  Map<String, WorkerModel> _workersByEmail = {};
   final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (mounted) setState(() {});
+    });
     _loadInitialData();
   }
 
@@ -52,10 +59,25 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
     await Future.wait([
       _fetchCategories(),
       _fetchPosts(),
+      _fetchWorkersMap(),
     ]);
     if (mounted) {
       setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _fetchWorkersMap() async {
+    try {
+      final workers = await ApiService().fetchWorkers();
+      final map = <String, WorkerModel>{};
+      for (final w in workers) {
+        if (w.residentEmail.isNotEmpty) map[w.residentEmail.toLowerCase()] = w;
+        if (w.email.isNotEmpty) map[w.email.toLowerCase()] = w;
+      }
+      if (mounted) {
+        setState(() => _workersByEmail = map);
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadPrimaryAddress() async {
@@ -343,8 +365,8 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                                     const SizedBox(height: 2),
                                     Text(
                                       isDetecting
-                                          ? 'Detecting via GPS / Network...'
-                                          : 'Filter posts near your device GPS',
+                                          ? 'Detecting your district via GPS...'
+                                          : 'Filter posts by your district using device GPS',
                                       style: GoogleFonts.dmSans(
                                         fontSize: 12,
                                         color: Colors.grey[600],
@@ -1003,12 +1025,21 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                                     images: imagesList,
                                   );
                                 } else {
+                                  final currentUser = AuthService().currentUser;
+                                  final myWorkerInfo = currentUser != null
+                                      ? _workersByEmail[currentUser.email.toLowerCase()]
+                                      : null;
+                                  final isWorker = widget.isWorkerMode || myWorkerInfo != null;
+
                                   result = await ApiService().createCommunityPost(
                                     title: title,
                                     content: content,
                                     serviceCategoryId: selectedCatId,
                                     location: constructedLocation,
                                     images: imagesList,
+                                    authorRole: isWorker ? 'worker' : 'resident',
+                                    workerTrade: myWorkerInfo?.trade,
+                                    workerRating: myWorkerInfo?.rating,
                                   );
                                 }
 
@@ -1197,284 +1228,304 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
   @override
   Widget build(BuildContext context) {
     final currentUser = AuthService().currentUser;
+    final bool isMyPosts = _tabController.index == 1;
+    final posts = isMyPosts ? _myPosts : _allPosts;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Community Hub',
-          style: GoogleFonts.dmSans(fontWeight: FontWeight.w800, fontSize: 22),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              _sortBy == 'latest' ? Icons.access_time_rounded : Icons.local_fire_department_rounded,
-              color: AppColors.onSurface,
-            ),
-            tooltip: _sortBy == 'latest' ? 'Showing Latest' : 'Showing Popular',
-            onPressed: _toggleSort,
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: _fetchPosts,
-          ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: AppColors.brandYellow,
-          labelColor: AppColors.onSurface,
-          labelStyle: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
-          tabs: const [
-            Tab(text: 'All Feed'),
-            Tab(text: 'My Posts'),
-          ],
-        ),
-      ),
+      backgroundColor: Colors.white,
       floatingActionButton: Padding(
         padding: EdgeInsets.only(bottom: widget.isWorkerMode ? 74.0 : 0.0),
         child: FloatingActionButton.extended(
-          backgroundColor: widget.isWorkerMode ? const Color(0xFF000000) : AppColors.brandYellow,
+          backgroundColor: const Color(0xFF000000),
           foregroundColor: Colors.white,
-          elevation: 4,
-        onPressed: () {
-          if (AuthService().currentUser == null) {
-            Navigator.pushNamed(context, '/join');
-          } else {
-            _showPostDialog();
-          }
-        },
-        icon: const Icon(Icons.add_rounded, size: 24),
-        label: Text(
-          'New Post',
-          style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 15),
+          elevation: 3,
+          shape: const StadiumBorder(),
+          onPressed: () {
+            if (AuthService().currentUser == null) {
+              Navigator.pushNamed(context, '/join');
+            } else {
+              _showPostDialog();
+            }
+          },
+          icon: const Icon(Icons.add_rounded, size: 22),
+          label: Text(
+            'New post',
+            style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 14.5),
+          ),
         ),
       ),
-    ),
-    body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildFeedView(_allPosts, currentUser),
-          _buildFeedView(_myPosts, currentUser, isMyPosts: true),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFeedView(List<CommunityPostModel> posts, AuthUser? currentUser, {bool isMyPosts = false}) {
-    return RefreshIndicator(
-      onRefresh: _fetchPosts,
-      child: ListView(
-        padding: EdgeInsets.fromLTRB(16, 16, 16, widget.isWorkerMode ? 96 : 16),
-        children: [
-          // Location Selector Row: [Pin] <Location Name> [Chevron Down]
-          Align(
-            alignment: Alignment.centerLeft,
-            child: InkWell(
-              onTap: _showLocationPickerSheet,
-              borderRadius: BorderRadius.circular(8),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
+      body: SafeArea(
+        child: RefreshIndicator(
+          color: Colors.black,
+          onRefresh: _fetchPosts,
+          child: ListView(
+            padding: EdgeInsets.fromLTRB(0, 14, 0, widget.isWorkerMode ? 96 : 32),
+            children: [
+              // 1. Large "Community" Title
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 10, 14, 14),
                 child: Row(
-                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Icon(
-                      Icons.location_on_outlined,
-                      size: 19,
-                      color: AppColors.brandBlack,
-                    ),
-                    const SizedBox(width: 5),
-                    Flexible(
-                      child: Text(
-                        _selectedLocation,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.brandBlack,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    Text(
+                      'Community',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 32,
+                        fontWeight: FontWeight.w900,
+                        color: const Color(0xFF000000),
+                        letterSpacing: -0.6,
                       ),
                     ),
-                    const SizedBox(width: 3),
-                    const Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      size: 20,
-                      color: AppColors.brandBlack,
+                    IconButton(
+                      icon: Icon(
+                        _sortBy == 'latest' ? Icons.access_time_rounded : Icons.local_fire_department_rounded,
+                        size: 22,
+                        color: const Color(0xFF000000),
+                      ),
+                      tooltip: _sortBy == 'latest' ? 'Showing Latest' : 'Showing Popular',
+                      onPressed: _toggleSort,
                     ),
                   ],
                 ),
               ),
-            ),
-          ),
-          const SizedBox(height: 10),
 
-          // Banner
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.primaryContainer,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.groups_rounded,
-                  color: AppColors.onPrimaryContainer,
-                  size: 28,
+              // 2. Feed Selector & Location Row (All feed, My posts, All locations v)
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: [
+                    _buildTabPill(
+                      label: 'All feed',
+                      isSelected: _tabController.index == 0,
+                      onTap: () {
+                        setState(() {
+                          _tabController.animateTo(0);
+                        });
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    _buildTabPill(
+                      label: 'My posts',
+                      isSelected: _tabController.index == 1,
+                      onTap: () {
+                        setState(() {
+                          _tabController.animateTo(1);
+                        });
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    InkWell(
+                      onTap: _showLocationPickerSheet,
+                      borderRadius: BorderRadius.circular(24),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F3F5),
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.location_on_outlined,
+                              size: 17,
+                              color: Color(0xFF0F172A),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              _selectedLocation,
+                              style: GoogleFonts.dmSans(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF0F172A),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              size: 18,
+                              color: Color(0xFF0F172A),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Neighborhood Help & Discussions',
-                        style: GoogleFonts.dmSans(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                          color: AppColors.onPrimaryContainer,
-                        ),
+              ),
+              const SizedBox(height: 14),
+
+              // 3. Search Bar
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Container(
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F3F5),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: _onSearchChanged,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 14.5,
+                      color: const Color(0xFF0F172A),
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'Search community posts',
+                      hintStyle: GoogleFonts.dmSans(
+                        fontSize: 14.5,
+                        color: const Color(0xFF64748B),
+                        fontWeight: FontWeight.w400,
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Ask questions, request recommendations, or offer tips to nearby residents.',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 13,
-                          color: AppColors.onPrimaryContainer,
-                        ),
+                      prefixIcon: const Icon(
+                        Icons.search_rounded,
+                        size: 22,
+                        color: Color(0xFF334155),
                       ),
-                    ],
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear_rounded, size: 18, color: Color(0xFF64748B)),
+                              onPressed: () {
+                                _searchController.clear();
+                                _onSearchChanged('');
+                              },
+                            )
+                          : null,
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
                   ),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Search Bar
-          TextField(
-            controller: _searchController,
-            onChanged: _onSearchChanged,
-            decoration: InputDecoration(
-              hintText: 'Search community posts...',
-              prefixIcon: const Icon(Icons.search_rounded),
-              suffixIcon: _searchQuery.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear_rounded),
-                      onPressed: () {
-                        _searchController.clear();
-                        _onSearchChanged('');
-                      },
-                    )
-                  : null,
-              filled: true,
-              fillColor: AppColors.surfaceVariant.withValues(alpha: 0.5),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide.none,
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            ),
-          ),
-          const SizedBox(height: 14),
+              const SizedBox(height: 12),
 
-          // Categories Filter Row
-          SizedBox(
-            height: 40,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [
-                _buildCategoryChip('All', 'All Categories'),
-                ..._categories.map((c) => _buildCategoryChip(c.id, c.name)),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          if (_isLoading)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.all(40.0),
-                child: LoadingIndicatorM3E(),
-              ),
-            )
-          else if (posts.isEmpty)
-            Container(
-              padding: const EdgeInsets.all(32),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceVariant.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Center(
-                child: Column(
+              // 4. Categories Filter Row (All, Plumbing, Electrical, Carpentry, ...)
+              SizedBox(
+                height: 40,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
                   children: [
-                    const Icon(Icons.forum_outlined, size: 48, color: AppColors.onSurfaceVariant),
-                    const SizedBox(height: 12),
-                    Text(
-                      isMyPosts
-                          ? 'You have not created any posts yet'
-                          : (_selectedLocation != 'All Locations' && _selectedLocation != 'All'
-                              ? 'No community posts found in $_selectedLocation'
-                              : 'No community posts found'),
-                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 16),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      isMyPosts
-                          ? 'Tap "+ New Post" below to start your first community discussion!'
-                          : (_selectedLocation != 'All Locations' && _selectedLocation != 'All'
-                              ? 'Try switching to "All Locations" or be the first to post!'
-                              : 'Be the first to post recommendations or ask for help in your area!'),
-                      style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.onSurfaceVariant),
-                      textAlign: TextAlign.center,
-                    ),
-                    if (!isMyPosts && _selectedLocation != 'All Locations' && _selectedLocation != 'All') ...[
-                      const SizedBox(height: 12),
-                      ElevatedButton(
-                        onPressed: () => _updateLocation('All Locations'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.brandBlack,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: const StadiumBorder(),
-                        ),
-                        child: Text(
-                          'View All Locations',
-                          style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, fontSize: 13.5),
-                        ),
-                      ),
-                    ],
+                    _buildModernCategoryChip('All', 'All'),
+                    ..._categories.map((c) => _buildModernCategoryChip(c.id, c.name)),
                   ],
                 ),
               ),
-            )
-          else
-            ...posts.map((post) => Padding(
-                  padding: const EdgeInsets.only(bottom: 14.0),
-                  child: _buildPostCard(post, currentUser),
-                )),
-        ],
+              const SizedBox(height: 14),
+
+              // Subtle Divider
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: Divider(height: 1, thickness: 1, color: Color(0xFFF1F3F5)),
+              ),
+              const SizedBox(height: 8),
+
+              // 7. Posts Feed
+              if (_isLoading)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(40.0),
+                    child: LoadingIndicatorM3E(),
+                  ),
+                )
+              else if (posts.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                  child: Container(
+                    padding: const EdgeInsets.all(32),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Center(
+                      child: Column(
+                        children: [
+                          const Icon(Icons.forum_outlined, size: 48, color: Color(0xFF94A3B8)),
+                          const SizedBox(height: 12),
+                          Text(
+                            isMyPosts
+                                ? 'You have not created any posts yet'
+                                : (_selectedLocation != 'All Locations' && _selectedLocation != 'All'
+                                    ? 'No community posts found in $_selectedLocation'
+                                    : 'No community posts found'),
+                            style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 16),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            isMyPosts
+                                ? 'Tap "+ New post" below to start your first community discussion!'
+                                : (_selectedLocation != 'All Locations' && _selectedLocation != 'All'
+                                    ? 'Try switching to "All Locations" or be the first to post!'
+                                    : 'Be the first to post recommendations or ask for help in your area!'),
+                            style: GoogleFonts.dmSans(fontSize: 13, color: const Color(0xFF64748B)),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+              else
+                ...posts.map((post) => _buildPostCard(post, currentUser)),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildCategoryChip(String id, String label) {
+  Widget _buildTabPill({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF000000) : const Color(0xFFF1F3F5),
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.dmSans(
+            fontSize: 13.5,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+            color: isSelected ? Colors.white : const Color(0xFF0F172A),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModernCategoryChip(String id, String label) {
     final isSelected = _selectedCategory.toLowerCase() == id.toLowerCase();
     return Padding(
       padding: const EdgeInsets.only(right: 8.0),
-      child: FilterChip(
-        selected: isSelected,
-        label: Text(label),
-        labelStyle: GoogleFonts.dmSans(
-          fontSize: 12,
-          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-          color: isSelected ? Colors.white : AppColors.onSurface,
+      child: InkWell(
+        onTap: () => _onCategorySelected(id),
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFF000000) : const Color(0xFFF1F3F5),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: GoogleFonts.dmSans(
+              fontSize: 13,
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+              color: isSelected ? Colors.white : const Color(0xFF0F172A),
+            ),
+          ),
         ),
-        checkmarkColor: Colors.white,
-        selectedColor: Colors.black,
-        backgroundColor: AppColors.surfaceVariant,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        onSelected: (_) => _onCategorySelected(id),
       ),
     );
   }
@@ -1482,75 +1533,143 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
   Widget _buildPostCard(CommunityPostModel post, AuthUser? currentUser) {
     final bool canManage = post.isAuthor(currentUser?.email, currentUser?.name);
 
+    // Identify if author is a Pro Worker
+    final String postEmail = post.userId.trim().toLowerCase();
+    final worker = _workersByEmail[postEmail] ??
+        _workersByEmail.values.cast<WorkerModel?>().firstWhere(
+              (w) =>
+                  (w != null && w.name.trim().toLowerCase() == post.userName.trim().toLowerCase()) ||
+                  (w != null && w.email.trim().toLowerCase() == postEmail) ||
+                  (w != null && w.residentEmail.trim().toLowerCase() == postEmail),
+              orElse: () => null,
+            );
+
+    final bool isWorkerAuthor = post.isWorker || worker != null;
+    final String workerTrade = (post.workerTrade != null && post.workerTrade!.isNotEmpty)
+        ? post.workerTrade!
+        : (worker?.trade ?? '');
+    final double workerRating = (post.workerRating != null && post.workerRating! > 0)
+        ? post.workerRating!
+        : (worker?.rating ?? 0.0);
+
+    // Viewer context
+    final currentEmail = (currentUser?.email ?? '').trim().toLowerCase();
+    final isViewerWorker = widget.isWorkerMode || _workersByEmail.containsKey(currentEmail);
+    final bool isMyPost = post.isAuthor(currentUser?.email, currentUser?.name);
+    final bool isAuthorVerified = post.isAuthorVerified ||
+        (isMyPost && (currentUser?.isVerified ?? false)) ||
+        (worker?.isVerified ?? false) ||
+        (currentUser != null &&
+            post.userId.trim().isNotEmpty &&
+            post.userId.trim().toLowerCase() == currentEmail &&
+            currentUser.isVerified);
+
     return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+      color: Colors.white,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Author Header
+          // Author Header Row
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              CircleAvatar(
-                radius: 18,
-                backgroundColor: AppColors.primaryContainer,
-                child: post.userAvatar.isNotEmpty && post.userAvatar.startsWith('http')
-                    ? ClipOval(
-                        child: Image.network(
+              // Avatar: Clean Black Circle with White Initial (or image)
+              Container(
+                width: 44,
+                height: 44,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0xFF000000),
+                ),
+                child: ClipOval(
+                  child: post.userAvatar.isNotEmpty && post.userAvatar.startsWith('http')
+                      ? Image.network(
                           post.userAvatar,
-                          width: 36,
-                          height: 36,
+                          width: 44,
+                          height: 44,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => Text(
-                            post.userName.isNotEmpty ? post.userName[0].toUpperCase() : 'U',
-                            style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: AppColors.onPrimaryContainer),
-                          ),
-                        ),
-                      )
-                    : Text(
-                        post.userName.isNotEmpty ? post.userName[0].toUpperCase() : 'U',
-                        style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: AppColors.onPrimaryContainer),
-                      ),
+                          errorBuilder: (_, _, _) => _buildAvatarFallback(post, isWorkerAuthor),
+                        )
+                      : _buildAvatarFallback(post, isWorkerAuthor),
+                ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
+
+              // Name + Subtitle (Location · Time)
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      post.userName,
-                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 14),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            post.userName,
+                            style: GoogleFonts.dmSans(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15.5,
+                              color: const Color(0xFF000000),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (isAuthorVerified) ...[
+                          const SizedBox(width: 5),
+                          const VerifiedBadge(size: 15),
+                        ],
+                        if (isWorkerAuthor && workerRating > 0) ...[
+                          const SizedBox(width: 6),
+                          const Icon(Icons.star_rounded, size: 14, color: Color(0xFFD97706)),
+                          const SizedBox(width: 1),
+                          Text(
+                            workerRating.toStringAsFixed(1),
+                            style: GoogleFonts.dmSans(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF92400E),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
+                    const SizedBox(height: 2),
                     Text(
-                      '${post.location} • ${_formatTimeAgo(post.createdAt)}',
-                      style: GoogleFonts.dmSans(fontSize: 11, color: AppColors.onSurfaceVariant),
+                      isWorkerAuthor && workerTrade.isNotEmpty
+                          ? '$workerTrade · ${post.location} · ${_formatTimeAgo(post.createdAt)}'
+                          : '${post.location} · ${_formatTimeAgo(post.createdAt)}',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 12.5,
+                        color: const Color(0xFF64748B),
+                        fontWeight: FontWeight.w500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
+
+              // Category Pill (e.g. Others, Plumbing)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceVariant,
-                  borderRadius: BorderRadius.circular(8),
+                  color: const Color(0xFFF1F3F5),
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 child: Text(
                   post.serviceCategoryName,
-                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, fontSize: 11, color: AppColors.onSurface),
+                  style: GoogleFonts.dmSans(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                    color: const Color(0xFF334155),
+                  ),
                 ),
               ),
+
+              // Three Dots Action Menu
               PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert_rounded, size: 20, color: AppColors.onSurfaceVariant),
+                icon: const Icon(Icons.more_vert_rounded, size: 20, color: Color(0xFF334155)),
+                padding: EdgeInsets.zero,
                 onSelected: (val) {
                   if (val == 'edit') {
                     _showPostDialog(postToEdit: post);
@@ -1603,21 +1722,30 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
           // Post Title
           Text(
             post.title,
-            style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 16),
+            style: GoogleFonts.dmSans(
+              fontWeight: FontWeight.w800,
+              fontSize: 17.5,
+              color: const Color(0xFF000000),
+              letterSpacing: -0.2,
+            ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
 
           // Post Content
           Text(
             post.content,
-            style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.onSurfaceVariant, height: 1.4),
+            style: GoogleFonts.dmSans(
+              fontSize: 14.5,
+              color: const Color(0xFF475569),
+              height: 1.4,
+            ),
           ),
 
           // Images if present
           if (post.images.isNotEmpty) ...[
             const SizedBox(height: 12),
             ClipRRect(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(14),
               child: post.images.first.startsWith('data:image/')
                   ? Image.memory(
                       base64Decode(post.images.first.split(',').last),
@@ -1636,61 +1764,140 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
             ),
           ],
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
 
           // Action Row (Like, Comment, Share)
           Row(
             children: [
+              // Like Pill Button
               InkWell(
                 borderRadius: BorderRadius.circular(20),
                 onTap: () => _toggleLike(post),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
-                    color: post.isLikedByMe ? AppColors.brandYellow.withValues(alpha: 0.3) : AppColors.surfaceVariant,
+                    color: post.isLikedByMe ? const Color(0xFFFEE2E2) : const Color(0xFFF1F3F5),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
                         post.isLikedByMe ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                        size: 18,
-                        color: post.isLikedByMe ? Colors.red : AppColors.onSurface,
+                        size: 16,
+                        color: post.isLikedByMe ? const Color(0xFFEF4444) : const Color(0xFF000000),
                       ),
                       const SizedBox(width: 6),
                       Text(
                         '${post.likesCount}',
-                        style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 13),
+                        style: GoogleFonts.dmSans(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: post.isLikedByMe ? const Color(0xFFDC2626) : const Color(0xFF000000),
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 8),
+
+              // Comment Pill Button
               InkWell(
                 borderRadius: BorderRadius.circular(20),
                 onTap: () => _showCommentsSheet(post),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceVariant,
+                    color: const Color(0xFFF1F3F5),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.mode_comment_outlined, size: 18, color: AppColors.onSurfaceVariant),
+                      const Icon(
+                        Icons.chat_bubble_outline_rounded,
+                        size: 15,
+                        color: Color(0xFF000000),
+                      ),
                       const SizedBox(width: 6),
                       Text(
-                        '${post.commentsCount} Comments',
-                        style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.onSurfaceVariant, fontWeight: FontWeight.w600),
+                        '${post.commentsCount} ${post.commentsCount == 1 ? "comment" : "comments"}',
+                        style: GoogleFonts.dmSans(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          color: const Color(0xFF000000),
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
+
+              // Contextual Action: "Message Pro" or "Offer Help"
+              if (isWorkerAuthor && !isMyPost) ...[
+                const SizedBox(width: 8),
+                InkWell(
+                  borderRadius: BorderRadius.circular(20),
+                  onTap: () => _openChatWithUser(post, worker: worker),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF000000),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.send_rounded, size: 12, color: Colors.white),
+                        const SizedBox(width: 5),
+                        Text(
+                          'Message Pro',
+                          style: GoogleFonts.dmSans(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ] else if (!isWorkerAuthor && !isMyPost && isViewerWorker) ...[
+                const SizedBox(width: 8),
+                InkWell(
+                  borderRadius: BorderRadius.circular(20),
+                  onTap: () => _openChatWithUser(post),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF000000),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.handshake_outlined, size: 13, color: Color(0xFFFFC107)),
+                        const SizedBox(width: 5),
+                        Text(
+                          'Offer Help',
+                          style: GoogleFonts.dmSans(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+
               const Spacer(),
+
+              // Share button
               IconButton(
-                icon: const Icon(Icons.share_outlined, size: 20),
+                icon: const Icon(Icons.share_outlined, size: 20, color: Color(0xFF000000)),
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Post link copied to clipboard!')),
@@ -1699,9 +1906,101 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          const Divider(height: 1, thickness: 1, color: Color(0xFFF1F3F5)),
         ],
       ),
     );
+  }
+
+  Widget _buildAvatarFallback(CommunityPostModel post, bool isWorker) {
+    final initial = post.userName.isNotEmpty ? post.userName[0].toUpperCase() : 'U';
+    return Container(
+      color: const Color(0xFF000000),
+      alignment: Alignment.center,
+      child: Text(
+        initial,
+        style: GoogleFonts.dmSans(
+          fontWeight: FontWeight.w800,
+          fontSize: 17,
+          color: Colors.white,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openChatWithUser(CommunityPostModel post, {WorkerModel? worker}) async {
+    final currentUser = AuthService().currentUser;
+    if (currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please sign in to start a conversation.', style: GoogleFonts.dmSans()),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final targetEmail = post.userId.isNotEmpty ? post.userId : (worker?.email ?? worker?.residentEmail ?? '');
+    final myEmail = currentUser.email.toLowerCase();
+    if (targetEmail.isEmpty || targetEmail.toLowerCase() == myEmail) {
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: SizedBox(
+          width: 36,
+          height: 36,
+          child: LoadingIndicatorM3E(),
+        ),
+      ),
+    );
+
+    try {
+      final conv = await ApiService().getOrCreateConversation(
+        workerId: worker?.id ?? 0,
+        workerEmail: worker != null ? (worker.email.isNotEmpty ? worker.email : worker.residentEmail) : targetEmail,
+        workerName: worker?.name ?? post.userName,
+        workerAvatar: worker?.profileImage ?? post.userAvatar,
+        residentEmail: currentUser.email,
+      );
+
+      if (mounted) Navigator.of(context, rootNavigator: true).pop();
+
+      final convId = conv != null ? (conv['id'] is int ? conv['id'] : int.tryParse(conv['id']?.toString() ?? '')) : null;
+
+      if (convId != null && mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ChatScreen(
+              conversationId: convId,
+              name: post.userName,
+              profileImage: post.userAvatar.isNotEmpty ? post.userAvatar : null,
+            ),
+          ),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not start chat with ${post.userName}.', style: GoogleFonts.dmSans()),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error starting chat: $e', style: GoogleFonts.dmSans()),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   String _formatTimeAgo(DateTime date) {
@@ -1867,9 +2166,15 @@ class _PostCommentsSheetState extends State<PostCommentsSheet> {
                                         Row(
                                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                           children: [
-                                            Text(
-                                              c.userName,
-                                              style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 13),
+                                            Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Text(
+                                                  c.userName,
+                                                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 13),
+                                                ),
+                                                if (c.isUserVerified) const VerifiedBadge(size: 13),
+                                              ],
                                             ),
                                             Text(
                                               _formatTimeAgo(c.createdAt),

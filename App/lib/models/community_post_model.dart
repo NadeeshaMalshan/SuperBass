@@ -17,6 +17,10 @@ class CommunityPostModel {
   final List<String> likedByUsers;
   final int reportCount;
   final bool isLikedByMe;
+  final String authorRole; // 'worker' or 'resident'
+  final String? workerTrade;
+  final double? workerRating;
+  final bool isAuthorVerified;
 
   CommunityPostModel({
     required this.postId,
@@ -37,6 +41,10 @@ class CommunityPostModel {
     this.likedByUsers = const [],
     this.reportCount = 0,
     this.isLikedByMe = false,
+    this.authorRole = 'resident',
+    this.workerTrade,
+    this.workerRating,
+    this.isAuthorVerified = false,
   });
 
   factory CommunityPostModel.fromJson(Map<String, dynamic> json, {String? currentUserEmail}) {
@@ -74,8 +82,18 @@ class CommunityPostModel {
       likedByUsers: parsedLikedBy,
       reportCount: json['reportCount'] as int? ?? 0,
       isLikedByMe: liked,
+      authorRole: json['authorRole'] as String? ??
+          (json['role']?.toString().toLowerCase() == 'worker' || json['isWorker'] == true ? 'worker' : 'resident'),
+      workerTrade: json['workerTrade']?.toString(),
+      workerRating: (json['workerRating'] as num?)?.toDouble() ?? (json['rating'] as num?)?.toDouble(),
+      isAuthorVerified: json['isAuthorVerified'] == true ||
+          json['IsAuthorVerified'] == true ||
+          json['isVerified'] == true ||
+          json['IsVerified'] == true,
     );
   }
+
+  bool get isWorker => authorRole.toLowerCase() == 'worker';
 
   bool isAuthor(String? currentUserEmail, String? currentUserName) {
     if (currentUserEmail != null && currentUserEmail.isNotEmpty) {
@@ -114,6 +132,10 @@ class CommunityPostModel {
     List<String>? likedByUsers,
     int? reportCount,
     bool? isLikedByMe,
+    String? authorRole,
+    String? workerTrade,
+    double? workerRating,
+    bool? isAuthorVerified,
   }) {
     return CommunityPostModel(
       postId: postId ?? this.postId,
@@ -134,6 +156,10 @@ class CommunityPostModel {
       likedByUsers: likedByUsers ?? this.likedByUsers,
       reportCount: reportCount ?? this.reportCount,
       isLikedByMe: isLikedByMe ?? this.isLikedByMe,
+      authorRole: authorRole ?? this.authorRole,
+      workerTrade: workerTrade ?? this.workerTrade,
+      workerRating: workerRating ?? this.workerRating,
+      isAuthorVerified: isAuthorVerified ?? this.isAuthorVerified,
     );
   }
 }
@@ -146,6 +172,7 @@ class CommunityCommentModel {
   final String userAvatar;
   final String content;
   final DateTime createdAt;
+  final bool isUserVerified;
 
   CommunityCommentModel({
     required this.commentId,
@@ -155,6 +182,7 @@ class CommunityCommentModel {
     this.userAvatar = '',
     required this.content,
     required this.createdAt,
+    this.isUserVerified = false,
   });
 
   factory CommunityCommentModel.fromJson(Map<String, dynamic> json) {
@@ -166,6 +194,10 @@ class CommunityCommentModel {
       userAvatar: json['userAvatar'] as String? ?? '',
       content: json['content'] as String? ?? '',
       createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now() : DateTime.now(),
+      isUserVerified: json['isUserVerified'] == true ||
+          json['IsUserVerified'] == true ||
+          json['isVerified'] == true ||
+          json['IsVerified'] == true,
     );
   }
 }

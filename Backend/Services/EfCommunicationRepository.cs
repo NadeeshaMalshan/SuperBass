@@ -277,6 +277,8 @@ namespace Superbass.Services
                 WorkerProfileImage = conv.Worker?.ProfileImage,
                 BookingId = conv.BookingId,
                 IsOnline = ChatHub.IsUserOnline(otherEmail),
+                IsWorkerVerified = conv.Worker?.IsVerified ?? false,
+                IsResidentVerified = conv.Resident?.IsVerified ?? false,
                 LastSeenAt = ChatHub.GetLastSeen(otherEmail),
                 CreatedAt = conv.CreatedAt,
                 Messages = messages
@@ -574,6 +576,8 @@ namespace Superbass.Services
                 LastMessageIsRead = lastMsg != null ? lastMsg.IsRead : false,
                 UnreadCount = unreadCount,
                 IsOnline = ChatHub.IsUserOnline(otherEmail),
+                IsWorkerVerified = conv.Worker?.IsVerified ?? false,
+                IsResidentVerified = conv.Resident?.IsVerified ?? false,
                 LastSeenAt = ChatHub.GetLastSeen(otherEmail),
                 CreatedAt = conv.CreatedAt,
                 UpdatedAt = conv.UpdatedAt

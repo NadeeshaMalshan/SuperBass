@@ -46,6 +46,9 @@ dependencies:
   signalr_netcore: ^1.4.4
   web: ^1.1.0
   sri_lanka_nic: ^0.1.0
+  geolocator: ^14.1.1
+  flutter_map: ^8.3.2
+  latlong2: ^0.10.1
 
 
 dev_dependencies:

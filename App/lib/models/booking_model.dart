@@ -26,6 +26,8 @@ class BookingModel {
   final DateTime? reviewedAt;
   final int? conversationId;
   final DateTime createdAt;
+  final bool isWorkerVerified;
+  final bool isResidentVerified;
 
   BookingModel({
     required this.id,
@@ -55,6 +57,8 @@ class BookingModel {
     this.reviewedAt,
     this.conversationId,
     required this.createdAt,
+    this.isWorkerVerified = false,
+    this.isResidentVerified = false,
   });
 
   factory BookingModel.fromJson(Map<String, dynamic> json) {
@@ -90,6 +94,12 @@ class BookingModel {
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
           : DateTime.now(),
+      isWorkerVerified: json['isWorkerVerified'] == true ||
+          json['IsWorkerVerified'] == true ||
+          json['workerIsVerified'] == true,
+      isResidentVerified: json['isResidentVerified'] == true ||
+          json['IsResidentVerified'] == true ||
+          json['residentIsVerified'] == true,
     );
   }
 
@@ -122,6 +132,8 @@ class BookingModel {
       'reviewedAt': reviewedAt?.toIso8601String(),
       'conversationId': conversationId,
       'createdAt': createdAt.toIso8601String(),
+      'isWorkerVerified': isWorkerVerified,
+      'isResidentVerified': isResidentVerified,
     };
   }
 }

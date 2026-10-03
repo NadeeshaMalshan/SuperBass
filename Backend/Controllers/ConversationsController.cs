@@ -476,6 +476,7 @@ namespace Superbass.Controllers
 
         // GET: /api/conversations/unread-count?userEmail=test@example.com
         [HttpGet("unread-count")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetUnreadCount([FromQuery] string? userEmail)
         {
             var email = userEmail ?? GetCurrentUserEmail();

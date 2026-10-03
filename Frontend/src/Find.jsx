@@ -55,10 +55,13 @@ export default function Find() {
   const [locationQuery, setLocationQuery] = useState(() => {
     try {
       const raw = new URLSearchParams(window.location.search).get('location');
-      if (raw) return sanitizeLocationParam(raw);
-      return localStorage.getItem('userCity') || localStorage.getItem('community_selected_district') || 'Colombo';
+      if (raw) {
+        const sanitized = sanitizeLocationParam(raw);
+        return (sanitized.toLowerCase().includes('all') || sanitized === '') ? '' : sanitized;
+      }
+      return '';
     } catch {
-      return 'Colombo';
+      return '';
     }
   });
   const [appliedLocationQuery, setAppliedLocationQuery] = useState(locationQuery);
@@ -70,7 +73,7 @@ export default function Find() {
     return getCoordinatesForCity(locationQuery || 'Colombo');
   });
   const [isLocating, setIsLocating] = useState(false);
-  const [locationName, setLocationName] = useState(locationQuery || 'Colombo');
+  const [locationName, setLocationName] = useState(locationQuery || 'All Sri Lanka');
 
   // Sidebar Filter States
   const [rateType, setRateType] = useState('Any'); // 'Any' | 'Per day' | 'Per hour'
@@ -267,10 +270,12 @@ export default function Find() {
     setUserPicture(localStorage.getItem('userPicture') || '');
     getRealUserLocation();
 
-    // Auto-load logged-in resident's home Province/District
+    // Auto-load logged-in resident's home Province/District only if no explicit location param
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasExplicitLoc = urlParams.has('location') || urlParams.has('province') || urlParams.has('district');
     const userEmail = localStorage.getItem('email');
     const token = localStorage.getItem('token');
-    if (userEmail) {
+    if (userEmail && !hasExplicitLoc) {
       axios.get(`${API_BASE_URL}/residents/${encodeURIComponent(userEmail)}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       }).then(res => {
@@ -289,7 +294,7 @@ export default function Find() {
 
   // When appliedLocationQuery changes (user chooses city or clears location)
   useEffect(() => {
-    if (appliedLocationQuery && appliedLocationQuery.trim() !== '') {
+    if (appliedLocationQuery && appliedLocationQuery.trim() !== '' && !appliedLocationQuery.toLowerCase().includes('all')) {
       const coords = getCoordinatesForCity(appliedLocationQuery);
       if (coords) {
         setUserLocation(coords);
@@ -298,6 +303,8 @@ export default function Find() {
           mapInstanceRef.current.setView(coords, 12);
         }
       }
+    } else if (!appliedLocationQuery || appliedLocationQuery.toLowerCase().includes('all')) {
+      setLocationName('All Sri Lanka');
     }
   }, [appliedLocationQuery]);
 
@@ -320,6 +327,7 @@ export default function Find() {
         const params = {
           residentLat: lat,
           residentLng: lng,
+          onlyVerified: false,
         };
         if (selectedProvince && selectedProvince !== 'all') {
           params.province = selectedProvince;
@@ -382,11 +390,12 @@ export default function Find() {
     navigate('/find');
   };
 
-  const starredCount = Object.values(favorites).filter(Boolean).length;
-  const availableCount = workers.filter(w => w.isAvailable).length;
-  const topRatedCount = workers.filter(w => (w.overallRating ?? 0) >= 4.5).length;
-  const verifiedCount = workers.filter(w => w.isVerified || w.verified).length;
-  const topCraftsmanCount = workers.filter(w => (w.overallRating ?? 0) >= 4.8).length;
+  const verifiedWorkers = workers.filter(w => w.isVerified || w.verified);
+  const starredCount = Object.keys(favorites).filter(id => favorites[id] && verifiedWorkers.some(w => w.id === Number(id))).length;
+  const availableCount = verifiedWorkers.filter(w => w.isAvailable).length;
+  const topRatedCount = verifiedWorkers.filter(w => (w.overallRating ?? 0) >= 4.5).length;
+  const verifiedCount = verifiedWorkers.length;
+  const topCraftsmanCount = verifiedWorkers.filter(w => (w.overallRating ?? 0) >= 4.8).length;
 
   const toggleCategory = (catId) => {
     if (selectedCategories.includes(catId)) {
@@ -433,6 +442,7 @@ export default function Find() {
   // Category counts calculation
   const getCategoryCount = (catId) => {
     return workers.filter(w => {
+      if (!w.isVerified && !w.verified) return false;
       if (w.skills && w.skills.length > 0) {
         return w.skills.some(s => s.skillName.toLowerCase().includes(catId.toLowerCase()));
       }
@@ -442,6 +452,13 @@ export default function Find() {
 
   // Filtering Logic
   const filteredWorkers = workers.filter(w => {
+    // 0. Verified Badge Filter (when user specifically selects 'verified' from sidebar)
+    if (selectedBadge === 'verified') {
+      if (!w.isVerified && !w.verified) return false;
+    } else if (selectedBadge === 'top_craftsman') {
+      if ((w.overallRating ?? 0) < 4.8) return false;
+    }
+
     // 1. Search Query (Skills, sub-skills, service names, craftsman name, description)
     if (appliedSearchQuery.trim() !== '') {
       const q = appliedSearchQuery.toLowerCase();
@@ -476,7 +493,7 @@ export default function Find() {
     }
 
     // 1.6 Location Query Filter (PrimaryServiceArea, address, name, city)
-    if (appliedLocationQuery.trim() !== '') {
+    if (appliedLocationQuery.trim() !== '' && !appliedLocationQuery.toLowerCase().includes('all')) {
       if (!matchesWorkerLocation(w, appliedLocationQuery)) {
         return false;
       }
@@ -813,7 +830,9 @@ export default function Find() {
             <div className="m3-card-header-line">
               <div className="m3-card-title-group">
                 <h3 className="m3-card-worker-name">{worker.name}</h3>
-                <md-icon className="m3-verified-badge" title="Verified Home Craftsman">verified</md-icon>
+                {(worker.isVerified || worker.verified) && (
+                  <md-icon className="m3-verified-badge" title="Verified Home Craftsman">verified</md-icon>
+                )}
               </div>
 
               <button
@@ -904,6 +923,7 @@ export default function Find() {
 
     // The dropdown uses the live searchQuery, not the appliedSearchQuery
     const dropdownWorkers = workers.filter(w => {
+      if (!w.isVerified && !w.verified) return false;
       const q = searchQuery.toLowerCase();
       const nameMatch = w.name && w.name.toLowerCase().includes(q);
       const locMatch = w.primaryServiceArea && w.primaryServiceArea.toLowerCase().includes(q);
@@ -982,7 +1002,9 @@ export default function Find() {
                   <div className="m3-navbar-worker-info">
                     <div className="m3-navbar-worker-header">
                       <span className="m3-navbar-worker-name">{w.name}</span>
-                      <md-icon className="m3-navbar-verified-icon">verified</md-icon>
+                      {(w.isVerified || w.verified) && (
+                        <md-icon className="m3-navbar-verified-icon">verified</md-icon>
+                      )}
                       {primarySkill && (
                         <span className="m3-navbar-trade-tag">
                           <md-icon>handyman</md-icon>
@@ -1167,8 +1189,21 @@ export default function Find() {
 
             <div className="location-selector-wrap" style={{ padding: '6px 8px 6px', position: 'relative', zIndex: 1200 }}>
               <LocationSelector
-                location={appliedLocationQuery || 'Colombo'}
+                location={appliedLocationQuery || (selectedDistrict !== 'all' ? selectedDistrict : (selectedProvince !== 'all' ? selectedProvince : 'All Sri Lanka'))}
                 onChange={(newLoc) => {
+                  const isAll = !newLoc || newLoc.toLowerCase().includes('all');
+                  if (isAll) {
+                    setLocationQuery('');
+                    setAppliedLocationQuery('');
+                    setSelectedProvince('all');
+                    setSelectedDistrict('all');
+                    localStorage.removeItem('community_selected_district');
+                    const params = new URLSearchParams(window.location.search);
+                    params.delete('location');
+                    const newQs = params.toString();
+                    navigate(newQs ? `/find?${newQs}` : '/find');
+                    return;
+                  }
                   setLocationQuery(newLoc);
                   setAppliedLocationQuery(newLoc);
                   localStorage.setItem('community_selected_district', newLoc);
@@ -1181,11 +1216,7 @@ export default function Find() {
                     }
                   }
                   const params = new URLSearchParams(window.location.search);
-                  if (newLoc) {
-                    params.set('location', newLoc);
-                  } else {
-                    params.delete('location');
-                  }
+                  params.set('location', newLoc);
                   const newQs = params.toString();
                   navigate(newQs ? `/find?${newQs}` : '/find');
                 }}
@@ -1205,6 +1236,14 @@ export default function Find() {
                     const newProv = e.target.value;
                     setSelectedProvince(newProv);
                     setSelectedDistrict('all');
+                    if (newProv === 'all') {
+                      setLocationQuery('');
+                      setAppliedLocationQuery('');
+                      const params = new URLSearchParams(window.location.search);
+                      params.delete('location');
+                      const qs = params.toString();
+                      navigate(qs ? `/find?${qs}` : '/find');
+                    }
                   }}
                 >
                   <option value="all">All Sri Lanka Provinces</option>
@@ -1221,7 +1260,21 @@ export default function Find() {
                 <select
                   className="uber-sidebar-select"
                   value={selectedDistrict}
-                  onChange={(e) => setSelectedDistrict(e.target.value)}
+                  onChange={(e) => {
+                    const newDist = e.target.value;
+                    setSelectedDistrict(newDist);
+                    if (newDist === 'all' && selectedProvince === 'all') {
+                      setLocationQuery('');
+                      setAppliedLocationQuery('');
+                      const params = new URLSearchParams(window.location.search);
+                      params.delete('location');
+                      const qs = params.toString();
+                      navigate(qs ? `/find?${qs}` : '/find');
+                    } else if (newDist !== 'all') {
+                      setLocationQuery(newDist);
+                      setAppliedLocationQuery(newDist);
+                    }
+                  }}
                 >
                   <option value="all">
                     {selectedProvince !== 'all' ? `All ${selectedProvince} Districts` : 'All 25 Districts'}
@@ -1283,7 +1336,12 @@ export default function Find() {
                           </div>
                         )}
                         <div className="popup-details">
-                          <h4 className="popup-name">{selectedMapWorker.name}</h4>
+                          <h4 className="popup-name" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            {selectedMapWorker.name}
+                            {(selectedMapWorker.isVerified || selectedMapWorker.verified) && (
+                              <md-icon style={{ fontSize: '16px', color: '#000000' }}>verified</md-icon>
+                            )}
+                          </h4>
                           <p className="popup-skill">
                             ★ {selectedMapWorker.overallRating ? selectedMapWorker.overallRating.toFixed(1) : '5.0'} • {selectedMapWorker.skills && selectedMapWorker.skills.length > 0 ? selectedMapWorker.skills[0].skillName : 'Worker'}
                           </p>
@@ -1333,7 +1391,7 @@ export default function Find() {
                   <md-icon>engineering</md-icon>
                   <span>All Baas</span>
                 </div>
-                <span className="uber-sidebar-badge">{workers.length}</span>
+                <span className="uber-sidebar-badge">{verifiedWorkers.length}</span>
               </div>
 
               {/* Verified Workers */}
@@ -1419,7 +1477,7 @@ export default function Find() {
                   <md-icon>grid_view</md-icon>
                   <span>All Categories</span>
                 </div>
-                <span className="uber-sidebar-badge">{workers.length}</span>
+                <span className="uber-sidebar-badge">{verifiedWorkers.length}</span>
               </div>
 
               {categories.map((cat) => {
@@ -1662,7 +1720,7 @@ export default function Find() {
                 </div>
               )}
 
-              {appliedLocationQuery && (
+              {appliedLocationQuery && !appliedLocationQuery.toLowerCase().includes('all') && (
                 <div style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -1682,6 +1740,8 @@ export default function Find() {
                     onClick={() => {
                       setLocationQuery('');
                       setAppliedLocationQuery('');
+                      setSelectedProvince('all');
+                      setSelectedDistrict('all');
                       const params = new URLSearchParams(window.location.search);
                       params.delete('location');
                       const qs = params.toString();
