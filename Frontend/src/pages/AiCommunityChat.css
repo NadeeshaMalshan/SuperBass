@@ -799,50 +799,52 @@
   background-color: #ffffff;
   border: 1px solid #e5e5e5;
   border-radius: 18px 18px 18px 4px;
-  padding: 12px 18px;
-  display: flex;
+  padding: 14px 20px;
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
-}
-
-.ai-typing-bubble span {
-  font-size: 0.82rem;
-  color: #666666;
-  font-weight: 600;
+  min-height: 40px;
 }
 
 .ai-dots {
   display: inline-flex;
-  gap: 4px;
+  align-items: center;
+  gap: 6px;
 }
 
 .ai-dot {
-  width: 6px;
-  height: 6px;
-  background: #000000;
+  width: 7px;
+  height: 7px;
+  background: #1e293b;
   border-radius: 50%;
-  animation: aiBounce 1.2s infinite ease-in-out;
+  display: inline-block;
+  animation: aiBounce 1.4s infinite ease-in-out both;
+}
+
+.ai-dot:nth-child(1) {
+  animation-delay: -0.32s;
 }
 
 .ai-dot:nth-child(2) {
-  animation-delay: 0.2s;
+  animation-delay: -0.16s;
 }
 
 .ai-dot:nth-child(3) {
-  animation-delay: 0.4s;
+  animation-delay: 0s;
 }
 
 @keyframes aiBounce {
-
   0%,
   80%,
   100% {
-    transform: translateY(0);
+    transform: scale(0.7) translateY(0);
+    opacity: 0.35;
   }
 
   40% {
-    transform: translateY(-4px);
+    transform: scale(1) translateY(-4px);
+    opacity: 1;
   }
 }
 
