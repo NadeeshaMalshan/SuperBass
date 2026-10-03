@@ -81,7 +81,7 @@ MCP_ERROR_CODES = {
 }
 
 # Backend configuration
-BACKEND_BASE_URL = os.getenv("BACKEND_BASE_URL", "http://localhost:5000")
+BACKEND_BASE_URL = os.getenv("BACKEND_BASE_URL", "http://127.0.0.1:5237")
 backend_client = httpx.AsyncClient(base_url=BACKEND_BASE_URL, timeout=30.0)
 
 # JWT Authentication for SuperBass Backend API (for authorized endpoints like Bookings)
@@ -655,16 +655,38 @@ def normalize_datetime_str(dt_str: Optional[str], default_hour: int = 10) -> Opt
     return s
 
 async def call_check_worker_availability(args: Dict[str, Any]):
-    worker_id = args["workerId"]
+    raw_worker_id = str(args.get("workerId", "")).strip()
     start_time = normalize_datetime_str(args.get("startTime", ""), default_hour=10) or args.get("startTime", "")
     end_time = normalize_datetime_str(args.get("endTime", ""), default_hour=12) or args.get("endTime", "")
 
-    # Fetch worker profile
-    response = await backend_client.get(f"/api/Workers/{worker_id}")
-    if response.status_code != 200:
-        return {"workerId": worker_id, "isAvailable": False, "error": f"Worker not found ({response.status_code})"}
+    # 1. Fetch worker profile by ID or name
+    worker = None
+    if raw_worker_id.isdigit():
+        response = await backend_client.get(f"/api/Workers/{raw_worker_id}")
+        if response.status_code == 200:
+            worker = response.json()
 
-    worker = response.json()
+    if not worker:
+        # Search by query or name
+        s_res = await backend_client.get("/api/Workers/search", params={"query": raw_worker_id})
+        if s_res.status_code == 200 and isinstance(s_res.json(), list) and len(s_res.json()) > 0:
+            worker = s_res.json()[0]
+
+    if not worker:
+        # Fallback to search all workers
+        all_res = await backend_client.get("/api/Workers/search")
+        if all_res.status_code == 200 and isinstance(all_res.json(), list):
+            for w in all_res.json():
+                w_name = str(w.get("name", "")).lower()
+                clean_target = raw_worker_id.lower().replace("worker", "").replace("id", "").replace(":", "").replace("#", "").strip()
+                if clean_target and (clean_target in w_name or w_name in clean_target):
+                    worker = w
+                    break
+
+    if not worker:
+        return {"workerId": raw_worker_id, "isAvailable": False, "error": f"Worker '{raw_worker_id}' not found"}
+
+    worker_id = worker.get("id")
     is_general_available = worker.get("isAvailable", True)
     schedule_json_raw = worker.get("availabilityScheduleJson") or "{}"
 
@@ -680,10 +702,17 @@ async def call_check_worker_availability(args: Dict[str, Any]):
     is_slot_available = is_general_available
     reason = "Worker is available" if is_general_available else "Worker is currently unavailable"
 
-    if is_general_available and start_time:
+    req_date = None
+    req_time = "09:00"
+    end_time_str = "11:00"
+    dur_hours = 2
+
+    if start_time:
         try:
             clean_date = start_time.replace("Z", "+00:00")
             dt = datetime.fromisoformat(clean_date)
+            req_date = dt.strftime("%Y-%m-%d")
+            req_time = dt.strftime("%H:%M")
             weekday_abbr = dt.strftime("%a")
 
             work_days = schedule_obj.get("workDays")
@@ -699,21 +728,55 @@ async def call_check_worker_availability(args: Dict[str, Any]):
             start_hour = schedule_obj.get("startTime")
             end_hour = schedule_obj.get("endTime")
             if start_hour and end_hour and is_slot_available:
-                req_time = dt.strftime("%H:%M")
                 if req_time < start_hour or req_time > end_hour:
                     is_slot_available = False
                     reason = f"Requested time {req_time} is outside worker hours ({start_hour} - {end_hour})"
         except Exception:
             pass
 
+    if end_time:
+        try:
+            dt_e = datetime.fromisoformat(end_time.replace("Z", "+00:00"))
+            end_time_str = dt_e.strftime("%H:%M")
+            if start_time:
+                dt_s = datetime.fromisoformat(start_time.replace("Z", "+00:00"))
+                diff = int((dt_e - dt_s).total_seconds() // 3600)
+                if diff > 0:
+                    dur_hours = diff
+        except Exception:
+            pass
+
+    # Extract primary skill category
+    main_cat = "General"
+    skills = worker.get("skills") or []
+    if isinstance(skills, list) and len(skills) > 0:
+        first_s = skills[0]
+        if isinstance(first_s, dict):
+            main_cat = first_s.get("skillName") or first_s.get("serviceName") or "General"
+        elif isinstance(first_s, str):
+            main_cat = first_s
+
+    h_rate = float(worker.get("hourlyRate") or 0)
+    if h_rate <= 0:
+        h_rate = 5000.0 if "super" in str(worker.get("name", "")).lower() else 2800.0
+
     return {
-        "workerId": worker.get("id", worker_id),
+        "workerId": worker_id,
         "workerName": worker.get("name"),
+        "workerAvatar": worker.get("profileImage") or worker.get("avatarUrl"),
+        "category": main_cat,
+        "hourlyRate": h_rate,
+        "primaryServiceArea": worker.get("district") or worker.get("primaryServiceArea") or "Colombo",
+        "location": worker.get("district") or worker.get("primaryServiceArea") or "Colombo",
         "isAvailable": is_general_available,
         "isSlotAvailable": is_slot_available,
         "status": "Available" if is_slot_available else "Unavailable",
         "reason": reason,
         "schedule": schedule_obj,
+        "requestedDate": req_date,
+        "requestedStartTime": req_time,
+        "requestedEndTime": end_time_str,
+        "durationHours": dur_hours,
         "requestedSlot": {"startTime": start_time, "endTime": end_time}
     }
 
