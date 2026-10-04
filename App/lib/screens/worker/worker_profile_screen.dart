@@ -32,7 +32,7 @@ class WorkerProfileScreen extends StatefulWidget {
 }
 
 class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
-  bool _isVerified = false;
+  // Auth state is read from AuthService notifier directly — no local _isVerified needed
   bool _isUpdatingProfile = false;
 
   // Bio section
@@ -653,7 +653,7 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isVerified = widget.worker?.isVerified == true || AuthService().currentUser?.isVerified == true || _isVerified;
+    final isVerified = widget.worker?.isVerified == true || AuthService().currentUser?.isVerified == true;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
@@ -665,9 +665,9 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
               padding: const EdgeInsets.only(bottom: 24.0),
               child: VerificationForm(
                 onVerifySuccess: () {
-                  setState(() {
-                    _isVerified = true;
-                  });
+                  // AuthService.markUserVerified() updates SharedPreferences + notifier.
+                  // Force a rebuild so isVerified re-evaluates.
+                  if (mounted) setState(() {});
                 },
               ),
             ),

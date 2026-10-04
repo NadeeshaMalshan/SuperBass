@@ -19,7 +19,6 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  bool _isVerified = false;
   bool _isUpdatingProfile = false;
 
   Future<void> _updateProfilePicture() async {
@@ -79,7 +78,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           return const JoinScreen();
         }
 
-        final isVerified = user.isVerified || _isVerified;
+        final isVerified = user.isVerified;
 
         return Scaffold(
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -110,9 +109,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       padding: const EdgeInsets.only(bottom: 32.0),
                       child: VerificationForm(
                         onVerifySuccess: () {
-                          setState(() {
-                            _isVerified = true;
-                          });
+                          // markUserVerified() already updates the notifier,
+                          // so the ValueListenableBuilder will rebuild automatically.
                         },
                       ),
                     ),
@@ -130,7 +128,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildProfileHeader(AuthUser user) {
-    final isVerified = user.isVerified || _isVerified;
+    final isVerified = user.isVerified;
     return Column(
       children: [
         GestureDetector(
