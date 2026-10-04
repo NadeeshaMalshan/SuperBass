@@ -262,17 +262,14 @@ class _WorkerChatsScreenState extends State<WorkerChatsScreen> {
   }
 
   Widget _buildConversationItem(Map<String, dynamic> c) {
-    final clientName = (c['residentName'] ?? c['otherPartyName'] ?? c['workerName'] ?? 'Client').toString();
-    final profileImage = c['residentProfileImage']?.toString() ?? c['workerProfileImage']?.toString();
+    final clientName = (c['residentName'] ?? 'Client').toString();
+    final profileImage = c['residentProfileImage']?.toString();
     final lastMsg = (c['lastMessage'] ?? 'Started a conversation').toString();
     final unread = (c['unreadCount'] is int) ? c['unreadCount'] as int : 0;
     final timeStr = _formatMessageTime(c['updatedAt']?.toString() ?? c['lastMessageAt']?.toString());
     final isOnline = c['isOnline'] == true;
 
-    final isClientVerified = c['isResidentVerified'] == true ||
-        c['isVerified'] == true ||
-        c['IsVerified'] == true ||
-        c['isOtherPartyVerified'] == true;
+    final isClientVerified = c['isResidentVerified'] == true;
 
     return InkWell(
       onTap: () async {
