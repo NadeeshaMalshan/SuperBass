@@ -19,7 +19,6 @@ import GlobalToast from './components/GlobalToast.jsx'
 import WorkerRegister from './pages/worker/WorkerRegister.jsx'
 import WorkerLogin from './pages/worker/WorkerLogin.jsx'
 import WorkerDashboard from './pages/worker/WorkerDashboard.jsx'
-import WorkerJobs from './pages/worker/WorkerJobs.jsx'
 import WorkerPerformance from './pages/worker/WorkerPerformance.jsx'
 import WorkerProfile from './pages/worker/WorkerProfile.jsx'
 import WorkerCommunityPosts from './pages/worker/WorkerCommunityPosts.jsx'
@@ -120,7 +119,7 @@ function Router() {
     if (p.startsWith('/community')) return 'community';
     if (p.startsWith('/ai')) return 'ai';
     if (p.startsWith('/chats')) return 'chats';
-    if (p.startsWith('/bookings')) return 'bookings';
+    if (p.startsWith('/bookings') || p.startsWith('/booking')) return 'bookings';
     return 'home';
   };
 
@@ -155,7 +154,7 @@ function Router() {
       }
       return <Chats />;
     }
-    if (path === '/bookings' || path === '/bookings.jsx') {
+    if (path === '/bookings' || path === '/bookings.jsx' || path === '/booking' || path === '/booking.jsx') {
       if (!localStorage.getItem('token')) {
         window.history.replaceState({}, '', '/login');
         return <LoginPortal />;
@@ -184,7 +183,12 @@ function Router() {
       return <WorkerDashboard />;
     }
     if (path === '/worker/jobs' || path === '/worker/jobs.jsx') {
-      return <WorkerJobs />;
+      window.history.replaceState({}, '', '/bookings');
+      if (!localStorage.getItem('token')) {
+        window.history.replaceState({}, '', '/login');
+        return <LoginPortal />;
+      }
+      return <Bookings />;
     }
     if (path === '/worker/performance' || path === '/worker/performance.jsx') {
       return <WorkerPerformance />;

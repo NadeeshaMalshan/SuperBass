@@ -167,12 +167,12 @@ export default function WorkerLayout({ children, activeTab = 'dashboard' }) {
             </div>
 
             <div
-              className={`m3-drawer-item ${activeTab === 'jobs' ? 'active' : ''}`}
-              onClick={() => navigate('/worker/jobs')}
+              className={`m3-drawer-item ${activeTab === 'jobs' || activeTab === 'bookings' ? 'active' : ''}`}
+              onClick={() => navigate('/bookings')}
             >
               <div className="m3-drawer-item-left">
                 <md-icon className="m3-drawer-icon">work</md-icon>
-                <span className="m3-drawer-label">My Jobs</span>
+                <span className="m3-drawer-label">Jobs</span>
               </div>
             </div>
 
@@ -215,16 +215,6 @@ export default function WorkerLayout({ children, activeTab = 'dashboard' }) {
               <div className="m3-drawer-item-left">
                 <md-icon className="m3-drawer-icon">forum</md-icon>
                 <span className="m3-drawer-label">Community Feed</span>
-              </div>
-            </div>
-
-            <div
-              className="m3-drawer-item"
-              onClick={() => navigate('/bookings')}
-            >
-              <div className="m3-drawer-item-left">
-                <md-icon className="m3-drawer-icon">inbox</md-icon>
-                <span className="m3-drawer-label">Bookings View</span>
               </div>
             </div>
           </nav>
