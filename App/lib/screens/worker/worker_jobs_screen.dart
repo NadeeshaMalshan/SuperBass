@@ -232,6 +232,7 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen> with SingleTickerPr
           builder: (_) => ChatScreen(
             conversationId: convId!,
             name: booking.residentName,
+            profileImage: booking.residentProfileImage,
             isVerified: booking.isResidentVerified,
           ),
         ),
