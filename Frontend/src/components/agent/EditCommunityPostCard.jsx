@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
+import axios from 'axios';
 import craftsmanAvatar from '../../assets/carftman.png';
 import { SERVICE_CATEGORIES } from '../ServiceCategories.jsx';
 import sriLankaDistrictsData from '../../data/sriLankaDistricts.json';
+import { API_BASE_URL } from '../../config.js';
 import './AgentCards.css';
 
 const ALL_DISTRICTS = Object.values(sriLankaDistrictsData).flat();
@@ -46,12 +48,23 @@ export default function EditCommunityPostCard({ data = {}, onAction }) {
     if (data.title) setTitle(data.title);
     if (data.content || data.description) setDescription(data.content || data.description);
     if (data.location) setLocation(resolveDistrict(data.location));
-  }, [data.communityId, data.category, data.title, data.content, data.description, data.location]);
+    if (Array.isArray(data.photos) && data.photos.length > 0) {
+      setPhotos(data.photos);
+    } else if (Array.isArray(data.images) && data.images.length > 0) {
+      setPhotos(data.images.map((img, i) => (typeof img === 'string' ? { id: `init-${i}`, url: img } : img)));
+    }
+  }, [data.communityId, data.category, data.title, data.content, data.description, data.location, data.photos, data.images]);
 
   // Initial photos
   const [photos, setPhotos] = useState(
-    Array.isArray(data.photos) ? data.photos : (Array.isArray(data.images) ? data.images.map((img, i) => ({ id: `init-${i}`, url: img })) : [])
+    Array.isArray(data.photos)
+      ? data.photos
+      : Array.isArray(data.images)
+      ? data.images.map((img, i) => (typeof img === 'string' ? { id: `init-${i}`, url: img } : img))
+      : []
   );
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const [uploadError, setUploadError] = useState('');
 
   const fileInputRef = useRef(null);
 
@@ -59,29 +72,48 @@ export default function EditCommunityPostCard({ data = {}, onAction }) {
     cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [currentStep]);
 
-  const handlePhotoUpload = (e) => {
+  const handlePhotoUpload = async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
 
-    files.forEach((file, idx) => {
-      const reader = new FileReader();
-      reader.onload = (uploadEvent) => {
-        const base64Url = uploadEvent.target.result;
-        setPhotos((prev) => {
-          if (prev.length >= 5) return prev;
-          return [
-            ...prev,
-            {
-              id: `upload-${Date.now()}-${idx}`,
-              url: base64Url,
-              name: file.name,
-              file,
-            },
-          ];
+    setUploadingPhotos(true);
+    setUploadError('');
+
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (photos.length + i >= 5) break;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const res = await axios.post(`${API_BASE_URL}/upload/image`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
         });
-      };
-      reader.readAsDataURL(file);
-    });
+
+        if (res.data?.url) {
+          setPhotos((prev) => {
+            if (prev.length >= 5) return prev;
+            return [
+              ...prev,
+              {
+                id: `upload-${Date.now()}-${i}`,
+                url: res.data.url,
+                name: file.name
+              }
+            ];
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Photo upload to Cloudinary failed:', err);
+      setUploadError('Failed to upload photo. Please check your connection and try again.');
+    } finally {
+      setUploadingPhotos(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   };
 
   const removePhoto = (idToRemove) => {
@@ -295,15 +327,29 @@ export default function EditCommunityPostCard({ data = {}, onAction }) {
 
             {/* Upload Box */}
             <div
-              className="photo-upload-dropzone"
-              onClick={() => fileInputRef.current?.click()}
+              className={`photo-upload-dropzone ${uploadingPhotos ? 'uploading' : ''}`}
+              onClick={() => !uploadingPhotos && fileInputRef.current?.click()}
+              style={{ opacity: uploadingPhotos ? 0.7 : 1, cursor: uploadingPhotos ? 'wait' : 'pointer' }}
             >
               <div className="photo-upload-icon-wrap">
-                <i className="fa-regular fa-image"></i>
+                {uploadingPhotos ? (
+                  <i className="fa-solid fa-spinner fa-spin"></i>
+                ) : (
+                  <i className="fa-regular fa-image"></i>
+                )}
               </div>
-              <span className="photo-upload-main-text">Add Photos (Optional)</span>
+              <span className="photo-upload-main-text">
+                {uploadingPhotos ? 'Uploading to Cloudinary...' : 'Add Photos (Optional)'}
+              </span>
               <span className="photo-upload-sub-text">Upload photos of the issue (max 5)</span>
             </div>
+
+            {uploadError && (
+              <div style={{ color: '#ef4444', fontSize: '0.78rem', marginTop: '4px', width: '100%' }}>
+                <i className="fa-solid fa-triangle-exclamation" style={{ marginRight: '4px' }}></i>
+                {uploadError}
+              </div>
+            )}
 
             {/* Photo Thumbnails */}
             {photos.map((item) => (

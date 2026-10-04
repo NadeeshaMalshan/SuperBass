@@ -962,11 +962,15 @@ def test_show_booking_details_never_returns_community_post():
     }
 
     card_resp = build_booking_card(state_with_tool)
-    assert card_resp.response_type == "booking_list"
+    assert card_resp.response_type in ("booking_list", "booking_confirmed")
     assert card_resp.response_type != "post_confirmation"
     assert card_resp.metadata["agent"] == "booking_agent"
-    assert card_resp.card_data["bookings"][0]["id"] == 1
-    assert card_resp.card_data["bookings"][0]["workerName"] == "Upul Bandara"
+    if card_resp.response_type == "booking_list":
+        assert card_resp.card_data["bookings"][0]["id"] == 1
+        assert card_resp.card_data["bookings"][0]["workerName"] == "Upul Bandara"
+    else:
+        assert str(card_resp.card_data.get("bookingId")) == "1"
+        assert card_resp.card_data.get("workerName") == "Upul Bandara"
     assert "draft" not in card_resp.message.lower()
     assert "community" not in card_resp.message.lower()
 

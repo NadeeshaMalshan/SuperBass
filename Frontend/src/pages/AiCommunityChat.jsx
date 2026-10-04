@@ -639,7 +639,10 @@ export default function AiCommunityChat() {
                   const isCommunityPost = !isUser && (
                     msg.cardResponse?.response_type === 'create_community_post' ||
                     msg.cardResponse?.response_type === 'post_confirmation' ||
-                    msg.cardResponse?.response_type === 'post_created'
+                    msg.cardResponse?.response_type === 'post_created' ||
+                    msg.cardResponse?.response_type === 'edit_community_post' ||
+                    msg.cardResponse?.response_type === 'post_detail' ||
+                    msg.cardResponse?.response_type === 'post_updated'
                   );
 
                   return (

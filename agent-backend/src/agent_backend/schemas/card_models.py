@@ -20,6 +20,7 @@ class CommunityPostSummary(BaseModel):
     createdAt: Optional[str] = Field(default=None, description="ISO timestamp of creation")
     likesCount: int = Field(default=0, description="Total likes")
     commentsCount: int = Field(default=0, description="Total comments count")
+    images: List[str] = Field(default_factory=list, description="Post images")
 
 
 class PostCreatedCard(BaseModel):
@@ -32,6 +33,7 @@ class PostCreatedCard(BaseModel):
     authorId: str = Field(description="Author user ID or email")
     authorName: Optional[str] = Field(default=None, description="Display name of author")
     status: str = Field(default="Active", description="Post status (e.g., Active)")
+    images: List[str] = Field(default_factory=list, description="Attached post images")
     createdAt: str = Field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat(),
         description="Timestamp of creation"
@@ -59,6 +61,7 @@ class PostDetailCard(BaseModel):
     likesCount: int = Field(default=0, description="Number of likes")
     commentsCount: int = Field(default=0, description="Number of comments")
     comments: Optional[List[Dict[str, Any]]] = Field(default=None, description="Recent comments list")
+    images: List[str] = Field(default_factory=list, description="Post images")
 
 
 class PostUpdatedCard(BaseModel):
@@ -68,6 +71,7 @@ class PostUpdatedCard(BaseModel):
     content: str = Field(description="New or updated content")
     communityId: Optional[str] = Field(default=None, description="Updated category ID")
     location: Optional[str] = Field(default=None, description="Updated location")
+    images: List[str] = Field(default_factory=list, description="Updated images")
     updatedAt: str = Field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat(),
         description="Timestamp of update"
@@ -120,6 +124,10 @@ class PostConfirmationCard(BaseModel):
     validationNotes: Optional[str] = Field(
         default="Please review your post details above before publishing to the community board.",
         description="Helper message or guidance notes"
+    )
+    images: List[str] = Field(
+        default_factory=list,
+        description="Attached or existing image URLs"
     )
     confirmPrompt: str = Field(
         description="Payload/prompt executed when user clicks Confirm & Publish / Update"
