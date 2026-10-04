@@ -188,7 +188,15 @@ class WorkerModel {
       skills: parsedSkills,
       skillItems: parsedSkillItems,
       distance: (json['distance'] as num?)?.toDouble() ?? (json['Distance'] as num?)?.toDouble(),
-      isVerified: json['isVerified'] == true || json['IsVerified'] == true,
+      isVerified: json['isVerified'] == true ||
+          json['IsVerified'] == true ||
+          json['is_verified'] == true ||
+          json['isVerified']?.toString().toLowerCase() == 'true' ||
+          json['IsVerified']?.toString().toLowerCase() == 'true' ||
+          json['is_verified']?.toString().toLowerCase() == 'true' ||
+          json['isVerified'] == 1 ||
+          json['IsVerified'] == 1 ||
+          json['is_verified'] == 1,
     );
   }
 

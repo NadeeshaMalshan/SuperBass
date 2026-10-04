@@ -244,6 +244,8 @@ class _FindTabScreenState extends State<FindTabScreen> {
   String? _primaryAddressCity;
   double? _residentLat;
   double? _residentLng;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   final List<Map<String, dynamic>> _categories = [
     {
@@ -357,6 +359,12 @@ class _FindTabScreenState extends State<FindTabScreen> {
   void initState() {
     super.initState();
     _loadInitialLocation();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadInitialLocation() async {
@@ -541,11 +549,15 @@ class _FindTabScreenState extends State<FindTabScreen> {
         location: locationQuery,
         residentLat: resLat,
         residentLng: resLng,
+        onlyVerified: true,
       );
 
+      // Only verified workers should appear in Find page
+      final verifiedList = list.where((w) => w.isVerified).toList();
+
       final filtered = isAllLocations
-          ? list
-          : list.where((w) {
+          ? verifiedList
+          : verifiedList.where((w) {
               return LocationService.workerMatchesLocation(
                 w.primaryServiceArea,
                 _selectedCity,
@@ -554,7 +566,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
 
       if (mounted) {
         setState(() {
-          _workers = isAllLocations ? list : filtered;
+          _workers = filtered;
           _isLoading = false;
         });
       }
@@ -2469,7 +2481,14 @@ class _FindTabScreenState extends State<FindTabScreen> {
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     const SizedBox(height: 16),
-                    const ServiceSearchBar(),
+                    ServiceSearchBar(
+                      controller: _searchController,
+                      onChanged: (val) {
+                        setState(() {
+                          _searchQuery = val.trim();
+                        });
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -2549,7 +2568,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
                         title: cat['name'] as String,
                         icon: cat['icon'] as IconData?,
                         imageAsset: cat['image'] as String?,
-                        count: _workers.length,
+                        count: _workers.where((w) => w.isVerified).length,
                         isSelected: _selectedCategoryIndex == index,
                         onTap: () => _onCategorySelected(index),
                       ),
@@ -2561,144 +2580,177 @@ class _FindTabScreenState extends State<FindTabScreen> {
               const SizedBox(height: 28),
 
               // Nearby Verified Pros
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Featured Workers Near You',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.titleLarge?.copyWith(fontSize: 18),
-                    ),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.verified,
-                          size: 16,
-                          color: AppColors.brandYellowHover,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Verified (${_workers.length})',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.brandYellowHover,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+              Builder(
+                builder: (context) {
+                  final displayWorkers = _workers.where((worker) {
+                    if (!worker.isVerified) return false;
+                    if (_searchQuery.isEmpty) return true;
+                    final query = _searchQuery.toLowerCase();
+                    final nameMatch = worker.name.toLowerCase().contains(query);
+                    final tradeMatch = worker.trade.toLowerCase().contains(query);
+                    final skillsMatch = worker.skills.any(
+                      (s) => s.toLowerCase().contains(query),
+                    );
+                    final areaMatch = (worker.primaryServiceArea ?? '')
+                        .toLowerCase()
+                        .contains(query);
+                    return nameMatch || tradeMatch || skillsMatch || areaMatch;
+                  }).toList();
 
-              const SizedBox(height: 14),
-
-              // Live Workers list from backend
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: _isLoading
-                    ? const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(40.0),
-                          child: LoadingIndicatorM3E(),
-                        ),
-                      )
-                    : _workers.isEmpty
-                    ? Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(32),
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceVariant.withValues(
-                            alpha: 0.5,
-                          ),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Column(
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Icon(
-                              Icons.engineering_outlined,
-                              size: 48,
-                              color: AppColors.onSurfaceVariant,
-                            ),
-                            const SizedBox(height: 12),
                             Text(
-                              _selectedCity == 'All Locations'
-                                  ? 'No workers found in this category'
-                                  : 'No workers found in $_selectedCity',
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.dmSans(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 16,
-                              ),
+                              'Featured Workers Near You',
+                              style: Theme.of(
+                                context,
+                              ).textTheme.titleLarge?.copyWith(fontSize: 18),
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _selectedCity == 'All Locations'
-                                  ? 'Try selecting "All Pros" or refreshing'
-                                  : 'Try selecting "All Locations" or another city',
-                              style: GoogleFonts.dmSans(
-                                fontSize: 13,
-                                color: AppColors.onSurfaceVariant,
-                              ),
-                            ),
-                            if (_selectedCity != 'All Locations') ...[
-                              const SizedBox(height: 14),
-                              ElevatedButton(
-                                onPressed: () => _updateCity('All Locations'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.brandBlack,
-                                  foregroundColor: Colors.white,
-                                  elevation: 0,
-                                  shape: const StadiumBorder(),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.verified,
+                                  size: 16,
+                                  color: AppColors.brandYellowHover,
                                 ),
-                                child: Text(
-                                  'View All Locations',
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Verified (${displayWorkers.length})',
                                   style: GoogleFonts.dmSans(
+                                    fontSize: 13,
                                     fontWeight: FontWeight.w600,
-                                    fontSize: 13.5,
+                                    color: AppColors.brandYellowHover,
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ],
                         ),
-                      )
-                    : ValueListenableBuilder<AuthUser?>(
-                        valueListenable: AuthService().currentUserNotifier,
-                        builder: (context, currentUser, _) {
-                          final isLoggedIn = currentUser != null;
-                          return Column(
-                            children: _workers.map((worker) {
-                              final trade = worker.skills.isNotEmpty
-                                  ? worker.skills.first
-                                  : 'General Pro';
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 12.0),
-                                child: WorkerCard(
-                                  name: worker.name,
-                                  trade: trade,
-                                  rating: worker.overallRating,
-                                  reviewCount: worker.completedJobs,
-                                  location:
-                                      worker.primaryServiceArea ?? 'Colombo',
-                                  distance: _getWorkerDistanceText(worker),
-                                  profileImage: worker.profileImage,
-                                  isVerified: worker.isVerified,
-                                  showBookNow: isLoggedIn,
-                                  onBookTap: isLoggedIn
-                                      ? () => _showBookingSheet(worker)
-                                      : null,
-                                  onProfileTap: () =>
-                                      _showWorkerDetailSheet(worker),
-                                ),
-                              );
-                            }).toList(),
-                          );
-                        },
                       ),
+
+                      const SizedBox(height: 14),
+
+                      // Live Verified Workers list from backend
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: _isLoading
+                            ? const Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(40.0),
+                                  child: LoadingIndicatorM3E(),
+                                ),
+                              )
+                            : displayWorkers.isEmpty
+                            ? Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(32),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surfaceVariant.withValues(
+                                    alpha: 0.5,
+                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Column(
+                                  children: [
+                                    const Icon(
+                                      Icons.verified_user_outlined,
+                                      size: 48,
+                                      color: AppColors.onSurfaceVariant,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      _searchQuery.isNotEmpty
+                                          ? 'No verified workers matching "$_searchQuery"'
+                                          : (_selectedCity == 'All Locations'
+                                              ? 'No verified workers found in this category'
+                                              : 'No verified workers found in $_selectedCity'),
+                                      textAlign: TextAlign.center,
+                                      style: GoogleFonts.dmSans(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      _selectedCity == 'All Locations'
+                                          ? 'Try selecting "All Pros" or refreshing'
+                                          : 'Try selecting "All Locations" or another city',
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 13,
+                                        color: AppColors.onSurfaceVariant,
+                                      ),
+                                    ),
+                                    if (_selectedCity != 'All Locations') ...[
+                                      const SizedBox(height: 14),
+                                      ElevatedButton(
+                                        onPressed: () =>
+                                            _updateCity('All Locations'),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: AppColors.brandBlack,
+                                          foregroundColor: Colors.white,
+                                          elevation: 0,
+                                          shape: const StadiumBorder(),
+                                        ),
+                                        child: Text(
+                                          'View All Locations',
+                                          style: GoogleFonts.dmSans(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 13.5,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              )
+                            : ValueListenableBuilder<AuthUser?>(
+                                valueListenable:
+                                    AuthService().currentUserNotifier,
+                                builder: (context, currentUser, _) {
+                                  final isLoggedIn = currentUser != null;
+                                  return Column(
+                                    children: displayWorkers.map((worker) {
+                                      final trade = worker.skills.isNotEmpty
+                                          ? worker.skills.first
+                                          : 'General Pro';
+                                      return Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 12.0,
+                                        ),
+                                        child: WorkerCard(
+                                          name: worker.name,
+                                          trade: trade,
+                                          rating: worker.overallRating,
+                                          reviewCount: worker.completedJobs,
+                                          location:
+                                              worker.primaryServiceArea ??
+                                              'Colombo',
+                                          distance: _getWorkerDistanceText(
+                                            worker,
+                                          ),
+                                          profileImage: worker.profileImage,
+                                          isVerified: worker.isVerified,
+                                          showBookNow: isLoggedIn,
+                                          onBookTap: isLoggedIn
+                                              ? () => _showBookingSheet(worker)
+                                              : null,
+                                          onProfileTap: () =>
+                                              _showWorkerDetailSheet(worker),
+                                        ),
+                                      );
+                                    }).toList(),
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 24),
             ],
