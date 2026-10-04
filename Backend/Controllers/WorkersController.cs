@@ -33,9 +33,13 @@ namespace Superbass.Controllers
 
         // GET: /api/workers
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll([FromQuery] bool? onlyVerified = null)
         {
             var workers = await _workerRepository.GetAllWorkersAsync();
+            if (onlyVerified.HasValue)
+            {
+                workers = workers.Where(w => w.IsVerified == onlyVerified.Value);
+            }
             foreach (var w in workers)
             {
                 w.PhoneNo = null; // Privacy: Worker contact is hidden until worker explicitly shares it via chat

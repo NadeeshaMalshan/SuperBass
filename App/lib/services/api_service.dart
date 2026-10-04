@@ -30,6 +30,7 @@ class ApiService {
     String? location,
     double? residentLat,
     double? residentLng,
+    bool onlyVerified = true,
   }) async {
     try {
       final user = AuthService().currentUserNotifier.value;
@@ -37,19 +38,26 @@ class ApiService {
       final lng = residentLng ?? user?.locationLng;
       Uri uri;
       
+      final queryParams = <String, String>{
+        if (skill != null && skill.isNotEmpty && skill != 'All Pros') 'skill': skill,
+        if (location != null && location.isNotEmpty) 'location': location,
+        if (lat != null) 'residentLat': lat.toString(),
+        if (lng != null) 'residentLng': lng.toString(),
+        'onlyVerified': onlyVerified.toString(),
+      };
+
       if ((skill != null && skill.isNotEmpty && skill != 'All Pros') ||
           (location != null && location.isNotEmpty) ||
           (lat != null && lng != null)) {
         uri = Uri.parse('${ApiConfig.baseUrl}/api/workers/search').replace(
-          queryParameters: {
-            if (skill != null && skill.isNotEmpty && skill != 'All Pros') 'skill': skill,
-            if (location != null && location.isNotEmpty) 'location': location,
-            if (lat != null) 'residentLat': lat.toString(),
-            if (lng != null) 'residentLng': lng.toString(),
-          },
+          queryParameters: queryParams,
         );
       } else {
-        uri = Uri.parse('${ApiConfig.baseUrl}/api/workers');
+        uri = Uri.parse('${ApiConfig.baseUrl}/api/workers').replace(
+          queryParameters: {
+            'onlyVerified': onlyVerified.toString(),
+          },
+        );
       }
 
       debugPrint('Fetching workers from: $uri');
