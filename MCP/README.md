@@ -31,7 +31,7 @@ The MCP Server translates standardized AI tool calls into HTTP REST requests to 
 
 - **Protocol Version**: `2024-11-05`
 - **Supported Transport**: Standard HTTP POST (JSON-RPC 2.0)
-- **Total Registered Tools**: **16 Tools**
+- **Total Registered Tools**: **15 Tools**
 - **Default Port**: `8000`
 - **Backend API Port**: `5237`
 - **Agent Backend Port**: `8001`
@@ -121,7 +121,7 @@ Open in your browser:
 
 ## How to Run & Test All Tools
 
-You can verify and interact with all 16 tools using any of the four options below:
+You can verify and interact with all 15 tools using any of the four options below:
 
 ### Option A: Automated Test Suite (Fastest)
 
@@ -139,7 +139,6 @@ This tests:
 4. `get_worker_performance`
 5. `check_worker_availability`
 6. `create_booking` &rarr; `get_booking` &rarr; `get_resident_bookings`
-7. `reschedule_booking` &rarr; `create_worker_review` &rarr; `cancel_booking`
 8. `create_community_post` &rarr; `get_community_posts` &rarr; `update_community_post` &rarr; `delete_community_post`
 
 ---
@@ -202,7 +201,7 @@ To use these tools inside Claude Desktop, add the server to your `claude_desktop
 
 ---
 
-## Available Tools Reference (All 16 Tools)
+## Available Tools Reference (All 15 Tools)
 
 ### 1. Worker Management Tools
 

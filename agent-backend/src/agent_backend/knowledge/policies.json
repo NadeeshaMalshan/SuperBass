@@ -1,11 +1,11 @@
 [
   {
-    "id": "policy_cancellation_rescheduling",
-    "category": "Cancellation & Rescheduling",
-    "title": "Cancellation and Rescheduling Rules",
-    "summary": "Free cancellation or rescheduling up to 2 hours before the appointment. Late cancellations incur a Rs. 500 fee.",
-    "content": "Workio allows flexible cancellations and appointment rescheduling. Free Cancellations: Residents can cancel or reschedule any confirmed booking for free up to 2 hours before the scheduled appointment start time directly via the app or AI assistant. Late Cancellations: Cancellations requested within 2 hours of the scheduled start time incur a standard technician dispatch fee of LKR 500 to compensate the traveling professional. Technician No-Show: If a technician fails to arrive within 30 minutes of the scheduled time without prior communication, the booking is cancelled free of charge, and the resident receives a LKR 1,000 service credit toward their next booking.",
-    "tags": ["cancel", "cancellation", "reschedule", "rescheduling", "change date", "change time", "fee", "late cancellation", "no show", "refund"]
+    "id": "policy_cancellation",
+    "category": "Cancellation",
+    "title": "Cancellation Rules",
+    "summary": "Free cancellation up to 2 hours before the appointment. Late cancellations incur a Rs. 500 fee.",
+    "content": "Workio allows flexible cancellations. Free Cancellations: Residents can cancel any confirmed booking for free up to 2 hours before the scheduled appointment start time directly via the app or AI assistant. Late Cancellations: Cancellations requested within 2 hours of the scheduled start time incur a standard technician dispatch fee of LKR 500 to compensate the traveling professional. Technician No-Show: If a technician fails to arrive within 30 minutes of the scheduled time without prior communication, the booking is cancelled free of charge, and the resident receives a LKR 1,000 service credit toward their next booking.",
+    "tags": ["cancel", "cancellation", "change date", "change time", "fee", "late cancellation", "no show", "refund"]
   },
   {
     "id": "policy_workmanship_warranty",

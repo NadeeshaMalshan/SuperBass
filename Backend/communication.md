@@ -55,7 +55,6 @@ Update
 • 
 • 
 • 
-Reschedule booking
 Update booking status
 Mark job as started
 Mark job as completed

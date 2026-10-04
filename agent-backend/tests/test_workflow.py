@@ -448,7 +448,6 @@ def test_tool_suites_registration():
     assert "check_worker_availability" in booking_tools
     assert "create_booking" in booking_tools
     assert "get_resident_bookings" in booking_tools
-    assert "reschedule_booking" in booking_tools
     assert "cancel_booking" in booking_tools
 
     support_review_tools = {t.name for t in SUPPORT_REVIEW_TOOLS}
@@ -544,25 +543,6 @@ def test_deterministic_card_builder_all_tool_families():
     assert r_details.response_type == "user_profile"
     assert r_details.card_data["displayName"] == "Kusal Mendis"
 
-    # 2. reschedule_booking -> text_message
-    s_reschedule = {
-        "messages": [
-            ToolMessage(
-                content=json.dumps({"bookingId": 42, "status": "Rescheduled"}),
-                tool_call_id="c2",
-                name="reschedule_booking"
-            )
-        ],
-        "email": "resident@workio.lk",
-        "user_type": "Resident",
-        "user_profile": None,
-        "next": None,
-        "structured_response": None,
-        "metadata": {}
-    }
-    r_reschedule = _deterministic_card_builder(s_reschedule)
-    assert r_reschedule.response_type == "text_message"
-    assert "42" in r_reschedule.message
 
     # 3. create_worker_review -> text_message
     s_review = {
