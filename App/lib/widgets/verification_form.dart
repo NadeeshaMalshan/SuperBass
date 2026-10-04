@@ -6,7 +6,7 @@ import '../services/auth_service.dart';
 class VerificationForm extends StatefulWidget {
   final VoidCallback onVerifySuccess;
 
-  const VerificationForm({Key? key, required this.onVerifySuccess}) : super(key: key);
+  const VerificationForm({super.key, required this.onVerifySuccess});
 
   @override
   State<VerificationForm> createState() => _VerificationFormState();
@@ -18,6 +18,16 @@ class _VerificationFormState extends State<VerificationForm> {
   String _selectedGender = 'Male';
   bool _isVerified = false;
   String? _errorText;
+
+  @override
+  void initState() {
+    super.initState();
+    // If user is already verified in the current session, skip the form immediately
+    final user = AuthService().currentUser;
+    if (user != null && user.isVerified) {
+      _isVerified = true;
+    }
+  }
 
   void _submit() {
     setState(() {
@@ -159,7 +169,7 @@ class _VerificationFormState extends State<VerificationForm> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: _selectedGender,
+              initialValue: _selectedGender,
               decoration: const InputDecoration(
                 labelText: 'Gender',
                 border: OutlineInputBorder(),

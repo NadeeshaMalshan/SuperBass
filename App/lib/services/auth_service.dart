@@ -126,6 +126,12 @@ class AuthService {
     }
   }
 
+  /// Persist updated profile picture URL/base64 to SharedPreferences
+  Future<void> persistPicture(String pictureUrl) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('userPicture', pictureUrl);
+  }
+
   Future<void> _syncOneSignalUser(String? email) async {
     if (kIsWeb) return;
     try {
