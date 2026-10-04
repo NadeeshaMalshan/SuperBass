@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../models/worker_model.dart';
 import '../../models/worker_services_data.dart';
 import '../../services/api_service.dart';
@@ -32,6 +33,7 @@ class WorkerProfileScreen extends StatefulWidget {
 
 class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
   bool _isVerified = false;
+  bool _isUpdatingProfile = false;
 
   // Bio section
   final _nameController = TextEditingController();
@@ -54,7 +56,6 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
   List<String> _selectedWorkDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
   TimeOfDay _startTime = const TimeOfDay(hour: 8, minute: 0);
   TimeOfDay _endTime = const TimeOfDay(hour: 17, minute: 0);
-
 
   bool _isSaving = false;
 
@@ -149,6 +150,79 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
     );
   }
 
+  Future<void> _updateProfilePicture() async {
+    if (_isUpdatingProfile) return;
+    final picker = ImagePicker();
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+      maxWidth: 1024,
+    );
+    if (image == null) return;
+
+    _isUpdatingProfile = true;
+    if (mounted) setState(() {});
+
+    try {
+      final bytes = await image.readAsBytes();
+      final base64Image = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+      final user = AuthService().currentUserNotifier.value;
+      if (user != null) {
+        final success = await ApiService().updateProfile(user.email, {
+          "picture": base64Image,
+        });
+        if (mounted) {
+          if (success) {
+            // Update the AuthUser object
+            final updatedUser = user.copyWith(picture: base64Image);
+            AuthService().currentUserNotifier.value = updatedUser;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Profile picture updated successfully')),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Failed to update profile picture')),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    } finally {
+      _isUpdatingProfile = false;
+      if (mounted) setState(() {});
+    }
+  }
+
+  Widget _buildProfileAvatar() {
+    return GestureDetector(
+      onTap: _updateProfilePicture,
+      child: _isUpdatingProfile
+          ? const CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(WorkerColors.primary),
+            )
+          : CircleAvatar(
+              radius: 50,
+              backgroundImage: AuthService().currentUserNotifier.value?.picture != null &&
+                      (AuthService().currentUserNotifier.value?.picture?.isNotEmpty ?? false)
+                  ? NetworkImage(AuthService().currentUserNotifier.value!.picture!)
+                  : null,
+              child: AuthService().currentUserNotifier.value?.picture == null ||
+                      (AuthService().currentUserNotifier.value!.picture!.isEmpty)
+                  ? Text(
+                      (AuthService().currentUserNotifier.value?.name ?? 'U').substring(0, 1).toUpperCase(),
+                      style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: Colors.white),
+                    )
+                  : null,
+            ),
+    );
+  }
+
   // 1. Add / Remove Service & Skills
   void _showAddServiceDialog() {
     final workerId = widget.worker?.id;
@@ -221,7 +295,8 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
                       onChanged: (val) {
                         if (val != null) {
                           setModalState(() {
-                            selectedCategory = WorkerServicesCatalog.categories.firstWhere((c) => c.name == val);
+                            selectedCategory = WorkerServicesCatalog.categories
+                                .firstWhere((c) => c.name == val, orElse: () => selectedCategory);
                             selectedSkills = List.from(selectedCategory.defaultSkills.take(2));
                           });
                         }
@@ -375,17 +450,15 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
     setState(() => _isSaving = true);
     final success = await ApiService().removeWorkerSkill(workerId, skill.id);
     if (mounted) {
-      setState(() {
-        _isSaving = false;
-        if (success) {
-          _skills.removeWhere((s) => s.id == skill.id);
-          final label = skill.serviceName.isNotEmpty ? skill.serviceName : skill.skillName;
-          _showFeedback('Service "$label" removed.');
-          widget.onWorkerUpdated?.call();
-        } else {
-          _showFeedback('Could not remove service.', isError: true);
-        }
-      });
+      setState(() => _isSaving = false);
+      if (success) {
+        _skills.removeWhere((s) => s.id == skill.id);
+        final label = skill.serviceName.isNotEmpty ? skill.serviceName : skill.skillName;
+        _showFeedback('Service "$label" removed.');
+        widget.onWorkerUpdated?.call();
+      } else {
+        _showFeedback('Could not remove service.', isError: true);
+      }
     }
   }
 
@@ -598,6 +671,9 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
                 },
               ),
             ),
+          // Profile Avatar
+          _buildProfileAvatar(),
+          const SizedBox(height: 20),
           Row(
             children: [
               Text(
@@ -723,92 +799,92 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
                         ),
                       ],
                     ),
-                  ),
+                  )
                 )
-              else
-                Column(
-                  children: _skills.map((s) {
-                    final serviceTitle = s.serviceName.isNotEmpty ? s.serviceName : s.skillName;
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: WorkerColors.primaryLight,
-                                  borderRadius: BorderRadius.circular(10),
+                else
+                  Column(
+                    children: _skills.map((s) {
+                      final serviceTitle = s.serviceName.isNotEmpty ? s.serviceName : s.skillName;
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: WorkerColors.primaryLight,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Icon(Icons.handyman_rounded, color: WorkerColors.primary, size: 18),
                                 ),
-                                child: const Icon(Icons.handyman_rounded, color: WorkerColors.primary, size: 18),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      serviceTitle,
-                                      style: GoogleFonts.dmSans(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w800,
-                                        color: const Color(0xFF0F172A),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        serviceTitle,
+                                        style: GoogleFonts.dmSans(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w800,
+                                          color: const Color(0xFF0F172A),
+                                        ),
                                       ),
-                                    ),
-                                    Text(
-                                      s.experienceYears <= 0
-                                          ? 'Less than 1 Year Experience'
-                                          : (s.experienceYears == 1
-                                              ? '1 Year Experience'
-                                              : '${s.experienceYears}+ Years Experience'),
-                                      style: GoogleFonts.dmSans(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        color: const Color(0xFF64748B),
+                                      Text(
+                                        s.experienceYears <= 0
+                                            ? 'Less than 1 Year Experience'
+                                            : (s.experienceYears == 1
+                                                ? '1 Year Experience'
+                                                : '${s.experienceYears}+ Years Experience'),
+                                        style: GoogleFonts.dmSans(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: const Color(0xFF64748B),
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline_rounded, color: WorkerColors.error, size: 20),
-                                onPressed: _isSaving ? null : () => _handleRemoveSkill(s),
-                                tooltip: 'Remove service',
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline_rounded, color: WorkerColors.error, size: 20),
+                                  onPressed: _isSaving ? null : () => _handleRemoveSkill(s),
+                                  tooltip: 'Remove service',
+                                ),
+                              ],
+                            ),
+                            if (s.skills.isNotEmpty) ...[
+                              const SizedBox(height: 10),
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: s.skills.map((sub) {
+                                  return Chip(
+                                    label: Text(sub),
+                                    backgroundColor: Colors.white,
+                                    labelStyle: GoogleFonts.dmSans(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xFF334155),
+                                    ),
+                                    side: const BorderSide(color: Color(0xFFCBD5E1)),
+                                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                                  );
+                                }).toList(),
                               ),
                             ],
-                          ),
-                          if (s.skills.isNotEmpty) ...[
-                            const SizedBox(height: 10),
-                            Wrap(
-                              spacing: 6,
-                              runSpacing: 6,
-                              children: s.skills.map((sub) {
-                                return Chip(
-                                  label: Text(sub),
-                                  backgroundColor: Colors.white,
-                                  labelStyle: GoogleFonts.dmSans(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF334155),
-                                  ),
-                                  side: const BorderSide(color: Color(0xFFCBD5E1)),
-                                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                                );
-                              }).toList(),
-                            ),
                           ],
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
 
               const SizedBox(height: 18),
 
@@ -959,7 +1035,6 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-
               Text(
                 'Weekly Working Days',
                 style: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w700),
@@ -1064,6 +1139,7 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
               // Log Out Button
               SizedBox(
                 width: double.infinity,
+                height: 48,
                 child: ElevatedButton.icon(
                   onPressed: () => _handleLogOut(context),
                   icon: const Icon(Icons.logout_rounded, size: 18),
@@ -1075,7 +1151,6 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
                     backgroundColor: Colors.black,
                     foregroundColor: Colors.white,
                     shape: const StadiumBorder(),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
                     elevation: 0,
                   ),
                 ),
