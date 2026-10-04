@@ -1834,64 +1834,6 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                 ),
               ),
 
-              // Contextual Action: "Message Pro" or "Offer Help"
-              if (isWorkerAuthor && !isMyPost) ...[
-                const SizedBox(width: 8),
-                InkWell(
-                  borderRadius: BorderRadius.circular(20),
-                  onTap: () => _openChatWithUser(post, worker: worker),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF000000),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.send_rounded, size: 12, color: Colors.white),
-                        const SizedBox(width: 5),
-                        Text(
-                          'Message Pro',
-                          style: GoogleFonts.dmSans(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 12,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ] else if (!isWorkerAuthor && !isMyPost && isViewerWorker) ...[
-                const SizedBox(width: 8),
-                InkWell(
-                  borderRadius: BorderRadius.circular(20),
-                  onTap: () => _openChatWithUser(post),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF000000),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.handshake_outlined, size: 13, color: Color(0xFFFFC107)),
-                        const SizedBox(width: 5),
-                        Text(
-                          'Offer Help',
-                          style: GoogleFonts.dmSans(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 12,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
 
               const Spacer(),
 
