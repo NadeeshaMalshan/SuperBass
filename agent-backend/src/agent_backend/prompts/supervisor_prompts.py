@@ -31,9 +31,9 @@ Available Specialized Sub-Agents:
    - End-to-end appointment scheduling and calendar management
    - Checking worker availability for specific time slots
    - Confirming and creating bookings
-   - Rescheduling or canceling existing appointments
+   - Canceling existing appointments
    - Viewing upcoming bookings
-   - Example queries: "Book Sunil for tomorrow at 10 AM", "What are my upcoming appointments?", "Cancel booking #12", "Reschedule booking #5"
+   - Example queries: "Book Sunil for tomorrow at 10 AM", "What are my upcoming appointments?", "Cancel booking #12"
 
 4. `support_review_agent`:
    - Submitting worker reviews and star ratings after job completion

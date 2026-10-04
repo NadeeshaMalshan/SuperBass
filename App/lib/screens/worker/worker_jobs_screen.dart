@@ -209,84 +209,6 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen> with SingleTickerPr
     }
   }
 
-  Future<void> _handleReschedule(BookingModel booking) async {
-    DateTime selectedDate = booking.scheduledDate ?? DateTime.now().add(const Duration(days: 1));
-    final noteController = TextEditingController();
-
-    final pickedDate = await showDatePicker(
-      context: context,
-      initialDate: selectedDate,
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 90)),
-    );
-    if (pickedDate == null || !mounted) return;
-
-    final newDateTime = DateTime.utc(
-      pickedDate.year,
-      pickedDate.month,
-      pickedDate.day,
-    );
-
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Confirm Reschedule', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'New Date: ${newDateTime.day}/${newDateTime.month}/${newDateTime.year}',
-              style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, color: WorkerColors.primary),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: noteController,
-              decoration: const InputDecoration(
-                hintText: 'Reason for reschedule (optional)',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('Cancel', style: GoogleFonts.dmSans(color: WorkerColors.onSurfaceVariant)),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: WorkerColors.primary,
-              foregroundColor: Colors.white,
-            ),
-            child: Text('Confirm Reschedule', style: GoogleFonts.dmSans()),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm != true) return;
-
-    setState(() => _actionLoadingId = 'reschedule_${booking.id}');
-    final updated = await ApiService().rescheduleBooking(
-      booking.id,
-      newScheduledDate: newDateTime,
-      rescheduleNote: noteController.text.trim(),
-    );
-    if (mounted) {
-      setState(() => _actionLoadingId = null);
-      if (updated != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Job rescheduled successfully!', style: GoogleFonts.dmSans()),
-            backgroundColor: WorkerColors.primary,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        _fetchBookings();
-      }
-    }
-  }
 
   void _openChatWithResident(BookingModel booking) async {
     final userEmail = AuthService().currentUser?.email;
@@ -861,22 +783,6 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen> with SingleTickerPr
                             ],
                           ),
                         ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  InkWell(
-                    onTap: () => _handleReschedule(b),
-                    borderRadius: BorderRadius.circular(26),
-                    child: Container(
-                      height: 48,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(26),
-                      ),
-                      child: const Center(
-                        child: Icon(Icons.calendar_month_outlined, size: 18, color: Colors.black),
                       ),
                     ),
                   ),
@@ -1555,20 +1461,6 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen> with SingleTickerPr
                               ),
                             ],
                           ),
-                          if (b.status.toLowerCase() == 'confirmed')
-                            OutlinedButton.icon(
-                              onPressed: () {
-                                Navigator.of(ctx).pop();
-                                _handleReschedule(b);
-                              },
-                              icon: const Icon(Icons.edit_calendar_rounded, size: 16),
-                              label: const Text('Reschedule'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.black,
-                                side: const BorderSide(color: Color(0xFFCBD5E1)),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                              ),
-                            ),
                         ],
                       ),
                     ),

@@ -99,7 +99,7 @@ AI-Powered Multi-Agent System for Workio, orchestrated with **LangGraph**, power
    - **Supervisor Agent**: Intelligently routes incoming queries to sub-agents or provides helpful direct responses.
    - **Community Agent**: Specialized in community posts, categories, updates, deletions, user history, and profile inspection.
    - **Worker Matching Agent**: Specialized in technician search, filtering by rate/rating, and worker profile details.
-   - **Booking Agent**: Specialized in worker availability inspection, booking creation, rescheduling, and cancellation.
+   - **Booking Agent**: Specialized in worker availability inspection, booking creation, and cancellation.
    - **Support & Review Agent**: Specialized in worker reviews, ratings submission, and performance metric retrieval.
 5. **Structured UI Card Responses**: Every response emitted conforms to a strictly typed Pydantic card model (`AgentCardResponse`) with unique `response_type` tags for dynamic frontend card rendering.
 
@@ -276,7 +276,6 @@ The system features 4 specialized agents connected to the MCP Server:
 - `check_worker_availability`: Verifies real-time calendar and time slot availability.
 - `create_booking`: Initiates a new booking appointment with a worker.
 - `get_resident_bookings`: Retrieves active and upcoming bookings for the resident.
-- `reschedule_booking`: Updates the scheduled date and time of an existing booking.
 - `cancel_booking`: Cancels a confirmed or pending booking appointment.
 
 ### 4. Support & Review Agent (`support_review_agent`)

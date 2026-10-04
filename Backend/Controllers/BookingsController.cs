@@ -587,43 +587,6 @@ namespace Superbass.Controllers
             return Ok(MapToDto(booking));
         }
 
-        // POST: /api/bookings/{id}/reschedule
-        [HttpPost("{id:int}/reschedule")]
-        public async Task<IActionResult> RescheduleBooking(int id, [FromBody] RescheduleBookingRequest request)
-        {
-            var booking = await _context.Bookings
-                .Include(b => b.Resident)
-                .Include(b => b.Worker)
-                .FirstOrDefaultAsync(b => b.Id == id);
-
-            if (booking == null)
-            {
-                return NotFound(new { message = "Booking not found." });
-            }
-
-            var rescheduleUtc = DateTime.SpecifyKind(request.ScheduledDate.Date, DateTimeKind.Utc);
-
-            booking.ScheduledDate = rescheduleUtc;
-            booking.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
-
-            if (booking.ConversationId.HasValue)
-            {
-                try
-                {
-                    await _communicationRepo.SendMessageAsync(booking.ConversationId.Value, booking.ResidentEmail, "Resident", new SendMessageRequest
-                    {
-                        SenderEmail = booking.ResidentEmail,
-                        SenderRole = "Resident",
-                        MessageType = "BookingUpdate",
-                        Content = $"📅 Booking Rescheduled to: {request.ScheduledDate:dd MMM yyyy}. {request.Note}"
-                    });
-                }
-                catch { }
-            }
-
-            return Ok(MapToDto(booking));
-        }
 
         // POST: /api/bookings/{id}/review
         [HttpPost("{id:int}/review")]

@@ -187,14 +187,6 @@ export default function BookingListCard({ data, onAction }) {
                       <i className="fa-regular fa-eye"></i> Details
                     </button>
 
-                    <button
-                      type="button"
-                      className="booking-action-btn secondary"
-                      onClick={() => onAction && onAction('send_prompt', `I would like to reschedule booking #${bId}`)}
-                      title="Reschedule this appointment"
-                    >
-                      <i className="fa-regular fa-clock"></i> Reschedule
-                    </button>
 
                     <button
                       type="button"

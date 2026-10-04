@@ -56,7 +56,7 @@ def main():
     tools = tools_res.get("result", {}).get("tools", [])
     tool_names = [t["name"] for t in tools]
     print(f"Found {len(tool_names)} registered tools: {tool_names}")
-    assert len(tool_names) == 17, f"Expected 17 tools, found {len(tool_names)}"
+    assert len(tool_names) == 16, f"Expected 16 tools, found {len(tool_names)}"
 
     print("\n-- resources/list --")
     res_list = call_mcp("resources/list")
@@ -103,12 +103,6 @@ def main():
     test_tool("get_resident_bookings", {"residentId": resident_email, "upcomingOnly": False},
               lambda r: (isinstance(r, list), f"Found {len(r)} bookings for resident"))
     
-    test_tool("reschedule_booking", {
-        "bookingId": str(booking_id),
-        "startTime": "2026-10-07T14:00:00Z",
-        "endTime": "2026-10-07T16:00:00Z",
-        "reason": "Rescheduled for tomorrow afternoon"
-    }, lambda r: (isinstance(r, dict) and "scheduledDate" in r, f"Rescheduled to {r.get('scheduledDate')}"))
     
     test_tool("create_worker_review", {
         "bookingId": str(booking_id),

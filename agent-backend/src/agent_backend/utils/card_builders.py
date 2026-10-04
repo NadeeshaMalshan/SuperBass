@@ -985,17 +985,12 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                 metadata={"agent": "booking_agent", "user_email": email, "bookingId": b_id}
             )
 
-        if tool_name in ["cancel_booking", "reschedule_booking"]:
-            suggestions = ["Book a technician", "View upcoming bookings", "Cancel a booking"]
+        if tool_name == "cancel_booking":
+            suggestions = ["Book a technician", "View upcoming bookings"]
             msg = last_ai_content
             if not msg:
                 booking_id = data.get("bookingId") or data.get("id") or ""
-                if tool_name == "reschedule_booking":
-                    msg = f"Booking #{booking_id} has been successfully rescheduled." if booking_id else "Booking has been rescheduled."
-                elif tool_name == "cancel_booking":
-                    msg = f"Booking #{booking_id} has been cancelled." if booking_id else "Booking has been cancelled."
-                else:
-                    msg = f"Booking action {tool_name} completed."
+                msg = f"Booking #{booking_id} has been cancelled." if booking_id else "Booking has been cancelled."
             card = TextMessageCard(
                 text=msg,
                 suggestions=suggestions

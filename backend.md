@@ -54,7 +54,6 @@ Manages the lifecycle of a service request from initiation to review.
 | `/{id}/start` | `POST` | Worker starts the job | Updates status to `InProgress` |
 | `/{id}/complete` | `POST` | Worker marks job as finished | Updates status to `Completed`, prompts for review |
 | `/{id}/cancel` | `POST` | Either party cancels the booking | Updates status to `Cancelled` |
-| `/{id}/reschedule` | `POST` | Changes the scheduled date/time | Updates timing, notifies via chat |
 | `/{id}/review` | `POST` | Resident rates the worker | Calculates and updates worker's average ratings |
 
 ### 4. Real-time Messaging (`/api/Conversations`)

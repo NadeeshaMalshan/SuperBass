@@ -139,7 +139,7 @@ The multi-agent system divides domain responsibilities into five discrete agents
 ### 4. Booking Specialist Agent (`booking_agent_node`)
 * **File:** [`agent_backend/agents/booking_agent.py`](file:///d:/Projects_New/SuperBass/agent-backend/src/agent_backend/agents/booking_agent.py)
 * **Domain Responsibilities:**
-  - Manages appointment bookings, schedule validation, rescheduling, and cancellations.
+  - Manages appointment bookings, schedule validation, and cancellations.
   - Normalizes arbitrary date/time expressions into standardized ISO 8601 strings via `normalize_datetime_str()` across more than 20 common formats.
   - Queries real-time worker availability slots prior to appointment reservation.
 * **Emitted UI Cards:** `BookingFormCard` (prefilled interactive booking form with date picker and slot selection), `BookingConfirmedCard`, `BookingListCard`.
@@ -273,7 +273,7 @@ The Workio platform integrates **Model Context Protocol (MCP)**, an open standar
 
 ### Complete Inventory of MCP Tools (18 Tools)
 
-The MCP Server ([`MCP/main.py`](file:///d:/Projects_New/SuperBass/MCP/main.py)) exposes 18 core domain tools:
+The MCP Server ([`MCP/main.py`](file:///d:/Projects_New/SuperBass/MCP/main.py)) exposes 17 core domain tools:
 
 | # | MCP Tool Name | Target Specialist Agent | Description & Capabilities |
 |---|---|---|---|
@@ -285,16 +285,15 @@ The MCP Server ([`MCP/main.py`](file:///d:/Projects_New/SuperBass/MCP/main.py)) 
 | 6 | `get_booking` | Booking Agent | Retrieves booking details by ID (technician, resident, status, agreed rate). |
 | 7 | `get_resident_bookings` | Booking Agent | Fetches appointment history or upcoming bookings for a resident. |
 | 8 | `cancel_booking` | Booking Agent | Cancels a confirmed booking with policy validation (fee applies if $<2$ hours). |
-| 9 | `reschedule_booking` | Booking Agent | Shifts an existing appointment to a new date/time slot. |
-| 10 | `create_community_post` | Community Agent | Publishes a new classified or service request post under the authenticated user. |
-| 11 | `get_community_posts` | Community Agent | Retrieves paginated community posts filtered by category or location. |
-| 12 | `update_community_post` | Community Agent | Edits an existing post's title, body, category, or location. |
-| 13 | `delete_community_post` | Community Agent | Soft-deletes a post, updating status to `"Removed"`. |
-| 14 | `get_user_community_posts` | Community Agent | Fetches all posts authored by a specific user email. |
-| 15 | `get_user_details` | Community / Support | Fetches account profile, role (`Resident` / `Worker`), phone number, and address. |
-| 16 | `get_service_categories` | Supervisor / All Agents | Retrieves the 21 official standardized Workio service categories with icons. |
-| 17 | `create_worker_review` | Support & Review Agent | Submits verified ratings (1-5 stars) and review comments for a completed job. |
-| 18 | `file_dispute_ticket` | Support & Review Agent | Files a formal support ticket for incomplete work, property damage, or overcharging. |
+| 9 | `create_community_post` | Community Agent | Publishes a new classified or service request post under the authenticated user. |
+| 10 | `get_community_posts` | Community Agent | Retrieves paginated community posts filtered by category or location. |
+| 11 | `update_community_post` | Community Agent | Edits an existing post's title, body, category, or location. |
+| 12 | `delete_community_post` | Community Agent | Soft-deletes a post, updating status to `"Removed"`. |
+| 13 | `get_user_community_posts` | Community Agent | Fetches all posts authored by a specific user email. |
+| 14 | `get_user_details` | Community / Support | Fetches account profile, role (`Resident` / `Worker`), phone number, and address. |
+| 15 | `get_service_categories` | Supervisor / All Agents | Retrieves the 21 official standardized Workio service categories with icons. |
+| 16 | `create_worker_review` | Support & Review Agent | Submits verified ratings (1-5 stars) and review comments for a completed job. |
+| 17 | `file_dispute_ticket` | Support & Review Agent | Files a formal support ticket for incomplete work, property damage, or overcharging. |
 
 *In addition, the agent backend executes local agent tools:*
 - `lookup_platform_policy`: Searches the policy RAG vector index.

@@ -645,35 +645,6 @@ class ApiService {
     }
   }
 
-  /// Reschedule a booking: POST /api/bookings/{id}/reschedule
-  Future<BookingModel?> rescheduleBooking(
-    int bookingId, {
-    required DateTime newScheduledDate,
-    String? rescheduleNote,
-    String rescheduledBy = 'Worker',
-  }) async {
-    try {
-      final uri = Uri.parse('${ApiConfig.baseUrl}/api/bookings/$bookingId/reschedule');
-      final response = await http.post(
-        uri,
-        headers: _headers,
-        body: jsonEncode({
-          'newScheduledDate': newScheduledDate.toIso8601String(),
-          'rescheduleNote': rescheduleNote ?? '',
-          'rescheduledBy': rescheduledBy,
-        }),
-      );
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        final data = jsonDecode(response.body);
-        return BookingModel.fromJson(data as Map<String, dynamic>);
-      }
-      debugPrint('Failed to reschedule booking (${response.statusCode}): ${response.body}');
-      return null;
-    } catch (e) {
-      debugPrint('Error rescheduling booking: $e');
-      return null;
-    }
-  }
 
   /// Update Worker Availability & Schedule: PUT /api/workers/{id}/availability
   Future<bool> updateWorkerAvailability(

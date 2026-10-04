@@ -225,20 +225,6 @@ tools = [
         }
     },
     {
-        "name": "reschedule_booking",
-        "description": "Reschedule a booking to a new time slot",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "bookingId": {"type": "string", "description": "Booking ID"},
-                "startTime": {"type": "string", "format": "date-time", "description": "New start time (ISO 8601)"},
-                "endTime": {"type": "string", "format": "date-time", "description": "New end time (ISO 8601)"},
-                "reason": {"type": "string", "description": "Reason for rescheduling"}
-            },
-            "required": ["bookingId", "startTime", "endTime"]
-        }
-    },
-    {
         "name": "create_community_post",
         "description": "Create a new community post under the authenticated user account",
         "inputSchema": {
@@ -829,18 +815,6 @@ async def call_cancel_booking(args: Dict[str, Any]):
         raise ValueError(f"Backend error ({response.status_code}): {response.text}")
     return response.json()
 
-async def call_reschedule_booking(args: Dict[str, Any]):
-    booking_id = args["bookingId"]
-    normalized_start = normalize_datetime_str(args.get("startTime"), default_hour=10) or args.get("startTime")
-    payload = {
-        "scheduledDate": normalized_start,
-        "note": args.get("reason", "")
-    }
-    headers = get_auth_headers()
-    response = await backend_client.post(f"/api/Bookings/{booking_id}/reschedule", json=payload, headers=headers)
-    if response.status_code >= 400:
-        raise ValueError(f"Backend error ({response.status_code}): {response.text}")
-    return response.json()
 
 async def call_create_community_post(args: Dict[str, Any]):
     author_id = args.get("authorId") or args.get("userId") or args.get("userEmail")
@@ -1080,7 +1054,6 @@ TOOL_FUNCTIONS = {
     "get_booking": call_get_booking,
     "get_resident_bookings": call_get_resident_bookings,
     "cancel_booking": call_cancel_booking,
-    "reschedule_booking": call_reschedule_booking,
     "create_community_post": call_create_community_post,
     "get_community_posts": call_get_community_posts,
     "update_community_post": call_update_community_post,
