@@ -169,7 +169,7 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
       final user = AuthService().currentUserNotifier.value;
       if (user != null) {
         final success = await ApiService().updateProfile(user.email, {
-          "picture": base64Image,
+          "profileImage": base64Image,
         });
         if (mounted) {
           if (success) {
@@ -179,6 +179,7 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Profile picture updated successfully')),
             );
+            await AuthService().persistPicture(base64Image);
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Failed to update profile picture')),
@@ -199,6 +200,51 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
   }
 
   Widget _buildProfileAvatar() {
+    final photo = AuthService().currentUserNotifier.value?.picture;
+    final name = AuthService().currentUserNotifier.value?.name ?? 'U';
+    final initial = name.isNotEmpty ? name.substring(0, 1).toUpperCase() : 'U';
+
+    Widget avatarContent;
+    if (photo != null && photo.isNotEmpty) {
+      if (photo.startsWith('data:image/')) {
+        try {
+          final base64Str = photo.split(',').last;
+          final bytes = base64Decode(base64Str);
+          avatarContent = ClipOval(
+            child: Image.memory(
+              bytes,
+              width: 100,
+              height: 100,
+              fit: BoxFit.cover,
+            ),
+          );
+        } catch (_) {
+          avatarContent = CircleAvatar(
+            radius: 50,
+            backgroundColor: WorkerColors.primary,
+            child: Text(
+              initial,
+              style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+          );
+        }
+      } else {
+        avatarContent = CircleAvatar(
+          radius: 50,
+          backgroundImage: NetworkImage(photo),
+        );
+      }
+    } else {
+      avatarContent = CircleAvatar(
+        radius: 50,
+        backgroundColor: WorkerColors.primary,
+        child: Text(
+          initial,
+          style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: Colors.white),
+        ),
+      );
+    }
+
     return GestureDetector(
       onTap: _updateProfilePicture,
       child: _isUpdatingProfile
@@ -206,20 +252,7 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
               strokeWidth: 2,
               valueColor: AlwaysStoppedAnimation<Color>(WorkerColors.primary),
             )
-          : CircleAvatar(
-              radius: 50,
-              backgroundImage: AuthService().currentUserNotifier.value?.picture != null &&
-                      (AuthService().currentUserNotifier.value?.picture?.isNotEmpty ?? false)
-                  ? NetworkImage(AuthService().currentUserNotifier.value!.picture!)
-                  : null,
-              child: AuthService().currentUserNotifier.value?.picture == null ||
-                      (AuthService().currentUserNotifier.value!.picture!.isEmpty)
-                  ? Text(
-                      (AuthService().currentUserNotifier.value?.name ?? 'U').substring(0, 1).toUpperCase(),
-                      style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: Colors.white),
-                    )
-                  : null,
-            ),
+          : avatarContent,
     );
   }
 

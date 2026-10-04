@@ -736,6 +736,24 @@ class ApiService {
     }
   }
 
+  /// Update Worker Profile Image: PUT /api/workers/{id}/profile-image
+  Future<bool> updateWorkerProfileImage(int workerId, String imageBase64) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/workers/$workerId/profile-image');
+      final response = await http.put(
+        uri,
+        headers: _headers,
+        body: jsonEncode({'profileImage': imageBase64}),
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) return true;
+      debugPrint('Failed to update worker profile image (${response.statusCode}): ${response.body}');
+      return false;
+    } catch (e) {
+      debugPrint('Error updating worker profile image: $e');
+      return false;
+    }
+  }
+
   /// Add Worker Skill / Service: POST /api/workers/{id}/skills
   Future<WorkerSkillItem?> addWorkerSkill(
     int workerId, {

@@ -39,20 +39,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final base64Image = 'data:image/jpeg;base64,${base64Encode(bytes)}';
       final user = AuthService().currentUserNotifier.value;
       if (user != null) {
+        // Backend DTO field is "profileImage", not "picture"
         final success = await ApiService().updateProfile(user.email, {
-          "picture": base64Image,
+          "profileImage": base64Image,
         });
+
         if (mounted) {
           if (success) {
-            // Update the AuthUser object
             final updatedUser = user.copyWith(picture: base64Image);
             AuthService().currentUserNotifier.value = updatedUser;
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Profile picture updated successfully')),
+              const SnackBar(
+                content: Text('Profile picture updated!'),
+                backgroundColor: Colors.green,
+              ),
             );
+            // Persist so avatar survives app restarts
+            await AuthService().persistPicture(base64Image);
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Failed to update profile picture')),
+              const SnackBar(
+                content: Text('Failed to update profile picture'),
+                backgroundColor: Colors.red,
+              ),
             );
           }
         }
@@ -60,7 +69,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
     } finally {
