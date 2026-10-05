@@ -39,22 +39,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final base64Image = 'data:image/jpeg;base64,${base64Encode(bytes)}';
       final user = AuthService().currentUserNotifier.value;
       if (user != null) {
-        // Backend DTO field is "profileImage", not "picture"
         final success = await ApiService().updateProfile(user.email, {
           "profileImage": base64Image,
         });
-
         if (mounted) {
           if (success) {
+            // Update the AuthUser object
             final updatedUser = user.copyWith(picture: base64Image);
             AuthService().currentUserNotifier.value = updatedUser;
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Profile picture updated!'),
+                content: Text('Profile picture updated successfully'),
                 backgroundColor: Colors.green,
               ),
             );
-            // Persist so avatar survives app restarts
             await AuthService().persistPicture(base64Image);
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -69,7 +67,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Error: $e')),
         );
       }
     } finally {
@@ -118,8 +116,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       padding: const EdgeInsets.only(bottom: 32.0),
                       child: VerificationForm(
                         onVerifySuccess: () {
-                          // markUserVerified() already updates the notifier,
-                          // so the ValueListenableBuilder will rebuild automatically.
+                          // markUserVerified() updates notifier automatically
                         },
                       ),
                     ),
@@ -139,48 +136,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildProfileHeader(AuthUser user) {
     final isVerified = user.isVerified;
     return Column(
-      children: [
-        GestureDetector(
-          onTap: _updateProfilePicture,
-          child: _isUpdatingProfile
-              ? const CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                )
-              : _buildRobustAvatar(user.picture, user.name),
-        ),
-        const SizedBox(height: 20),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              user.name,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            if (isVerified) const VerifiedBadge(size: 22),
-          ],
-        ),
-        const SizedBox(height: 6),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.grey.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(20),
+    children: [
+      GestureDetector(
+        onTap: _updateProfilePicture,
+        child: _isUpdatingProfile
+            ? const CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              )
+            : _buildRobustAvatar(user.picture, user.name),
+      ),
+      const SizedBox(height: 20),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            user.name,
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
-          child: Text(
-            "${user.activeRole} \u2022 ${user.email}",
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey.shade700,
-              fontWeight: FontWeight.w500,
-            ),
+          if (isVerified) const VerifiedBadge(size: 22),
+        ],
+      ),
+      const SizedBox(height: 6),
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.grey.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          "${user.activeRole} • ${user.email}",
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey.shade700,
+            fontWeight: FontWeight.w500,
           ),
         ),
-      ],
-    );
+      ),
+    ],
+  );
   }
 }
-
 
 Widget _buildRobustAvatar(String? photoUrl, String name) {
   return _RobustAvatar(photoUrl: photoUrl, name: name);
@@ -294,7 +290,7 @@ class _ProfileMenu extends StatelessWidget {
       case "Saved Addresses":
         targetScreen = const SavedAddressesScreen();
         break;
-      case "Privacy & Security":
+      case "Advanced Options":
         targetScreen = const PrivacySecurityScreen();
         break;
       case "Help & Support":
@@ -415,8 +411,8 @@ class _ProfileMenu extends StatelessWidget {
             const _MenuDivider(),
             _MenuTile(
               icon: Icons.shield_outlined,
-              title: "Privacy & Security",
-              onTap: () => _navigateToScreen(context, "Privacy & Security"),
+              title: "Advanced Options",
+              onTap: () => _navigateToScreen(context, "Advanced Options"),
             ),
             const _MenuDivider(),
             _MenuTile(
@@ -448,7 +444,7 @@ class _MenuDivider extends StatelessWidget {
       child: Divider(
         height: 1,
         thickness: 1,
-        color: Theme.of(context).dividerColor.withValues(alpha: 0.1)
+        color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
       ),
     );
   }

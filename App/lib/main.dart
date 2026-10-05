@@ -2587,7 +2587,9 @@ class _FindTabScreenState extends State<FindTabScreen> {
                     if (_searchQuery.isEmpty) return true;
                     final query = _searchQuery.toLowerCase();
                     final nameMatch = worker.name.toLowerCase().contains(query);
-                    final tradeMatch = worker.trade.toLowerCase().contains(query);
+                    final tradeMatch = worker.trade.toLowerCase().contains(
+                      query,
+                    );
                     final skillsMatch = worker.skills.any(
                       (s) => s.toLowerCase().contains(query),
                     );
@@ -2667,8 +2669,8 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                       _searchQuery.isNotEmpty
                                           ? 'No verified workers matching "$_searchQuery"'
                                           : (_selectedCity == 'All Locations'
-                                              ? 'No verified workers found in this category'
-                                              : 'No verified workers found in $_selectedCity'),
+                                                ? 'No verified workers found in this category'
+                                                : 'No verified workers found in $_selectedCity'),
                                       textAlign: TextAlign.center,
                                       style: GoogleFonts.dmSans(
                                         fontWeight: FontWeight.w700,
@@ -2801,7 +2803,10 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
 
   Map<String, double> _extractBookingCoordinates(BookingModel b) {
     if (b.locationAddress.isNotEmpty) {
-      final gpsRegex = RegExp(r'\[GPS:\s*([-\d.]+),\s*([-\d.]+)\]', caseSensitive: false);
+      final gpsRegex = RegExp(
+        r'\[GPS:\s*([-\d.]+),\s*([-\d.]+)\]',
+        caseSensitive: false,
+      );
       final match = gpsRegex.firstMatch(b.locationAddress);
       if (match != null) {
         final lat = double.tryParse(match.group(1) ?? '');
@@ -2815,20 +2820,31 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
       if (rawMatch != null) {
         final lat = double.tryParse(rawMatch.group(1) ?? '');
         final lng = double.tryParse(rawMatch.group(2) ?? '');
-        if (lat != null && lng != null && lat.abs() <= 90 && lng.abs() <= 180 && lat != 0 && lng != 0) {
+        if (lat != null &&
+            lng != null &&
+            lat.abs() <= 90 &&
+            lng.abs() <= 180 &&
+            lat != 0 &&
+            lng != 0) {
           return {'lat': lat, 'lng': lng};
         }
       }
     }
     if (b.description.isNotEmpty) {
-      final gmapRegex = RegExp(r'maps\.google\.com\/\?q=([-\d.]+),([-\d.]+)', caseSensitive: false);
+      final gmapRegex = RegExp(
+        r'maps\.google\.com\/\?q=([-\d.]+),([-\d.]+)',
+        caseSensitive: false,
+      );
       final gmapMatch = gmapRegex.firstMatch(b.description);
       if (gmapMatch != null) {
         final lat = double.tryParse(gmapMatch.group(1) ?? '');
         final lng = double.tryParse(gmapMatch.group(2) ?? '');
         if (lat != null && lng != null) return {'lat': lat, 'lng': lng};
       }
-      final gpsDescRegex = RegExp(r'\[GPS:\s*([-\d.]+),\s*([-\d.]+)\]', caseSensitive: false);
+      final gpsDescRegex = RegExp(
+        r'\[GPS:\s*([-\d.]+),\s*([-\d.]+)\]',
+        caseSensitive: false,
+      );
       final gpsDescMatch = gpsDescRegex.firstMatch(b.description);
       if (gpsDescMatch != null) {
         final lat = double.tryParse(gpsDescMatch.group(1) ?? '');
@@ -4763,7 +4779,7 @@ class AccountTabScreen extends StatelessWidget {
 
             _buildSettingsTile(
               icon: Icons.security_outlined,
-              title: 'Privacy & Security',
+              title: 'Advanced Options',
             ),
             _buildSettingsTile(
               icon: Icons.help_outline_rounded,
@@ -4777,7 +4793,9 @@ class AccountTabScreen extends StatelessWidget {
                 final confirm = await showDialog<bool>(
                   context: context,
                   builder: (ctx) => AlertDialog(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                     title: Text(
                       'Log Out',
                       style: GoogleFonts.dmSans(
@@ -4815,7 +4833,9 @@ class AccountTabScreen extends StatelessWidget {
                         ),
                         child: Text(
                           'Log Out',
-                          style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
+                          style: GoogleFonts.dmSans(
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ],
