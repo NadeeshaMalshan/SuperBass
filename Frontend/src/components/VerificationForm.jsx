@@ -102,3 +102,4 @@ export default function VerificationForm({ isVerified, onVerifySuccess }) {
     </div>
   );
 }
+// This component renders a verification form that allows users to verify their official identity using their National Identity Card (NIC) details. It checks the NIC format, date of birth, and gender against the official records and marks the user as verified if successful. The form includes input fields for NIC, date of birth, and gender, along with error handling and success feedback.

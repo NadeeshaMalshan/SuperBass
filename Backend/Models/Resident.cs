@@ -19,3 +19,4 @@ namespace Superbass.Models
         public string? NicNumber { get; set; }
     }
 }
+// This class represents a resident in the Superbass application. It includes properties for the resident's email (primary key), name, password hash, phone number, address, province, district, location coordinates (latitude and longitude), profile image URL, verification status, and National Identity Card (NIC) number. The Email property is marked as the primary key using the [Key] attribute.

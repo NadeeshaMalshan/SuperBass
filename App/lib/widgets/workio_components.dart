@@ -228,3 +228,4 @@ class WorkioPrimaryButton extends StatelessWidget {
     );
   }
 }
+// This file contains reusable widgets for the Workio app, including a step progress indicator, a custom text field, and a primary button. These widgets are designed to be visually consistent with the app's theme and provide a user-friendly experience.

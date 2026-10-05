@@ -311,3 +311,4 @@ export default function Onboarding() {
     </div>
   );
 }
+// This component implements a multi-step onboarding process for users, collecting their name, phone number, home address, and location. It uses React state to manage the current step and form data, and integrates with Leaflet for map functionality. The component also handles form submission to save user details to the backend API.
