@@ -207,29 +207,6 @@ async def test_scenario_6_booking_cancellation():
         assert "204" in card.message
 
 
-# -----------------------------------------------------------------------------
-# Scenario 7: Booking Rescheduling
-# -----------------------------------------------------------------------------
-@pytest.mark.asyncio
-async def test_scenario_7_booking_rescheduling():
-    state = dict(BASE_STATE)
-    state["messages"] = [
-        HumanMessage(content="Reschedule booking 204 to Oct 1st at 10am"),
-        AIMessage(content="", tool_calls=[{"id": "call_7", "name": "reschedule_booking", "args": {"bookingId": 204, "newDate": "2026-10-01T10:00:00"}}]),
-        ToolMessage(
-            content=json.dumps({"bookingId": 204, "status": "Rescheduled", "newDate": "2026-10-01T10:00:00"}),
-            tool_call_id="call_7",
-            name="reschedule_booking"
-        )
-    ]
-    with patch.object(ChatOpenAI, "ainvoke", new_callable=AsyncMock) as mock_llm:
-        mock_llm.return_value = AIMessage(content="Booking #204 has been rescheduled to Oct 1st.")
-        res = await booking_agent_node(state)
-        assert "structured_response" in res
-        card = res["structured_response"]
-        assert isinstance(card, AgentCardResponse)
-        assert card.response_type == "text_message"
-        assert "204" in card.message
 
 
 # -----------------------------------------------------------------------------

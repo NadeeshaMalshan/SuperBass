@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -200,7 +201,7 @@ class NotificationService {
       if (!_initialChatFetchDone) {
         for (var c in conversations) {
           final int convId = c['id'] ?? c['conversationId'] ?? 0;
-          final lastMsg = c['lastMessage'] ?? c['lastMessageContent'] ?? '';
+          final lastMsg = _sanitizeLastMsg(c['lastMessage'] ?? c['lastMessageContent'] ?? '');
           final lastAt = c['lastMessageAt']?.toString() ?? '';
           _lastKnownMessageKeys[convId] = '${lastMsg}_$lastAt';
         }
@@ -212,7 +213,7 @@ class NotificationService {
         final int convId = c['id'] ?? c['conversationId'] ?? 0;
         if (convId == 0) continue;
 
-        final lastMsg = c['lastMessage'] ?? c['lastMessageContent']?.toString() ?? '';
+        final lastMsg = _sanitizeLastMsg(c['lastMessage'] ?? c['lastMessageContent']?.toString() ?? '');
         final lastSender = c['lastSenderEmail']?.toString() ?? '';
         final lastAt = c['lastMessageAt']?.toString() ?? '';
         final key = '${lastMsg}_$lastAt';
@@ -418,6 +419,24 @@ class NotificationService {
     } catch (e) {
       debugPrint('Error loading notifications: $e');
     }
+  }
+
+  /// Sanitize a raw last-message string: if it is a JSON contact card, return
+  /// a human-readable placeholder instead of raw JSON.
+  String _sanitizeLastMsg(dynamic raw) {
+    final str = raw?.toString() ?? '';
+    if (str.trimLeft().startsWith('{')) {
+      try {
+        final decoded = jsonDecode(str);
+        if (decoded is Map &&
+            (decoded.containsKey('phoneNo') ||
+                decoded.containsKey('PhoneNo') ||
+                decoded['type'] == 'WorkerContactCard')) {
+          return 'Shared contact card';
+        }
+      } catch (_) {}
+    }
+    return str;
   }
 
   Future<void> _savePersistedNotifications() async {

@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
+import '../services/api_service.dart';
 import '../models/auth_user.dart';
 import '../theme/app_colors.dart';
 import 'join_screen.dart';
 import 'placeholder_screens.dart';
 import '../widgets/verified_badge.dart';
 import '../widgets/verification_form.dart';
+import 'dart:convert';
+import 'package:image_picker/image_picker.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -16,7 +19,62 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  bool _isVerified = false;
+  bool _isUpdatingProfile = false;
+
+  Future<void> _updateProfilePicture() async {
+    if (_isUpdatingProfile) return;
+    final picker = ImagePicker();
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+      maxWidth: 1024,
+    );
+    if (image == null) return;
+
+    _isUpdatingProfile = true;
+    if (mounted) setState(() {});
+
+    try {
+      final bytes = await image.readAsBytes();
+      final base64Image = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+      final user = AuthService().currentUserNotifier.value;
+      if (user != null) {
+        final success = await ApiService().updateProfile(user.email, {
+          "profileImage": base64Image,
+        });
+        if (mounted) {
+          if (success) {
+            // Update the AuthUser object
+            final updatedUser = user.copyWith(picture: base64Image);
+            AuthService().currentUserNotifier.value = updatedUser;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Profile picture updated successfully'),
+                backgroundColor: Colors.green,
+              ),
+            );
+            await AuthService().persistPicture(base64Image);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Failed to update profile picture'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    } finally {
+      _isUpdatingProfile = false;
+      if (mounted) setState(() {});
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +85,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           return const JoinScreen();
         }
 
-        final isVerified = user.isVerified || _isVerified;
+        final isVerified = user.isVerified;
 
         return Scaffold(
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -58,9 +116,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       padding: const EdgeInsets.only(bottom: 32.0),
                       child: VerificationForm(
                         onVerifySuccess: () {
-                          setState(() {
-                            _isVerified = true;
-                          });
+                          // markUserVerified() updates notifier automatically
                         },
                       ),
                     ),
@@ -78,50 +134,52 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildProfileHeader(AuthUser user) {
-    final isVerified = user.isVerified || _isVerified;
+    final isVerified = user.isVerified;
     return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(4),
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
+    children: [
+      GestureDetector(
+        onTap: _updateProfilePicture,
+        child: _isUpdatingProfile
+            ? const CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              )
+            : _buildRobustAvatar(user.picture, user.name),
+      ),
+      const SizedBox(height: 20),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            user.name,
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
-          child: _buildRobustAvatar(user.picture, user.name),
+          if (isVerified) const VerifiedBadge(size: 22),
+        ],
+      ),
+      const SizedBox(height: 6),
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.grey.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(20),
         ),
-        const SizedBox(height: 20),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              user.name,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            if (isVerified) const VerifiedBadge(size: 22),
-          ],
-        ),
-        const SizedBox(height: 6),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.grey.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Text(
-            "${user.activeRole} • ${user.email}",
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey.shade700,
-              fontWeight: FontWeight.w500,
-            ),
+        child: Text(
+          "${user.activeRole} • ${user.email}",
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey.shade700,
+            fontWeight: FontWeight.w500,
           ),
         ),
-      ],
-    );
+      ),
+    ],
+  );
   }
+}
 
-  Widget _buildRobustAvatar(String? photoUrl, String name) {
-    return _RobustAvatar(photoUrl: photoUrl, name: name);
-  }
+Widget _buildRobustAvatar(String? photoUrl, String name) {
+  return _RobustAvatar(photoUrl: photoUrl, name: name);
 }
 
 class _RobustAvatar extends StatefulWidget {
@@ -147,10 +205,10 @@ class _RobustAvatarState extends State<_RobustAvatar> {
 
   @override
   Widget build(BuildContext context) {
-    final String initial = widget.name.isNotEmpty 
-        ? widget.name.substring(0, 1).toUpperCase() 
+    final String initial = widget.name.isNotEmpty
+        ? widget.name.substring(0, 1).toUpperCase()
         : 'U';
-    
+
     final Widget fallbackAvatar = CircleAvatar(
       radius: 50,
       backgroundColor: Colors.yellow.shade700,
@@ -164,40 +222,61 @@ class _RobustAvatarState extends State<_RobustAvatar> {
       return fallbackAvatar;
     }
 
-    return ClipOval(
-      child: Image.network(
-        widget.photoUrl!,
-        width: 100,
-        height: 100,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              setState(() {
-                _hasError = true;
-              });
-            }
-          });
-          return fallbackAvatar;
-        },
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return const SizedBox(
+    if (widget.photoUrl!.startsWith('data:image/')) {
+      try {
+        final base64Str = widget.photoUrl!.split(',').last;
+        final bytes = base64Decode(base64Str);
+        return ClipOval(
+          child: Image.memory(
+            bytes,
             width: 100,
             height: 100,
-            child: Center(
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          );
-        },
-      ),
-    );
+            fit: BoxFit.cover,
+          ),
+        );
+      } catch (e) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _hasError = true;
+            });
+          }
+        });
+        return fallbackAvatar;
+      }
+    } else {
+      return ClipOval(
+        child: Image.network(
+          widget.photoUrl!,
+          width: 100,
+          height: 100,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                setState(() {
+                  _hasError = true;
+                });
+              }
+            });
+            return fallbackAvatar;
+          },
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return const SizedBox(
+              width: 100,
+              height: 100,
+              child: Center(
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            );
+          },
+        ),
+      );
+    }
   }
-
 }
 
-
-// --- Interactive Profile Menu Widget ---
 class _ProfileMenu extends StatelessWidget {
   const _ProfileMenu();
 
@@ -211,7 +290,7 @@ class _ProfileMenu extends StatelessWidget {
       case "Saved Addresses":
         targetScreen = const SavedAddressesScreen();
         break;
-      case "Privacy & Security":
+      case "Advanced Options":
         targetScreen = const PrivacySecurityScreen();
         break;
       case "Help & Support":
@@ -291,7 +370,7 @@ class _ProfileMenu extends StatelessWidget {
     // Perform async API logout logic via AuthService
     await AuthService().logout();
 
-    // Complete navigation and pop the loading dialog by replacing the entire navigation stack
+    // Complete navigation and pop the logging dialog by replacing the entire navigation stack
     if (context.mounted) {
       Navigator.of(context).pushNamedAndRemoveUntil(
         '/join',
@@ -332,8 +411,8 @@ class _ProfileMenu extends StatelessWidget {
             const _MenuDivider(),
             _MenuTile(
               icon: Icons.shield_outlined,
-              title: "Privacy & Security",
-              onTap: () => _navigateToScreen(context, "Privacy & Security"),
+              title: "Advanced Options",
+              onTap: () => _navigateToScreen(context, "Advanced Options"),
             ),
             const _MenuDivider(),
             _MenuTile(
@@ -355,6 +434,22 @@ class _ProfileMenu extends StatelessWidget {
   }
 }
 
+class _MenuDivider extends StatelessWidget {
+  const _MenuDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 68.0, right: 20.0),
+      child: Divider(
+        height: 1,
+        thickness: 1,
+        color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
+      ),
+    );
+  }
+}
+
 class _MenuTile extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -370,61 +465,42 @@ class _MenuTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final defaultColor = isDark ? Colors.white : Colors.black87;
-    final color = isDestructive ? Colors.redAccent : defaultColor;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: isDestructive
-                      ? Colors.red.withValues(alpha: 0.1)
-                      : Colors.grey.withValues(alpha: isDark ? 0.2 : 0.08),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: color, size: 22),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              if (!isDestructive)
-                Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400),
-            ],
-          ),
+    final color = isDestructive
+        ? Colors.red.shade600
+        : Theme.of(context).textTheme.bodyLarge?.color;
+    return ListTile(
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: isDestructive
+              ? Colors.red.withValues(alpha: 0.08)
+              : Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(
+          icon,
+          color: isDestructive
+              ? Colors.red.shade600
+              : Theme.of(context).colorScheme.primary,
+          size: 20,
         ),
       ),
-    );
-  }
-}
-
-class _MenuDivider extends StatelessWidget {
-  const _MenuDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 68.0, right: 20.0),
-      child: Divider(
-        height: 1, 
-        thickness: 1, 
-        color: Theme.of(context).dividerColor.withValues(alpha: 0.1)
+      title: Text(
+        title,
+        style: GoogleFonts.dmSans(
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
       ),
+      trailing: Icon(
+        Icons.chevron_right_rounded,
+        color: color?.withValues(alpha: 0.5),
+        size: 20,
+      ),
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
     );
   }
 }

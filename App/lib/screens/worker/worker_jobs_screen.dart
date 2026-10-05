@@ -23,6 +23,100 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen> with SingleTickerPr
   List<BookingModel> _bookings = [];
   bool _isLoading = true;
   String? _actionLoadingId;
+  String _sortBy = 'Date'; // 'Date' or 'Priority'
+
+  int _getUrgencyWeight(String urgency) {
+    switch (urgency.toLowerCase()) {
+      case 'high':
+        return 3;
+      case 'medium':
+        return 2;
+      case 'low':
+        return 1;
+      default:
+        return 0;
+    }
+  }
+
+  List<BookingModel> _sortBookings(List<BookingModel> list) {
+    final sorted = List<BookingModel>.from(list);
+    if (_sortBy == 'Priority') {
+      sorted.sort((a, b) {
+        final weightA = _getUrgencyWeight(a.urgency);
+        final weightB = _getUrgencyWeight(b.urgency);
+        if (weightA != weightB) {
+          return weightB.compareTo(weightA);
+        }
+        final dateA = a.scheduledDate ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final dateB = b.scheduledDate ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return dateB.compareTo(dateA);
+      });
+    } else {
+      sorted.sort((a, b) {
+        final dateA = a.scheduledDate ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final dateB = b.scheduledDate ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return dateB.compareTo(dateA);
+      });
+    }
+    return sorted;
+  }
+
+  void _showSortOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFCBD5E1),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Sort Jobs By',
+              style: GoogleFonts.dmSans(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ListTile(
+              leading: const Icon(Icons.calendar_today_rounded, color: Colors.black),
+              title: Text('Date (Newest First)', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+              trailing: _sortBy == 'Date' ? const Icon(Icons.check_circle_rounded, color: Colors.black) : null,
+              onTap: () {
+                setState(() => _sortBy = 'Date');
+                Navigator.pop(ctx);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.priority_high_rounded, color: Colors.black),
+              title: Text('Priority (High Urgency First)', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+              trailing: _sortBy == 'Priority' ? const Icon(Icons.check_circle_rounded, color: Colors.black) : null,
+              onTap: () {
+                setState(() => _sortBy = 'Priority');
+                Navigator.pop(ctx);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -209,84 +303,6 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen> with SingleTickerPr
     }
   }
 
-  Future<void> _handleReschedule(BookingModel booking) async {
-    DateTime selectedDate = booking.scheduledDate ?? DateTime.now().add(const Duration(days: 1));
-    final noteController = TextEditingController();
-
-    final pickedDate = await showDatePicker(
-      context: context,
-      initialDate: selectedDate,
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 90)),
-    );
-    if (pickedDate == null || !mounted) return;
-
-    final newDateTime = DateTime.utc(
-      pickedDate.year,
-      pickedDate.month,
-      pickedDate.day,
-    );
-
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Confirm Reschedule', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'New Date: ${newDateTime.day}/${newDateTime.month}/${newDateTime.year}',
-              style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, color: WorkerColors.primary),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: noteController,
-              decoration: const InputDecoration(
-                hintText: 'Reason for reschedule (optional)',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('Cancel', style: GoogleFonts.dmSans(color: WorkerColors.onSurfaceVariant)),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: WorkerColors.primary,
-              foregroundColor: Colors.white,
-            ),
-            child: Text('Confirm Reschedule', style: GoogleFonts.dmSans()),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm != true) return;
-
-    setState(() => _actionLoadingId = 'reschedule_${booking.id}');
-    final updated = await ApiService().rescheduleBooking(
-      booking.id,
-      newScheduledDate: newDateTime,
-      rescheduleNote: noteController.text.trim(),
-    );
-    if (mounted) {
-      setState(() => _actionLoadingId = null);
-      if (updated != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Job rescheduled successfully!', style: GoogleFonts.dmSans()),
-            backgroundColor: WorkerColors.primary,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        _fetchBookings();
-      }
-    }
-  }
 
   void _openChatWithResident(BookingModel booking) async {
     final userEmail = AuthService().currentUser?.email;
@@ -378,8 +394,43 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen> with SingleTickerPr
             ),
           ),
 
-          // Horizontal Filter Pills Row
-          _buildFilterPills(requests.length, active.length, history.length),
+          // Horizontal Filter Pills Row & Sort By
+          Row(
+            children: [
+              Expanded(
+                child: _buildFilterPills(requests.length, active.length, history.length),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(right: 20),
+                child: InkWell(
+                  onTap: _showSortOptions,
+                  borderRadius: BorderRadius.circular(24),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Sort by',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.arrow_drop_down, size: 18, color: Colors.black),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 14),
 
           // Tab Views
@@ -389,10 +440,10 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen> with SingleTickerPr
                 : TabBarView(
                     controller: _tabController,
                     children: [
-                      _buildJobsList(requests, 'No pending booking requests'),
-                      _buildJobsList(active, 'No active ongoing jobs'),
-                      _buildJobsList(history, 'No past job history'),
-                      _buildJobsList(_bookings, 'No bookings found'),
+                      _buildJobsList(_sortBookings(requests), 'No pending booking requests'),
+                      _buildJobsList(_sortBookings(active), 'No active ongoing jobs'),
+                      _buildJobsList(_sortBookings(history), 'No past job history'),
+                      _buildJobsList(_sortBookings(_bookings), 'No bookings found'),
                     ],
                   ),
           ),
@@ -861,22 +912,6 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen> with SingleTickerPr
                             ],
                           ),
                         ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  InkWell(
-                    onTap: () => _handleReschedule(b),
-                    borderRadius: BorderRadius.circular(26),
-                    child: Container(
-                      height: 48,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(26),
-                      ),
-                      child: const Center(
-                        child: Icon(Icons.calendar_month_outlined, size: 18, color: Colors.black),
                       ),
                     ),
                   ),
@@ -1555,20 +1590,6 @@ class _WorkerJobsScreenState extends State<WorkerJobsScreen> with SingleTickerPr
                               ),
                             ],
                           ),
-                          if (b.status.toLowerCase() == 'confirmed')
-                            OutlinedButton.icon(
-                              onPressed: () {
-                                Navigator.of(ctx).pop();
-                                _handleReschedule(b);
-                              },
-                              icon: const Icon(Icons.edit_calendar_rounded, size: 16),
-                              label: const Text('Reschedule'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.black,
-                                side: const BorderSide(color: Color(0xFFCBD5E1)),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                              ),
-                            ),
                         ],
                       ),
                     ),

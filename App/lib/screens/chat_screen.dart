@@ -8,6 +8,7 @@ import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/chat_signalr_service.dart';
 import '../widgets/verified_badge.dart';
+import '../widgets/worker_contact_card.dart';
 import 'package:loading_indicator_m3e/loading_indicator_m3e.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -297,6 +298,73 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  void _clearChat() {
+    if (_messages.isEmpty) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Clear chat?', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+        content: Text(
+          'Are you sure you want to delete all ${_messages.length} messages from this device? This action cannot be undone.',
+          style: GoogleFonts.dmSans(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancel', style: GoogleFonts.dmSans(color: AppColors.onSurfaceVariant)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+
+              // Show loading state
+              if (mounted) {
+                setState(() => _isLoading = true);
+              }
+
+              // Get all valid message IDs
+              final messageIds = _messages
+                  .where((m) => m['id'] != null && m['id'] is int && m['id'] > 0)
+                  .map((m) => m['id'] as int)
+                  .toList();
+
+              if (messageIds.isNotEmpty) {
+                // Use existing API for soft delete (delete for current user only)
+                final email = AuthService().currentUser?.email;
+                if (email != null) {
+                  final success = await ApiService().deleteMessages(messageIds, email);
+
+                  if (success && mounted) {
+                    setState(() {
+                      _messages.clear();
+                      _isLoading = false;
+                    });
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Chat cleared successfully')),
+                    );
+                  } else if (mounted) {
+                    setState(() => _isLoading = false);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Failed to clear chat. Please try again.')),
+                    );
+                  }
+                } else {
+                  if (mounted) setState(() => _isLoading = false);
+                }
+              } else {
+                if (mounted) setState(() => _isLoading = false);
+              }
+            },
+            child: Text('Clear', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: AppColors.error)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _pickImage() async {
     try {
       final picker = ImagePicker();
@@ -326,6 +394,118 @@ class _ChatScreenState extends State<ChatScreen> {
     } catch (e) {
       debugPrint('Error picking image: $e');
     }
+  }
+
+
+  Future<void> _sendWorkerCard() async {
+    final user = AuthService().currentUser;
+    if (user == null) return;
+    final cardJson = jsonEncode({
+      'type': 'WorkerContactCard',
+      'workerName': user.name,
+      'phoneNo': '',
+      'location': '',
+      'avatar': user.picture ?? '',
+    });
+    final sent = await ApiService().sendMessage(
+      conversationId: widget.conversationId,
+      content: cardJson,
+      senderEmail: user.email,
+      senderRole: user.activeRole,
+    );
+    if (sent != null) {
+      await _fetchMessages(isBackground: true);
+      _scrollToBottom(isInitial: false);
+    }
+  }
+
+  void _showAttachmentSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                ListTile(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.photo_outlined, color: Color(0xFF334155)),
+                  ),
+                  title: Text(
+                    'Add a photo',
+                    style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, fontSize: 15),
+                  ),
+                  subtitle: Text(
+                    'Share an image from your gallery',
+                    style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF94A3B8)),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _pickImage();
+                  },
+                ),
+                const SizedBox(height: 4),
+                ListTile(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.contact_phone_outlined, color: Color(0xFF334155)),
+                  ),
+                  title: Text(
+                    'Share worker card',
+                    style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, fontSize: 15),
+                  ),
+                  subtitle: Text(
+                    'Send your contact card to this chat',
+                    style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF94A3B8)),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _sendWorkerCard();
+                  },
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+  bool _isContactCard(String? text) {
+    if (text == null || !text.trimLeft().startsWith('{')) return false;
+    try {
+      final decoded = jsonDecode(text);
+      if (decoded is Map && (decoded.containsKey('phoneNo') || decoded.containsKey('PhoneNo') || decoded['type'] == 'WorkerContactCard')) {
+        return true;
+      }
+    } catch (_) {}
+    return false;
   }
 
   Widget _buildImageError() {
@@ -802,7 +982,87 @@ class _ChatScreenState extends State<ChatScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.more_vert, color: AppColors.onSurfaceVariant),
-            onPressed: () {},
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                backgroundColor: Colors.white,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                builder: (ctx) {
+                  return SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade300,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          ListTile(
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.select_all, color: AppColors.onSurfaceVariant),
+                            ),
+                            title: Text(
+                              'Select messages',
+                              style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, fontSize: 15),
+                            ),
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              // Enter selection mode by selecting first message if there are messages
+                              if (_messages.isNotEmpty) {
+                                setState(() {
+                                  // Select the first message to enter selection mode
+                                  final firstMsg = _messages
+                                      .cast<Map<String, dynamic>?>()
+                                      .firstWhere(
+                                        (m) => m != null && m['id'] != null && m['id'] is int && m['id'] > 0,
+                                        orElse: () => null,
+                                      );
+                                  if (firstMsg != null && firstMsg['id'] is int) {
+                                    _selectedMessageIds.add(firstMsg['id'] as int);
+                                  }
+                                });
+                              }
+                            },
+                          ),
+                          const Divider(height: 1),
+                          ListTile(
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.delete_outline, color: AppColors.onSurfaceVariant),
+                            ),
+                            title: Text(
+                              'Clear chat',
+                              style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, fontSize: 15),
+                            ),
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              _clearChat();
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
           ),
         ],
       ),
@@ -890,41 +1150,46 @@ class _ChatScreenState extends State<ChatScreen> {
                                     ? CrossAxisAlignment.end
                                     : CrossAxisAlignment.start,
                                 children: [
-                                  if (msg['attachmentUrl'] != null && msg['attachmentUrl'].toString().isNotEmpty) ...[
-                                    _buildMessageImage(msg['attachmentUrl'], isMe),
+                                  if (msg['messageType'] == 'ContactCard' || _isContactCard(msg['text']?.toString())) ...[
+                                    WorkerContactCard(rawContent: msg['text'] ?? ''),
                                     const SizedBox(height: 4),
+                                  ] else ...[
+                                    if (msg['attachmentUrl'] != null && msg['attachmentUrl'].toString().isNotEmpty) ...[
+                                      _buildMessageImage(msg['attachmentUrl'], isMe),
+                                      const SizedBox(height: 4),
+                                    ],
+                                    if (msg['text'] != null && msg['text'].toString().isNotEmpty)
+                                      Container(
+                                      margin: const EdgeInsets.only(bottom: 4),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 16, vertical: 12),
+                                      decoration: BoxDecoration(
+                                        color: isSelected
+                                            ? (isMe
+                                                ? const Color(0xFF27272A)
+                                                : const Color(0xFFE4E4E7))
+                                            : (isMe ? myBubbleColor : otherBubbleColor),
+                                        borderRadius: BorderRadius.only(
+                                          topLeft: const Radius.circular(24),
+                                          topRight: const Radius.circular(24),
+                                          bottomLeft: Radius.circular(isMe ? 24 : 8),
+                                          bottomRight: Radius.circular(isMe ? 8 : 24),
+                                        ),
+                                        border: isSelected
+                                            ? Border.all(
+                                                color: Colors.black, width: 2)
+                                            : null,
+                                      ),
+                                      child: Text(
+                                        msg['text'],
+                                        style: GoogleFonts.dmSans(
+                                          fontSize: 15,
+                                          color: isMe ? Colors.white : const Color(0xFF000000),
+                                          fontWeight: FontWeight.w400,
+                                        ),
+                                      ),
+                                    ),
                                   ],
-                                  if (msg['text'] != null && msg['text'].toString().isNotEmpty)
-                                    Container(
-                                    margin: const EdgeInsets.only(bottom: 4),
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 16, vertical: 12),
-                                    decoration: BoxDecoration(
-                                      color: isSelected
-                                          ? (isMe
-                                              ? const Color(0xFF27272A)
-                                              : const Color(0xFFE4E4E7))
-                                          : (isMe ? myBubbleColor : otherBubbleColor),
-                                      borderRadius: BorderRadius.only(
-                                        topLeft: const Radius.circular(24),
-                                        topRight: const Radius.circular(24),
-                                        bottomLeft: Radius.circular(isMe ? 24 : 8),
-                                        bottomRight: Radius.circular(isMe ? 8 : 24),
-                                      ),
-                                      border: isSelected
-                                          ? Border.all(
-                                              color: Colors.black, width: 2)
-                                          : null,
-                                    ),
-                                    child: Text(
-                                      msg['text'],
-                                      style: GoogleFonts.dmSans(
-                                        fontSize: 15,
-                                        color: isMe ? Colors.white : const Color(0xFF000000),
-                                        fontWeight: FontWeight.w400,
-                                      ),
-                                    ),
-                                  ),
                                   if (timeStr.toString().isNotEmpty)
                                     Padding(
                                       padding: const EdgeInsets.only(
@@ -1024,7 +1289,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             const SizedBox(width: 4),
                             IconButton(
                               icon: const Icon(Icons.add_circle_outline, color: AppColors.onSurfaceVariant),
-                              onPressed: _pickImage,
+                              onPressed: _showAttachmentSheet,
                             ),
                             Expanded(
                               child: TextField(

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
 import EmojiPicker from 'emoji-picker-react';
@@ -17,6 +17,7 @@ import '@material/web/menu/menu-item.js';
 import '@material/web/list/list.js';
 import '@material/web/list/list-item.js';
 import Loader from './components/Loader.jsx';
+import WorkerContactCard from './components/WorkerContactCard.jsx';
 import UserMenu from './components/UserMenu.jsx';
 import M3TopNavbar from './components/M3TopNavbar.jsx';
 import { showToast } from './utils/toast.js';
@@ -203,7 +204,7 @@ export default function Chats() {
         const isFromMe = msg.senderEmail?.toLowerCase() === currentUserEmail.toLowerCase();
         updated[idx] = {
           ...updated[idx],
-          lastMessage: msg.content || (msg.messageType === 'Image' ? 'Shared an image' : 'New message'),
+          lastMessage: msg.messageType === 'ContactCard' ? 'Shared a contact card' : (msg.content || (msg.messageType === 'Image' ? 'Shared an image' : 'New message')),
           lastMessageAt: msg.createdAt || new Date().toISOString(),
           lastSenderEmail: msg.senderEmail,
           lastMessageIsRead: isCurrentActive || Boolean(msg.isRead),
@@ -767,7 +768,7 @@ export default function Chats() {
           if (selectedChat && c.id === selectedChat.id) {
             if (remainingMsgs.length > 0) {
               const newLastMsg = remainingMsgs[remainingMsgs.length - 1];
-              let previewText = newLastMsg.content;
+              let previewText = newLastMsg.messageType === 'ContactCard' ? 'Shared a contact card' : newLastMsg.content;
               if (!previewText && newLastMsg.attachmentUrl) {
                 previewText = "Attachment";
               }
@@ -1186,7 +1187,7 @@ export default function Chats() {
                                 </span>
                               )}
                               <span className="chat-item-preview">
-                                {conv.lastMessage || conv.LastMessage || 'No messages yet'}
+                                {(() => { const msg = conv.lastMessage || conv.LastMessage || 'No messages yet'; try { const parsed = typeof msg === 'string' && msg.startsWith('{') ? JSON.parse(msg) : null; if (parsed && (parsed.type === 'WorkerContactCard' || parsed.phoneNo || parsed.PhoneNo)) return 'Shared a contact card'; } catch (e) { } return msg; })()}
                               </span>
                             </div>
                             {/* ONLY display unread badge for received messages that you haven't opened yet */}
@@ -1262,17 +1263,17 @@ export default function Chats() {
                       (selectedChat.workerEmail?.toLowerCase() === currentUserEmail.toLowerCase()) ||
                       isWorker
                     ) && (
-                      <button
-                        type="button"
-                        className="chats-share-contact-header-btn"
-                        onClick={handleShareContactClick}
-                        disabled={isSharingContact}
-                        title="Share your verified phone number with this resident"
-                      >
-                        <i className={isSharingContact ? "fa-solid fa-spinner fa-spin" : "fa-solid fa-address-card"}></i>
-                        <span>{isSharingContact ? 'Sharing...' : 'Share Contact'}</span>
-                      </button>
-                    )}
+                        <button
+                          type="button"
+                          className="chats-share-contact-header-btn"
+                          onClick={handleShareContactClick}
+                          disabled={isSharingContact}
+                          title="Share your verified phone number with this resident"
+                        >
+                          <i className={isSharingContact ? "fa-solid fa-spinner fa-spin" : "fa-solid fa-address-card"}></i>
+                          <span>{isSharingContact ? 'Sharing...' : 'Share Contact'}</span>
+                        </button>
+                      )}
                     {isSearchActive ? (
                       <div className="chats-search-header">
                         <input
@@ -1434,69 +1435,14 @@ export default function Chats() {
                                   const service = card?.service || card?.jobTitle || 'Verified Professional';
 
                                   return (
-                                    <div className="worker-contact-card">
-                                      <div className="worker-contact-card-badge">
-                                        <i className="fa-solid fa-shield-check"></i>
-                                        <span>Verified Worker Contact</span>
-                                      </div>
-
-                                      <div className="worker-contact-card-profile">
-                                        {avatar ? (
-                                          <img src={avatar} alt={workerName} className="worker-contact-card-avatar" onError={(e) => { e.target.style.display = 'none'; }} />
-                                        ) : (
-                                          <div className="worker-contact-card-avatar-fallback">
-                                            {getInitial(workerName)}
-                                          </div>
-                                        )}
-                                        <div className="worker-contact-card-info">
-                                          <div className="worker-contact-card-name">
-                                            {workerName}
-                                            <span className="worker-contact-verified-icon" title="Verified Phone & Identity">
-                                              <i className="fa-solid fa-circle-check"></i>
-                                            </span>
-                                          </div>
-                                          <div className="worker-contact-card-title">{service}</div>
-                                        </div>
-                                      </div>
-
-                                      <div className="worker-contact-card-phone-section">
-                                        <div className="worker-contact-phone-label">Direct Phone Number</div>
-                                        <div className="worker-contact-phone-val">
-                                          <i className="fa-solid fa-phone"></i>
-                                          <span>{phone}</span>
-                                        </div>
-                                      </div>
-
-                                      <div className="worker-contact-card-actions">
-                                        <a
-                                          href={`tel:${phone}`}
-                                          className="worker-contact-call-action"
-                                          onClick={(e) => e.stopPropagation()}
-                                        >
-                                          <i className="fa-solid fa-phone-volume"></i>
-                                          <span>Call Now</span>
-                                        </a>
-                                        <button
-                                          type="button"
-                                          className="worker-contact-copy-action"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (phone) {
-                                              navigator.clipboard.writeText(phone);
-                                              showToast('✓ Phone number copied to clipboard!');
-                                            }
-                                          }}
-                                        >
-                                          <i className="fa-regular fa-copy"></i>
-                                          <span>Copy</span>
-                                        </button>
-                                      </div>
-
-                                      <div className="worker-contact-card-footnote">
-                                        <i className="fa-solid fa-lock"></i>
-                                        <span>Verified number shared for this booking</span>
-                                      </div>
-                                    </div>
+                                    <WorkerContactCard
+                                      workerName={workerName}
+                                      location={service}
+                                      phoneNumber={phone}
+                                      avatarUrl={avatar}
+                                      isVerified={true}
+                                      onCopy={() => showToast('✓ Phone number copied to clipboard!')}
+                                    />
                                   );
                                 })() : (
                                   <div className={`chats-bubble ${isOutgoing ? 'resident' : 'worker'}`}>

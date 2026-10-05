@@ -126,30 +126,6 @@ async def get_resident_bookings(
     return sanitize_payload(result)
 
 
-@tool
-async def reschedule_booking(
-    bookingId: str,
-    startTime: str,
-    endTime: str,
-    reason: Optional[str] = None
-) -> Dict[str, Any]:
-    """
-    Reschedule an existing booking to a new time window.
-    - bookingId: Unique identifier of the booking
-    - startTime: New start date-time (ISO format or standard date string)
-    - endTime: New end date-time
-    - reason: Optional reason for the reschedule
-    """
-    clean_start = normalize_datetime_str(startTime, default_hour=10) or startTime
-    clean_end = normalize_datetime_str(endTime, default_hour=12) or endTime
-    args = {
-        "bookingId": str(bookingId).strip(),
-        "startTime": clean_start,
-        "endTime": clean_end,
-        "reason": reason or "Resident requested reschedule"
-    }
-    result = await mcp_client.call_tool("reschedule_booking", args)
-    return sanitize_payload(result)
 
 
 @tool
@@ -216,7 +192,6 @@ BOOKING_TOOLS = [
     check_worker_availability,
     create_booking,
     get_resident_bookings,
-    reschedule_booking,
     cancel_booking,
     get_booking_details
 ]

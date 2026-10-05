@@ -285,27 +285,6 @@
           }
         },
         {
-          "name": "Tool: reschedule_booking",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"test-reschedule-booking\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"reschedule_booking\",\n    \"arguments\": {\n      \"bookingId\": \"{{booking_id}}\",\n      \"startTime\": \"2026-09-26T14:00:00Z\",\n      \"endTime\": \"2026-09-26T16:00:00Z\",\n      \"reason\": \"Rescheduled for Saturday morning\"\n    }\n  }\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/mcp",
-              "host": ["{{base_url}}"],
-              "path": ["mcp"]
-            }
-          }
-        },
-        {
           "name": "Tool: create_worker_review",
           "request": {
             "method": "POST",

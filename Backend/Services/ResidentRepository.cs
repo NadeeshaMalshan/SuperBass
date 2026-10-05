@@ -56,6 +56,19 @@ namespace Superbass.Services
                 if (updateDto.NicNumber != null) resident.NicNumber = updateDto.NicNumber;
             }
 
+            // If profile image is being updated, synchronize it to worker profile if user is also a worker
+            if (!string.IsNullOrWhiteSpace(updateDto.ProfileImage))
+            {
+                var cleanEmail = email.Trim().ToLower();
+                var worker = await _context.Workers.FirstOrDefaultAsync(w =>
+                    (w.ResidentEmail != null && w.ResidentEmail.ToLower() == cleanEmail) ||
+                    w.Email.ToLower() == cleanEmail);
+                if (worker != null)
+                {
+                    worker.ProfileImage = updateDto.ProfileImage;
+                }
+            }
+
             if (updateDto.Address != null && updateDto.LocationLat == null && updateDto.LocationLng == null)
             {
                 try 

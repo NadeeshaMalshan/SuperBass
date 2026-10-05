@@ -37,7 +37,7 @@ class ApiService {
       final lat = residentLat ?? user?.locationLat;
       final lng = residentLng ?? user?.locationLng;
       Uri uri;
-      
+
       final queryParams = <String, String>{
         if (skill != null && skill.isNotEmpty && skill != 'All Pros') 'skill': skill,
         if (location != null && location.isNotEmpty) 'location': location,
@@ -403,7 +403,6 @@ class ApiService {
           return data.map((json) => BookingModel.fromJson(json as Map<String, dynamic>)).toList();
         }
       }
-      debugPrint('Failed to load bookings (${response.statusCode}): ${response.body}');
       return [];
     } catch (e) {
       debugPrint('Error fetching bookings: $e');
@@ -641,36 +640,6 @@ class ApiService {
       return null;
     } catch (e) {
       debugPrint('Error submitting review: $e');
-      return null;
-    }
-  }
-
-  /// Reschedule a booking: POST /api/bookings/{id}/reschedule
-  Future<BookingModel?> rescheduleBooking(
-    int bookingId, {
-    required DateTime newScheduledDate,
-    String? rescheduleNote,
-    String rescheduledBy = 'Worker',
-  }) async {
-    try {
-      final uri = Uri.parse('${ApiConfig.baseUrl}/api/bookings/$bookingId/reschedule');
-      final response = await http.post(
-        uri,
-        headers: _headers,
-        body: jsonEncode({
-          'newScheduledDate': newScheduledDate.toIso8601String(),
-          'rescheduleNote': rescheduleNote ?? '',
-          'rescheduledBy': rescheduledBy,
-        }),
-      );
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        final data = jsonDecode(response.body);
-        return BookingModel.fromJson(data as Map<String, dynamic>);
-      }
-      debugPrint('Failed to reschedule booking (${response.statusCode}): ${response.body}');
-      return null;
-    } catch (e) {
-      debugPrint('Error rescheduling booking: $e');
       return null;
     }
   }
@@ -939,7 +908,6 @@ class ApiService {
       final uri = Uri.parse('${ApiConfig.baseUrl}/api/conversations/$conversationId/messages').replace(
         queryParameters: {'userEmail': userEmail},
       );
-
       final response = await http.get(uri, headers: _headers);
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final dynamic data = jsonDecode(response.body);
@@ -1043,11 +1011,11 @@ class ApiService {
       });
       debugPrint('Completing onboarding via: $uri');
       final response = await http.post(uri, headers: _headers, body: body);
-      
+
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return {'success': true, 'message': 'Onboarding complete'};
       }
-      
+
       String errorMsg = 'Failed to complete onboarding (${response.statusCode})';
       try {
         final errJson = jsonDecode(response.body);
@@ -1074,6 +1042,20 @@ class ApiService {
       return null;
     } catch (e) {
       debugPrint('Error getting resident profile: $e');
+      return null;
+    }
+  }
+
+  /// Get User Address: GET /api/residents/{email} (extract address from profile)
+  Future<String?> getUserAddress(String email) async {
+    try {
+      final profile = await getResidentProfile(email);
+      if (profile != null && profile.containsKey('address')) {
+        return profile['address'] as String?;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error getting user address: $e');
       return null;
     }
   }
@@ -1150,4 +1132,3 @@ class ApiService {
     }
   }
 }
-

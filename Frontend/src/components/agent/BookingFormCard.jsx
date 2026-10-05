@@ -1,7 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import craftsmanAvatar from '../../assets/carftman.png';
 import sriLankaDistrictsData from '../../data/sriLankaDistricts.json';
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
 import './AgentCards.css';
+
+// Fix Leaflet default marker icons (same fix as other components)
+let L;
+try {
+  L = require('leaflet');
+  delete L.Icon.Default.prototype._getIconUrl;
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png'
+  });
+} catch (err) {
+  console.warn('Leaflet not available:', err);
+}
 
 const ALL_DISTRICTS = Object.values(sriLankaDistrictsData).flat();
 
@@ -35,6 +51,8 @@ export default function BookingFormCard({ data = {}, onAction }) {
     data.specificAddress || data.address || (data.location && data.location.includes(',') ? data.location : '')
   );
   const [contactPhone, setContactPhone] = useState(data.contactPhone || '0771756463');
+  const [mapLat, setMapLat] = useState(null);
+  const [mapLng, setMapLng] = useState(null);
 
   // Keep state updated if data changes from parent / AI
   useEffect(() => {
@@ -93,8 +111,43 @@ export default function BookingFormCard({ data = {}, onAction }) {
     };
   }, [workerId, selectedDate, workerName]);
 
+  // Get current location via GPS
+  const handleGetLocation = () => {
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported by your browser.');
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        setMapLat(lat);
+        setMapLng(lng);
+        // Update specific address with GPS coordinates
+        setSpecificAddress(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+      },
+      (error) => {
+        console.warn('Geolocation error:', error);
+        alert('Could not get your location. Please enter it manually or pin it on the map.');
+      }
+    );
+  };
+
   const handleConfirmBooking = () => {
-    const fullAddress = specificAddress ? `${specificAddress}, ${location}` : location;
+    // Use GPS coordinates if available, otherwise use manual address
+    let fullAddress;
+    if (mapLat !== null && mapLng !== null) {
+      // Use GPS coordinates
+      fullAddress = `${mapLat.toFixed(6)}, ${mapLng.toFixed(6)}`;
+    } else if (specificAddress) {
+      // Use manual specific address
+      fullAddress = `${specificAddress}, ${location}`;
+    } else {
+      // Fallback to just location
+      fullAddress = location;
+    }
+
     const promptToExecute = `CONFIRM_BOOKING: Please book worker ID ${workerId} (${workerName}) for ${selectedDate}. Service: ${jobTitle}. Location: ${fullAddress}. Phone: ${contactPhone}. Notes: ${notes || 'Standard booking'}`;
 
     const payloadObj = {
@@ -117,6 +170,36 @@ export default function BookingFormCard({ data = {}, onAction }) {
 
     onAction && onAction('send_prompt', payloadObj);
   };
+
+  // Map Picker component for GPS functionality
+  function MapPicker({ lat, lng, onChange }) {
+    function LocationMarker() {
+      if (typeof L === 'undefined' || !lat || !lng) return null;
+
+      const map = useMapEvents({
+        click(e) { onChange(e.latlng.lat, e.latlng.lng); },
+      });
+
+      useEffect(() => {
+        if (lat && lng) map.flyTo([lat, lng], 14);
+      }, [lat, lng, map]);
+
+      return <Marker position={[lat, lng]} />;
+    }
+
+    if (typeof L === 'undefined') {
+      return <div>Map loading...</div>;
+    }
+
+    return (
+      <div style={{ height: 200, borderRadius: 10, overflow: 'hidden', border: '1.5px solid #e5e7eb', position: 'relative' }}>
+        <MapContainer center={[6.9271, 79.8612]} zoom={11} style={{ height: '100%', width: '100%' }}>
+          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          <LocationMarker />
+        </MapContainer>
+      </div>
+    );
+  }
 
   return (
     <div className="agent-card-container">
@@ -265,6 +348,55 @@ export default function BookingFormCard({ data = {}, onAction }) {
               onChange={(e) => setSpecificAddress(e.target.value)}
               placeholder="e.g. 5656, Batuhena, Ratnapura"
             />
+          </div>
+
+          {/* 6. Map & GPS Location */}
+          <div className="booking-form-field">
+            <label className="booking-field-label">
+              <i className="fa-solid fa-map-marked-alt"></i> Map Location
+            </label>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              {typeof L !== 'undefined' && (
+                <MapPicker
+                  lat={mapLat}
+                  lng={mapLng}
+                  onChange={(lat, lng) => {
+                    setMapLat(lat);
+                    setMapLng(lng);
+                    // Update specific address with coordinates when map is clicked
+                    if (lat && lng) {
+                      setSpecificAddress(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+                    }
+                  }}
+                />
+              )}
+              {!typeof L === 'undefined' && (
+                <div style={{ width: '100%', height: 200, border: '1.5px solid #e5e7eb', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280' }}>
+                  Map loading...
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={handleGetLocation}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#f3f4f6',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  transition: 'all 0.2s'
+                }}
+              >
+                📍 Use My Location
+              </button>
+            </div>
+            {mapLat && mapLng && (
+              <div style={{ marginTop: '8px', fontSize: '0.875rem', color: '#6b7280' }}>
+                Current: {mapLat.toFixed(6)}, {mapLng.toFixed(6)}
+              </div>
+            )}
           </div>
 
           {/* 6. Pricing Information */}

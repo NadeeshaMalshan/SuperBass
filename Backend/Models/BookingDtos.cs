@@ -24,11 +24,6 @@ namespace Superbass.Models
         public string? Reason { get; set; }
     }
 
-    public class RescheduleBookingRequest
-    {
-        public DateTime ScheduledDate { get; set; }
-        public string? Note { get; set; }
-    }
 
     public class ReviewBookingRequest
     {
