@@ -306,3 +306,4 @@ class _InitialAvatar extends StatelessWidget {
     );
   }
 }
+// This widget displays a contact card for a worker, showing their name, location, avatar, and phone number. It allows users to call the worker directly or copy their phone number to the clipboard. The card is designed to be visually appealing and user-friendly.
