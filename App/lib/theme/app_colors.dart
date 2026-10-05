@@ -39,5 +39,15 @@ abstract class AppColors {
   static const Color success = Color(0xFF06C167);
   static const Color error = Color(0xFFE11900);
   static const Color starRating = Color(0xFFFFC043);
+
+  // Workio Base Theme Tokens
+  static const Color ink = Color(0xFF000000);
+  static const Color inkMuted = Color(0xFF5C5C5C);
+  static const Color line = Color(0xFFD4D4D4);
+  static const Color track = Color(0xFFE2E2E2);
+  static const Color designError = Color(0xFFD92D20);
+  static const Color buttonPressed = Color(0xFF1F1F1F);
+  static const Color disabled = Color(0xFFBDBDBD);
+  static const Color backgroundLight = Color(0xFFFFFFFF);
 }
 
