@@ -2669,10 +2669,10 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                     const SizedBox(height: 12),
                                     Text(
                                       _searchQuery.isNotEmpty
-                                          ? 'No verified workers matching "$_searchQuery"'
+                                          ? 'No workers matching "$_searchQuery"'
                                           : (_selectedCity == 'All Locations'
-                                                ? 'No verified workers found in this category'
-                                                : 'No verified workers found in $_selectedCity'),
+                                                ? 'No workers found in this category'
+                                                : 'No workers found in $_selectedCity'),
                                       textAlign: TextAlign.center,
                                       style: GoogleFonts.dmSans(
                                         fontWeight: FontWeight.w700,
@@ -4626,7 +4626,7 @@ class AccountTabScreen extends StatelessWidget {
 
             _buildSettingsTile(
               icon: Icons.security_outlined,
-              title: 'Privacy & Security',
+              title: 'Advanced Options',
             ),
             _buildSettingsTile(
               icon: Icons.help_outline_rounded,
