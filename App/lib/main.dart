@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -1437,10 +1437,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
       }
     }
 
-    final titleController = TextEditingController(
-      text:
-          'Need help with ${worker.skills.isNotEmpty ? worker.skills.first : "home service"}',
-    );
+    final titleController = TextEditingController();
     final descController = TextEditingController();
     final phoneController = TextEditingController(text: initialPhone);
     final addressController = TextEditingController(text: initialAddress);
@@ -1455,7 +1452,6 @@ class _FindTabScreenState extends State<FindTabScreen> {
     double locationLng = initialLng ?? 79.8612;
 
     bool shareGps = hasSavedCoordinates;
-    bool showMapPicker = false;
 
     if (!mounted) return;
 
@@ -1466,146 +1462,271 @@ class _FindTabScreenState extends State<FindTabScreen> {
       builder: (sheetContext) => StatefulBuilder(
         builder: (context, setModalState) => Container(
           padding: EdgeInsets.only(
-            left: 24,
-            right: 24,
-            top: 24,
-            bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 24,
+            left: 20,
+            right: 20,
+            top: 16,
+            bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 20,
           ),
           decoration: const BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
           ),
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Request Service from ${worker.name}',
-                        style: GoogleFonts.dmSans(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 22,
-                          color: const Color(0xFF111827),
-                        ),
-                      ),
+                // Top Circular Close Button (x)
+                GestureDetector(
+                  onTap: () => Navigator.pop(sheetContext),
+                  child: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF1F3F5),
+                      shape: BoxShape.circle,
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(sheetContext),
-                    ),
-                  ],
-                ),
-                const Divider(color: Color(0xFFF1F5F9)),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: titleController,
-                  decoration: InputDecoration(
-                    labelText: 'Job Title',
-                    hintText: 'e.g. Pipe leakage repair',
-                    prefixIcon: const Icon(Icons.work_outline),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 16,
+                    child: const Icon(
+                      Icons.close_rounded,
+                      color: Colors.black,
+                      size: 20,
                     ),
                   ),
                 ),
                 const SizedBox(height: 16),
+
+                // Title: Request service
+                Text(
+                  'Request service',
+                  style: GoogleFonts.dmSans(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 26,
+                    color: Colors.black,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Worker Card Header
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F3F5),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    children: [
+                      // Avatar Circle with initial or picture
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: const BoxDecoration(
+                          color: Colors.black,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            worker.name.isNotEmpty ? worker.name[0].toUpperCase() : 'W',
+                            style: GoogleFonts.dmSans(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              worker.name,
+                              style: GoogleFonts.dmSans(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Colors.black,
+                              ),
+                            ),
+                            Text(
+                              worker.skills.isNotEmpty ? worker.skills.first : 'General Service',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 13,
+                                color: const Color(0xFF8E8E93),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        worker.hourlyRate > 0
+                            ? 'Rs. ${worker.hourlyRate.round().toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}/hr'
+                            : worker.pricingModel,
+                        style: GoogleFonts.dmSans(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Job title
+                Text(
+                  'Job title',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF6E6E73),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: titleController,
+                  style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black),
+                  decoration: InputDecoration(
+                    hintText: 'Need help with ${worker.skills.isNotEmpty ? worker.skills.first : "home service"}',
+                    hintStyle: GoogleFonts.dmSans(color: const Color(0xFF8E8E93), fontSize: 15, fontWeight: FontWeight.normal),
+                    prefixIcon: const Icon(Icons.work_outline_rounded, size: 20, color: Colors.black87),
+                    filled: true,
+                    fillColor: const Color(0xFFF1F3F5),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  ),
+                ),
+                const SizedBox(height: 18),
+
+                // Description / scope of work
+                Text(
+                  'Description / scope of work',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF6E6E73),
+                  ),
+                ),
+                const SizedBox(height: 6),
                 TextField(
                   controller: descController,
                   maxLines: 3,
+                  style: GoogleFonts.dmSans(fontSize: 14, color: Colors.black),
                   decoration: InputDecoration(
-                    labelText: 'Description / Scope of Work',
-                    hintText: 'Describe details or location within house',
+                    hintText: 'Describe what needs to be done',
+                    hintStyle: GoogleFonts.dmSans(color: const Color(0xFF8E8E93), fontSize: 14),
+                    filled: true,
+                    fillColor: const Color(0xFFF1F3F5),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 16,
-                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   ),
                 ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: selectedUrgency,
-                        items: ['Low', 'Medium', 'High'].map((String value) {
-                          return DropdownMenuItem<String>(
-                            value: value,
-                            child: Text(value),
-                          );
-                        }).toList(),
-                        onChanged: (val) {
-                          if (val != null) {
-                            setModalState(() => selectedUrgency = val);
-                          }
-                        },
-                        decoration: InputDecoration(
-                          labelText: 'Urgency',
-                          prefixIcon: const Icon(Icons.priority_high),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 16,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: phoneController,
-                        keyboardType: TextInputType.phone,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          LengthLimitingTextInputFormatter(10),
-                        ],
-                        decoration: InputDecoration(
-                          labelText: 'Contact Phone',
-                          hintText: '07XXXXXXXX',
-                          prefixIcon: const Icon(Icons.phone),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 16,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 18),
+
+                // Urgency Pill Selector
+                Text(
+                  'Urgency',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF6E6E73),
+                  ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 8),
+                Row(
+                  children: ['Low', 'Medium', 'High'].map((urg) {
+                    final isSelected = selectedUrgency == urg;
+                    return Expanded(
+                      child: GestureDetector(
+                        onTap: () => setModalState(() => selectedUrgency = urg),
+                        child: Container(
+                          margin: EdgeInsets.only(right: urg == 'High' ? 0 : 10),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: isSelected ? Colors.black : const Color(0xFFF1F3F5),
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          child: Center(
+                            child: Text(
+                              urg,
+                              style: GoogleFonts.dmSans(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: isSelected ? Colors.white : Colors.black,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 18),
+
+                // Contact phone
+                Text(
+                  'Contact phone',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF6E6E73),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: phoneController,
+                  keyboardType: TextInputType.phone,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(10),
+                  ],
+                  style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black),
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.phone_outlined, size: 20, color: Colors.black87),
+                    filled: true,
+                    fillColor: const Color(0xFFF1F3F5),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  ),
+                ),
+                const SizedBox(height: 18),
+
+                // Preferred date
+                Text(
+                  'Preferred date',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF6E6E73),
+                  ),
+                ),
+                const SizedBox(height: 6),
                 TextField(
                   readOnly: true,
                   controller: TextEditingController(
                     text: selectedDate == null
                         ? ''
-                        : '${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}',
+                        : '${selectedDate!.day} ${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][selectedDate!.month - 1]} ${selectedDate!.year}',
                   ),
+                  style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black),
                   decoration: InputDecoration(
-                    labelText: 'Preferred Date',
-                    prefixIcon: const Icon(Icons.calendar_today),
-                    suffixIcon: const Icon(Icons.edit_calendar),
+                    prefixIcon: const Icon(Icons.calendar_today_outlined, size: 19, color: Colors.black87),
+                    filled: true,
+                    fillColor: const Color(0xFFF1F3F5),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 16,
-                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   ),
                   onTap: () async {
                     final d = await showDatePicker(
@@ -1617,371 +1738,185 @@ class _FindTabScreenState extends State<FindTabScreen> {
                     if (d != null) setModalState(() => selectedDate = d);
                   },
                 ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: addressController,
-                  decoration: InputDecoration(
-                    labelText: 'Location Address',
-                    hintText: 'e.g. 123 Galle Road, Colombo',
-                    prefixIcon: const Icon(Icons.location_on),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 16,
-                    ),
+                const SizedBox(height: 18),
+
+                // Location address
+                Text(
+                  'Location address',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF6E6E73),
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: addressController,
+                  style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black),
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.location_on_outlined, size: 20, color: Colors.black87),
+                    filled: true,
+                    fillColor: const Color(0xFFF1F3F5),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  ),
+                ),
+                const SizedBox(height: 18),
 
-                // GPS Location Share & Map Picker (Faithfully replicating web booking form)
+                // Share saved GPS location section card
                 Container(
-                  padding: const EdgeInsets.all(14),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                    color: const Color(0xFFF1F3F5),
+                    borderRadius: BorderRadius.circular(20),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Checkbox(
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Share saved GPS location',
+                                  style: GoogleFonts.dmSans(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Saved pin: ${locationLat.toStringAsFixed(5)}, ${locationLng.toStringAsFixed(5)}',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 12,
+                                    color: const Color(0xFF8E8E93),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Switch(
                             value: shareGps,
-                            activeColor: Colors.black,
-                            checkColor: Colors.white,
-                            materialTapTargetSize:
-                                MaterialTapTargetSize.shrinkWrap,
-                            visualDensity: VisualDensity.compact,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            side: const BorderSide(
-                              color: Color(0xFF94A3B8),
-                              width: 1.5,
-                            ),
+                            activeColor: Colors.white,
+                            activeTrackColor: Colors.black,
+                            inactiveThumbColor: Colors.white,
+                            inactiveTrackColor: const Color(0xFFE5E5EA),
                             onChanged: (val) {
                               setModalState(() {
-                                shareGps = val ?? false;
+                                shareGps = val;
                               });
                             },
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () {
-                                setModalState(() {
-                                  shareGps = !shareGps;
-                                });
-                              },
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.my_location,
-                                        size: 18,
-                                        color: Colors.black,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        'Share saved GPS location',
-                                        style: GoogleFonts.dmSans(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 14,
-                                          color: const Color(0xFF0F172A),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 2),
-                                  if (hasSavedCoordinates)
-                                    Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.pin_drop,
-                                          size: 14,
-                                          color: Colors.black,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        RichText(
-                                          text: TextSpan(
-                                            style: GoogleFonts.dmSans(
-                                              fontSize: 12,
-                                              color: const Color(0xFF64748B),
-                                            ),
-                                            children: [
-                                              const TextSpan(
-                                                text: 'Saved Pin: ',
-                                              ),
-                                              TextSpan(
-                                                text:
-                                                    '${locationLat.toStringAsFixed(5)}, ${locationLng.toStringAsFixed(5)}',
-                                                style: GoogleFonts.dmSans(
-                                                  fontWeight: FontWeight.w700,
-                                                  color: const Color(
-                                                    0xFF0F172A,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    )
-                                  else
-                                    Text(
-                                      'No GPS coordinates saved. Pick on map to attach.',
-                                      style: GoogleFonts.dmSans(
-                                        fontSize: 12,
-                                        color: const Color(0xFF64748B),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          TextButton.icon(
-                            onPressed: () {
-                              setModalState(() {
-                                showMapPicker = !showMapPicker;
-                              });
-                            },
-                            icon: Icon(
-                              showMapPicker
-                                  ? Icons.expand_less
-                                  : Icons.map_outlined,
-                              size: 16,
-                              color: Colors.black,
-                            ),
-                            label: Text(
-                              showMapPicker
-                                  ? 'Hide Map'
-                                  : (hasSavedCoordinates ? 'View' : 'Pick'),
-                              style: GoogleFonts.dmSans(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
-                                color: Colors.black,
-                              ),
-                            ),
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
                           ),
                         ],
                       ),
-
-                      // Expandable Interactive Map & Geolocation
-                      if (showMapPicker) ...[
+                      if (shareGps) ...[
                         const SizedBox(height: 12),
-                        Container(height: 1, color: const Color(0xFFE2E8F0)),
-                        const SizedBox(height: 10),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.touch_app,
-                                    size: 15,
-                                    color: Colors.black,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Flexible(
-                                    child: Text(
-                                      'Tap anywhere on map to pin',
-                                      style: GoogleFonts.dmSans(
-                                        fontSize: 12,
-                                        color: const Color(0xFF64748B),
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            InkWell(
-                              onTap: () {
-                                setModalState(() {
-                                  locationLat = 6.9271;
-                                  locationLng = 79.8612;
-                                  hasSavedCoordinates = true;
-                                  shareGps = true;
-                                });
-                              },
-                              borderRadius: BorderRadius.circular(8),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF1F5F9),
-                                  border: Border.all(
-                                    color: const Color(0xFFCBD5E1),
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
-                                      Icons.gps_fixed,
-                                      size: 13,
-                                      color: Colors.black,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      'Use Device GPS',
-                                      style: GoogleFonts.dmSans(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        SuperBassMap(
-                          latitude: locationLat,
-                          longitude: locationLng,
-                          height: 190,
-                          borderRadius: 12,
-                          isInteractive: true,
-                          markerTitle: '',
-                          onLocationPicked: (point) {
-                            setModalState(() {
-                              locationLat = point.latitude;
-                              locationLng = point.longitude;
-                              hasSavedCoordinates = true;
-                              shareGps = true;
-                            });
-                          },
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
-                          ),
-                          child: Row(
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: Stack(
                             children: [
-                              const Icon(
-                                Icons.location_on,
-                                size: 15,
-                                color: Colors.black,
+                              SuperBassMap(
+                                latitude: locationLat,
+                                longitude: locationLng,
+                                height: 160,
+                                borderRadius: 16,
+                                isInteractive: true,
+                                markerTitle: '',
+                                onLocationPicked: (point) {
+                                  setModalState(() {
+                                    locationLat = point.latitude;
+                                    locationLng = point.longitude;
+                                    hasSavedCoordinates = true;
+                                  });
+                                },
                               ),
-                              const SizedBox(width: 4),
-                              RichText(
-                                text: TextSpan(
-                                  style: GoogleFonts.dmSans(
-                                    fontSize: 11,
-                                    color: const Color(0xFF0F172A),
-                                  ),
-                                  children: [
-                                    const TextSpan(text: 'Selected: '),
-                                    TextSpan(
-                                      text:
-                                          '${locationLat.toStringAsFixed(6)}, ${locationLng.toStringAsFixed(6)}',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                      ),
+                              Positioned(
+                                top: 10,
+                                left: 10,
+                                child: InkWell(
+                                  onTap: () {
+                                    setModalState(() {
+                                      locationLat = 6.9271;
+                                      locationLng = 79.8612;
+                                      hasSavedCoordinates = true;
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(20),
+                                      boxShadow: const [
+                                        BoxShadow(
+                                          color: Colors.black12,
+                                          blurRadius: 4,
+                                          offset: Offset(0, 2),
+                                        ),
+                                      ],
                                     ),
-                                  ],
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.my_location, size: 14, color: Colors.black),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          'Use my location',
+                                          style: GoogleFonts.dmSans(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.black,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Tap the map to move the pin. Selected: ${locationLat.toStringAsFixed(6)}, ${locationLng.toStringAsFixed(6)}',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 11,
+                            color: const Color(0xFF8E8E93),
                           ),
                         ),
                       ],
                     ],
                   ),
                 ),
-                const SizedBox(height: 14),
-
-                // Pricing Info (Read-only)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.payments_outlined,
-                            size: 18,
-                            color: Colors.black,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Pricing Model',
-                            style: GoogleFonts.dmSans(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF64748B),
-                            ),
-                          ),
-                        ],
-                      ),
-                      Text(
-                        '${worker.pricingModel} ${worker.hourlyRate > 0 ? "(Rs. ${worker.hourlyRate.round()}/hr)" : ""}',
-                        style: GoogleFonts.dmSans(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                          color: const Color(0xFF111827),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
                 const SizedBox(height: 24),
+
+                // Bottom Buttons (Cancel & Submit Request)
                 Row(
                   children: [
                     Expanded(
                       flex: 1,
                       child: SizedBox(
-                        height: 56,
+                        height: 52,
                         child: TextButton(
                           onPressed: () => Navigator.pop(sheetContext),
                           style: TextButton.styleFrom(
-                            foregroundColor: const Color(0xFF475569),
+                            backgroundColor: const Color(0xFFF1F3F5),
+                            foregroundColor: Colors.black,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(28),
+                              borderRadius: BorderRadius.circular(26),
                             ),
                           ),
                           child: Text(
                             'Cancel',
                             style: GoogleFonts.dmSans(
                               fontWeight: FontWeight.w700,
-                              fontSize: 16,
+                              fontSize: 15,
                             ),
                           ),
                         ),
@@ -1991,8 +1926,8 @@ class _FindTabScreenState extends State<FindTabScreen> {
                     Expanded(
                       flex: 2,
                       child: SizedBox(
-                        height: 56,
-                        child: ElevatedButton.icon(
+                        height: 52,
+                        child: ElevatedButton(
                           onPressed: isSubmitting
                               ? null
                               : () async {
@@ -2075,14 +2010,15 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                     }
                                   }
                                 },
-                          icon: isSubmitting
-                              ? const SizedBox.shrink()
-                              : const Icon(
-                                  Icons.send,
-                                  size: 20,
-                                  color: Colors.white,
-                                ),
-                          label: isSubmitting
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.black,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(26),
+                            ),
+                          ),
+                          child: isSubmitting
                               ? const SizedBox(
                                   width: 22,
                                   height: 22,
@@ -2092,27 +2028,19 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                   ),
                                 )
                               : Text(
-                                  'Submit Hire Request',
+                                  'Submit request',
                                   style: GoogleFonts.dmSans(
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 15,
                                     color: Colors.white,
                                   ),
                                 ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.black,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(28),
-                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
             ),
           ),
         ),
@@ -2776,6 +2704,8 @@ class BookingsTabScreen extends StatefulWidget {
 class _BookingsTabScreenState extends State<BookingsTabScreen> {
   List<BookingModel> _bookings = [];
   bool _isLoading = true;
+  int _selectedTabIndex = 0; // 0: Requests, 1: Active, 2: History, 3: All
+  String _sortBy = 'Date'; // 'Date' or 'Priority'
 
   @override
   void initState() {
@@ -2801,6 +2731,99 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  int _getUrgencyWeight(String urgency) {
+    switch (urgency.toLowerCase()) {
+      case 'high':
+        return 3;
+      case 'medium':
+        return 2;
+      case 'low':
+        return 1;
+      default:
+        return 0;
+    }
+  }
+
+  List<BookingModel> _sortBookings(List<BookingModel> list) {
+    final sorted = List<BookingModel>.from(list);
+    if (_sortBy == 'Priority') {
+      sorted.sort((a, b) {
+        final weightA = _getUrgencyWeight(a.urgency);
+        final weightB = _getUrgencyWeight(b.urgency);
+        if (weightA != weightB) {
+          return weightB.compareTo(weightA); // High priority first
+        }
+        final dateA = a.scheduledDate ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final dateB = b.scheduledDate ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return dateB.compareTo(dateA);
+      });
+    } else {
+      sorted.sort((a, b) {
+        final dateA = a.scheduledDate ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final dateB = b.scheduledDate ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return dateB.compareTo(dateA); // Newest date first
+      });
+    }
+    return sorted;
+  }
+
+  void _showSortOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFCBD5E1),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Sort Bookings By',
+              style: GoogleFonts.dmSans(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ListTile(
+              leading: const Icon(Icons.calendar_today_rounded, color: Colors.black),
+              title: Text('Date (Newest First)', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+              trailing: _sortBy == 'Date' ? const Icon(Icons.check_circle_rounded, color: Colors.black) : null,
+              onTap: () {
+                setState(() => _sortBy = 'Date');
+                Navigator.pop(ctx);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.priority_high_rounded, color: Colors.black),
+              title: Text('Priority (High Urgency First)', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+              trailing: _sortBy == 'Priority' ? const Icon(Icons.check_circle_rounded, color: Colors.black) : null,
+              onTap: () {
+                setState(() => _sortBy = 'Priority');
+                Navigator.pop(ctx);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Map<String, double> _extractBookingCoordinates(BookingModel b) {
@@ -2858,359 +2881,416 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
   }
 
   void _showBookingDetails(BookingModel b) {
-    final scheduledDateStr = b.scheduledDate != null
-        ? '${b.scheduledDate!.day}/${b.scheduledDate!.month}/${b.scheduledDate!.year}'
-        : 'Flexible / ASAP';
+    // ── Date formatting ───────────────────────────────────────────
+    String scheduledDateStr = 'Flexible / ASAP';
+    if (b.scheduledDate != null) {
+      final months = [
+        'Jan','Feb','Mar','Apr','May','Jun',
+        'Jul','Aug','Sep','Oct','Nov','Dec',
+      ];
+      final d = b.scheduledDate!;
+      scheduledDateStr =
+          '${d.day} ${months[d.month - 1]} ${d.year}';
+    }
 
-    int currentStep = 1;
+    // ── Progress step (1-based) ───────────────────────────────────
     final status = b.status.toLowerCase();
+    int currentStep = 1;
     if (status == 'accepted') currentStep = 2;
     if (status == 'confirmed') currentStep = 3;
-    if (status == 'in progress') currentStep = 4;
-    if (status == 'completed') currentStep = 5;
+    if (status == 'in progress' || status == 'inprogress') currentStep = 4;
+    if (status == 'completed' || status == 'reviewed' || status == 'cancelled') {
+      currentStep = 5;
+    }
+
+    // ── Status pill colours ───────────────────────────────────────
+    Color statusBg;
+    Color statusFg;
+    IconData statusIcon;
+    switch (status) {
+      case 'requested':
+      case 'pending':
+        statusBg = const Color(0xFF1C1C1E);
+        statusFg = Colors.white;
+        statusIcon = Icons.hourglass_empty_rounded;
+        break;
+      case 'accepted':
+        statusBg = const Color(0xFF1C1C1E);
+        statusFg = Colors.white;
+        statusIcon = Icons.check_circle_outline_rounded;
+        break;
+      case 'confirmed':
+        statusBg = const Color(0xFF1C1C1E);
+        statusFg = Colors.white;
+        statusIcon = Icons.verified_outlined;
+        break;
+      case 'in progress':
+      case 'inprogress':
+        statusBg = const Color(0xFF1C1C1E);
+        statusFg = Colors.white;
+        statusIcon = Icons.construction_rounded;
+        break;
+      case 'completed':
+      case 'reviewed':
+        statusBg = const Color(0xFF1C1C1E);
+        statusFg = Colors.white;
+        statusIcon = Icons.task_alt_rounded;
+        break;
+      case 'cancelled':
+        statusBg = const Color(0xFF1C1C1E);
+        statusFg = Colors.white;
+        statusIcon = Icons.cancel_outlined;
+        break;
+      default:
+        statusBg = const Color(0xFF1C1C1E);
+        statusFg = Colors.white;
+        statusIcon = Icons.info_outline_rounded;
+    }
+
+    // ── Priority pill ─────────────────────────────────────────────
+    Color priorityBg;
+    switch (b.urgency.toLowerCase()) {
+      case 'high':
+        priorityBg = const Color(0xFFE8E8E8);
+        break;
+      case 'medium':
+        priorityBg = const Color(0xFFE8E8E8);
+        break;
+      default:
+        priorityBg = const Color(0xFFE8E8E8);
+    }
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        height: MediaQuery.of(context).size.height * 0.9,
-        padding: const EdgeInsets.only(
-          left: 20,
-          right: 20,
-          top: 16,
-          bottom: 24,
-        ),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          children: [
-            // Header
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.black,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Icons.assignment,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Booking Details',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFF111827),
-                          ),
-                        ),
-                        Text(
-                          'Reference ID: #${b.id}',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 13,
-                            color: const Color(0xFF64748B),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+      builder: (ctx) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.92,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: Column(
+            children: [
+              // ── Drag handle ──────────────────────────────────────
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDDE1E7),
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close, color: Color(0xFF64748B)),
-                  onPressed: () => Navigator.of(ctx).pop(),
-                ),
-              ],
-            ),
-            const Divider(height: 32, color: Color(0xFFF1F5F9)),
+              ),
+              const SizedBox(height: 16),
 
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Job Title
-                    Text(
-                      'JOB TITLE',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF94A3B8),
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      b.jobTitle,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xFF111827),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Status & Priority
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'STATUS',
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF94A3B8),
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF1F2937),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
-                                      Icons.thumb_up_alt_outlined,
-                                      color: Colors.white,
-                                      size: 16,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      b.status,
-                                      style: GoogleFonts.dmSans(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'PRIORITY',
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF94A3B8),
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.black,
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
-                                      Icons.flag_outlined,
-                                      color: Colors.white,
-                                      size: 16,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      b.urgency.toUpperCase(),
-                                      style: GoogleFonts.dmSans(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Date/Time & Location Card
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFF1F5F9)),
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Icon(
-                                Icons.calendar_today_outlined,
-                                size: 18,
-                                color: Color(0xFF111827),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'DATE',
-                                      style: GoogleFonts.dmSans(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                        color: const Color(0xFF64748B),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      scheduledDateStr,
-                                      style: GoogleFonts.dmSans(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w700,
-                                        color: const Color(0xFF111827),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Icon(
-                                Icons.location_on_outlined,
-                                size: 18,
-                                color: Color(0xFF111827),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'LOCATION',
-                                      style: GoogleFonts.dmSans(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                        color: const Color(0xFF64748B),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      b.locationAddress,
-                                      style: GoogleFonts.dmSans(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w700,
-                                        color: const Color(0xFF111827),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Worker & Price Card
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFF1F5F9)),
-                      ),
-                      child: Row(
+              // ── Scrollable content ───────────────────────────────
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ── Title row + close ──────────────────────
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'WORKER',
+                                  b.jobTitle,
                                   style: GoogleFonts.dmSans(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: const Color(0xFF64748B),
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.black,
+                                    letterSpacing: -0.5,
+                                    height: 1.15,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    Flexible(
-                                      child: Text(
-                                        b.workerName,
-                                        style: GoogleFonts.dmSans(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w800,
-                                          color: const Color(0xFF111827),
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    if (b.isWorkerVerified)
-                                      const VerifiedBadge(size: 14),
-                                  ],
+                                Text(
+                                  'Booking #${b.id}',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 13,
+                                    color: const Color(0xFF8A8A8E),
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ],
                             ),
                           ),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                          const SizedBox(width: 12),
+                          GestureDetector(
+                            onTap: () => Navigator.of(ctx).pop(),
+                            child: Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF0F0F3),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.close_rounded,
+                                size: 18,
+                                color: Color(0xFF3C3C43),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // ── Status + Priority pills ─────────────────
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 7,
+                            ),
+                            decoration: BoxDecoration(
+                              color: statusBg,
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
+                                Icon(statusIcon, color: statusFg, size: 14),
+                                const SizedBox(width: 6),
                                 Text(
-                                  'ESTIMATED PRICE',
+                                  _formatStatus(b.status),
                                   style: GoogleFonts.dmSans(
-                                    fontSize: 11,
+                                    color: statusFg,
+                                    fontSize: 12,
                                     fontWeight: FontWeight.w700,
-                                    color: const Color(0xFF64748B),
+                                    letterSpacing: 0.2,
                                   ),
                                 ),
-                                const SizedBox(height: 4),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 7,
+                            ),
+                            decoration: BoxDecoration(
+                              color: priorityBg,
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                            child: Text(
+                              '${b.urgency.toUpperCase()} PRIORITY',
+                              style: GoogleFonts.dmSans(
+                                color: Colors.black,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.4,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+
+                      // ── Date + Location rows ────────────────────
+                      _detailInfoRow(
+                        icon: Icons.calendar_today_rounded,
+                        label: 'Date',
+                        value: scheduledDateStr,
+                      ),
+                      const SizedBox(height: 12),
+                      _detailInfoRow(
+                        icon: Icons.location_on_rounded,
+                        label: 'Location',
+                        value: b.locationAddress.isNotEmpty
+                            ? b.locationAddress
+                            : 'Location not provided',
+                      ),
+                      const SizedBox(height: 20),
+
+                      // ── Worker card ─────────────────────────────
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF7F7F7),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: Colors.black,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  b.workerName.isNotEmpty
+                                      ? b.workerName[0].toUpperCase()
+                                      : 'W',
+                                  style: GoogleFonts.dmSans(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          b.workerName,
+                                          style: GoogleFonts.dmSans(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w800,
+                                            color: Colors.black,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      if (b.isWorkerVerified) ...[
+                                        const SizedBox(width: 6),
+                                        const VerifiedBadge(size: 16),
+                                      ],
+                                    ],
+                                  ),
+                                  Text(
+                                    'Worker',
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 12,
+                                      color: const Color(0xFF8A8A8E),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  'Estimated price',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 11,
+                                    color: const Color(0xFF8A8A8E),
+                                  ),
+                                ),
                                 Text(
                                   b.estimatedPrice > 0
                                       ? 'Rs. ${b.estimatedPrice.toStringAsFixed(0)}'
                                       : 'Negotiable',
                                   style: GoogleFonts.dmSans(
                                     fontSize: 15,
-                                    fontWeight: FontWeight.w800,
-                                    color: const Color(0xFF111827),
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.black,
+                                    letterSpacing: -0.3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+
+                      // ── Progress section ────────────────────────
+                      Text(
+                        'Progress',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.black,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildDetailedStepper(currentStep, b),
+                      const SizedBox(height: 28),
+
+                      // ── Notes section ───────────────────────────
+                      Text(
+                        'Notes',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.black,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF7F7F7),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: const Color(0xFFE4E4E4),
+                          ),
+                        ),
+                        child: Text(
+                          b.description.isNotEmpty
+                              ? b.description
+                              : 'Standard booking',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 14,
+                            color: const Color(0xFF3C3C43),
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+
+                      // ── Service location map ────────────────────
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Service location',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.black,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              final coords = _extractBookingCoordinates(b);
+                              final lat = coords['lat'];
+                              final lng = coords['lng'];
+                              final url =
+                                  'https://www.google.com/maps/search/?api=1&query=$lat,$lng';
+                              if (kIsWeb) openUrl(url);
+                            },
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.open_in_new_rounded,
+                                  size: 14,
+                                  color: Color(0xFF007AFF),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Google Maps',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF007AFF),
                                   ),
                                 ),
                               ],
@@ -3218,333 +3298,174 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Lifecycle Status
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'SERVICE LIFECYCLE STATUS',
-                            style: GoogleFonts.dmSans(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              color: const Color(0xFF64748B),
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          _buildLifecycleStep(
-                            '1',
-                            'Booking Requested',
-                            'Request submitted by resident',
-                            currentStep >= 1,
-                            isCompleted: currentStep > 1,
-                          ),
-                          const SizedBox(height: 16),
-                          _buildLifecycleStep(
-                            '2',
-                            'Worker Accepts / Rejects',
-                            'Worker accepted the booking',
-                            currentStep >= 2,
-                            isCompleted: currentStep > 2,
-                          ),
-                          const SizedBox(height: 16),
-                          _buildLifecycleStep(
-                            '3',
-                            'Confirmed',
-                            'Schedule locked in',
-                            currentStep >= 3,
-                            isCompleted: currentStep > 3,
-                          ),
-                          const SizedBox(height: 16),
-                          _buildLifecycleStep(
-                            '4',
-                            'In Progress',
-                            '',
-                            currentStep >= 4,
-                            isCompleted: currentStep > 4,
-                          ),
-                          const SizedBox(height: 16),
-                          _buildLifecycleStep(
-                            '5',
-                            'Completed',
-                            '',
-                            currentStep >= 5,
-                            isCompleted: currentStep > 5,
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    if (b.description.isNotEmpty) ...[
-                      const SizedBox(height: 24),
-                      Text(
-                        'NOTES / DESCRIPTION',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFF94A3B8),
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFF1F5F9)),
-                        ),
-                        child: Text(
-                          b.description,
-                          style: GoogleFonts.dmSans(
-                            fontSize: 14,
-                            color: const Color(0xFF334155),
-                          ),
-                        ),
-                      ),
-                    ],
-
-                    // Map Preview Card
-                    const SizedBox(height: 24),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      width: 38,
-                                      height: 38,
-                                      decoration: BoxDecoration(
-                                        color: Colors.black,
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: const Icon(
-                                        Icons.map_outlined,
-                                        color: Colors.white,
-                                        size: 20,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Service Location & Map Preview',
-                                            style: GoogleFonts.dmSans(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w800,
-                                              color: const Color(0xFF111827),
-                                            ),
-                                          ),
-                                          Text(
-                                            b.locationAddress,
-                                            style: GoogleFonts.dmSans(
-                                              fontSize: 12,
-                                              color: const Color(0xFF71717A),
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              InkWell(
-                                onTap: () {
-                                  final coords = _extractBookingCoordinates(b);
-                                  final lat = coords['lat'];
-                                  final lng = coords['lng'];
-                                  final url =
-                                      'https://www.google.com/maps/search/?api=1&query=$lat,$lng';
-                                  if (kIsWeb) {
-                                    openUrl(url);
-                                  }
-                                },
-                                borderRadius: BorderRadius.circular(20),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black,
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.open_in_new,
-                                        color: Colors.white,
-                                        size: 16,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        'View on Google Maps',
-                                        style: GoogleFonts.dmSans(
-                                          color: Colors.white,
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          Builder(
-                            builder: (context) {
-                              final coords = _extractBookingCoordinates(b);
-                              return SuperBassMap(
-                                latitude: coords['lat']!,
-                                longitude: coords['lng']!,
-                                zoom: 15.0,
-                                height: 220,
-                                borderRadius: 16,
-                                isInteractive: true,
-                                markerTitle: b.locationAddress.isNotEmpty
-                                    ? b.locationAddress
-                                    : 'Service Location',
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Action Buttons (Cancel / Review)
-                    const SizedBox(height: 32),
-                    if (b.status.toLowerCase() == 'requested' ||
-                        b.status.toLowerCase() == 'pending') ...[
-                      SizedBox(
-                        width: double.infinity,
-                        height: 52,
-                        child: OutlinedButton(
-                          onPressed: () {
-                            Navigator.of(ctx).pop();
-                            _confirmCancelBooking(b);
-                          },
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.black,
-                            side: const BorderSide(color: Colors.black),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(26),
-                            ),
-                          ),
-                          child: Text(
-                            'Cancel Booking Request',
-                            style: GoogleFonts.dmSans(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
-                              color: Colors.black,
-                            ),
-                          ),
-                        ),
-                      ),
                       const SizedBox(height: 12),
-                    ],
-                    if (b.status.toLowerCase() == 'completed') ...[
-                      SizedBox(
-                        width: double.infinity,
-                        height: 52,
-                        child: FilledButton.icon(
-                          onPressed: () {
-                            Navigator.of(ctx).pop();
-                            showReviewSheet(context, b, _fetchBookings);
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(18),
+                        child: Builder(
+                          builder: (context) {
+                            final coords = _extractBookingCoordinates(b);
+                            return SuperBassMap(
+                              latitude: coords['lat']!,
+                              longitude: coords['lng']!,
+                              zoom: 15.0,
+                              height: 210,
+                              borderRadius: 18,
+                              isInteractive: true,
+                              markerTitle: b.locationAddress.isNotEmpty
+                                  ? b.locationAddress
+                                  : 'Service Location',
+                            );
                           },
-                          icon: const Icon(
-                            Icons.star_rounded,
-                            color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+
+                      // ── Review summary (if reviewed) ────────────
+                      if (b.status.toLowerCase() == 'reviewed') ...[
+                        Text(
+                          'Your review',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.black,
+                            letterSpacing: -0.3,
                           ),
-                          label: Text(
-                            'Leave a Review',
-                            style: GoogleFonts.dmSans(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
+                        ),
+                        const SizedBox(height: 12),
+                        ReviewSummary(booking: b),
+                        const SizedBox(height: 28),
+                      ],
+
+                      // ── Cancel button (if cancellable) ──────────
+                      if (b.status.toLowerCase() == 'requested' ||
+                          b.status.toLowerCase() == 'pending') ...[
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: OutlinedButton(
+                            onPressed: () {
+                              Navigator.of(ctx).pop();
+                              _confirmCancelBooking(b);
+                            },
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.black,
+                              side: const BorderSide(color: Colors.black),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(26),
+                              ),
+                            ),
+                            child: Text(
+                              'Cancel Booking Request',
+                              style: GoogleFonts.dmSans(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+
+                      // ── Leave review button (if completed) ──────
+                      if (b.status.toLowerCase() == 'completed') ...[
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: FilledButton.icon(
+                            onPressed: () {
+                              Navigator.of(ctx).pop();
+                              showReviewSheet(context, b, _fetchBookings);
+                            },
+                            icon: const Icon(
+                              Icons.star_rounded,
                               color: Colors.white,
                             ),
-                          ),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: Colors.black,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(26),
+                            label: Text(
+                              'Leave a Review',
+                              style: GoogleFonts.dmSans(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
+                                color: Colors.white,
+                              ),
+                            ),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Colors.black,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(26),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
+                        const SizedBox(height: 12),
+                      ],
                     ],
-                    if (b.status.toLowerCase() == 'reviewed') ...[
-                      ReviewSummary(booking: b),
-                      const SizedBox(height: 12),
-                    ],
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
+
+              // ── Sticky bottom "Message Worker" button ────────────
+              Container(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  border: Border(
+                    top: BorderSide(color: Color(0xFFF0F0F3), width: 1),
+                  ),
+                ),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 54,
+                  child: FilledButton.icon(
+                    onPressed: () {},
+                    icon: const Icon(
+                      Icons.chat_bubble_outline_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                    label: Text(
+                      'Message worker',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.black,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildLifecycleStep(
-    String number,
-    String title,
-    String subtitle,
-    bool isActive, {
-    bool isCompleted = false,
+  /// Compact icon+label+value row used in the detail sheet
+  Widget _detailInfoRow({
+    required IconData icon,
+    required String label,
+    required String value,
   }) {
-    final color = isActive ? Colors.black : const Color(0xFFCBD5E1);
-    final textColor = isActive ? Colors.black : const Color(0xFF94A3B8);
-
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          width: 24,
-          height: 24,
-          margin: const EdgeInsets.only(top: 2),
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          child: Center(
-            child: isCompleted
-                ? const Icon(Icons.check, color: Colors.white, size: 14)
-                : Text(
-                    number,
-                    style: GoogleFonts.dmSans(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF0F0F3),
+            borderRadius: BorderRadius.circular(10),
           ),
+          child: Icon(icon, size: 18, color: const Color(0xFF3C3C43)),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -3552,25 +3473,142 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                title,
+                label,
+                style: GoogleFonts.dmSans(
+                  fontSize: 12,
+                  color: const Color(0xFF8A8A8E),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
                 style: GoogleFonts.dmSans(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
-                  color: textColor,
+                  color: Colors.black,
+                  height: 1.4,
                 ),
               ),
-              if (subtitle.isNotEmpty && isActive)
-                Text(
-                  subtitle,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 12,
-                    color: const Color(0xFF64748B),
-                  ),
-                ),
             ],
           ),
         ),
       ],
+    );
+  }
+
+  /// Vertical stepper used in the booking detail sheet
+  Widget _buildDetailedStepper(int currentStep, BookingModel b) {
+    final steps = [
+      {
+        'title': 'Booking requested',
+        'subtitle': 'Request submitted by resident',
+      },
+      {
+        'title': 'Worker accepts or rejects',
+        'subtitle': 'Worker accepted the booking',
+      },
+      {
+        'title': 'Confirmed',
+        'subtitle': 'Schedule locked in',
+      },
+      {
+        'title': 'In progress',
+        'subtitle': 'Work started on site',
+      },
+      {
+        'title': 'Completed',
+        'subtitle': 'Job finished',
+      },
+    ];
+
+    return Column(
+      children: List.generate(steps.length, (i) {
+        final stepNum = i + 1;
+        final isDone = currentStep > stepNum;
+        final isActive = currentStep == stepNum;
+        final isPending = currentStep < stepNum;
+        final isLast = i == steps.length - 1;
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Left: circle + connector line ──────────────
+            Column(
+              children: [
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: isDone || isActive
+                        ? Colors.black
+                        : const Color(0xFFE4E4E4),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: isDone
+                        ? const Icon(
+                            Icons.check_rounded,
+                            color: Colors.white,
+                            size: 16,
+                          )
+                        : Icon(
+                            isActive
+                                ? Icons.radio_button_checked_rounded
+                                : Icons.circle_outlined,
+                            color: isActive
+                                ? Colors.white
+                                : const Color(0xFFB0B0B8),
+                            size: isActive ? 14 : 12,
+                          ),
+                  ),
+                ),
+                if (!isLast)
+                  Container(
+                    width: 2,
+                    height: 36,
+                    color: isDone
+                        ? Colors.black
+                        : const Color(0xFFE4E4E4),
+                  ),
+              ],
+            ),
+            const SizedBox(width: 14),
+
+            // ── Right: text ────────────────────────────────
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 4, bottom: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      steps[i]['title']!,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: isPending
+                            ? const Color(0xFFB0B0B8)
+                            : Colors.black,
+                      ),
+                    ),
+                    if (isDone || isActive) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        steps[i]['subtitle']!,
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          color: const Color(0xFF8A8A8E),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      }),
     );
   }
 
@@ -3773,63 +3811,208 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                 ],
               ),
             )
-          : RefreshIndicator(
-              onRefresh: _fetchBookings,
-              color: Colors.black,
-              backgroundColor: Colors.white,
-              child: _isLoading
-                  ? const Center(
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.black,
+          : Column(
+              children: [
+                // Filter Pills & Sort By Bar
+                Builder(
+                  builder: (context) {
+                    final requests = _bookings.where((b) => b.status.toLowerCase() == 'requested' || b.status.toLowerCase() == 'pending').toList();
+                    final active = _bookings.where((b) {
+                      final s = b.status.toLowerCase();
+                      return s == 'accepted' || s == 'confirmed' || s == 'in progress' || s == 'inprogress';
+                    }).toList();
+                    final history = _bookings.where((b) {
+                      final s = b.status.toLowerCase();
+                      return s == 'completed' || s == 'reviewed' || s == 'cancelled' || s == 'rejected';
+                    }).toList();
+
+                    final tabs = [
+                      {'label': 'Requests', 'count': requests.length},
+                      {'label': 'Active', 'count': active.length},
+                      {'label': 'History', 'count': history.length},
+                      {'label': 'All', 'count': _bookings.length},
+                    ];
+
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              physics: const BouncingScrollPhysics(),
+                              child: Row(
+                                children: List.generate(tabs.length, (idx) {
+                                  final isSelected = _selectedTabIndex == idx;
+                                  final tab = tabs[idx];
+                                  final count = tab['count'] as int;
+
+                                  return Padding(
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: InkWell(
+                                      onTap: () => setState(() => _selectedTabIndex = idx),
+                                      borderRadius: BorderRadius.circular(24),
+                                      child: AnimatedContainer(
+                                        duration: const Duration(milliseconds: 200),
+                                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                        decoration: BoxDecoration(
+                                          color: isSelected ? Colors.black : const Color(0xFFF1F3F5),
+                                          borderRadius: BorderRadius.circular(24),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              tab['label'] as String,
+                                              style: GoogleFonts.dmSans(
+                                                fontSize: 13,
+                                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                                                color: isSelected ? Colors.white : Colors.black,
+                                              ),
+                                            ),
+                                            if (count > 0 && idx == 0) ...[
+                                              const SizedBox(width: 6),
+                                              Container(
+                                                width: 18,
+                                                height: 18,
+                                                decoration: BoxDecoration(
+                                                  color: isSelected ? Colors.white : Colors.black,
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: Center(
+                                                  child: Text(
+                                                    '$count',
+                                                    style: GoogleFonts.dmSans(
+                                                      fontSize: 10,
+                                                      fontWeight: FontWeight.w900,
+                                                      color: isSelected ? Colors.black : Colors.white,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          // Sort By Pill Button
+                          InkWell(
+                            onTap: _showSortOptions,
+                            borderRadius: BorderRadius.circular(24),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF1F3F5),
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'Sort by',
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  const Icon(Icons.arrow_drop_down, size: 18, color: Colors.black),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    )
-                  : _bookings.isEmpty
-                  ? ListView(
-                      children: [
-                        Container(
-                          margin: const EdgeInsets.all(24),
-                          padding: const EdgeInsets.all(32),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8FAFC),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Column(
-                            children: [
-                              const Icon(
-                                Icons.calendar_month_outlined,
-                                size: 48,
-                                color: Color(0xFF94A3B8),
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                'No bookings yet',
-                                style: GoogleFonts.dmSans(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 18,
-                                  color: Colors.black,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'When you book a professional from the Find tab, your booking history will appear here.',
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 13,
-                                  color: const Color(0xFF64748B),
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
-                      itemCount: _bookings.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 16),
-                      itemBuilder: (context, index) {
-                        final b = _bookings[index];
+                    );
+                  },
+                ),
+
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: _fetchBookings,
+                    color: Colors.black,
+                    backgroundColor: Colors.white,
+                    child: _isLoading
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.black,
+                            ),
+                          )
+                        : Builder(
+                            builder: (context) {
+                              final requests = _bookings.where((b) => b.status.toLowerCase() == 'requested' || b.status.toLowerCase() == 'pending').toList();
+                              final active = _bookings.where((b) {
+                                final s = b.status.toLowerCase();
+                                return s == 'accepted' || s == 'confirmed' || s == 'in progress' || s == 'inprogress';
+                              }).toList();
+                              final history = _bookings.where((b) {
+                                final s = b.status.toLowerCase();
+                                return s == 'completed' || s == 'reviewed' || s == 'cancelled' || s == 'rejected';
+                              }).toList();
+
+                              List<BookingModel> filtered = _bookings;
+                              if (_selectedTabIndex == 0) filtered = requests;
+                              if (_selectedTabIndex == 1) filtered = active;
+                              if (_selectedTabIndex == 2) filtered = history;
+
+                              final displayed = _sortBookings(filtered);
+
+                              if (displayed.isEmpty) {
+                                return ListView(
+                                  children: [
+                                    Container(
+                                      margin: const EdgeInsets.all(24),
+                                      padding: const EdgeInsets.all(32),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF8FAFC),
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          const Icon(
+                                            Icons.calendar_month_outlined,
+                                            size: 48,
+                                            color: Color(0xFF94A3B8),
+                                          ),
+                                          const SizedBox(height: 12),
+                                          Text(
+                                            'No bookings found',
+                                            style: GoogleFonts.dmSans(
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 18,
+                                              color: Colors.black,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'There are no bookings matching the selected tab or filters.',
+                                            style: GoogleFonts.dmSans(
+                                              fontSize: 13,
+                                              color: const Color(0xFF64748B),
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              }
+
+                              return ListView.separated(
+                                padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+                                itemCount: displayed.length,
+                                separatorBuilder: (_, _) => const SizedBox(height: 16),
+                                itemBuilder: (context, index) {
+                                  final b = displayed[index];
                         final scheduled = b.scheduledDate != null
                             ? '${b.scheduledDate!.day}/${b.scheduledDate!.month}/${b.scheduledDate!.year}'
                             : 'Flexible / ASAP';
@@ -4153,10 +4336,16 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                             ),
                           ),
                         );
-                      },
-                    ),
-            ),
-    );
+                        },
+                      );
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+
   }
 }
 
