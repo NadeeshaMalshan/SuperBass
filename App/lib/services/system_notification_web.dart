@@ -1,3 +1,4 @@
+import 'dart:async';
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 import 'package:flutter/foundation.dart';
@@ -10,7 +11,9 @@ class PlatformSystemNotification {
     _initialized = true;
     try {
       if (html.Notification.supported) {
-        debugPrint('Web Notification supported. Permission: ${html.Notification.permission}');
+        debugPrint(
+          'Web Notification supported. Permission: ${html.Notification.permission}',
+        );
       }
     } catch (e) {
       debugPrint('Web notification init error: $e');

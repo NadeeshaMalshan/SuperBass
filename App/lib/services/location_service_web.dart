@@ -5,9 +5,7 @@ import 'dart:html' as html;
 class PlatformLocationService {
   static Future<Map<String, double>?> getCurrentCoordinates() async {
     try {
-      final pos = await html.window.navigator.geolocation
-          .getCurrentPosition()
-          .timeout(const Duration(seconds: 8));
+      final pos = await html.window.navigator.geolocation.getCurrentPosition();
 
       return {
         'lat': pos.coords!.latitude!.toDouble(),

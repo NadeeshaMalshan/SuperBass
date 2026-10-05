@@ -12,7 +12,6 @@ import '../services/auth_service.dart';
 import '../services/location_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/verified_badge.dart';
-import 'chat_screen.dart';
 
 class CommunityScreen extends StatefulWidget {
   final bool isWorkerMode;
@@ -22,7 +21,8 @@ class CommunityScreen extends StatefulWidget {
   State<CommunityScreen> createState() => _CommunityScreenState();
 }
 
-class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProviderStateMixin {
+class _CommunityScreenState extends State<CommunityScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   List<CommunityPostModel> _allPosts = [];
   List<CommunityPostModel> _myPosts = [];
@@ -56,11 +56,7 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
   Future<void> _loadInitialData() async {
     setState(() => _isLoading = true);
     _loadPrimaryAddress();
-    await Future.wait([
-      _fetchCategories(),
-      _fetchPosts(),
-      _fetchWorkersMap(),
-    ]);
+    await Future.wait([_fetchCategories(), _fetchPosts(), _fetchWorkersMap()]);
     if (mounted) {
       setState(() => _isLoading = false);
     }
@@ -103,7 +99,8 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
 
   Future<void> _fetchPosts() async {
     final currentUserEmail = AuthService().currentUser?.email;
-    final isAllLocations = _selectedLocation == 'All' ||
+    final isAllLocations =
+        _selectedLocation == 'All' ||
         _selectedLocation == 'All Locations' ||
         _selectedLocation.trim().isEmpty;
     final locationQuery = isAllLocations ? null : _selectedLocation.trim();
@@ -118,17 +115,25 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
     final filteredPosts = isAllLocations
         ? posts
         : posts
-            .where((p) => LocationService.workerMatchesLocation(
-                p.location, _selectedLocation))
-            .toList();
+              .where(
+                (p) => LocationService.workerMatchesLocation(
+                  p.location,
+                  _selectedLocation,
+                ),
+              )
+              .toList();
 
     List<CommunityPostModel> userPosts = [];
     if (currentUserEmail != null && currentUserEmail.isNotEmpty) {
       userPosts = await ApiService().fetchUserCommunityPosts(currentUserEmail);
       if (!isAllLocations) {
         userPosts = userPosts
-            .where((p) => LocationService.workerMatchesLocation(
-                p.location, _selectedLocation))
+            .where(
+              (p) => LocationService.workerMatchesLocation(
+                p.location,
+                _selectedLocation,
+              ),
+            )
             .toList();
       }
     }
@@ -287,11 +292,18 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                     ],
                   ),
                 ),
-                const Divider(height: 1, thickness: 1, color: Color(0xFFEEEEEE)),
+                const Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: Color(0xFFEEEEEE),
+                ),
 
                 Expanded(
                   child: ListView(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
                     children: [
                       // Option 1: Use Current Location (GPS)
                       InkWell(
@@ -300,16 +312,23 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                             : () async {
                                 setModalState(() => isDetecting = true);
                                 try {
-                                  final city = await LocationService.detectGpsCity();
-                                  if (mounted && city != null && city.isNotEmpty) {
+                                  final city =
+                                      await LocationService.detectGpsCity();
+                                  if (mounted &&
+                                      city != null &&
+                                      city.isNotEmpty) {
                                     _updateLocation(city);
                                     if (ctx.mounted) Navigator.pop(ctx);
                                   } else {
                                     setModalState(() => isDetecting = false);
                                     if (mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
                                         const SnackBar(
-                                          content: Text('Could not detect GPS location. Please select your city below.'),
+                                          content: Text(
+                                            'Could not detect GPS location. Please select your city below.',
+                                          ),
                                         ),
                                       );
                                     }
@@ -320,7 +339,10 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                               },
                         borderRadius: BorderRadius.circular(12),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
                           decoration: BoxDecoration(
                             border: Border.all(color: const Color(0xFFE2E8F0)),
                             borderRadius: BorderRadius.circular(12),
@@ -390,12 +412,16 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                       // Option 2: Use Primary Address City
                       InkWell(
                         onTap: () async {
-                          if (_primaryAddressCity != null && _primaryAddressCity!.isNotEmpty) {
+                          if (_primaryAddressCity != null &&
+                              _primaryAddressCity!.isNotEmpty) {
                             _updateLocation(_primaryAddressCity!);
                             Navigator.pop(ctx);
                           } else {
                             final user = AuthService().currentUser;
-                            final city = await LocationService.getPrimaryAddressCity(user?.email);
+                            final city =
+                                await LocationService.getPrimaryAddressCity(
+                                  user?.email,
+                                );
                             if (city != null && city.isNotEmpty) {
                               _primaryAddressCity = city;
                               _updateLocation(city);
@@ -404,7 +430,9 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                               if (mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                    content: Text('No primary address found. Please enter or select a city below.'),
+                                    content: Text(
+                                      'No primary address found. Please enter or select a city below.',
+                                    ),
                                   ),
                                 );
                               }
@@ -413,7 +441,10 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                         },
                         borderRadius: BorderRadius.circular(12),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
                           decoration: BoxDecoration(
                             border: Border.all(color: const Color(0xFFE2E8F0)),
                             borderRadius: BorderRadius.circular(12),
@@ -449,7 +480,8 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      (_primaryAddressCity != null && _primaryAddressCity!.isNotEmpty)
+                                      (_primaryAddressCity != null &&
+                                              _primaryAddressCity!.isNotEmpty)
                                           ? 'Saved: $_primaryAddressCity'
                                           : 'From your resident account profile',
                                       style: GoogleFonts.dmSans(
@@ -476,11 +508,22 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                       TextField(
                         controller: searchController,
                         onChanged: (_) => setModalState(() {}),
-                        style: GoogleFonts.dmSans(fontSize: 14, color: Colors.black),
+                        style: GoogleFonts.dmSans(
+                          fontSize: 14,
+                          color: Colors.black,
+                        ),
                         decoration: InputDecoration(
-                          hintText: 'Search city or district (e.g. Ratnapura, Colombo)...',
-                          hintStyle: GoogleFonts.dmSans(fontSize: 13, color: Colors.grey[500]),
-                          prefixIcon: const Icon(Icons.search, size: 20, color: Colors.black87),
+                          hintText:
+                              'Search city or district (e.g. Ratnapura, Colombo)...',
+                          hintStyle: GoogleFonts.dmSans(
+                            fontSize: 13,
+                            color: Colors.grey[500],
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            size: 20,
+                            color: Colors.black87,
+                          ),
                           suffixIcon: searchController.text.isNotEmpty
                               ? IconButton(
                                   icon: const Icon(Icons.clear, size: 18),
@@ -492,7 +535,10 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                               : null,
                           filled: true,
                           fillColor: const Color(0xFFF1F5F9),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide.none,
@@ -505,7 +551,9 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                         const SizedBox(height: 10),
                         InkWell(
                           onTap: () {
-                            final custom = LocationService.cleanLocationName(searchController.text.trim());
+                            final custom = LocationService.cleanLocationName(
+                              searchController.text.trim(),
+                            );
                             if (custom.isNotEmpty) {
                               _updateLocation(custom);
                               Navigator.pop(ctx);
@@ -513,14 +561,21 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                           },
                           borderRadius: BorderRadius.circular(10),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.black,
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.location_on, size: 18, color: Colors.white),
+                                const Icon(
+                                  Icons.location_on,
+                                  size: 18,
+                                  color: Colors.white,
+                                ),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
@@ -533,7 +588,11 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                                const Icon(Icons.arrow_forward, size: 16, color: Colors.white),
+                                const Icon(
+                                  Icons.arrow_forward,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
                               ],
                             ),
                           ),
@@ -556,7 +615,9 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                           spacing: 8,
                           runSpacing: 8,
                           children: sriLankaDistricts.map((district) {
-                            final isSelected = _selectedLocation.toLowerCase() == district.toLowerCase();
+                            final isSelected =
+                                _selectedLocation.toLowerCase() ==
+                                district.toLowerCase();
                             return ChoiceChip(
                               label: Text(district),
                               selected: isSelected,
@@ -568,11 +629,17 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                               backgroundColor: const Color(0xFFF1F5F9),
                               labelStyle: GoogleFonts.dmSans(
                                 fontSize: 12.5,
-                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                color: isSelected ? Colors.white : Colors.black87,
+                                fontWeight: isSelected
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                                color: isSelected
+                                    ? Colors.white
+                                    : Colors.black87,
                               ),
                               side: BorderSide(
-                                color: isSelected ? Colors.black : const Color(0xFFE2E8F0),
+                                color: isSelected
+                                    ? Colors.black
+                                    : const Color(0xFFE2E8F0),
                               ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(20),
@@ -613,29 +680,45 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                           ...matchingPlaces.map((place) {
                             final name = place['name']!;
                             final type = place['type']!;
-                            final isSelected = _selectedLocation.toLowerCase() == name.toLowerCase();
+                            final isSelected =
+                                _selectedLocation.toLowerCase() ==
+                                name.toLowerCase();
                             return ListTile(
                               dense: true,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 0,
+                              ),
                               leading: Icon(
                                 Icons.location_on_outlined,
                                 size: 20,
-                                color: isSelected ? Colors.black : Colors.grey[600],
+                                color: isSelected
+                                    ? Colors.black
+                                    : Colors.grey[600],
                               ),
                               title: Text(
                                 name,
                                 style: GoogleFonts.dmSans(
                                   fontSize: 14,
-                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
                                   color: Colors.black,
                                 ),
                               ),
                               subtitle: Text(
                                 type,
-                                style: GoogleFonts.dmSans(fontSize: 11.5, color: Colors.grey[600]),
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 11.5,
+                                  color: Colors.grey[600],
+                                ),
                               ),
                               trailing: isSelected
-                                  ? const Icon(Icons.check, size: 18, color: Colors.black)
+                                  ? const Icon(
+                                      Icons.check,
+                                      size: 18,
+                                      color: Colors.black,
+                                    )
                                   : null,
                               onTap: () {
                                 _updateLocation(name);
@@ -658,24 +741,37 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
   // Handle Create or Edit Post Sheet
   void _showPostDialog({CommunityPostModel? postToEdit}) {
     final isEditing = postToEdit != null;
-    final titleController = TextEditingController(text: postToEdit?.title ?? '');
-    final contentController = TextEditingController(text: postToEdit?.content ?? '');
-    final imageController = TextEditingController(
-      text: (postToEdit?.images != null && postToEdit!.images.isNotEmpty) ? postToEdit.images.first : '',
+    final titleController = TextEditingController(
+      text: postToEdit?.title ?? '',
     );
-    String selectedCatId = postToEdit?.serviceCategoryId.isNotEmpty == true ? postToEdit!.serviceCategoryId : 'general';
+    final contentController = TextEditingController(
+      text: postToEdit?.content ?? '',
+    );
+    final imageController = TextEditingController(
+      text: (postToEdit?.images != null && postToEdit!.images.isNotEmpty)
+          ? postToEdit.images.first
+          : '',
+    );
+    String selectedCatId = postToEdit?.serviceCategoryId.isNotEmpty == true
+        ? postToEdit!.serviceCategoryId
+        : 'general';
 
     // Parse existing location into District & DS Division
     String? selectedDistrict;
     String? selectedDsDivision;
     if (postToEdit?.location != null && postToEdit!.location.isNotEmpty) {
-      final parts = postToEdit.location.split(',').map((e) => e.trim()).toList();
+      final parts = postToEdit.location
+          .split(',')
+          .map((e) => e.trim())
+          .toList();
       if (parts.length >= 2) {
         final potentialDs = parts[0];
         final potentialDist = parts[1];
         if (SriLankaLocations.districts.contains(potentialDist)) {
           selectedDistrict = potentialDist;
-          if (SriLankaLocations.getDsDivisions(potentialDist).contains(potentialDs)) {
+          if (SriLankaLocations.getDsDivisions(
+            potentialDist,
+          ).contains(potentialDs)) {
             selectedDsDivision = potentialDs;
           }
         }
@@ -695,7 +791,9 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
         builder: (modalCtx, setModalState) {
-          final currentDistrictDsList = SriLankaLocations.getDsDivisions(selectedDistrict);
+          final currentDistrictDsList = SriLankaLocations.getDsDivisions(
+            selectedDistrict,
+          );
           final hasImage = imageController.text.trim().isNotEmpty;
 
           return Padding(
@@ -728,7 +826,9 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          isEditing ? 'Edit Community Post' : 'Create Community Post',
+                          isEditing
+                              ? 'Edit Community Post'
+                              : 'Create Community Post',
                           style: GoogleFonts.dmSans(
                             fontSize: 20,
                             fontWeight: FontWeight.w800,
@@ -746,7 +846,10 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                     // Category Selector
                     Text(
                       'Category',
-                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 13),
+                      style: GoogleFonts.dmSans(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
                     ),
                     const SizedBox(height: 6),
                     Builder(
@@ -768,8 +871,13 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                         return DropdownButtonFormField<String>(
                           initialValue: effectiveValue,
                           decoration: InputDecoration(
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
                           ),
                           items: categoryOptions.entries.map((entry) {
                             return DropdownMenuItem<String>(
@@ -790,14 +898,20 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                     // Title
                     Text(
                       'Title',
-                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 13),
+                      style: GoogleFonts.dmSans(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
                     ),
                     const SizedBox(height: 6),
                     TextField(
                       controller: titleController,
                       decoration: InputDecoration(
-                        hintText: 'e.g., Looking for a reliable electrician in Homagama',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        hintText:
+                            'e.g., Looking for a reliable electrician in Homagama',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 14),
@@ -805,7 +919,10 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                     // Location - District & Divisional Secretariat Section
                     Text(
                       'Location (District & DS Division)',
-                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 13),
+                      style: GoogleFonts.dmSans(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Row(
@@ -813,16 +930,29 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                         // District Dropdown
                         Expanded(
                           child: DropdownButtonFormField<String>(
-                            initialValue: SriLankaLocations.districts.contains(selectedDistrict) ? selectedDistrict : SriLankaLocations.districts.first,
+                            initialValue:
+                                SriLankaLocations.districts.contains(
+                                  selectedDistrict,
+                                )
+                                ? selectedDistrict
+                                : SriLankaLocations.districts.first,
                             decoration: InputDecoration(
                               labelText: 'District',
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
                             ),
                             items: SriLankaLocations.districts.map((dist) {
                               return DropdownMenuItem<String>(
                                 value: dist,
-                                child: Text(dist, overflow: TextOverflow.ellipsis),
+                                child: Text(
+                                  dist,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               );
                             }).toList(),
                             onChanged: (val) {
@@ -839,17 +969,33 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                         // DS Division Dropdown
                         Expanded(
                           child: DropdownButtonFormField<String>(
-                            initialValue: currentDistrictDsList.contains(selectedDsDivision) ? selectedDsDivision : null,
-                            hint: Text('DS Division', style: GoogleFonts.dmSans(fontSize: 13)),
+                            initialValue:
+                                currentDistrictDsList.contains(
+                                  selectedDsDivision,
+                                )
+                                ? selectedDsDivision
+                                : null,
+                            hint: Text(
+                              'DS Division',
+                              style: GoogleFonts.dmSans(fontSize: 13),
+                            ),
                             decoration: InputDecoration(
                               labelText: 'DS Division',
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
                             ),
                             items: currentDistrictDsList.map((ds) {
                               return DropdownMenuItem<String>(
                                 value: ds,
-                                child: Text(ds, overflow: TextOverflow.ellipsis),
+                                child: Text(
+                                  ds,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               );
                             }).toList(),
                             onChanged: (val) {
@@ -864,15 +1010,22 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                     // Content
                     Text(
                       'Description / Details',
-                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 13),
+                      style: GoogleFonts.dmSans(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
                     ),
                     const SizedBox(height: 6),
                     TextField(
                       controller: contentController,
                       maxLines: 4,
                       decoration: InputDecoration(
-                        hintText: 'Describe what service, recommendation, or advice you are seeking...',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        hintText:
+                            'Describe what service, recommendation, or advice you are seeking...',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none,
@@ -888,7 +1041,10 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                     // Image Attachment Section (Upload Only)
                     Text(
                       'Image Attachment (Optional)',
-                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 13),
+                      style: GoogleFonts.dmSans(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Container(
@@ -920,12 +1076,18 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                               }
                             },
                             icon: const Icon(Icons.add_a_photo_outlined),
-                            label: Text(hasImage ? 'Change Selected Photo' : 'Attach Photo from Device'),
+                            label: Text(
+                              hasImage
+                                  ? 'Change Selected Photo'
+                                  : 'Attach Photo from Device',
+                            ),
                             style: ElevatedButton.styleFrom(
                               elevation: 0,
                               backgroundColor: AppColors.surfaceVariant,
                               foregroundColor: AppColors.onSurface,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
                             ),
                           ),
 
@@ -942,16 +1104,33 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                                   ),
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(10),
-                                    child: imageController.text.startsWith('data:image/')
+                                    child:
+                                        imageController.text.startsWith(
+                                          'data:image/',
+                                        )
                                         ? Image.memory(
-                                            base64Decode(imageController.text.split(',').last),
+                                            base64Decode(
+                                              imageController.text
+                                                  .split(',')
+                                                  .last,
+                                            ),
                                             fit: BoxFit.cover,
-                                            errorBuilder: (_, _, _) => const Center(child: Icon(Icons.broken_image)),
+                                            errorBuilder: (_, _, _) =>
+                                                const Center(
+                                                  child: Icon(
+                                                    Icons.broken_image,
+                                                  ),
+                                                ),
                                           )
                                         : Image.network(
                                             imageController.text,
                                             fit: BoxFit.cover,
-                                            errorBuilder: (_, _, _) => const Center(child: Icon(Icons.broken_image)),
+                                            errorBuilder: (_, _, _) =>
+                                                const Center(
+                                                  child: Icon(
+                                                    Icons.broken_image,
+                                                  ),
+                                                ),
                                           ),
                                   ),
                                 ),
@@ -963,7 +1142,11 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                                     radius: 14,
                                     child: IconButton(
                                       padding: EdgeInsets.zero,
-                                      icon: const Icon(Icons.close, size: 16, color: Colors.white),
+                                      icon: const Icon(
+                                        Icons.close,
+                                        size: 16,
+                                        color: Colors.white,
+                                      ),
                                       onPressed: () {
                                         setModalState(() {
                                           imageController.clear();
@@ -995,52 +1178,69 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                             : () async {
                                 final title = titleController.text.trim();
                                 final content = contentController.text.trim();
-                                final constructedLocation = (selectedDsDivision != null && selectedDsDivision!.isNotEmpty)
+                                final constructedLocation =
+                                    (selectedDsDivision != null &&
+                                        selectedDsDivision!.isNotEmpty)
                                     ? '$selectedDsDivision, ${selectedDistrict ?? "Colombo"}'
                                     : (selectedDistrict ?? 'Colombo');
                                 final imageUrl = imageController.text.trim();
 
                                 if (title.isEmpty || content.isEmpty) {
                                   ScaffoldMessenger.of(modalCtx).showSnackBar(
-                                    const SnackBar(content: Text('Please enter both Title and Content')),
+                                    const SnackBar(
+                                      content: Text(
+                                        'Please enter both Title and Content',
+                                      ),
+                                    ),
                                   );
                                   return;
                                 }
 
                                 setModalState(() => isSubmitting = true);
 
-                                final imagesList = imageUrl.isNotEmpty ? [imageUrl] : <String>[];
+                                final imagesList = imageUrl.isNotEmpty
+                                    ? [imageUrl]
+                                    : <String>[];
 
                                 CommunityPostModel? result;
-                                final scaffoldMessenger = ScaffoldMessenger.of(context);
+                                final scaffoldMessenger = ScaffoldMessenger.of(
+                                  context,
+                                );
                                 final navigator = Navigator.of(modalCtx);
 
                                 if (isEditing) {
-                                  result = await ApiService().updateCommunityPost(
-                                    id: postToEdit.postId,
-                                    title: title,
-                                    content: content,
-                                    serviceCategoryId: selectedCatId,
-                                    location: constructedLocation,
-                                    images: imagesList,
-                                  );
+                                  result = await ApiService()
+                                      .updateCommunityPost(
+                                        id: postToEdit.postId,
+                                        title: title,
+                                        content: content,
+                                        serviceCategoryId: selectedCatId,
+                                        location: constructedLocation,
+                                        images: imagesList,
+                                      );
                                 } else {
                                   final currentUser = AuthService().currentUser;
                                   final myWorkerInfo = currentUser != null
-                                      ? _workersByEmail[currentUser.email.toLowerCase()]
+                                      ? _workersByEmail[currentUser.email
+                                            .toLowerCase()]
                                       : null;
-                                  final isWorker = widget.isWorkerMode || myWorkerInfo != null;
+                                  final isWorker =
+                                      widget.isWorkerMode ||
+                                      myWorkerInfo != null;
 
-                                  result = await ApiService().createCommunityPost(
-                                    title: title,
-                                    content: content,
-                                    serviceCategoryId: selectedCatId,
-                                    location: constructedLocation,
-                                    images: imagesList,
-                                    authorRole: isWorker ? 'worker' : 'resident',
-                                    workerTrade: myWorkerInfo?.trade,
-                                    workerRating: myWorkerInfo?.rating,
-                                  );
+                                  result = await ApiService()
+                                      .createCommunityPost(
+                                        title: title,
+                                        content: content,
+                                        serviceCategoryId: selectedCatId,
+                                        location: constructedLocation,
+                                        images: imagesList,
+                                        authorRole: isWorker
+                                            ? 'worker'
+                                            : 'resident',
+                                        workerTrade: myWorkerInfo?.trade,
+                                        workerRating: myWorkerInfo?.rating,
+                                      );
                                 }
 
                                 if (modalCtx.mounted) {
@@ -1051,7 +1251,9 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                                     scaffoldMessenger.showSnackBar(
                                       SnackBar(
                                         content: Text(
-                                          isEditing ? 'Post updated successfully!' : 'Post created successfully!',
+                                          isEditing
+                                              ? 'Post updated successfully!'
+                                              : 'Post created successfully!',
                                         ),
                                         backgroundColor: AppColors.success,
                                       ),
@@ -1060,7 +1262,9 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                                   } else {
                                     scaffoldMessenger.showSnackBar(
                                       const SnackBar(
-                                        content: Text('Failed to save post. Please try again.'),
+                                        content: Text(
+                                          'Failed to save post. Please try again.',
+                                        ),
                                         backgroundColor: AppColors.error,
                                       ),
                                     );
@@ -1068,10 +1272,19 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                                 }
                               },
                         child: isSubmitting
-                            ? const SizedBox(width: 24, height: 24, child: LoadingIndicatorM3E())
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: LoadingIndicatorM3E(),
+                              )
                             : Text(
-                                isEditing ? 'Update Post' : 'Publish Community Post',
-                                style: GoogleFonts.dmSans(fontSize: 16, fontWeight: FontWeight.w700),
+                                isEditing
+                                    ? 'Update Post'
+                                    : 'Publish Community Post',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                       ),
                     ),
@@ -1090,27 +1303,43 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Delete Post', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
-        content: Text('Are you sure you want to delete "${post.title}"? This action cannot be undone.'),
+        title: Text(
+          'Delete Post',
+          style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          'Are you sure you want to delete "${post.title}"? This action cannot be undone.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
             onPressed: () async {
               Navigator.pop(ctx);
-              final success = await ApiService().deleteCommunityPost(post.postId);
+              final success = await ApiService().deleteCommunityPost(
+                post.postId,
+              );
               if (mounted) {
                 if (success) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Post deleted successfully'), backgroundColor: AppColors.success),
+                    const SnackBar(
+                      content: Text('Post deleted successfully'),
+                      backgroundColor: AppColors.success,
+                    ),
                   );
                   _fetchPosts();
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Failed to delete post'), backgroundColor: AppColors.error),
+                    const SnackBar(
+                      content: Text('Failed to delete post'),
+                      backgroundColor: AppColors.error,
+                    ),
                   );
                 }
               }
@@ -1126,24 +1355,39 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
   void _showReportDialog(CommunityPostModel post) {
     final reasonController = TextEditingController();
     String selectedReason = 'Spam / Advertising';
-    final reasons = ['Spam / Advertising', 'Inappropriate Content', 'Off-topic', 'Harassment', 'Other'];
+    final reasons = [
+      'Spam / Advertising',
+      'Inappropriate Content',
+      'Off-topic',
+      'Harassment',
+      'Other',
+    ];
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (dialogCtx, setDialogState) {
           return AlertDialog(
-            title: Text('Report Community Post', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+            title: Text(
+              'Report Community Post',
+              style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
+            ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Select reason for reporting this post to moderators:'),
+                const Text(
+                  'Select reason for reporting this post to moderators:',
+                ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: selectedReason,
-                  decoration: const InputDecoration(border: OutlineInputBorder()),
-                  items: reasons.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                  ),
+                  items: reasons
+                      .map((r) => DropdownMenuItem(value: r, child: Text(r)))
+                      .toList(),
                   onChanged: (val) {
                     if (val != null) setDialogState(() => selectedReason = val);
                   },
@@ -1161,21 +1405,40 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
               ],
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(dialogCtx), child: const Text('Cancel')),
+              TextButton(
+                onPressed: () => Navigator.pop(dialogCtx),
+                child: const Text('Cancel'),
+              ),
               ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: AppColors.brandYellow, foregroundColor: Colors.white),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.brandYellow,
+                  foregroundColor: Colors.white,
+                ),
                 onPressed: () async {
-                  final finalReason = selectedReason == 'Other' ? reasonController.text.trim() : selectedReason;
+                  final finalReason = selectedReason == 'Other'
+                      ? reasonController.text.trim()
+                      : selectedReason;
                   Navigator.pop(dialogCtx);
-                  final success = await ApiService().reportCommunityPost(postId: post.postId, reason: finalReason);
+                  final success = await ApiService().reportCommunityPost(
+                    postId: post.postId,
+                    reason: finalReason,
+                  );
                   if (mounted) {
                     if (success) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Report submitted to community moderators. Thank you!')),
+                        const SnackBar(
+                          content: Text(
+                            'Report submitted to community moderators. Thank you!',
+                          ),
+                        ),
                       );
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Failed to submit report. Please try again.')),
+                        const SnackBar(
+                          content: Text(
+                            'Failed to submit report. Please try again.',
+                          ),
+                        ),
                       );
                     }
                   }
@@ -1195,7 +1458,8 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => PostCommentsSheet(post: post, onCommentAdded: () => _fetchPosts()),
+      builder: (ctx) =>
+          PostCommentsSheet(post: post, onCommentAdded: () => _fetchPosts()),
     );
   }
 
@@ -1250,7 +1514,10 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
           icon: const Icon(Icons.add_rounded, size: 22),
           label: Text(
             'New post',
-            style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 14.5),
+            style: GoogleFonts.dmSans(
+              fontWeight: FontWeight.w700,
+              fontSize: 14.5,
+            ),
           ),
         ),
       ),
@@ -1259,7 +1526,12 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
           color: Colors.black,
           onRefresh: _fetchPosts,
           child: ListView(
-            padding: EdgeInsets.fromLTRB(0, 14, 0, widget.isWorkerMode ? 96 : 32),
+            padding: EdgeInsets.fromLTRB(
+              0,
+              14,
+              0,
+              widget.isWorkerMode ? 96 : 32,
+            ),
             children: [
               // 1. Large "Community" Title
               Padding(
@@ -1278,11 +1550,15 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                     ),
                     IconButton(
                       icon: Icon(
-                        _sortBy == 'latest' ? Icons.access_time_rounded : Icons.local_fire_department_rounded,
+                        _sortBy == 'latest'
+                            ? Icons.access_time_rounded
+                            : Icons.local_fire_department_rounded,
                         size: 22,
                         color: const Color(0xFF000000),
                       ),
-                      tooltip: _sortBy == 'latest' ? 'Showing Latest' : 'Showing Popular',
+                      tooltip: _sortBy == 'latest'
+                          ? 'Showing Latest'
+                          : 'Showing Popular',
                       onPressed: _toggleSort,
                     ),
                   ],
@@ -1319,7 +1595,10 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                       onTap: _showLocationPickerSheet,
                       borderRadius: BorderRadius.circular(24),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFF1F3F5),
                           borderRadius: BorderRadius.circular(24),
@@ -1386,7 +1665,11 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                       ),
                       suffixIcon: _searchQuery.isNotEmpty
                           ? IconButton(
-                              icon: const Icon(Icons.clear_rounded, size: 18, color: Color(0xFF64748B)),
+                              icon: const Icon(
+                                Icons.clear_rounded,
+                                size: 18,
+                                color: Color(0xFF64748B),
+                              ),
                               onPressed: () {
                                 _searchController.clear();
                                 _onSearchChanged('');
@@ -1394,7 +1677,10 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                             )
                           : null,
                       border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                     ),
                   ),
                 ),
@@ -1409,7 +1695,9 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   children: [
                     _buildModernCategoryChip('All', 'All'),
-                    ..._categories.map((c) => _buildModernCategoryChip(c.id, c.name)),
+                    ..._categories.map(
+                      (c) => _buildModernCategoryChip(c.id, c.name),
+                    ),
                   ],
                 ),
               ),
@@ -1418,7 +1706,11 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
               // Subtle Divider
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20),
-                child: Divider(height: 1, thickness: 1, color: Color(0xFFF1F3F5)),
+                child: Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: Color(0xFFF1F3F5),
+                ),
               ),
               const SizedBox(height: 8),
 
@@ -1432,7 +1724,10 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                 )
               else if (posts.isEmpty)
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 24,
+                  ),
                   child: Container(
                     padding: const EdgeInsets.all(32),
                     decoration: BoxDecoration(
@@ -1442,25 +1737,37 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                     child: Center(
                       child: Column(
                         children: [
-                          const Icon(Icons.forum_outlined, size: 48, color: Color(0xFF94A3B8)),
+                          const Icon(
+                            Icons.forum_outlined,
+                            size: 48,
+                            color: Color(0xFF94A3B8),
+                          ),
                           const SizedBox(height: 12),
                           Text(
                             isMyPosts
                                 ? 'You have not created any posts yet'
-                                : (_selectedLocation != 'All Locations' && _selectedLocation != 'All'
-                                    ? 'No community posts found in $_selectedLocation'
-                                    : 'No community posts found'),
-                            style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 16),
+                                : (_selectedLocation != 'All Locations' &&
+                                          _selectedLocation != 'All'
+                                      ? 'No community posts found in $_selectedLocation'
+                                      : 'No community posts found'),
+                            style: GoogleFonts.dmSans(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                            ),
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 4),
                           Text(
                             isMyPosts
                                 ? 'Tap "+ New post" below to start your first community discussion!'
-                                : (_selectedLocation != 'All Locations' && _selectedLocation != 'All'
-                                    ? 'Try switching to "All Locations" or be the first to post!'
-                                    : 'Be the first to post recommendations or ask for help in your area!'),
-                            style: GoogleFonts.dmSans(fontSize: 13, color: const Color(0xFF64748B)),
+                                : (_selectedLocation != 'All Locations' &&
+                                          _selectedLocation != 'All'
+                                      ? 'Try switching to "All Locations" or be the first to post!'
+                                      : 'Be the first to post recommendations or ask for help in your area!'),
+                            style: GoogleFonts.dmSans(
+                              fontSize: 13,
+                              color: const Color(0xFF64748B),
+                            ),
                             textAlign: TextAlign.center,
                           ),
                         ],
@@ -1513,7 +1820,9 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF000000) : const Color(0xFFF1F3F5),
+            color: isSelected
+                ? const Color(0xFF000000)
+                : const Color(0xFFF1F3F5),
             borderRadius: BorderRadius.circular(20),
           ),
           alignment: Alignment.center,
@@ -1535,28 +1844,33 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
 
     // Identify if author is a Pro Worker
     final String postEmail = post.userId.trim().toLowerCase();
-    final worker = _workersByEmail[postEmail] ??
+    final worker =
+        _workersByEmail[postEmail] ??
         _workersByEmail.values.cast<WorkerModel?>().firstWhere(
-              (w) =>
-                  (w != null && w.name.trim().toLowerCase() == post.userName.trim().toLowerCase()) ||
-                  (w != null && w.email.trim().toLowerCase() == postEmail) ||
-                  (w != null && w.residentEmail.trim().toLowerCase() == postEmail),
-              orElse: () => null,
-            );
+          (w) =>
+              (w != null &&
+                  w.name.trim().toLowerCase() ==
+                      post.userName.trim().toLowerCase()) ||
+              (w != null && w.email.trim().toLowerCase() == postEmail) ||
+              (w != null && w.residentEmail.trim().toLowerCase() == postEmail),
+          orElse: () => null,
+        );
 
     final bool isWorkerAuthor = post.isWorker || worker != null;
-    final String workerTrade = (post.workerTrade != null && post.workerTrade!.isNotEmpty)
+    final String workerTrade =
+        (post.workerTrade != null && post.workerTrade!.isNotEmpty)
         ? post.workerTrade!
         : (worker?.trade ?? '');
-    final double workerRating = (post.workerRating != null && post.workerRating! > 0)
+    final double workerRating =
+        (post.workerRating != null && post.workerRating! > 0)
         ? post.workerRating!
         : (worker?.rating ?? 0.0);
 
     // Viewer context
     final currentEmail = (currentUser?.email ?? '').trim().toLowerCase();
-    final isViewerWorker = widget.isWorkerMode || _workersByEmail.containsKey(currentEmail);
     final bool isMyPost = post.isAuthor(currentUser?.email, currentUser?.name);
-    final bool isAuthorVerified = post.isAuthorVerified ||
+    final bool isAuthorVerified =
+        post.isAuthorVerified ||
         (isMyPost && (currentUser?.isVerified ?? false)) ||
         (worker?.isVerified ?? false) ||
         (currentUser != null &&
@@ -1583,13 +1897,16 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                   color: Color(0xFF000000),
                 ),
                 child: ClipOval(
-                  child: post.userAvatar.isNotEmpty && post.userAvatar.startsWith('http')
+                  child:
+                      post.userAvatar.isNotEmpty &&
+                          post.userAvatar.startsWith('http')
                       ? Image.network(
                           post.userAvatar,
                           width: 44,
                           height: 44,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => _buildAvatarFallback(post, isWorkerAuthor),
+                          errorBuilder: (_, _, _) =>
+                              _buildAvatarFallback(post, isWorkerAuthor),
                         )
                       : _buildAvatarFallback(post, isWorkerAuthor),
                 ),
@@ -1620,7 +1937,11 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                         ],
                         if (isWorkerAuthor && workerRating > 0) ...[
                           const SizedBox(width: 6),
-                          const Icon(Icons.star_rounded, size: 14, color: Color(0xFFD97706)),
+                          const Icon(
+                            Icons.star_rounded,
+                            size: 14,
+                            color: Color(0xFFD97706),
+                          ),
                           const SizedBox(width: 1),
                           Text(
                             workerRating.toStringAsFixed(1),
@@ -1651,7 +1972,10 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
 
               // Category Pill (e.g. Others, Plumbing)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF1F3F5),
                   borderRadius: BorderRadius.circular(16),
@@ -1668,7 +1992,11 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
 
               // Three Dots Action Menu
               PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert_rounded, size: 20, color: Color(0xFF334155)),
+                icon: const Icon(
+                  Icons.more_vert_rounded,
+                  size: 20,
+                  color: Color(0xFF334155),
+                ),
                 padding: EdgeInsets.zero,
                 onSelected: (val) {
                   if (val == 'edit') {
@@ -1695,9 +2023,16 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                       value: 'delete',
                       child: Row(
                         children: [
-                          Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.error),
+                          Icon(
+                            Icons.delete_outline_rounded,
+                            size: 18,
+                            color: AppColors.error,
+                          ),
                           SizedBox(width: 8),
-                          Text('Delete Post', style: TextStyle(color: AppColors.error)),
+                          Text(
+                            'Delete Post',
+                            style: TextStyle(color: AppColors.error),
+                          ),
                         ],
                       ),
                     ),
@@ -1774,18 +2109,27 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                 borderRadius: BorderRadius.circular(20),
                 onTap: () => _toggleLike(post),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
-                    color: post.isLikedByMe ? const Color(0xFFFEE2E2) : const Color(0xFFF1F3F5),
+                    color: post.isLikedByMe
+                        ? const Color(0xFFFEE2E2)
+                        : const Color(0xFFF1F3F5),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        post.isLikedByMe ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                        post.isLikedByMe
+                            ? Icons.favorite_rounded
+                            : Icons.favorite_border_rounded,
                         size: 16,
-                        color: post.isLikedByMe ? const Color(0xFFEF4444) : const Color(0xFF000000),
+                        color: post.isLikedByMe
+                            ? const Color(0xFFEF4444)
+                            : const Color(0xFF000000),
                       ),
                       const SizedBox(width: 6),
                       Text(
@@ -1793,7 +2137,9 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                         style: GoogleFonts.dmSans(
                           fontWeight: FontWeight.w700,
                           fontSize: 13,
-                          color: post.isLikedByMe ? const Color(0xFFDC2626) : const Color(0xFF000000),
+                          color: post.isLikedByMe
+                              ? const Color(0xFFDC2626)
+                              : const Color(0xFF000000),
                         ),
                       ),
                     ],
@@ -1807,7 +2153,10 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                 borderRadius: BorderRadius.circular(20),
                 onTap: () => _showCommentsSheet(post),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFF1F3F5),
                     borderRadius: BorderRadius.circular(20),
@@ -1834,15 +2183,20 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
                 ),
               ),
 
-
               const Spacer(),
 
               // Share button
               IconButton(
-                icon: const Icon(Icons.share_outlined, size: 20, color: Color(0xFF000000)),
+                icon: const Icon(
+                  Icons.share_outlined,
+                  size: 20,
+                  color: Color(0xFF000000),
+                ),
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Post link copied to clipboard!')),
+                    const SnackBar(
+                      content: Text('Post link copied to clipboard!'),
+                    ),
                   );
                 },
               ),
@@ -1856,7 +2210,9 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
   }
 
   Widget _buildAvatarFallback(CommunityPostModel post, bool isWorker) {
-    final initial = post.userName.isNotEmpty ? post.userName[0].toUpperCase() : 'U';
+    final initial = post.userName.isNotEmpty
+        ? post.userName[0].toUpperCase()
+        : 'U';
     return Container(
       color: const Color(0xFF000000),
       alignment: Alignment.center,
@@ -1869,80 +2225,6 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
         ),
       ),
     );
-  }
-
-  Future<void> _openChatWithUser(CommunityPostModel post, {WorkerModel? worker}) async {
-    final currentUser = AuthService().currentUser;
-    if (currentUser == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Please sign in to start a conversation.', style: GoogleFonts.dmSans()),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
-    final targetEmail = post.userId.isNotEmpty ? post.userId : (worker?.email ?? worker?.residentEmail ?? '');
-    final myEmail = currentUser.email.toLowerCase();
-    if (targetEmail.isEmpty || targetEmail.toLowerCase() == myEmail) {
-      return;
-    }
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(
-        child: SizedBox(
-          width: 36,
-          height: 36,
-          child: LoadingIndicatorM3E(),
-        ),
-      ),
-    );
-
-    try {
-      final conv = await ApiService().getOrCreateConversation(
-        workerId: worker?.id ?? 0,
-        workerEmail: worker != null ? (worker.email.isNotEmpty ? worker.email : worker.residentEmail) : targetEmail,
-        workerName: worker?.name ?? post.userName,
-        workerAvatar: worker?.profileImage ?? post.userAvatar,
-        residentEmail: currentUser.email,
-      );
-
-      if (mounted) Navigator.of(context, rootNavigator: true).pop();
-
-      final convId = conv != null ? (conv['id'] is int ? conv['id'] : int.tryParse(conv['id']?.toString() ?? '')) : null;
-
-      if (convId != null && mounted) {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => ChatScreen(
-              conversationId: convId,
-              name: post.userName,
-              profileImage: post.userAvatar.isNotEmpty ? post.userAvatar : null,
-            ),
-          ),
-        );
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Could not start chat with ${post.userName}.', style: GoogleFonts.dmSans()),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        Navigator.of(context, rootNavigator: true).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error starting chat: $e', style: GoogleFonts.dmSans()),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
   }
 
   String _formatTimeAgo(DateTime date) {
@@ -2008,7 +2290,10 @@ class _PostCommentsSheetState extends State<PostCommentsSheet> {
     }
 
     setState(() => _isSending = true);
-    final result = await ApiService().addPostComment(postId: widget.post.postId, content: text);
+    final result = await ApiService().addPostComment(
+      postId: widget.post.postId,
+      content: text,
+    );
     if (mounted) {
       setState(() => _isSending = false);
       if (result != null) {
@@ -2017,7 +2302,9 @@ class _PostCommentsSheetState extends State<PostCommentsSheet> {
         widget.onCommentAdded();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to post comment. Please try again.')),
+          const SnackBar(
+            content: Text('Failed to post comment. Please try again.'),
+          ),
         );
       }
     }
@@ -2056,7 +2343,10 @@ class _PostCommentsSheetState extends State<PostCommentsSheet> {
                   Expanded(
                     child: Text(
                       'Comments',
-                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w800, fontSize: 18),
+                      style: GoogleFonts.dmSans(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 18,
+                      ),
                     ),
                   ),
                   IconButton(
@@ -2071,72 +2361,89 @@ class _PostCommentsSheetState extends State<PostCommentsSheet> {
               child: _isLoading
                   ? const Center(child: LoadingIndicatorM3E())
                   : _comments.isEmpty
-                      ? Center(
-                          child: Text(
-                            'No comments yet. Be the first to comment!',
-                            style: GoogleFonts.dmSans(color: AppColors.onSurfaceVariant),
-                          ),
-                        )
-                      : ListView.separated(
-                          padding: const EdgeInsets.all(20),
-                          itemCount: _comments.length,
-                          separatorBuilder: (_, _) => const SizedBox(height: 14),
-                          itemBuilder: (context, index) {
-                            final c = _comments[index];
-                            return Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                CircleAvatar(
-                                  radius: 16,
-                                  backgroundColor: AppColors.surfaceVariant,
-                                  child: Text(
-                                    c.userName.isNotEmpty ? c.userName[0].toUpperCase() : 'U',
-                                    style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 12),
-                                  ),
+                  ? Center(
+                      child: Text(
+                        'No comments yet. Be the first to comment!',
+                        style: GoogleFonts.dmSans(
+                          color: AppColors.onSurfaceVariant,
+                        ),
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.all(20),
+                      itemCount: _comments.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 14),
+                      itemBuilder: (context, index) {
+                        final c = _comments[index];
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            CircleAvatar(
+                              radius: 16,
+                              backgroundColor: AppColors.surfaceVariant,
+                              child: Text(
+                                c.userName.isNotEmpty
+                                    ? c.userName[0].toUpperCase()
+                                    : 'U',
+                                style: GoogleFonts.dmSans(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
                                 ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Container(
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.surfaceVariant.withValues(alpha: 0.5),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surfaceVariant.withValues(
+                                    alpha: 0.5,
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
                                         Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Text(
-                                                  c.userName,
-                                                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, fontSize: 13),
-                                                ),
-                                                if (c.isUserVerified) const VerifiedBadge(size: 13),
-                                              ],
-                                            ),
                                             Text(
-                                              _formatTimeAgo(c.createdAt),
-                                              style: GoogleFonts.dmSans(fontSize: 10, color: AppColors.onSurfaceVariant),
+                                              c.userName,
+                                              style: GoogleFonts.dmSans(
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 13,
+                                              ),
                                             ),
+                                            if (c.isUserVerified)
+                                              const VerifiedBadge(size: 13),
                                           ],
                                         ),
-                                        const SizedBox(height: 4),
                                         Text(
-                                          c.content,
-                                          style: GoogleFonts.dmSans(fontSize: 13),
+                                          _formatTimeAgo(c.createdAt),
+                                          style: GoogleFonts.dmSans(
+                                            fontSize: 10,
+                                            color: AppColors.onSurfaceVariant,
+                                          ),
                                         ),
                                       ],
                                     ),
-                                  ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      c.content,
+                                      style: GoogleFonts.dmSans(fontSize: 13),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            );
-                          },
-                        ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
             ),
             const Divider(height: 1),
             Padding(
@@ -2154,16 +2461,26 @@ class _PostCommentsSheetState extends State<PostCommentsSheet> {
                         ),
                         filled: true,
                         fillColor: AppColors.surfaceVariant,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
                   IconButton.filled(
-                    style: IconButton.styleFrom(backgroundColor: AppColors.brandYellow, foregroundColor: Colors.white),
+                    style: IconButton.styleFrom(
+                      backgroundColor: AppColors.brandYellow,
+                      foregroundColor: Colors.white,
+                    ),
                     onPressed: _isSending ? null : _sendComment,
                     icon: _isSending
-                        ? const SizedBox(width: 18, height: 18, child: LoadingIndicatorM3E())
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: LoadingIndicatorM3E(),
+                          )
                         : const Icon(Icons.send_rounded, size: 20),
                   ),
                 ],

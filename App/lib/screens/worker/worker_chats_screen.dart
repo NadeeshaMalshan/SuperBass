@@ -12,6 +12,7 @@ class WorkerChatsScreen extends StatefulWidget {
   const WorkerChatsScreen({super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _WorkerChatsScreenState createState() => _WorkerChatsScreenState();
 }
 
@@ -82,7 +83,9 @@ class _WorkerChatsScreenState extends State<WorkerChatsScreen> {
       final now = DateTime.now();
       final diff = now.difference(dt);
       if (diff.inDays == 0 && now.day == dt.day) {
-        final hour = dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
+        final hour = dt.hour == 0
+            ? 12
+            : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
         final minute = dt.minute.toString().padLeft(2, '0');
         final ampm = dt.hour >= 12 ? 'pm' : 'am';
         return '$hour:$minute $ampm';
@@ -90,7 +93,20 @@ class _WorkerChatsScreenState extends State<WorkerChatsScreen> {
         const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         return days[dt.weekday % 7];
       } else {
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const months = [
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'May',
+          'Jun',
+          'Jul',
+          'Aug',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dec',
+        ];
         return '${dt.day} ${months[dt.month - 1]}';
       }
     } catch (_) {
@@ -108,14 +124,17 @@ class _WorkerChatsScreenState extends State<WorkerChatsScreen> {
       try {
         final decoded = jsonDecode(lastMsg);
         if (decoded is Map &&
-            (decoded.containsKey('phoneNo') || decoded.containsKey('PhoneNo'))) {
+            (decoded.containsKey('phoneNo') ||
+                decoded.containsKey('PhoneNo'))) {
           return Text(
             'Shared contact card',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: GoogleFonts.dmSans(
               fontSize: 13,
-              color: unreadCount > 0 ? const Color(0xFF0F172A) : const Color(0xFF64748B),
+              color: unreadCount > 0
+                  ? const Color(0xFF0F172A)
+                  : const Color(0xFF64748B),
               fontWeight: unreadCount > 0 ? FontWeight.w700 : FontWeight.w400,
               fontStyle: FontStyle.italic,
             ),
@@ -131,22 +150,28 @@ class _WorkerChatsScreenState extends State<WorkerChatsScreen> {
       overflow: TextOverflow.ellipsis,
       style: GoogleFonts.dmSans(
         fontSize: 13,
-        color: unreadCount > 0 ? const Color(0xFF0F172A) : const Color(0xFF64748B),
+        color: unreadCount > 0
+            ? const Color(0xFF0F172A)
+            : const Color(0xFF64748B),
         fontWeight: unreadCount > 0 ? FontWeight.w700 : FontWeight.w400,
       ),
     );
   }
 
   Widget _buildConversationItem(Map<String, dynamic> c) {
-    final clientName = (c['residentName'] ?? c['otherPartyName'] ?? c['name'] ?? 'Client').toString();
-    final profileImage = (c['residentProfileImage'] ??
-            c['otherPartyProfileImage'] ??
-            c['otherPartyAvatar'] ??
-            c['profileImage'] ??
-            c['avatar'] ??
-            c['residentAvatar'])
-        ?.toString();
-    final String lastMsg = (c['lastMessage'] ?? 'Started a conversation').toString();
+    final clientName =
+        (c['residentName'] ?? c['otherPartyName'] ?? c['name'] ?? 'Client')
+            .toString();
+    final profileImage =
+        (c['residentProfileImage'] ??
+                c['otherPartyProfileImage'] ??
+                c['otherPartyAvatar'] ??
+                c['profileImage'] ??
+                c['avatar'] ??
+                c['residentAvatar'])
+            ?.toString();
+    final String lastMsg = (c['lastMessage'] ?? 'Started a conversation')
+        .toString();
     final int unread = (c['unreadCount'] is int) ? c['unreadCount'] as int : 0;
     final String timeStr = _formatMessageTime(
       c['updatedAt']?.toString() ?? c['lastMessageAt']?.toString(),
@@ -154,7 +179,12 @@ class _WorkerChatsScreenState extends State<WorkerChatsScreen> {
     final bool isOnline = c['isOnline'] == true;
     final bool isClientVerified = c['isResidentVerified'] == true;
 
-    final Widget messageWidget = _buildMessageDisplay(lastMsg, context, c, unread);
+    final Widget messageWidget = _buildMessageDisplay(
+      lastMsg,
+      context,
+      c,
+      unread,
+    );
 
     return InkWell(
       onTap: () async {
@@ -197,16 +227,20 @@ class _WorkerChatsScreenState extends State<WorkerChatsScreen> {
                 CircleAvatar(
                   radius: 24,
                   backgroundColor: const Color(0xFFF1F5F9),
-                  backgroundImage: (profileImage != null &&
+                  backgroundImage:
+                      (profileImage != null &&
                           profileImage.isNotEmpty &&
                           profileImage != 'null')
                       ? NetworkImage(profileImage)
                       : null,
-                  child: (profileImage == null ||
+                  child:
+                      (profileImage == null ||
                           profileImage.isEmpty ||
                           profileImage == 'null')
                       ? Text(
-                          clientName.isNotEmpty ? clientName[0].toUpperCase() : 'C',
+                          clientName.isNotEmpty
+                              ? clientName[0].toUpperCase()
+                              : 'C',
                           style: GoogleFonts.dmSans(
                             fontWeight: FontWeight.w800,
                             fontSize: 16,
@@ -251,7 +285,9 @@ class _WorkerChatsScreenState extends State<WorkerChatsScreen> {
                                 overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.dmSans(
                                   fontSize: 15,
-                                  fontWeight: unread > 0 ? FontWeight.w800 : FontWeight.w700,
+                                  fontWeight: unread > 0
+                                      ? FontWeight.w800
+                                      : FontWeight.w700,
                                   color: Colors.black,
                                 ),
                               ),
@@ -265,8 +301,12 @@ class _WorkerChatsScreenState extends State<WorkerChatsScreen> {
                           timeStr,
                           style: GoogleFonts.dmSans(
                             fontSize: 11.5,
-                            fontWeight: unread > 0 ? FontWeight.w700 : FontWeight.w500,
-                            color: unread > 0 ? Colors.black : const Color(0xFF94A3B8),
+                            fontWeight: unread > 0
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            color: unread > 0
+                                ? Colors.black
+                                : const Color(0xFF94A3B8),
                           ),
                         ),
                     ],
@@ -278,7 +318,10 @@ class _WorkerChatsScreenState extends State<WorkerChatsScreen> {
                       if (unread > 0) ...[
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 3,
+                          ),
                           decoration: const BoxDecoration(
                             color: Colors.black,
                             shape: BoxShape.circle,
@@ -335,7 +378,10 @@ class _WorkerChatsScreenState extends State<WorkerChatsScreen> {
               decoration: InputDecoration(
                 hintText: 'Search clients…',
                 hintStyle: GoogleFonts.dmSans(color: const Color(0xFF94A3B8)),
-                prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF94A3B8)),
+                prefixIcon: const Icon(
+                  Icons.search_rounded,
+                  color: Color(0xFF94A3B8),
+                ),
                 filled: true,
                 fillColor: const Color(0xFFF8FAFC),
                 contentPadding: const EdgeInsets.symmetric(vertical: 0),
@@ -351,21 +397,24 @@ class _WorkerChatsScreenState extends State<WorkerChatsScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : filtered.isEmpty
-              ? Center(
-                  child: Text(
-                    _searchQuery.isEmpty ? 'No conversations yet' : 'No results found',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 15,
-                      color: const Color(0xFF94A3B8),
-                    ),
-                  ),
-                )
-              : ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  itemCount: filtered.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                  itemBuilder: (_, i) => _buildConversationItem(filtered[i]),
+          ? Center(
+              child: Text(
+                _searchQuery.isEmpty
+                    ? 'No conversations yet'
+                    : 'No results found',
+                style: GoogleFonts.dmSans(
+                  fontSize: 15,
+                  color: const Color(0xFF94A3B8),
                 ),
+              ),
+            )
+          : ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              itemCount: filtered.length,
+              separatorBuilder: (_, _) =>
+                  const Divider(height: 1, color: Color(0xFFF1F5F9)),
+              itemBuilder: (_, i) => _buildConversationItem(filtered[i]),
+            ),
     );
   }
 }

@@ -9,10 +9,22 @@ Map<String, String> parseContactCard(String raw) {
   try {
     final decoded = jsonDecode(raw);
     if (decoded is Map) {
-      final phone = (decoded['phoneNo'] ?? decoded['PhoneNo'] ?? decoded['phone'] ?? '').toString();
-      final name  = (decoded['workerName'] ?? decoded['WorkerName'] ?? decoded['name'] ?? 'Worker').toString();
-      final loc   = (decoded['location'] ?? decoded['service'] ?? decoded['jobTitle'] ?? '').toString();
-      final avatar= (decoded['avatar'] ?? decoded['Avatar'] ?? '').toString();
+      final phone =
+          (decoded['phoneNo'] ?? decoded['PhoneNo'] ?? decoded['phone'] ?? '')
+              .toString();
+      final name =
+          (decoded['workerName'] ??
+                  decoded['WorkerName'] ??
+                  decoded['name'] ??
+                  'Worker')
+              .toString();
+      final loc =
+          (decoded['location'] ??
+                  decoded['service'] ??
+                  decoded['jobTitle'] ??
+                  '')
+              .toString();
+      final avatar = (decoded['avatar'] ?? decoded['Avatar'] ?? '').toString();
       return {'phone': phone, 'name': name, 'location': loc, 'avatar': avatar};
     }
   } catch (_) {}
@@ -49,12 +61,16 @@ class _WorkerContactCardState extends State<WorkerContactCard> {
     final cardPhone = card['phone'] ?? '';
     final phone = (cardPhone.isNotEmpty && cardPhone != 'null')
         ? cardPhone
-        : (widget.workerPhone != null && widget.workerPhone!.isNotEmpty && widget.workerPhone != 'null'
-            ? widget.workerPhone!
-            : '');
-    final name     = widget.workerName ?? (card['name']!.isNotEmpty ? card['name']! : 'Worker');
-    final location = widget.location  ?? card['location']!;
-    final avatar   = widget.avatarUrl ?? card['avatar']!;
+        : (widget.workerPhone != null &&
+                  widget.workerPhone!.isNotEmpty &&
+                  widget.workerPhone != 'null'
+              ? widget.workerPhone!
+              : '');
+    final name =
+        widget.workerName ??
+        (card['name']!.isNotEmpty ? card['name']! : 'Worker');
+    final location = widget.location ?? card['location']!;
+    final avatar = widget.avatarUrl ?? card['avatar']!;
 
     final displayInitial = name.isNotEmpty ? name[0].toUpperCase() : 'W';
 
@@ -85,7 +101,8 @@ class _WorkerContactCardState extends State<WorkerContactCard> {
                       ? Image.network(
                           avatar,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _InitialAvatar(initial: displayInitial),
+                          errorBuilder: (_, _, _) =>
+                              _InitialAvatar(initial: displayInitial),
                         )
                       : _InitialAvatar(initial: displayInitial),
                 ),
@@ -172,8 +189,12 @@ class _WorkerContactCardState extends State<WorkerContactCard> {
                   phone.isNotEmpty ? phone : 'Not provided',
                   style: GoogleFonts.dmSans(
                     fontSize: phone.isNotEmpty ? 24 : 16,
-                    fontWeight: phone.isNotEmpty ? FontWeight.w700 : FontWeight.w500,
-                    color: phone.isNotEmpty ? const Color(0xFF111111) : const Color(0xFF888888),
+                    fontWeight: phone.isNotEmpty
+                        ? FontWeight.w700
+                        : FontWeight.w500,
+                    color: phone.isNotEmpty
+                        ? const Color(0xFF111111)
+                        : const Color(0xFF888888),
                     letterSpacing: 0.2,
                   ),
                 ),
@@ -191,11 +212,16 @@ class _WorkerContactCardState extends State<WorkerContactCard> {
                   onTap: () async {
                     if (phone.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Phone number not provided')),
+                        const SnackBar(
+                          content: Text('Phone number not provided'),
+                        ),
                       );
                       return;
                     }
-                    final uri = Uri(scheme: 'tel', path: phone.replaceAll(' ', ''));
+                    final uri = Uri(
+                      scheme: 'tel',
+                      path: phone.replaceAll(' ', ''),
+                    );
                     if (await canLaunchUrl(uri)) {
                       await launchUrl(uri);
                     }
@@ -209,7 +235,11 @@ class _WorkerContactCardState extends State<WorkerContactCard> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.phone_rounded, color: Colors.white, size: 18),
+                        const Icon(
+                          Icons.phone_rounded,
+                          color: Colors.white,
+                          size: 18,
+                        ),
                         const SizedBox(width: 8),
                         Text(
                           'Call now',
@@ -242,7 +272,9 @@ class _WorkerContactCardState extends State<WorkerContactCard> {
                         style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
                       ),
                       behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       duration: const Duration(seconds: 2),
                       backgroundColor: Colors.black,
                     ),
@@ -254,7 +286,10 @@ class _WorkerContactCardState extends State<WorkerContactCard> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(50),
-                    border: Border.all(color: const Color(0xFFDDDDDD), width: 1.5),
+                    border: Border.all(
+                      color: const Color(0xFFDDDDDD),
+                      width: 1.5,
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -285,7 +320,11 @@ class _WorkerContactCardState extends State<WorkerContactCard> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.lock_outline_rounded, size: 13, color: Color(0xFF888888)),
+              const Icon(
+                Icons.lock_outline_rounded,
+                size: 13,
+                color: Color(0xFF888888),
+              ),
               const SizedBox(width: 4),
               Text(
                 'Verified number shared for this booking',
