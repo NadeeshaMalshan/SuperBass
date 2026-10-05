@@ -23,6 +23,8 @@ import 'services/notification_service.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
 import 'widgets/app_components.dart';
+import 'widgets/review_sheet.dart';
+import 'widgets/review_summary.dart';
 import 'widgets/verified_badge.dart';
 import 'widgets/notifications_sheet.dart';
 import 'widgets/m3_bottom_nav_bar.dart';
@@ -3474,7 +3476,7 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                         child: FilledButton.icon(
                           onPressed: () {
                             Navigator.of(ctx).pop();
-                            _showReviewSheet(b);
+                            showReviewSheet(context, b, _fetchBookings);
                           },
                           icon: const Icon(
                             Icons.star_rounded,
@@ -3497,6 +3499,10 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                           ),
                         ),
                       ),
+                      const SizedBox(height: 12),
+                    ],
+                    if (b.status.toLowerCase() == 'reviewed') ...[
+                      ReviewSummary(booking: b),
                       const SizedBox(height: 12),
                     ],
                   ],
@@ -3634,202 +3640,6 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
     }
   }
 
-  void _showReviewSheet(BookingModel b) {
-    int quality = 5;
-    int punctuality = 5;
-    int communication = 5;
-    final TextEditingController commentController = TextEditingController();
-    bool isSubmitting = false;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setModalState) => Container(
-          padding: EdgeInsets.only(
-            left: 24,
-            right: 24,
-            top: 20,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 32,
-          ),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.outlineVariant,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  'Leave a Review',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Rate your experience with ${b.workerName}',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 14,
-                    color: AppColors.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                Text(
-                  'Quality & Craftsmanship',
-                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
-                ),
-                Slider(
-                  value: quality.toDouble(),
-                  min: 1,
-                  max: 5,
-                  divisions: 4,
-                  activeColor: Colors.black,
-                  inactiveColor: const Color(0xFFE2E8F0),
-                  label: quality.toString(),
-                  onChanged: (v) => setModalState(() => quality = v.toInt()),
-                ),
-
-                Text(
-                  'Punctuality',
-                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
-                ),
-                Slider(
-                  value: punctuality.toDouble(),
-                  min: 1,
-                  max: 5,
-                  divisions: 4,
-                  activeColor: Colors.black,
-                  inactiveColor: const Color(0xFFE2E8F0),
-                  label: punctuality.toString(),
-                  onChanged: (v) =>
-                      setModalState(() => punctuality = v.toInt()),
-                ),
-
-                Text(
-                  'Communication',
-                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
-                ),
-                Slider(
-                  value: communication.toDouble(),
-                  min: 1,
-                  max: 5,
-                  divisions: 4,
-                  activeColor: Colors.black,
-                  inactiveColor: const Color(0xFFE2E8F0),
-                  label: communication.toString(),
-                  onChanged: (v) =>
-                      setModalState(() => communication = v.toInt()),
-                ),
-                const SizedBox(height: 16),
-
-                Text(
-                  'Comment',
-                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: commentController,
-                  maxLines: 4,
-                  decoration: InputDecoration(
-                    hintText:
-                        'Tell us about your experience with this worker...',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    contentPadding: const EdgeInsets.all(12),
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: FilledButton(
-                    onPressed: isSubmitting
-                        ? null
-                        : () async {
-                            setModalState(() => isSubmitting = true);
-                            final updated = await ApiService().submitReview(
-                              b.id,
-                              qualityRating: quality,
-                              punctualityRating: punctuality,
-                              communicationRating: communication,
-                              reviewComment: commentController.text.trim(),
-                            );
-
-                            if (context.mounted) {
-                              Navigator.pop(context);
-                              if (updated != null) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'Review submitted successfully!',
-                                    ),
-                                    backgroundColor: Colors.black,
-                                  ),
-                                );
-                                _fetchBookings();
-                              } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Failed to submit review.'),
-                                    backgroundColor: Colors.black,
-                                  ),
-                                );
-                              }
-                            }
-                          },
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: isSubmitting
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : Text(
-                            'Submit Review',
-                            style: GoogleFonts.dmSans(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
-                              color: Colors.white,
-                            ),
-                          ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    ).whenComplete(() => commentController.dispose());
-  }
-
   Color _getStatusDotColor(String status) {
     switch (status.toLowerCase()) {
       case 'requested':
@@ -3846,9 +3656,8 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
         return const Color(0xFF10B981);
       case 'cancelled':
       case 'rejected':
-        return const Color(0xFFEF4444);
       default:
-        return const Color(0xFF94A3B8);
+        return const Color(0xFFEF4444);
     }
   }
 
@@ -4070,42 +3879,75 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                                         ),
                                       ),
                                       const SizedBox(width: 8),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(
-                                            20,
+                                      if (b.status.toLowerCase() == 'reviewed')
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 6,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.black,
+                                            borderRadius: BorderRadius.circular(
+                                              20,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(
+                                                Icons.star_rounded,
+                                                color: Colors.white,
+                                                size: 14,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                'Reviewed',
+                                                style: GoogleFonts.dmSans(
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 12,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        )
+                                      else
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 6,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.circular(
+                                              20,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Container(
+                                                width: 7,
+                                                height: 7,
+                                                decoration: BoxDecoration(
+                                                  color: _getStatusDotColor(
+                                                    b.status,
+                                                  ),
+                                                  shape: BoxShape.circle,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                _formatStatus(b.status),
+                                                style: GoogleFonts.dmSans(
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 12,
+                                                  color: Colors.black,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Container(
-                                              width: 7,
-                                              height: 7,
-                                              decoration: BoxDecoration(
-                                                color: _getStatusDotColor(
-                                                  b.status,
-                                                ),
-                                                shape: BoxShape.circle,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 6),
-                                            Text(
-                                              _formatStatus(b.status),
-                                              style: GoogleFonts.dmSans(
-                                                fontWeight: FontWeight.w700,
-                                                fontSize: 12,
-                                                color: Colors.black,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
                                     ],
                                   ),
                                   const SizedBox(height: 6),
@@ -4181,124 +4023,129 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                                   const SizedBox(height: 18),
 
                                   // Action Buttons Row: View & Cancel/Review
-                                  Row(
+                                  if (b.status.toLowerCase() == 'reviewed')
+                                    ReviewSummary(booking: b),
+                                  const SizedBox(height: 18),
+                                  Wrap(
+                                    spacing: 12,
+                                    runSpacing: 12,
                                     children: [
-                                      Expanded(
-                                        child: InkWell(
-                                          onTap: () => _showBookingDetails(b),
-                                          borderRadius: BorderRadius.circular(
-                                            26,
+                                      OutlinedButton.icon(
+                                        onPressed: () => _showBookingDetails(b),
+                                        icon: const Icon(
+                                          Icons.visibility_outlined,
+                                          size: 17,
+                                        ),
+                                        label: Text(
+                                          'View Details',
+                                          style: GoogleFonts.dmSans(
+                                            fontWeight: FontWeight.w700,
                                           ),
-                                          child: Container(
-                                            height: 48,
-                                            decoration: BoxDecoration(
-                                              color: Colors.black,
-                                              borderRadius:
-                                                  BorderRadius.circular(26),
+                                        ),
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor: Colors.black,
+                                          side: const BorderSide(
+                                            color: Colors.black,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              26,
                                             ),
-                                            child: Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: [
-                                                const Icon(
-                                                  Icons.visibility_outlined,
-                                                  size: 17,
-                                                  color: Colors.white,
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Text(
-                                                  'View',
-                                                  style: GoogleFonts.dmSans(
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 20,
+                                            vertical: 12,
                                           ),
                                         ),
                                       ),
-                                      if (isCancellable) ...[
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: InkWell(
-                                            onTap: () =>
-                                                _confirmCancelBooking(b),
-                                            borderRadius: BorderRadius.circular(
-                                              26,
+                                      if (b.conversationId != null)
+                                        OutlinedButton.icon(
+                                          onPressed:
+                                              () {}, // Handled elsewhere or just UI mock
+                                          icon: const Icon(
+                                            Icons.message_outlined,
+                                            size: 17,
+                                          ),
+                                          label: Text(
+                                            'Message',
+                                            style: GoogleFonts.dmSans(
+                                              fontWeight: FontWeight.w700,
                                             ),
-                                            child: Container(
-                                              height: 48,
-                                              decoration: BoxDecoration(
-                                                color: Colors.white,
-                                                borderRadius:
-                                                    BorderRadius.circular(26),
-                                              ),
-                                              child: Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: [
-                                                  const Icon(
-                                                    Icons.cancel_outlined,
-                                                    size: 17,
-                                                    color: Colors.black,
-                                                  ),
-                                                  const SizedBox(width: 8),
-                                                  Text(
-                                                    'Cancel',
-                                                    style: GoogleFonts.dmSans(
-                                                      fontSize: 14,
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                      color: Colors.black,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
+                                          ),
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: Colors.black,
+                                            side: const BorderSide(
+                                              color: Colors.black,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(26),
+                                            ),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 20,
+                                              vertical: 12,
                                             ),
                                           ),
                                         ),
-                                      ] else if (isCompleted) ...[
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: InkWell(
-                                            onTap: () => _showReviewSheet(b),
-                                            borderRadius: BorderRadius.circular(
-                                              26,
+                                      if (isCancellable)
+                                        OutlinedButton.icon(
+                                          onPressed: () =>
+                                              _confirmCancelBooking(b),
+                                          icon: const Icon(
+                                            Icons.cancel_outlined,
+                                            size: 17,
+                                          ),
+                                          label: Text(
+                                            'Cancel',
+                                            style: GoogleFonts.dmSans(
+                                              fontWeight: FontWeight.w700,
                                             ),
-                                            child: Container(
-                                              height: 48,
-                                              decoration: BoxDecoration(
-                                                color: Colors.white,
-                                                borderRadius:
-                                                    BorderRadius.circular(26),
-                                              ),
-                                              child: Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: [
-                                                  const Icon(
-                                                    Icons.star_outline_rounded,
-                                                    size: 17,
-                                                    color: Colors.black,
-                                                  ),
-                                                  const SizedBox(width: 8),
-                                                  Text(
-                                                    'Review',
-                                                    style: GoogleFonts.dmSans(
-                                                      fontSize: 14,
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                      color: Colors.black,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
+                                          ),
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: Colors.black,
+                                            side: const BorderSide(
+                                              color: Colors.black,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(26),
+                                            ),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 20,
+                                              vertical: 12,
                                             ),
                                           ),
                                         ),
-                                      ],
+                                      if (isCompleted)
+                                        FilledButton.icon(
+                                          onPressed: () => showReviewSheet(
+                                            context,
+                                            b,
+                                            _fetchBookings,
+                                          ),
+                                          icon: const Icon(
+                                            Icons.star_rounded,
+                                            size: 17,
+                                          ),
+                                          label: Text(
+                                            'Leave a Review',
+                                            style: GoogleFonts.dmSans(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          style: FilledButton.styleFrom(
+                                            backgroundColor: Colors.black,
+                                            foregroundColor: Colors.white,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(26),
+                                            ),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 20,
+                                              vertical: 12,
+                                            ),
+                                          ),
+                                        ),
                                     ],
                                   ),
                                 ],

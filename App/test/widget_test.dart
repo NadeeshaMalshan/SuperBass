@@ -19,7 +19,7 @@ void main() {
     GoogleFonts.config.allowRuntimeFetching = false;
     SharedPreferences.setMockInitialValues({});
     await dotenv.load(fileName: '.env').catchError((_) {
-      dotenv.loadFromString(env: 'API_URL=http://localhost:5000\n');
+      dotenv.loadFromString(envString: 'API_URL=http://localhost:5000\n');
     });
   });
 
