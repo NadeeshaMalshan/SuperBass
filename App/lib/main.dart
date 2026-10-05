@@ -1,4 +1,5 @@
-﻿import 'dart:async';
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -4520,9 +4521,18 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
                             c['workerName']?.toString() ??
                             c['otherPartyName']?.toString() ??
                             'Worker';
-                        final lastMsg =
+                        String lastMsg =
                             c['lastMessage']?.toString() ??
                             'Conversation started';
+                        // Sanitize JSON contact card content
+                        if (lastMsg.trimLeft().startsWith('{')) {
+                          try {
+                            final decoded = jsonDecode(lastMsg);
+                            if (decoded is Map && (decoded.containsKey('phoneNo') || decoded.containsKey('PhoneNo') || decoded['type'] == 'WorkerContactCard')) {
+                              lastMsg = 'Shared contact card';
+                            }
+                          } catch (_) {}
+                        }
                         final unread = c['unreadCount'] is int
                             ? c['unreadCount'] as int
                             : 0;
