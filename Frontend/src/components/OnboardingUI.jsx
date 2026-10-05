@@ -71,11 +71,12 @@ export function StepHeading({ title, subtitle }) {
 }
 
 // Input component
-export function TextField({ label, errorText, ...props }) {
+export function TextField({ label, errorText, id, ...props }) {
+  const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
       {label && (
-        <label style={{
+        <label htmlFor={inputId} style={{
           fontSize: '14px',
           fontWeight: '500',
           color: '#000000'
@@ -84,6 +85,7 @@ export function TextField({ label, errorText, ...props }) {
         </label>
       )}
       <input
+        id={inputId}
         style={{
           width: '100%',
           height: '60px',
@@ -115,11 +117,12 @@ export function TextField({ label, errorText, ...props }) {
 }
 
 // Select component
-export function SelectField({ label, options, placeholder, ...props }) {
+export function SelectField({ label, options, placeholder, id, ...props }) {
+  const selectId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
       {label && (
-        <label style={{
+        <label htmlFor={selectId} style={{
           fontSize: '14px',
           fontWeight: '500',
           color: '#000000'
@@ -128,6 +131,7 @@ export function SelectField({ label, options, placeholder, ...props }) {
         </label>
       )}
       <select
+        id={selectId}
         style={{
           width: '100%',
           height: '60px',
