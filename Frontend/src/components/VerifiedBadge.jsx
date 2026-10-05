@@ -16,3 +16,4 @@ export default function VerifiedBadge({ size = 18, className = '', style = {}, t
     </svg>
   );
 }
+// This component renders a verified badge icon using SVG. It accepts props for size, className, style, and title to customize its appearance and accessibility. The default size is 18 pixels, and the default title is "Verified Home Craftsman".
