@@ -349,3 +349,4 @@ namespace Superbass.Controllers
         public double? LocationLng { get; set; }
     }
 }
+// This controller handles authentication and onboarding for both residents and workers. It supports Google login via ID tokens or access tokens, generates JWTs for authenticated users, and manages user profiles in the database. The controller also enforces role-based restrictions to prevent users from switching roles without proper account deletion.
