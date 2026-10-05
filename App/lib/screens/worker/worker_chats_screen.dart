@@ -6,7 +6,6 @@ import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/chat_signalr_service.dart';
 import '../../widgets/verified_badge.dart';
-import '../../widgets/worker_contact_card.dart';
 import '../chat_screen.dart';
 
 class WorkerChatsScreen extends StatefulWidget {
@@ -139,8 +138,14 @@ class _WorkerChatsScreenState extends State<WorkerChatsScreen> {
   }
 
   Widget _buildConversationItem(Map<String, dynamic> c) {
-    final clientName = (c['residentName'] ?? 'Client').toString();
-    final profileImage = c['residentProfileImage']?.toString();
+    final clientName = (c['residentName'] ?? c['otherPartyName'] ?? c['name'] ?? 'Client').toString();
+    final profileImage = (c['residentProfileImage'] ??
+            c['otherPartyProfileImage'] ??
+            c['otherPartyAvatar'] ??
+            c['profileImage'] ??
+            c['avatar'] ??
+            c['residentAvatar'])
+        ?.toString();
     final String lastMsg = (c['lastMessage'] ?? 'Started a conversation').toString();
     final int unread = (c['unreadCount'] is int) ? c['unreadCount'] as int : 0;
     final String timeStr = _formatMessageTime(
