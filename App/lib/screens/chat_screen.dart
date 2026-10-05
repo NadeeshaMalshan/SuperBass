@@ -297,6 +297,73 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  void _clearChat() {
+    if (_messages.isEmpty) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Clear chat?', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+        content: Text(
+          'Are you sure you want to delete all ${_messages.length} messages from this device? This action cannot be undone.',
+          style: GoogleFonts.dmSans(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancel', style: GoogleFonts.dmSans(color: AppColors.onSurfaceVariant)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+
+              // Show loading state
+              if (mounted) {
+                setState(() => _isLoading = true);
+              }
+
+              // Get all valid message IDs
+              final messageIds = _messages
+                  .where((m) => m['id'] != null && m['id'] is int && m['id'] > 0)
+                  .map((m) => m['id'] as int)
+                  .toList();
+
+              if (messageIds.isNotEmpty) {
+                // Use existing API for soft delete (delete for current user only)
+                final email = AuthService().currentUser?.email;
+                if (email != null) {
+                  final success = await ApiService().deleteMessages(messageIds, email);
+
+                  if (success && mounted) {
+                    setState(() {
+                      _messages.clear();
+                      _isLoading = false;
+                    });
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Chat cleared successfully')),
+                    );
+                  } else if (mounted) {
+                    setState(() => _isLoading = false);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Failed to clear chat. Please try again.')),
+                    );
+                  }
+                } else {
+                  if (mounted) setState(() => _isLoading = false);
+                }
+              } else {
+                if (mounted) setState(() => _isLoading = false);
+              }
+            },
+            child: Text('Clear', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: AppColors.error)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _pickImage() async {
     try {
       final picker = ImagePicker();
@@ -802,7 +869,87 @@ class _ChatScreenState extends State<ChatScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.more_vert, color: AppColors.onSurfaceVariant),
-            onPressed: () {},
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                backgroundColor: Colors.white,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                builder: (ctx) {
+                  return SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade300,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          ListTile(
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.select_all, color: AppColors.onSurfaceVariant),
+                            ),
+                            title: Text(
+                              'Select messages',
+                              style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, fontSize: 15),
+                            ),
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              // Enter selection mode by selecting first message if there are messages
+                              if (_messages.isNotEmpty) {
+                                setState(() {
+                                  // Select the first message to enter selection mode
+                                  final firstMsg = _messages
+                                      .cast<Map<String, dynamic>?>()
+                                      .firstWhere(
+                                        (m) => m != null && m['id'] != null && m['id'] is int && m['id'] > 0,
+                                        orElse: () => null,
+                                      );
+                                  if (firstMsg != null && firstMsg['id'] is int) {
+                                    _selectedMessageIds.add(firstMsg['id'] as int);
+                                  }
+                                });
+                              }
+                            },
+                          ),
+                          const Divider(height: 1),
+                          ListTile(
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.delete_outline, color: AppColors.onSurfaceVariant),
+                            ),
+                            title: Text(
+                              'Clear chat',
+                              style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, fontSize: 15),
+                            ),
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              _clearChat();
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
           ),
         ],
       ),
