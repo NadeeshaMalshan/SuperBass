@@ -87,6 +87,20 @@ export default function Onboarding() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (step === 1) {
+      if (name.trim()) setStep(2);
+      return;
+    }
+    if (step === 2) {
+      if (/^0\d{9}$/.test(phoneNo.trim())) setStep(3);
+      return;
+    }
+    if (step === 3) {
+      if (houseNo.trim() && street.trim() && area.trim() && district.trim() && province.trim()) setStep(4);
+      return;
+    }
+    
+    // Final step submission
     const fullAddress = [houseNo, street, area, district, province].filter(Boolean).join(', ');
     
     try {
