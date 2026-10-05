@@ -202,7 +202,7 @@ export default function WorkerDashboard() {
           <button
             type="button"
             className="worker-btn-primary"
-            onClick={() => navigate('/worker/jobs')}
+            onClick={() => navigate('/bookings')}
             style={{ backgroundColor: '#ffffff', color: '#000000', border: 'none', padding: '9px 20px', fontSize: '0.85rem' }}
           >
             Review Requests

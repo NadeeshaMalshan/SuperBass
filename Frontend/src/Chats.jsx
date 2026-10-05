@@ -1269,7 +1269,7 @@ export default function Chats() {
                         disabled={isSharingContact}
                         title="Share your verified phone number with this resident"
                       >
-                        <i className="fa-solid fa-address-card"></i>
+                        <i className={isSharingContact ? "fa-solid fa-spinner fa-spin" : "fa-solid fa-address-card"}></i>
                         <span>{isSharingContact ? 'Sharing...' : 'Share Contact'}</span>
                       </button>
                     )}
