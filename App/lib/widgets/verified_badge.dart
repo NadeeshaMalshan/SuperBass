@@ -32,3 +32,4 @@ class VerifiedBadge extends StatelessWidget {
     return icon;
   }
 }
+// This widget is used to display a verified badge icon next to a user's name or profile picture, indicating that the user has been officially verified. The size, color, and tooltip of the badge can be customized.
