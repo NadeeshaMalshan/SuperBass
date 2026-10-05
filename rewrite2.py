@@ -1,182 +1,15 @@
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../models/auth_user.dart';
-import '../services/api_service.dart';
-import '../services/auth_service.dart';
-import '../theme/app_colors.dart';
-import '../widgets/workio_components.dart';
-import '../widgets/superbass_map.dart';
-import '../main.dart';
+import re
 
-const Map<String, List<String>> sriLankaGeoData = {
-  "Western": ["Colombo", "Gampaha", "Kalutara"],
-  "Central": ["Kandy", "Matale", "Nuwara Eliya"],
-  "Southern": ["Galle", "Matara", "Hambantota"],
-  "Northern": ["Jaffna", "Kilinochchi", "Mannar", "Mullaitivu", "Vavuniya"],
-  "Eastern": ["Trincomalee", "Batticaloa", "Ampara"],
-  "North Western": ["Kurunegala", "Puttalam"],
-  "North Central": ["Anuradhapura", "Polonnaruwa"],
-  "Uva": ["Badulla", "Monaragala"],
-  "Sabaragamuwa": ["Ratnapura", "Kegalle"]
-};
+with open('App/lib/screens/onboarding_screen.dart', 'r', encoding='utf-8') as f:
+    content = f.read()
 
+# Fix import position
+content = content.replace("import '../widgets/workio_components.dart';", "")
+content = content.replace("import '../theme/app_colors.dart';", "import '../theme/app_colors.dart';\nimport '../widgets/workio_components.dart';")
 
-
-/// Onboarding Screen faithfully replicating Frontend/src/Onboarding.jsx
-class OnboardingScreen extends StatefulWidget {
-  const OnboardingScreen({super.key});
-
-  @override
-  State<OnboardingScreen> createState() => _OnboardingScreenState();
-}
-
-class _OnboardingScreenState extends State<OnboardingScreen> {  int _step = 1;
-  
-  bool _isSubmitting = false;
-
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _houseNoController = TextEditingController();
-  final TextEditingController _streetController = TextEditingController();
-  final TextEditingController _areaController = TextEditingController();
-
-  String? _selectedProvince;
-  String? _selectedDistrict;
-
-  double? _selectedLat = 6.9271; // Default Colombo, Sri Lanka
-  double? _selectedLng = 79.8612;
-  bool _hasCustomPin = false;
-
-  @override
-  void initState() {
-    super.initState();
-    final currentUser = AuthService().currentUser;
-    _nameController.text = currentUser?.name ?? '';
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _phoneController.dispose();
-    _houseNoController.dispose();
-    _streetController.dispose();
-    _areaController.dispose();
-    super.dispose();
-  }
-
-  bool get _isPhoneValid => RegExp(r'^0\d{9}$').hasMatch(_phoneController.text.trim());
-
-  bool get _isAddressComplete =>
-      _houseNoController.text.trim().isNotEmpty &&
-      _streetController.text.trim().isNotEmpty &&
-      _areaController.text.trim().isNotEmpty &&
-      (_selectedProvince != null && _selectedProvince!.isNotEmpty) &&
-      (_selectedDistrict != null && _selectedDistrict!.isNotEmpty);
-
-  void _handleGetLocation() {
-    // Set to Colombo central coordinates or simulate high-accuracy geolocation
-    setState(() {
-      _selectedLat = 6.9271;
-      _selectedLng = 79.8612;
-      _hasCustomPin = true;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Location pinned at your current area (Colombo, LK)'),
-        backgroundColor: AppColors.brandBlack,
-        duration: Duration(seconds: 2),
-      ),
-    );
-  }
-
-  Future<void> _handleSubmit() async {
-    final fullAddress = [
-      _houseNoController.text.trim(),
-      _streetController.text.trim(),
-      _areaController.text.trim(),
-      _selectedDistrict,
-      _selectedProvince,
-    ].where((part) => part != null && part.isNotEmpty).join(', ');
-
-    setState(() {
-      _isSubmitting = true;
-    });
-
-    try {
-      final res = await ApiService().completeOnboarding(
-        phoneNo: _phoneController.text.trim(),
-        address: fullAddress,
-        locationLat: _selectedLat,
-        locationLng: _selectedLng,
-      );
-
-      if (!mounted) return;
-
-      if (res['success'] == true) {
-        // Also update local SharedPreferences and AuthService user model
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('userName', _nameController.text.trim());
-        await prefs.setString('phoneNo', _phoneController.text.trim());
-        await prefs.setString('address', fullAddress);
-
-        final current = AuthService().currentUser;
-        if (current != null) {
-          AuthService().currentUserNotifier.value = AuthUser(
-            token: current.token,
-            email: current.email,
-            name: _nameController.text.trim().isNotEmpty ? _nameController.text.trim() : current.name,
-            picture: current.picture,
-            isNewUser: false,
-            isWorker: current.isWorker,
-            activeRole: current.activeRole,
-            workerId: current.workerId,
-            locationLat: _selectedLat,
-            locationLng: _selectedLng,
-          );
-        }
-
-        if (!mounted) return;
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Onboarding complete! Welcome to Workio.'),
-            backgroundColor: AppColors.success,
-          ),
-        );
-
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const MainNavigationShell()),
-        );
-      } else {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(res['message'] ?? 'Failed to save onboarding details.'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error saving details: $e'),
-          backgroundColor: AppColors.error,
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSubmitting = false;
-        });
-      }
-    }
-  }
-
-  @override
+# Replace build and all _buildStep methods
+build_pattern = r'  @override\n  Widget build\(BuildContext context\) \{[\s\S]*'
+new_methods = '''  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
@@ -372,7 +205,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {  int _step = 1;
                   ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
-                    initialValue: _selectedProvince,
+                    value: _selectedProvince,
                     icon: const Icon(Icons.keyboard_arrow_down_rounded),
                     decoration: InputDecoration(
                       filled: true,
@@ -419,7 +252,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {  int _step = 1;
                   ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
-                    initialValue: _selectedDistrict,
+                    value: _selectedDistrict,
                     icon: const Icon(Icons.keyboard_arrow_down_rounded),
                     decoration: InputDecoration(
                       filled: true,
@@ -555,3 +388,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {  int _step = 1;
     );
   }
 }
+'''
+
+content = re.sub(build_pattern, new_methods, content)
+
+with open('App/lib/screens/onboarding_screen.dart', 'w', encoding='utf-8') as f:
+    f.write(content)
