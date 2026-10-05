@@ -210,3 +210,4 @@ class _VerificationFormState extends State<VerificationForm> {
     );
   }
 }
+// This widget is used to verify the user's official identity using their National Identity Card (NIC) details. It checks the NIC format, date of birth, and gender against the official records and marks the user as verified if successful.
