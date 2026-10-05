@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_colors.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
@@ -39,6 +40,8 @@ class _ChatScreenState extends State<ChatScreen> {
   
   bool _isOnline = false;
   String _lastSeenStr = '';
+  String? _resolvedProfileImage;
+  String? _convWorkerPhone;
   bool _isOtherTyping = false;
   Timer? _typingDebounce;
   Timer? _pollTimer;
@@ -192,15 +195,25 @@ class _ChatScreenState extends State<ChatScreen> {
             child: Text('Cancel', style: GoogleFonts.dmSans(color: AppColors.onSurfaceVariant)),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              setState(() {
-                _messages.removeWhere((m) => _selectedMessageIds.contains(m['id']));
-                _selectedMessageIds.clear();
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Message(s) deleted for you')),
-              );
+              final email = AuthService().currentUser?.email;
+              if (email != null && _selectedMessageIds.isNotEmpty) {
+                final prefs = await SharedPreferences.getInstance();
+                final key = 'deleted_msgs_${email}_${widget.conversationId}';
+                final existing = prefs.getStringList(key) ?? [];
+                final updated = {...existing, ..._selectedMessageIds.map((id) => id.toString())}.toList();
+                await prefs.setStringList(key, updated);
+              }
+              if (mounted) {
+                setState(() {
+                  _messages.removeWhere((m) => _selectedMessageIds.contains(m['id']));
+                  _selectedMessageIds.clear();
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Message(s) deleted for you')),
+                );
+              }
             },
             child: Text('Delete', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: AppColors.error)),
           ),
@@ -307,7 +320,7 @@ class _ChatScreenState extends State<ChatScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text('Clear chat?', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
         content: Text(
-          'Are you sure you want to delete all ${_messages.length} messages from this device? This action cannot be undone.',
+          'Are you sure you want to remove all ${_messages.length} messages from this device? They will still be visible to the other person.',
           style: GoogleFonts.dmSans(),
         ),
         actions: [
@@ -318,44 +331,20 @@ class _ChatScreenState extends State<ChatScreen> {
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
-
-              // Show loading state
-              if (mounted) {
-                setState(() => _isLoading = true);
+              final email = AuthService().currentUser?.email;
+              if (email != null) {
+                final prefs = await SharedPreferences.getInstance();
+                final now = DateTime.now().toUtc();
+                await prefs.setString('cleared_chat_before_${email}_${widget.conversationId}', now.toIso8601String());
               }
-
-              // Get all valid message IDs
-              final messageIds = _messages
-                  .where((m) => m['id'] != null && m['id'] is int && m['id'] > 0)
-                  .map((m) => m['id'] as int)
-                  .toList();
-
-              if (messageIds.isNotEmpty) {
-                // Use existing API for soft delete (delete for current user only)
-                final email = AuthService().currentUser?.email;
-                if (email != null) {
-                  final success = await ApiService().deleteMessages(messageIds, email);
-
-                  if (success && mounted) {
-                    setState(() {
-                      _messages.clear();
-                      _isLoading = false;
-                    });
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Chat cleared successfully')),
-                    );
-                  } else if (mounted) {
-                    setState(() => _isLoading = false);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Failed to clear chat. Please try again.')),
-                    );
-                  }
-                } else {
-                  if (mounted) setState(() => _isLoading = false);
-                }
-              } else {
-                if (mounted) setState(() => _isLoading = false);
+              // Soft delete: only clear from local device view (no API call)
+              if (mounted) {
+                setState(() {
+                  _messages.clear();
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Chat cleared from this device')),
+                );
               }
             },
             child: Text('Clear', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: AppColors.error)),
@@ -400,11 +389,32 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _sendWorkerCard() async {
     final user = AuthService().currentUser;
     if (user == null) return;
+
+    // Fetch phone number from SharedPreferences (saved during onboarding)
+    final prefs = await SharedPreferences.getInstance();
+    String phoneNo = prefs.getString('phoneNo') ?? prefs.getString('userPhone') ?? '';
+    String location = '';
+
+    try {
+      final workerProfile = await ApiService().fetchMyWorkerProfile(user.email);
+      if (workerProfile != null) {
+        if (phoneNo.isEmpty && workerProfile.phoneNo != null && workerProfile.phoneNo!.isNotEmpty) {
+          phoneNo = workerProfile.phoneNo!;
+          await prefs.setString('phoneNo', phoneNo);
+        }
+        location = workerProfile.primaryServiceArea ?? '';
+      }
+    } catch (_) {}
+
+    if (phoneNo.isEmpty && _convWorkerPhone != null && _convWorkerPhone!.isNotEmpty) {
+      phoneNo = _convWorkerPhone!;
+    }
+
     final cardJson = jsonEncode({
       'type': 'WorkerContactCard',
       'workerName': user.name,
-      'phoneNo': '',
-      'location': '',
+      'phoneNo': phoneNo,
+      'location': location,
       'avatar': user.picture ?? '',
     });
     final sent = await ApiService().sendMessage(
@@ -412,6 +422,7 @@ class _ChatScreenState extends State<ChatScreen> {
       content: cardJson,
       senderEmail: user.email,
       senderRole: user.activeRole,
+      messageType: 'ContactCard',
     );
     if (sent != null) {
       await _fetchMessages(isBackground: true);
@@ -647,6 +658,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    _resolvedProfileImage = widget.profileImage;
     _fetchMessages();
     _initSignalR();
 
@@ -751,7 +763,25 @@ class _ChatScreenState extends State<ChatScreen> {
     if (convDetails != null) {
       isOnline = convDetails['isOnline'] == true;
       String? lastSeenAt = convDetails['lastSeenAt']?.toString();
-      
+
+      // Resolve worker phone if available in conversation
+      final phone = convDetails['workerPhone']?.toString() ??
+          convDetails['WorkerPhone']?.toString() ??
+          convDetails['residentPhone']?.toString() ??
+          convDetails['ResidentPhone']?.toString();
+      if (phone != null && phone.isNotEmpty && phone != 'null') {
+        _convWorkerPhone = phone;
+      }
+
+      // Resolve profile image if not passed or empty
+      final user = AuthService().currentUser;
+      final otherAvatar = (user?.isWorker == true)
+          ? (convDetails['residentProfileImage'] ?? convDetails['avatar'] ?? convDetails['profileImage'] ?? convDetails['otherPartyProfileImage'])
+          : (convDetails['workerProfileImage'] ?? convDetails['avatar'] ?? convDetails['profileImage'] ?? convDetails['otherPartyProfileImage'] ?? convDetails['residentProfileImage']);
+      if ((_resolvedProfileImage == null || _resolvedProfileImage!.isEmpty || _resolvedProfileImage == 'null') &&
+          otherAvatar != null && otherAvatar.toString().isNotEmpty && otherAvatar.toString() != 'null') {
+        _resolvedProfileImage = otherAvatar.toString();
+      }
 
       if (lastSeenAt != null && lastSeenAt.isNotEmpty && lastSeenAt != 'null') {
         try {
@@ -771,18 +801,42 @@ class _ChatScreenState extends State<ChatScreen> {
         } catch (_) {}
       }
     }
+
+    // Load local soft-delete filters from SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    final clearedBeforeStr = prefs.getString('cleared_chat_before_${email}_${widget.conversationId}');
+    DateTime? clearedBefore = clearedBeforeStr != null ? DateTime.tryParse(clearedBeforeStr) : null;
+    final deletedIdsList = prefs.getStringList('deleted_msgs_${email}_${widget.conversationId}') ?? [];
+    final deletedIds = deletedIdsList.map((e) => int.tryParse(e) ?? 0).toSet();
     
     // Process messages to inject date headers
     final List<Map<String, dynamic>> processed = [];
     String? lastDateStr;
 
-    // API usually returns messages ordered by created_at (ascending or descending).
-    // Assuming they are ascending (oldest first). If they are descending, we might need to reverse them.
-    // Let's assume we get them ascending.
-    for (var msg in data.reversed.toList().reversed) {
-      final isMe = msg['senderEmail'] == email;
+    // API usually returns messages ordered by created_at ascending
+    for (var msg in data) {
+      final id = msg['id'] is int
+          ? msg['id'] as int
+          : int.tryParse(msg['id']?.toString() ?? '0') ?? 0;
+
+      // Soft delete: filter out individually deleted messages
+      if (id > 0 && deletedIds.contains(id)) {
+        continue;
+      }
+
       final dtStr = msg['createdAt']?.toString();
-      
+
+      // Soft delete: filter out messages before the cleared-chat timestamp
+      if (clearedBefore != null && dtStr != null) {
+        try {
+          final dt = DateTime.parse(dtStr);
+          if (dt.toUtc().isBefore(clearedBefore) || dt.toUtc().isAtSameMomentAs(clearedBefore)) {
+            continue;
+          }
+        } catch (_) {}
+      }
+
+      final isMe = msg['senderEmail'] == email;
       String timeStr = '';
       if (dtStr != null) {
         try {
@@ -809,10 +863,6 @@ class _ChatScreenState extends State<ChatScreen> {
           }
         } catch (_) {}
       }
-      
-      final id = msg['id'] is int
-          ? msg['id'] as int
-          : int.tryParse(msg['id']?.toString() ?? '0') ?? 0;
 
       final attachmentUrl = msg['attachmentUrl']?.toString() ?? msg['AttachmentUrl']?.toString();
 
@@ -825,6 +875,7 @@ class _ChatScreenState extends State<ChatScreen> {
         'timeStr': timeStr,
         'createdAt': dtStr,
         'senderEmail': msg['senderEmail'],
+        'messageType': msg['messageType']?.toString() ?? '',
       });
     }
 
@@ -911,10 +962,10 @@ class _ChatScreenState extends State<ChatScreen> {
             CircleAvatar(
               radius: 18,
               backgroundColor: AppColors.outlineVariant,
-              backgroundImage: widget.profileImage != null && widget.profileImage!.isNotEmpty && widget.profileImage != 'null'
-                  ? NetworkImage(widget.profileImage!)
+              backgroundImage: _resolvedProfileImage != null && _resolvedProfileImage!.isNotEmpty && _resolvedProfileImage != 'null'
+                  ? NetworkImage(_resolvedProfileImage!)
                   : null,
-              child: widget.profileImage == null || widget.profileImage!.isEmpty || widget.profileImage == 'null'
+              child: _resolvedProfileImage == null || _resolvedProfileImage!.isEmpty || _resolvedProfileImage == 'null'
                   ? Text(
                       widget.name.isNotEmpty ? widget.name[0].toUpperCase() : 'W',
                       style: GoogleFonts.dmSans(
@@ -1144,6 +1195,35 @@ class _ChatScreenState extends State<ChatScreen> {
                                 ),
                               ),
                             ],
+                            // Avatar for incoming messages
+                            if (!isMe) ...[
+                              Padding(
+                                padding: const EdgeInsets.only(right: 8, bottom: 4),
+                                child: CircleAvatar(
+                                  radius: 14,
+                                  backgroundColor: AppColors.outlineVariant,
+                                  backgroundImage: _resolvedProfileImage != null &&
+                                          _resolvedProfileImage!.isNotEmpty &&
+                                          _resolvedProfileImage != 'null'
+                                      ? NetworkImage(_resolvedProfileImage!)
+                                      : null,
+                                  child: _resolvedProfileImage == null ||
+                                          _resolvedProfileImage!.isEmpty ||
+                                          _resolvedProfileImage == 'null'
+                                      ? Text(
+                                          widget.name.isNotEmpty
+                                              ? widget.name[0].toUpperCase()
+                                              : 'W',
+                                          style: GoogleFonts.dmSans(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.onSurfaceVariant,
+                                          ),
+                                        )
+                                      : null,
+                                ),
+                              ),
+                            ],
                             Flexible(
                               child: Column(
                                 crossAxisAlignment: isMe
@@ -1151,7 +1231,12 @@ class _ChatScreenState extends State<ChatScreen> {
                                     : CrossAxisAlignment.start,
                                 children: [
                                   if (msg['messageType'] == 'ContactCard' || _isContactCard(msg['text']?.toString())) ...[
-                                    WorkerContactCard(rawContent: msg['text'] ?? ''),
+                                    WorkerContactCard(
+                                      rawContent: msg['text'] ?? '',
+                                      workerPhone: _convWorkerPhone,
+                                      workerName: isMe ? (AuthService().currentUser?.name) : widget.name,
+                                      avatarUrl: isMe ? (AuthService().currentUser?.picture) : _resolvedProfileImage,
+                                    ),
                                     const SizedBox(height: 4),
                                   ] else ...[
                                     if (msg['attachmentUrl'] != null && msg['attachmentUrl'].toString().isNotEmpty) ...[

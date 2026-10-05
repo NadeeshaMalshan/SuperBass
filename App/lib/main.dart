@@ -4521,6 +4521,13 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
                             c['workerName']?.toString() ??
                             c['otherPartyName']?.toString() ??
                             'Worker';
+                        final profileImg = (c['workerProfileImage'] ??
+                                c['otherPartyProfileImage'] ??
+                                c['residentProfileImage'] ??
+                                c['profileImage'] ??
+                                c['avatar'] ??
+                                c['otherPartyAvatar'])
+                            ?.toString();
                         String lastMsg =
                             c['lastMessage']?.toString() ??
                             'Conversation started';
@@ -4550,23 +4557,15 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
                             radius: 26,
                             backgroundColor: AppColors.surfaceVariant,
                             backgroundImage:
-                                (c['workerProfileImage'] != null &&
-                                    c['workerProfileImage']
-                                        .toString()
-                                        .isNotEmpty &&
-                                    c['workerProfileImage'].toString() !=
-                                        'null')
-                                ? NetworkImage(
-                                    c['workerProfileImage'].toString(),
-                                  )
+                                (profileImg != null &&
+                                    profileImg.isNotEmpty &&
+                                    profileImg != 'null')
+                                ? NetworkImage(profileImg)
                                 : null,
                             child:
-                                (c['workerProfileImage'] == null ||
-                                    c['workerProfileImage']
-                                        .toString()
-                                        .isEmpty ||
-                                    c['workerProfileImage'].toString() ==
-                                        'null')
+                                (profileImg == null ||
+                                    profileImg.isEmpty ||
+                                    profileImg == 'null')
                                 ? Text(
                                     name.isNotEmpty
                                         ? name[0].toUpperCase()
@@ -4675,8 +4674,7 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
                                 builder: (context) => ChatScreen(
                                   conversationId: convId,
                                   name: name,
-                                  profileImage: c['workerProfileImage']
-                                      ?.toString(),
+                                  profileImage: profileImg,
                                   isVerified:
                                       c['isVerified'] == true ||
                                       c['IsVerified'] == true ||
