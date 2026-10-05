@@ -36,3 +36,4 @@ namespace Superbass.Migrations
         }
     }
 }
+// This migration adds a new table called "Residents" to the database. The table includes columns for Email (primary key), Name, PasswordHash, PhoneNo, Address, LocationLat, and LocationLng. The Up method creates the table, while the Down method removes it if the migration is rolled back.
