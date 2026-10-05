@@ -12,3 +12,4 @@ namespace Superbass.Models
         public string? NicNumber { get; set; }
     }
 }
+// This class represents a Data Transfer Object (DTO) for updating resident information in the Superbass application. It includes properties for the resident's name, phone number, address, location coordinates (latitude and longitude), profile image URL, verification status, and National Identity Card (NIC) number. The properties are nullable to allow partial updates of the resident's profile.
