@@ -1,8 +1,8 @@
-# සුපර්බාස්
+# workio
 
 > **AI-powered home-service platform connecting trusted local workers with customers in Sri Lanka. 🇱🇰**
 
-**සුපර්බාස්** is a modern home-service platform that connects customers with trusted local workers for home, repair, maintenance, and community services.
+**workio** is a modern home-service platform that connects customers with trusted local workers for home, repair, maintenance, and community services.
 
 The platform uses **AI-powered matching with LangGraph** to help customers find suitable workers based on their requirements.
 
@@ -24,7 +24,7 @@ The platform uses **AI-powered matching with LangGraph** to help customers find 
 
 ## 🧠 AI Matching
 
-සුපර්බාස් uses **LangGraph** to build the AI-powered matching workflow.
+workio uses **LangGraph** to build the AI-powered matching workflow.
 
 The AI can analyze:
 
@@ -54,6 +54,37 @@ Customer
 
 ---
 
+## 🔄 CI/CD Workflows
+
+workio implements separate CI/CD pipelines for each component to ensure independent testing and deployment:
+
+### Frontend (React/Vite)
+- **File**: `.github/workflows/frontend-ci.yml`
+- **Triggers**: Changes to `Frontend/`, `package.json`, `package-lock.json`, `vite.config.js`
+- **Process**: Dependency installation → Linting → Testing → Production build → Artifact upload
+
+### Backend (.NET API)
+- **File**: `.github/workflows/ci.yml` (backend-ci job)
+- **Triggers**: Changes to `Backend/` directory
+- **Process**: Checkout → .NET setup → Dependency restore → Build → Test
+
+### Mobile App (Flutter/Dart)
+- **File**: `.github/workflows/ci.yml` (flutter-ci job)
+- **Triggers**: Changes to `App/` directory
+- **Process**: Checkout → Java setup → Flutter setup → Dependency install → Code analysis → Web build → Artifact upload
+
+### AI Backend (FastAPI/LangChain)
+- **File**: `.github/workflows/ai-backend-ci.yml`
+- **Triggers**: Changes to `agent-backend/`, `requirements.txt`, `pyproject.toml`
+- **Process**: Checkout → Python setup → Dependency install → Linting → Testing → Health check → Package upload
+
+### MCP Service (Model Context Protocol)
+- **File**: `.github/workflows/mcp-ci.yml`
+- **Triggers**: Changes to `MCP/`, `requirements.txt`, `pyproject.toml`
+- **Process**: Checkout → Python setup → Dependency install → Linting → Testing → Health check → Package upload
+
+---
+
 ## 🛠️ Technology Stack
 
 | Technology    | Purpose                         |
@@ -61,7 +92,9 @@ Customer
 | **React**     | Web frontend                    |
 | **Flutter**   | Mobile application              |
 | **.NET**      | Backend / API                   |
+| **FastAPI**   | AI Backend services             |
 | **LangGraph** | AI workflow and worker matching |
+| **MCP**       | Model Context Protocol service  |
 | **Database**  | Application data storage        |
 
 ---
@@ -122,7 +155,7 @@ Recommended Worker
 
 To make finding trusted local workers easier, faster, and smarter for people across Sri Lanka.
 
-### සුපර්බාස්
+### workio
 
 **Trusted local workers. Smarter home services. 🇱🇰**
 
@@ -142,7 +175,7 @@ To make finding trusted local workers easier, faster, and smarter for people acr
 * Worker availability
 * AI-assisted service requests
 
-----
+---
 
 ## 🤝 Contributing
 
@@ -163,6 +196,6 @@ This project is currently under development.
 
 ---
 
-## 🇱🇰 සුපර්බාස්
+## 🇱🇰 workio
 
 **Connecting Sri Lankan communities with trusted local workers through technology and AI.**

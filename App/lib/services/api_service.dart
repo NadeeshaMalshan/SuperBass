@@ -938,6 +938,7 @@ class ApiService {
     required String senderEmail,
     String senderRole = 'Resident',
     String? attachmentUrl,
+    String? messageType,
   }) async {
     try {
       final uri = Uri.parse('${ApiConfig.baseUrl}/api/conversations/$conversationId/messages');
@@ -948,6 +949,9 @@ class ApiService {
       };
       if (attachmentUrl != null && attachmentUrl.isNotEmpty) {
         bodyMap['attachmentUrl'] = attachmentUrl;
+      }
+      if (messageType != null && messageType.isNotEmpty) {
+        bodyMap['messageType'] = messageType;
       }
       final body = jsonEncode(bodyMap);
 

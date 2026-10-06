@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -25,6 +25,7 @@ class WorkerContactCard extends StatefulWidget {
   final String? workerName;
   final String? location;
   final String? avatarUrl;
+  final String? workerPhone;
 
   const WorkerContactCard({
     super.key,
@@ -32,6 +33,7 @@ class WorkerContactCard extends StatefulWidget {
     this.workerName,
     this.location,
     this.avatarUrl,
+    this.workerPhone,
   });
 
   @override
@@ -44,8 +46,13 @@ class _WorkerContactCardState extends State<WorkerContactCard> {
   @override
   Widget build(BuildContext context) {
     final card = parseContactCard(widget.rawContent);
-    final phone    = card['phone']!;
-    final name     = widget.workerName ?? card['name']!;
+    final cardPhone = card['phone'] ?? '';
+    final phone = (cardPhone.isNotEmpty && cardPhone != 'null')
+        ? cardPhone
+        : (widget.workerPhone != null && widget.workerPhone!.isNotEmpty && widget.workerPhone != 'null'
+            ? widget.workerPhone!
+            : '');
+    final name     = widget.workerName ?? (card['name']!.isNotEmpty ? card['name']! : 'Worker');
     final location = widget.location  ?? card['location']!;
     final avatar   = widget.avatarUrl ?? card['avatar']!;
 
@@ -162,11 +169,11 @@ class _WorkerContactCardState extends State<WorkerContactCard> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  phone,
+                  phone.isNotEmpty ? phone : 'Not provided',
                   style: GoogleFonts.dmSans(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF111111),
+                    fontSize: phone.isNotEmpty ? 24 : 16,
+                    fontWeight: phone.isNotEmpty ? FontWeight.w700 : FontWeight.w500,
+                    color: phone.isNotEmpty ? const Color(0xFF111111) : const Color(0xFF888888),
                     letterSpacing: 0.2,
                   ),
                 ),
@@ -182,6 +189,12 @@ class _WorkerContactCardState extends State<WorkerContactCard> {
               Expanded(
                 child: GestureDetector(
                   onTap: () async {
+                    if (phone.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Phone number not provided')),
+                      );
+                      return;
+                    }
                     final uri = Uri(scheme: 'tel', path: phone.replaceAll(' ', ''));
                     if (await canLaunchUrl(uri)) {
                       await launchUrl(uri);
@@ -215,6 +228,7 @@ class _WorkerContactCardState extends State<WorkerContactCard> {
               // Copy
               GestureDetector(
                 onTap: () {
+                  if (phone.isEmpty) return;
                   final raw = phone.replaceAll(' ', '');
                   Clipboard.setData(ClipboardData(text: raw));
                   setState(() => _copied = true);

@@ -12,6 +12,8 @@ import AiCommunityChat from './pages/AiCommunityChat.jsx'
 import LoginPortal from './pages/LoginPortal.jsx'
 
 import WorkerDetail from './WorkerDetail.jsx'
+import CommunityPostDetail from './CommunityPostDetail.jsx'
+import BookingDetail from './BookingDetail.jsx'
 import M3TopNavbar from './components/M3TopNavbar.jsx'
 import GlobalToast from './components/GlobalToast.jsx'
 
@@ -144,6 +146,9 @@ function Router() {
     if (path === '/ai/chat' || path === '/community/chat' || path === '/ai-chat' || path === '/agent') {
       return <AiCommunityChat />;
     }
+    if (path === '/community-post' || path === '/community-post.jsx' || path.startsWith('/community-post') || path === '/community/post' || path.startsWith('/community/post')) {
+      return <CommunityPostDetail />;
+    }
     if (path === '/community' || path === '/community.jsx') {
       return <Community />;
     }
@@ -153,6 +158,13 @@ function Router() {
         return <LoginPortal />;
       }
       return <Chats />;
+    }
+    if (path === '/booking-detail' || path === '/booking-detail.jsx' || path.startsWith('/booking-detail') || path === '/booking/detail' || path.startsWith('/booking/detail')) {
+      if (!localStorage.getItem('token')) {
+        window.history.replaceState({}, '', '/login');
+        return <LoginPortal />;
+      }
+      return <BookingDetail />;
     }
     if (path === '/bookings' || path === '/bookings.jsx' || path === '/booking' || path === '/booking.jsx') {
       if (!localStorage.getItem('token')) {

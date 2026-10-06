@@ -183,8 +183,8 @@ export default function PostUpdatedCard({ data, onAction }) {
         <button
           type="button"
           className="post-updated-action-tertiary"
-          onClick={() => onAction && onAction('navigate', `/community?post=${effectivePostId}`)}
-          title="Open on the full community feed page"
+          onClick={() => onAction && onAction('navigate', `/community-post?id=${effectivePostId}`)}
+          title="Open community post full page"
         >
           <i className="fa-solid fa-arrow-up-right-from-square"></i>
           <span>Feed</span>
