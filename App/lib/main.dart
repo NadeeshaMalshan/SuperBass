@@ -249,6 +249,8 @@ class _FindTabScreenState extends State<FindTabScreen> {
   double? _residentLng;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  Timer? _debounce;
+  int _requestId = 0;
 
   final List<Map<String, dynamic>> _categories = [
     {
@@ -366,6 +368,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -499,6 +502,9 @@ class _FindTabScreenState extends State<FindTabScreen> {
   }
 
   Future<void> _fetchWorkers() async {
+    _requestId++;
+    final currentRequestId = _requestId;
+
     setState(() {
       _isLoading = true;
     });
@@ -547,13 +553,20 @@ class _FindTabScreenState extends State<FindTabScreen> {
         _residentLng = resLng;
       }
 
+      debugPrint('SEARCHDBG: starting _fetchWorkers. q: "$_searchQuery", skill: "$selectedSkill", location: "$locationQuery"');
+
       final list = await ApiService().fetchWorkers(
+        q: _searchQuery,
         skill: selectedSkill,
         location: locationQuery,
         residentLat: resLat,
         residentLng: resLng,
         onlyVerified: true,
       );
+
+      debugPrint('SEARCHDBG: fetched ${list.length} workers from ApiService');
+
+      if (!mounted || currentRequestId != _requestId) return;
 
       // Only verified workers should appear in Find page
       final verifiedList = list.where((w) => w.isVerified).toList();
@@ -567,13 +580,17 @@ class _FindTabScreenState extends State<FindTabScreen> {
               );
             }).toList();
 
+      debugPrint('SEARCHDBG: after filtering (isAllLocations=$isAllLocations), remaining: ${filtered.length}');
+
       if (mounted) {
         setState(() {
           _workers = filtered;
           _isLoading = false;
         });
+        debugPrint('SEARCHDBG: assigned _workers, new count: ${_workers.length}');
       }
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('SEARCHDBG: error in _fetchWorkers - $e\n$st');
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -2418,6 +2435,10 @@ class _FindTabScreenState extends State<FindTabScreen> {
                         setState(() {
                           _searchQuery = val.trim();
                         });
+                        if (_debounce?.isActive ?? false) _debounce!.cancel();
+                        _debounce = Timer(const Duration(milliseconds: 400), () {
+                          _fetchWorkers();
+                        });
                       },
                     ),
                   ],
@@ -2515,19 +2536,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
                 builder: (context) {
                   final displayWorkers = _workers.where((worker) {
                     if (!worker.isVerified) return false;
-                    if (_searchQuery.isEmpty) return true;
-                    final query = _searchQuery.toLowerCase();
-                    final nameMatch = worker.name.toLowerCase().contains(query);
-                    final tradeMatch = worker.trade.toLowerCase().contains(
-                      query,
-                    );
-                    final skillsMatch = worker.skills.any(
-                      (s) => s.toLowerCase().contains(query),
-                    );
-                    final areaMatch = (worker.primaryServiceArea ?? '')
-                        .toLowerCase()
-                        .contains(query);
-                    return nameMatch || tradeMatch || skillsMatch || areaMatch;
+                    return true;
                   }).toList();
 
                   return Column(
