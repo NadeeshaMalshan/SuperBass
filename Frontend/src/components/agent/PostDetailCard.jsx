@@ -374,8 +374,8 @@ export default function PostDetailCard({ data, onAction }) {
         <button
           type="button"
           className="post-detail-action-tertiary"
-          onClick={() => onAction && onAction('navigate', `/community?post=${effectivePostId}`)}
-          title="Open in full community feed"
+          onClick={() => onAction && onAction('navigate', `/community-post?id=${effectivePostId}`)}
+          title="Open community post full page"
         >
           <i className="fa-solid fa-arrow-up-right-from-square"></i>
           <span>Open Feed</span>

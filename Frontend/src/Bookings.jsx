@@ -305,10 +305,19 @@ export default function Bookings() {
     setReviewModalOpen(true);
   };
 
+  // Navigate to full-screen booking detail page
   const openViewModal = (booking) => {
-    setSelectedViewBooking(booking);
-    setViewModalOpen(true);
+    navigate(`/booking-detail?id=${booking.id}`);
   };
+
+  // Check URL query params on load (e.g. /bookings?id=123)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const targetId = params.get('id') || params.get('bookingId');
+    if (targetId) {
+      navigate(`/booking-detail?id=${targetId}`);
+    }
+  }, []);
 
   const submitReview = async (e) => {
     if (e && typeof e.preventDefault === 'function') {
@@ -937,8 +946,8 @@ export default function Bookings() {
         document.body
       )}
 
-      {/* View Booking Details Modal (Material 3 md-dialog Web Component) */}
-      {createPortal(
+      {/* View Booking Details Modal (Replaced by dedicated full screen page /booking-detail) */}
+      {false && createPortal(
         <md-dialog
           ref={viewDialogRef}
           onClose={() => setViewModalOpen(false)}

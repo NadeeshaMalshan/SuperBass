@@ -62,7 +62,7 @@ export default function AiCommunityChat() {
   };
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [activeSidebarItem, setActiveSidebarItem] = useState('AC Repair');
+  const [activeSidebarItem, setActiveSidebarItem] = useState('');
   const [conversationId, setConversationId] = useState(() => {
     const email = (localStorage.getItem('email') || '').trim().toLowerCase();
     const key = email ? `workio_ai_active_conv_${email}` : 'workio_ai_active_conv_guest';

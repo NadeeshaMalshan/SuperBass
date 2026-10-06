@@ -349,11 +349,10 @@ export default function MyCommunityPostsManager({
     }
   };
 
-  // --- ACTIONS: COMMENTS ---
+  // --- ACTIONS: FULL SCREEN DETAIL ---
   const handleOpenDetail = (post) => {
-    setSelectedPostForDetail(post);
-    setSelectedGalleryImage(post.images && post.images.length > 0 ? post.images[0] : null);
-    fetchComments(post.postId);
+    window.history.pushState({}, '', `/community-post?id=${post.postId}`);
+    window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
   const handleAddComment = async (postId) => {
@@ -853,8 +852,8 @@ export default function MyCommunityPostsManager({
         </div>
       )}
 
-      {/* 4. DETAIL MODAL (Uber Community Style) */}
-      {selectedPostForDetail && (
+      {/* 4. DETAIL MODAL (Replaced by full screen page /community-post) */}
+      {false && (
         <div className="uber-modal-backdrop" onClick={() => setSelectedPostForDetail(null)}>
           <div className="uber-modal-window" onClick={(e) => e.stopPropagation()}>
             <div className="uber-modal-header">
