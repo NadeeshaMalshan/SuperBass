@@ -28,23 +28,39 @@ namespace Superbass.Services
             return await _context.Workers.Include(w => w.Skills).FirstOrDefaultAsync(w => w.ResidentEmail == email || w.Email == email);
         }
 
-        public async Task<IEnumerable<Worker>> SearchWorkersAsync(
-            string? skill,
-            string? location,
-            double? maxDistanceKm,
+        public async Task<(IEnumerable<Worker> Workers, int TotalCount)> SearchWorkersAsync(
+            string? q = null,
+            string? skill = null,
+            string? location = null,
+            double? maxDistanceKm = null,
             double? residentLat = null,
             double? residentLng = null,
             decimal? maxHourlyRate = null,
             decimal? minHourlyRate = null,
             string? province = null,
             string? district = null,
-            bool onlyVerified = true)
+            bool onlyVerified = true,
+            int page = 1,
+            int pageSize = 20)
         {
             var query = _context.Workers.Include(w => w.Skills).AsQueryable();
 
             if (onlyVerified)
             {
                 query = query.Where(w => w.IsVerified);
+            }
+
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                var qTerm = $"%{q.Trim()}%";
+                query = query.Where(w => 
+                    EF.Functions.ILike(w.Name, qTerm) ||
+                    w.Skills.Any(s => 
+                        (s.ServiceName != null && EF.Functions.ILike(s.ServiceName, qTerm)) ||
+                        (s.SkillName != null && EF.Functions.ILike(s.SkillName, qTerm)) ||
+                        s.Skills.Any(sub => EF.Functions.ILike(sub, qTerm))
+                    )
+                );
             }
 
             if (!string.IsNullOrWhiteSpace(skill))
@@ -178,7 +194,13 @@ namespace Superbass.Services
                 workers = workers.OrderBy(w => w.Distance ?? double.MaxValue).ToList();
             }
 
-            return workers;
+            var totalCount = workers.Count;
+            if (pageSize > 50) pageSize = 50;
+            if (page < 1) page = 1;
+            
+            var pagedWorkers = workers.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+            return (pagedWorkers, totalCount);
         }
 
         public static readonly Dictionary<string, string> DistrictToProvinceMap = new(StringComparer.OrdinalIgnoreCase)

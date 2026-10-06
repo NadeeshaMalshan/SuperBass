@@ -77,6 +77,7 @@ namespace Superbass.Controllers
         // GET: /api/workers/search?skill=Plumbing&location=Colombo&residentLat=6.9&residentLng=79.8
         [HttpGet("search")]
         public async Task<IActionResult> Search(
+            [FromQuery] string? q,
             [FromQuery] string? skill,
             [FromQuery] string? location,
             [FromQuery] string? province,
@@ -85,14 +86,32 @@ namespace Superbass.Controllers
             [FromQuery] double? residentLng,
             [FromQuery] decimal? maxHourlyRate = null,
             [FromQuery] decimal? minHourlyRate = null,
-            [FromQuery] bool onlyVerified = true)
+            [FromQuery] bool onlyVerified = true,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20)
         {
-            var results = await _workerRepository.SearchWorkersAsync(skill, location, null, residentLat, residentLng, maxHourlyRate, minHourlyRate, province, district, onlyVerified);
-            foreach (var w in results)
+            var (workers, totalCount) = await _workerRepository.SearchWorkersAsync(
+                q: q, 
+                skill: skill, 
+                location: location, 
+                maxDistanceKm: null, 
+                residentLat: residentLat, 
+                residentLng: residentLng, 
+                maxHourlyRate: maxHourlyRate, 
+                minHourlyRate: minHourlyRate, 
+                province: province, 
+                district: district, 
+                onlyVerified: onlyVerified,
+                page: page,
+                pageSize: pageSize);
+
+            foreach (var w in workers)
             {
                 w.PhoneNo = null; // Privacy: Worker contact is hidden on public search
             }
-            return Ok(results);
+
+            Response.Headers["X-Total-Count"] = totalCount.ToString();
+            return Ok(workers);
         }
 
         // PUT: /api/workers/5

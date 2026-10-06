@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -35,6 +36,8 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
   String? _primaryAddressCity;
   Map<String, WorkerModel> _workersByEmail = {};
   final TextEditingController _searchController = TextEditingController();
+  Timer? _debounce;
+  int _requestId = 0;
 
   @override
   void initState() {
@@ -48,6 +51,7 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _tabController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -102,6 +106,9 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
   }
 
   Future<void> _fetchPosts() async {
+    _requestId++;
+    final currentRequestId = _requestId;
+
     final currentUserEmail = AuthService().currentUser?.email;
     final isAllLocations = _selectedLocation == 'All' ||
         _selectedLocation == 'All Locations' ||
@@ -115,6 +122,8 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
       location: locationQuery,
     );
 
+    if (!mounted || currentRequestId != _requestId) return;
+
     final filteredPosts = isAllLocations
         ? posts
         : posts
@@ -125,6 +134,9 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
     List<CommunityPostModel> userPosts = [];
     if (currentUserEmail != null && currentUserEmail.isNotEmpty) {
       userPosts = await ApiService().fetchUserCommunityPosts(currentUserEmail);
+      
+      if (!mounted || currentRequestId != _requestId) return;
+
       if (!isAllLocations) {
         userPosts = userPosts
             .where((p) => LocationService.workerMatchesLocation(
@@ -159,7 +171,10 @@ class _CommunityScreenState extends State<CommunityScreen> with SingleTickerProv
     setState(() {
       _searchQuery = query;
     });
-    _fetchPosts();
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      _fetchPosts();
+    });
   }
 
   void _toggleSort() {

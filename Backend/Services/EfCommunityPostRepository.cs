@@ -78,8 +78,11 @@ namespace Superbass.Services
 
                 if (!string.IsNullOrWhiteSpace(search))
                 {
-                    string term = search.Trim().ToLower();
-                    query = query.Where(p => p.Title.ToLower().Contains(term) || p.Content.ToLower().Contains(term) || p.Location.ToLower().Contains(term));
+                    string term = $"%{search.Trim()}%";
+                    query = query.Where(p => 
+                        EF.Functions.ILike(p.Title, term) || 
+                        EF.Functions.ILike(p.Content, term) || 
+                        EF.Functions.ILike(p.Location, term));
                 }
 
                 if (!string.IsNullOrWhiteSpace(categoryId) && !categoryId.Equals("all", StringComparison.OrdinalIgnoreCase))
