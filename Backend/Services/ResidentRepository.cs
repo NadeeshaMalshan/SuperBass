@@ -38,6 +38,9 @@ namespace Superbass.Services
                     Name = updateDto.Name ?? (email.Contains("@") ? email.Split('@')[0] : email),
                     PhoneNo = updateDto.PhoneNo ?? "",
                     Address = updateDto.Address ?? "",
+                    LocationLat = updateDto.LocationLat,
+                    LocationLng = updateDto.LocationLng,
+                    District = updateDto.District,
                     ProfileImage = updateDto.ProfileImage,
                     IsVerified = updateDto.IsVerified ?? false,
                     NicNumber = updateDto.NicNumber
@@ -51,6 +54,7 @@ namespace Superbass.Services
                 if (updateDto.Address != null) resident.Address = updateDto.Address;
                 if (updateDto.LocationLat != null) resident.LocationLat = updateDto.LocationLat;
                 if (updateDto.LocationLng != null) resident.LocationLng = updateDto.LocationLng;
+                if (updateDto.District != null) resident.District = updateDto.District;
                 if (updateDto.ProfileImage != null) resident.ProfileImage = updateDto.ProfileImage;
                 if (updateDto.IsVerified.HasValue) resident.IsVerified = updateDto.IsVerified.Value;
                 if (updateDto.NicNumber != null) resident.NicNumber = updateDto.NicNumber;

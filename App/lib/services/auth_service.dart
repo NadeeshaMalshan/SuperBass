@@ -107,10 +107,32 @@ class AuthService {
       if (res.statusCode >= 200 && res.statusCode < 300) {
         final data = jsonDecode(res.body);
         final bool isVerified = data is Map && (data['isVerified'] == true || data['IsVerified'] == true);
+        final String? backendPhoto = data is Map ? (data['profileImage']?.toString() ?? data['ProfileImage']?.toString()) : null;
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('isVerified', isVerified);
         if (currentUserNotifier.value != null && currentUserNotifier.value!.isVerified != isVerified) {
           currentUserNotifier.value = currentUserNotifier.value!.copyWith(isVerified: isVerified);
+        }
+
+        // If backend has photo but local user doesn't, update local user
+        if (backendPhoto != null && backendPhoto.isNotEmpty && backendPhoto != 'null' && (user.picture == null || user.picture!.isEmpty)) {
+          await prefs.setString('userPicture', backendPhoto);
+          if (currentUserNotifier.value != null) {
+            currentUserNotifier.value = currentUserNotifier.value!.copyWith(picture: backendPhoto);
+          }
+        }
+        // If local user has photo (e.g. from Google login) but backend doesn't, sync to backend
+        else if (user.picture != null && user.picture!.isNotEmpty && user.picture != 'null' && (backendPhoto == null || backendPhoto.isEmpty || backendPhoto == 'null')) {
+          try {
+            await http.put(
+              resUri,
+              headers: {
+                'Content-Type': 'application/json',
+                if (user.token.isNotEmpty) 'Authorization': 'Bearer ${user.token}',
+              },
+              body: jsonEncode({'profileImage': user.picture}),
+            );
+          } catch (_) {}
         }
       }
     } catch (e) {

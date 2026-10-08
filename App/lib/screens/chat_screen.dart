@@ -336,14 +336,19 @@ class _ChatScreenState extends State<ChatScreen> {
                 final prefs = await SharedPreferences.getInstance();
                 final now = DateTime.now().toUtc();
                 await prefs.setString('cleared_chat_before_${email}_${widget.conversationId}', now.toIso8601String());
+                try {
+                  await ApiService().deleteConversation(widget.conversationId, email);
+                } catch (e) {
+                  debugPrint('Error deleting conversation on server: $e');
+                }
               }
-              // Soft delete: only clear from local device view (no API call)
+              // Clear from local UI view
               if (mounted) {
                 setState(() {
                   _messages.clear();
                 });
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Chat cleared from this device')),
+                  const SnackBar(content: Text('Chat cleared')),
                 );
               }
             },
@@ -658,7 +663,15 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    _resolvedProfileImage = widget.profileImage;
+    final myPicture = AuthService().currentUser?.picture;
+    if (widget.profileImage != null &&
+        widget.profileImage!.isNotEmpty &&
+        widget.profileImage != 'null' &&
+        widget.profileImage != myPicture) {
+      _resolvedProfileImage = widget.profileImage;
+    } else {
+      _resolvedProfileImage = null;
+    }
     _fetchMessages();
     _initSignalR();
 
@@ -773,14 +786,33 @@ class _ChatScreenState extends State<ChatScreen> {
         _convWorkerPhone = phone;
       }
 
-      // Resolve profile image if not passed or empty
+      // Resolve profile image of the other party
       final user = AuthService().currentUser;
-      final otherAvatar = (user?.isWorker == true)
-          ? (convDetails['residentProfileImage'] ?? convDetails['avatar'] ?? convDetails['profileImage'] ?? convDetails['otherPartyProfileImage'])
-          : (convDetails['workerProfileImage'] ?? convDetails['avatar'] ?? convDetails['profileImage'] ?? convDetails['otherPartyProfileImage'] ?? convDetails['residentProfileImage']);
-      if ((_resolvedProfileImage == null || _resolvedProfileImage!.isEmpty || _resolvedProfileImage == 'null') &&
-          otherAvatar != null && otherAvatar.toString().isNotEmpty && otherAvatar.toString() != 'null') {
-        _resolvedProfileImage = otherAvatar.toString();
+      final myEmail = (user?.email ?? '').trim().toLowerCase();
+      final resEmail = (convDetails['residentEmail'] ?? convDetails['ResidentEmail'] ?? '').toString().trim().toLowerCase();
+      final isMeResident = myEmail.isNotEmpty && resEmail == myEmail;
+
+      final otherAvatar = (isMeResident
+          ? (convDetails['workerProfileImage'] ?? convDetails['WorkerProfileImage'] ?? convDetails['workerAvatar'])
+          : (convDetails['residentProfileImage'] ?? convDetails['ResidentProfileImage'] ?? convDetails['residentAvatar'])
+      ) ?? convDetails['otherPartyProfileImage'];
+
+      if (otherAvatar != null &&
+          otherAvatar.toString().isNotEmpty &&
+          otherAvatar.toString() != 'null' &&
+          otherAvatar.toString().toLowerCase() != 'default') {
+        final avatarStr = otherAvatar.toString();
+        final myPicture = user?.picture;
+        final workerAvatar = (convDetails['workerProfileImage'] ?? convDetails['WorkerProfileImage'])?.toString();
+        if (!isMeResident &&
+            ((myPicture != null && myPicture.isNotEmpty && avatarStr == myPicture) ||
+             (workerAvatar != null && workerAvatar.isNotEmpty && avatarStr == workerAvatar))) {
+          _resolvedProfileImage = null;
+        } else {
+          _resolvedProfileImage = avatarStr;
+        }
+      } else {
+        _resolvedProfileImage = null;
       }
 
       if (lastSeenAt != null && lastSeenAt.isNotEmpty && lastSeenAt != 'null') {
@@ -885,6 +917,7 @@ class _ChatScreenState extends State<ChatScreen> {
         _messages = processed;
         _isOnline = isOnline;
         _lastSeenStr = lastSeenStr;
+        _resolvedProfileImage = _resolvedProfileImage;
         _isLoading = false;
       });
 
@@ -962,18 +995,20 @@ class _ChatScreenState extends State<ChatScreen> {
             CircleAvatar(
               radius: 18,
               backgroundColor: AppColors.outlineVariant,
-              backgroundImage: _resolvedProfileImage != null && _resolvedProfileImage!.isNotEmpty && _resolvedProfileImage != 'null'
-                  ? NetworkImage(_resolvedProfileImage!)
-                  : null,
-              child: _resolvedProfileImage == null || _resolvedProfileImage!.isEmpty || _resolvedProfileImage == 'null'
-                  ? Text(
-                      widget.name.isNotEmpty ? widget.name[0].toUpperCase() : 'W',
-                      style: GoogleFonts.dmSans(
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.onSurfaceVariant,
-                      ),
-                    )
-                  : null,
+              child: ClipOval(
+                child: (_resolvedProfileImage != null &&
+                        _resolvedProfileImage!.isNotEmpty &&
+                        _resolvedProfileImage != 'null' &&
+                        _resolvedProfileImage!.startsWith('http'))
+                    ? Image.network(
+                        _resolvedProfileImage!,
+                        width: 36,
+                        height: 36,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _buildAppBarFallback(),
+                      )
+                    : _buildAppBarFallback(),
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1202,25 +1237,20 @@ class _ChatScreenState extends State<ChatScreen> {
                                 child: CircleAvatar(
                                   radius: 14,
                                   backgroundColor: AppColors.outlineVariant,
-                                  backgroundImage: _resolvedProfileImage != null &&
-                                          _resolvedProfileImage!.isNotEmpty &&
-                                          _resolvedProfileImage != 'null'
-                                      ? NetworkImage(_resolvedProfileImage!)
-                                      : null,
-                                  child: _resolvedProfileImage == null ||
-                                          _resolvedProfileImage!.isEmpty ||
-                                          _resolvedProfileImage == 'null'
-                                      ? Text(
-                                          widget.name.isNotEmpty
-                                              ? widget.name[0].toUpperCase()
-                                              : 'W',
-                                          style: GoogleFonts.dmSans(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w700,
-                                            color: AppColors.onSurfaceVariant,
-                                          ),
-                                        )
-                                      : null,
+                                  child: ClipOval(
+                                    child: (_resolvedProfileImage != null &&
+                                            _resolvedProfileImage!.isNotEmpty &&
+                                            _resolvedProfileImage != 'null' &&
+                                            _resolvedProfileImage!.startsWith('http'))
+                                        ? Image.network(
+                                            _resolvedProfileImage!,
+                                            width: 28,
+                                            height: 28,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) => _buildBubbleFallback(),
+                                          )
+                                        : _buildBubbleFallback(),
+                                  ),
                                 ),
                               ),
                             ],
@@ -1466,6 +1496,43 @@ class _ChatScreenState extends State<ChatScreen> {
         ],
       ),
     ),
+    );
+  }
+
+  Widget _buildAppBarFallback() {
+    final clean = widget.name.trim();
+    final initial = clean.isNotEmpty ? clean[0].toUpperCase() : '';
+    return Container(
+      width: 36,
+      height: 36,
+      color: AppColors.outlineVariant,
+      alignment: Alignment.center,
+      child: initial.isNotEmpty && RegExp(r'[A-Za-z0-9]').hasMatch(initial)
+          ? Text(
+              initial,
+              style: GoogleFonts.dmSans(
+                fontWeight: FontWeight.w700,
+                color: AppColors.onSurfaceVariant,
+              ),
+            )
+          : const Icon(Icons.person, color: AppColors.onSurfaceVariant, size: 20),
+    );
+  }
+
+  Widget _buildBubbleFallback() {
+    return Container(
+      width: 28,
+      height: 28,
+      color: AppColors.outlineVariant,
+      alignment: Alignment.center,
+      child: Text(
+        widget.name.isNotEmpty ? widget.name[0].toUpperCase() : 'W',
+        style: GoogleFonts.dmSans(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: AppColors.onSurfaceVariant,
+        ),
+      ),
     );
   }
 }
