@@ -7,7 +7,7 @@ namespace Superbass.Services
         Task<IEnumerable<Worker>> GetAllWorkersAsync();
         Task<Worker?> GetWorkerByIdAsync(int id);
         Task<Worker?> GetWorkerByEmailAsync(string email);
-        Task<IEnumerable<Worker>> SearchWorkersAsync(string? skill, string? location, double? maxDistanceKm, double? residentLat = null, double? residentLng = null, decimal? maxHourlyRate = null, decimal? minHourlyRate = null, string? province = null, string? district = null, bool onlyVerified = true);
+        Task<(IEnumerable<Worker> Workers, int TotalCount)> SearchWorkersAsync(string? q = null, string? skill = null, string? location = null, double? maxDistanceKm = null, double? residentLat = null, double? residentLng = null, decimal? maxHourlyRate = null, decimal? minHourlyRate = null, string? province = null, string? district = null, bool onlyVerified = true, int page = 1, int pageSize = 20);
         Task<Worker> CreateWorkerAsync(Worker worker);
         Task<Worker> CreateWorkerFromResidentAsync(string residentEmail, string? description, string primaryServiceArea, double coverageRadiusKm, string pricingModel, decimal? hourlyRate, decimal? dailyRate, List<WorkerSkill> skills);
         Task<Worker?> UpdateWorkerAsync(int id, Worker updatedWorker);

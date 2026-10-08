@@ -386,3 +386,214 @@ md-text-button {
   --md-sys-color-primary: #000000;
   font-weight: 700;
 }
+
+/* ==========================================================================
+   Custom Redesigned Sort Dropdown (Replacing Native OS Select)
+   ========================================================================== */
+.custom-sort-dropdown-container {
+  position: relative;
+  display: inline-block;
+  user-select: none;
+}
+
+.custom-sort-trigger {
+  height: 44px;
+  background-color: #ffffff;
+  border: 1.5px solid #000000;
+  border-radius: 9999px;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-family: var(--font-heading, 'DM Sans', -apple-system, sans-serif);
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #000000;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  white-space: nowrap;
+}
+
+.custom-sort-trigger:hover {
+  background-color: #f7f7f8;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+.custom-sort-trigger.open {
+  background-color: #000000;
+  color: #ffffff;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+}
+
+.custom-sort-trigger.open .custom-sort-trigger-content md-icon {
+  color: #ffffff !important;
+}
+
+.custom-sort-trigger-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.custom-sort-trigger-icon {
+  font-size: 18px;
+  color: #000000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.custom-sort-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.custom-sort-chevron {
+  font-size: 0.72rem;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  margin-left: 2px;
+}
+
+.custom-sort-chevron.open {
+  transform: rotate(180deg);
+}
+
+/* Dropdown Menu Popup */
+.custom-sort-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 280px;
+  background: #ffffff;
+  border: 1px solid #e4e4e7;
+  border-radius: 20px;
+  padding: 8px;
+  box-shadow: 0 20px 40px -6px rgba(0, 0, 0, 0.16), 0 4px 12px rgba(0, 0, 0, 0.05);
+  z-index: 1000;
+  animation: sortDropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: top right;
+}
+
+@keyframes sortDropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.custom-sort-menu-header {
+  padding: 8px 12px 6px 12px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #71717a;
+  border-bottom: 1px solid #f4f4f5;
+  margin-bottom: 4px;
+}
+
+.custom-sort-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.custom-sort-option:hover {
+  background-color: #f4f4f5;
+}
+
+.custom-sort-option.selected {
+  background-color: #000000;
+  color: #ffffff;
+}
+
+.custom-sort-option-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background-color: #f4f4f5;
+  color: #18181b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.custom-sort-option:hover .custom-sort-option-icon {
+  background-color: #e4e4e7;
+}
+
+.custom-sort-option.selected .custom-sort-option-icon {
+  background-color: #27272a;
+  color: #ffffff;
+}
+
+.custom-sort-option-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.custom-sort-option-label {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #18181b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.custom-sort-option.selected .custom-sort-option-label {
+  color: #ffffff;
+}
+
+.custom-sort-option-desc {
+  font-size: 0.74rem;
+  color: #71717a;
+  line-height: 1.2;
+}
+
+.custom-sort-option.selected .custom-sort-option-desc {
+  color: #a1a1aa;
+}
+
+.custom-sort-urgent-badge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  background-color: #fee2e2;
+  color: #ef4444;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.custom-sort-option.selected .custom-sort-urgent-badge {
+  background-color: #ef4444;
+  color: #ffffff;
+}
+
+.custom-sort-check {
+  font-size: 0.85rem;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 4px;
+}

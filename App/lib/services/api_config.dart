@@ -48,4 +48,17 @@ class ApiConfig {
     }
     return 'b7e6df63-34ca-4bbd-8889-b8844c9b579b';
   }
+
+  /// LangGraph AI Agent Backend URL
+  static String get agentBackendUrl {
+    final envUrl = dotenv.env['AGENT_BACKEND_URL'];
+    if (envUrl != null && envUrl.trim().isNotEmpty) {
+      return envUrl.trim();
+    }
+    const defineUrl = String.fromEnvironment('AGENT_BACKEND_URL');
+    if (defineUrl.isNotEmpty) {
+      return defineUrl.trim();
+    }
+    return 'http://localhost:8001';
+  }
 }

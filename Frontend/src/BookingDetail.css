@@ -487,6 +487,28 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
+.bd-party-avatar-initials {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 800;
+  user-select: none;
+  font-family: var(--font-heading, 'DM Sans', sans-serif);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.bd-party-avatar-initials.avatar-resident {
+  background: #000000;
+  color: #ffffff;
+}
+
+.bd-party-avatar-initials.avatar-worker {
+  background: #18181b;
+  color: #ffffff;
+}
+
 .bd-party-name {
   font-size: 1.25rem;
   font-weight: 800;

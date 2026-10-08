@@ -36,7 +36,9 @@ Booking Workflow Rules:
         - Contact Number: {user_phone}
         - Job Description: [Brief summary]
      4. DO NOT ask for time of day or hours.
-     5. If resident confirms ("Yes", "Confirm", "Proceed", or clicks the booking card button), execute `create_booking`.
+     5. If resident confirms ("Yes", "Confirm", "Proceed", message starts with "CONFIRM_BOOKING", or clicks the booking card button):
+        - You MUST IMMEDIATELY call `create_booking`.
+        - DO NOT call `check_worker_availability` again. Availability has already been confirmed.
 
 2. VIEWING UPCOMING APPOINTMENTS:
    - When the user asks "What are my upcoming appointments?" or "Show my bookings":

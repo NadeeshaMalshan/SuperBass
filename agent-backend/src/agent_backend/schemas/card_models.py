@@ -219,6 +219,23 @@ class BookingFormCard(BaseModel):
     availabilityReason: Optional[str] = Field(default=None, description="Explanation of availability")
 
 
+class BookingConfirmationReviewCard(BaseModel):
+    """UI Card rendered before final booking creation, summarizing appointment details with Yes/No confirmation buttons."""
+    workerId: Union[int, str] = Field(description="Worker ID")
+    workerName: str = Field(description="Worker display name")
+    workerAvatar: Optional[str] = Field(default=None, description="Worker avatar/photo URL")
+    category: Optional[str] = Field(default="General", description="Service category")
+    jobTitle: str = Field(description="Service job title")
+    scheduledDate: str = Field(description="Scheduled appointment date & time")
+    locationAddress: str = Field(description="Service location")
+    contactPhone: str = Field(description="Contact phone number")
+    hourlyRate: Optional[float] = Field(default=None, description="Hourly rate in LKR")
+    estimatedPrice: Optional[float] = Field(default=None, description="Estimated total in LKR")
+    notes: Optional[str] = Field(default=None, description="Resident notes / instructions")
+    confirmPrompt: Optional[str] = Field(default=None, description="Prompt to send on 'Yes' click")
+    cancelPrompt: Optional[str] = Field(default=None, description="Prompt to send on 'No' click")
+
+
 class BookingConfirmedCard(BaseModel):
     """UI Card rendered when a booking appointment is successfully created."""
     bookingId: Union[int, str] = Field(description="Created Booking ID")
@@ -315,6 +332,7 @@ ResponseTypeLiteral = Literal[
     "service_categories",
     "worker_list",
     "booking_form",
+    "booking_confirmation",
     "booking_confirmed",
     "booking_list",
     "review_form",

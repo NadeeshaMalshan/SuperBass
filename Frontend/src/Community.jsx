@@ -11,6 +11,7 @@ import hero2Img from './assets/community.png';
 import sriLankaDistricts from './data/sriLankaDistricts.json';
 import { BACKEND_URL } from './config.js';
 import { showToast } from './utils/toast.js';
+import { useDebouncedValue } from './hooks/useDebouncedValue.js';
 
 const API_BASE_URL = `${BACKEND_URL}/api/community-posts`;
 
@@ -24,6 +25,7 @@ export default function Community() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm] = useDebouncedValue(searchTerm, 400);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedProvince, setSelectedProvince] = useState('all');
@@ -45,7 +47,7 @@ export default function Community() {
   // Reset page to 1 whenever filters, search, or sort change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, selectedCategory, selectedProvince, selectedDistrict, sortBy]);
+  }, [debouncedSearchTerm, selectedCategory, selectedProvince, selectedDistrict, sortBy]);
 
   // Detail Modal State
   const [selectedPostForDetail, setSelectedPostForDetail] = useState(null);
@@ -130,11 +132,11 @@ export default function Community() {
   };
 
   // Fetch Posts strictly from Backend Database
-  const fetchPosts = async () => {
+  const fetchPosts = async (abortSignal) => {
     try {
       setLoading(true);
       const params = {};
-      if (searchTerm) params.search = searchTerm;
+      if (debouncedSearchTerm) params.search = debouncedSearchTerm;
       if (selectedCategory !== 'all') params.category = selectedCategory;
       if (selectedDistrict !== 'all') {
         params.location = selectedDistrict;
@@ -143,7 +145,7 @@ export default function Community() {
       }
       if (sortBy) params.sort = sortBy;
 
-      const res = await axios.get(API_BASE_URL, { params });
+      const res = await axios.get(API_BASE_URL, { params, signal: abortSignal });
       if (res.data && Array.isArray(res.data)) {
         let results = res.data;
         if (selectedProvince !== 'all' && selectedDistrict === 'all') {
@@ -184,8 +186,10 @@ export default function Community() {
   };
 
   useEffect(() => {
-    fetchPosts();
-  }, [searchTerm, selectedCategory, selectedProvince, selectedDistrict, sortBy]);
+    const controller = new AbortController();
+    fetchPosts(controller.signal);
+    return () => controller.abort();
+  }, [debouncedSearchTerm, selectedCategory, selectedProvince, selectedDistrict, sortBy]);
 
   // Handle Like
   const handleLike = async (postId, e) => {
@@ -1516,3 +1520,8 @@ export default function Community() {
     </div>
   );
 }
+
+
+
+
+

@@ -354,32 +354,42 @@ class LocationService {
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          debugPrint('[LocationService] Location permissions denied.');
-          return null;
-        }
       }
 
-      if (permission == LocationPermission.deniedForever) {
-        debugPrint('[LocationService] Location permissions permanently denied.');
-        return null;
+      if (permission != LocationPermission.denied &&
+          permission != LocationPermission.deniedForever) {
+        final position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.medium,
+            timeLimit: Duration(seconds: 10),
+          ),
+        );
+
+        return {
+          'lat': position.latitude,
+          'lng': position.longitude,
+        };
       }
-
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.medium,
-          timeLimit: Duration(seconds: 10),
-        ),
-      );
-
-      return {
-        'lat': position.latitude,
-        'lng': position.longitude,
-      };
     } catch (e) {
       debugPrint('[LocationService] Error getting GPS coordinates: $e');
-      return null;
     }
+
+    // Fallback: IP-based coordinates
+    try {
+      final ipUri = Uri.parse('https://ipapi.co/json/');
+      final res = await http.get(ipUri).timeout(const Duration(seconds: 4));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        if (data['latitude'] != null && data['longitude'] != null) {
+          return {
+            'lat': (data['latitude'] as num).toDouble(),
+            'lng': (data['longitude'] as num).toDouble(),
+          };
+        }
+      }
+    } catch (_) {}
+
+    return null;
   }
 
   /// Detect device GPS location and return the resolved official Sri Lankan District
@@ -427,30 +437,61 @@ class LocationService {
         prefs.getString('address') ??
         '';
 
+    double? lat;
+    double? lng;
+
     if (email != null && email.isNotEmpty) {
       try {
         final profile = await ApiService().getResidentProfile(email);
         if (profile != null) {
+          final dist = profile['district'] as String? ?? profile['District'] as String?;
+          if (dist != null && dist.trim().isNotEmpty) {
+            final resolved = resolveToDistrict(dist);
+            if (resolved != null && resolved.isNotEmpty) {
+              return resolved;
+            }
+          }
           final addr = profile['address'] as String?;
           if (addr != null && addr.trim().isNotEmpty) {
             rawAddress = addr.trim();
             await prefs.setString('address', rawAddress);
           }
-          final lat = (profile['locationLat'] as num?)?.toDouble();
-          final lng = (profile['locationLng'] as num?)?.toDouble();
-          if (lat != null && lng != null && rawAddress.isEmpty) {
-            final geoDistrict = await reverseGeocodeToDistrict(lat, lng);
-            if (geoDistrict != null && geoDistrict.isNotEmpty) {
-              return geoDistrict;
-            }
-          }
+          lat = (profile['locationLat'] as num?)?.toDouble() ??
+                (profile['LocationLat'] as num?)?.toDouble();
+          lng = (profile['locationLng'] as num?)?.toDouble() ??
+                (profile['LocationLng'] as num?)?.toDouble();
         }
       } catch (e) {
         debugPrint('Error fetching resident profile for primary address: $e');
       }
     }
 
-    if (rawAddress.isNotEmpty) {
+    if (lat == null || lng == null) {
+      lat = prefs.getDouble('locationLat');
+      lng = prefs.getDouble('locationLng');
+    }
+
+    // Check if rawAddress has comma separated coordinates (e.g. "8.31140, 80.38106")
+    final parts = rawAddress.split(',');
+    if (parts.length >= 2) {
+      final pLat = double.tryParse(parts[0].trim());
+      final pLng = double.tryParse(parts[1].trim());
+      if (pLat != null && pLng != null && pLat >= 5.0 && pLat <= 10.5 && pLng >= 79.0 && pLng <= 82.5) {
+        lat ??= pLat;
+        lng ??= pLng;
+      }
+    }
+
+    // If we have coordinates, resolve directly to district!
+    if (lat != null && lng != null && (lat != 0 || lng != 0)) {
+      final geoDistrict = await reverseGeocodeToDistrict(lat, lng);
+      if (geoDistrict != null && geoDistrict.isNotEmpty) {
+        return geoDistrict;
+      }
+      return findNearestDistrict(lat, lng);
+    }
+
+    if (rawAddress.isNotEmpty && !RegExp(r'^\s*[-+]?[0-9]').hasMatch(rawAddress)) {
       final district = resolveToDistrict(rawAddress);
       if (district != null) {
         return district;
@@ -460,7 +501,10 @@ class LocationService {
         final extDist = resolveToDistrict(extracted);
         return extDist ?? extracted;
       }
-      return cleanLocationName(rawAddress);
+      final cleaned = cleanLocationName(rawAddress);
+      if (!RegExp(r'^\s*[-+]?[0-9]').hasMatch(cleaned)) {
+        return cleaned;
+      }
     }
 
     return null;
@@ -545,16 +589,26 @@ class LocationService {
     final segments = address.split(',');
     if (segments.length > 1) {
       final last = segments.last.trim();
-      if (last.isNotEmpty && last.toLowerCase() != 'sri lanka' && last.toLowerCase() != 'lk') {
+      if (last.isNotEmpty &&
+          last.toLowerCase() != 'sri lanka' &&
+          last.toLowerCase() != 'lk' &&
+          double.tryParse(last) == null &&
+          !RegExp(r'^\s*[-+]?[0-9]').hasMatch(last)) {
         return cleanLocationName(last);
       }
       final secondLast = segments[segments.length - 2].trim();
-      if (secondLast.isNotEmpty) {
+      if (secondLast.isNotEmpty &&
+          double.tryParse(secondLast) == null &&
+          !RegExp(r'^\s*[-+]?[0-9]').hasMatch(secondLast)) {
         return cleanLocationName(secondLast);
       }
     }
 
-    return cleanLocationName(address);
+    final cleaned = cleanLocationName(address);
+    if (double.tryParse(cleaned) == null && !RegExp(r'^\s*[-+]?[0-9]').hasMatch(cleaned)) {
+      return cleaned;
+    }
+    return null;
   }
 
   /// Check if worker matches selected location/city (district-wise)

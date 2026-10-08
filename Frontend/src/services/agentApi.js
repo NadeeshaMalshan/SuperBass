@@ -53,7 +53,7 @@ export async function sendAgentMessage({ message, email, user_type = 'Resident',
     const agentsStr = meta.agents && meta.agents.length > 0 ? ` | Agents: ${meta.agents.join(' ➔ ')}` : '';
 
     console.groupCollapsed(
-      `%c✨ [AI Chat Response (${duration}ms)] %cType: ${res.data?.response?.response_type || 'unknown'}${agentsStr}${tokenStr}`,
+      `%c[AI Chat Response (${duration}ms)] %cType: ${res.data?.response?.response_type || 'unknown'}${agentsStr}${tokenStr}`,
       'color: #10b981; font-weight: bold;',
       'color: #0f172a;'
     );

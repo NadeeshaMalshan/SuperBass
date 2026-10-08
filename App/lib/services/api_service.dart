@@ -26,6 +26,9 @@ class ApiService {
 
   /// 1. Fetch Workers from /api/workers or /api/workers/search
   Future<List<WorkerModel>> fetchWorkers({
+    String? q,
+    int? page,
+    int? pageSize,
     String? skill,
     String? location,
     double? residentLat,
@@ -39,6 +42,9 @@ class ApiService {
       Uri uri;
 
       final queryParams = <String, String>{
+        if (q != null && q.trim().isNotEmpty) 'q': q.trim(),
+        if (page != null) 'page': page.toString(),
+        if (pageSize != null) 'pageSize': pageSize.toString(),
         if (skill != null && skill.isNotEmpty && skill != 'All Pros') 'skill': skill,
         if (location != null && location.isNotEmpty) 'location': location,
         if (lat != null) 'residentLat': lat.toString(),
@@ -48,7 +54,8 @@ class ApiService {
 
       if ((skill != null && skill.isNotEmpty && skill != 'All Pros') ||
           (location != null && location.isNotEmpty) ||
-          (lat != null && lng != null)) {
+          (lat != null && lng != null) ||
+          (q != null && q.trim().isNotEmpty)) {
         uri = Uri.parse('${ApiConfig.baseUrl}/api/workers/search').replace(
           queryParameters: queryParams,
         );
@@ -56,6 +63,8 @@ class ApiService {
         uri = Uri.parse('${ApiConfig.baseUrl}/api/workers').replace(
           queryParameters: {
             'onlyVerified': onlyVerified.toString(),
+            if (page != null) 'page': page.toString(),
+            if (pageSize != null) 'pageSize': pageSize.toString(),
           },
         );
       }
@@ -994,6 +1003,24 @@ class ApiService {
       return false;
     } catch (e) {
       debugPrint('Error deleting messages: $e');
+      return false;
+    }
+  }
+
+  /// Delete/Clear conversation: DELETE /api/conversations/{id}?userEmail={email}
+  Future<bool> deleteConversation(int conversationId, String userEmail) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/conversations/$conversationId').replace(
+        queryParameters: {'userEmail': userEmail},
+      );
+      final response = await http.delete(uri, headers: _headers);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return true;
+      }
+      debugPrint('Delete conversation failed (${response.statusCode}): ${response.body}');
+      return false;
+    } catch (e) {
+      debugPrint('Error deleting conversation: $e');
       return false;
     }
   }
