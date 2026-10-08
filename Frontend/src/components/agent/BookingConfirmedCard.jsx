@@ -10,7 +10,7 @@ export default function BookingConfirmedCard({ data = {}, onAction }) {
     scheduledDate = '',
     locationAddress = 'Colombo',
     contactPhone = '',
-    status = 'Confirmed'
+    status = 'Confirmed',
   } = data;
 
   let formattedDate = scheduledDate;
@@ -29,7 +29,9 @@ export default function BookingConfirmedCard({ data = {}, onAction }) {
       <div className="agent-base-card booking-confirmed-card" style={{ borderLeft: '4px solid #10b981' }}>
         <div className="booking-confirmed-header">
           <div className="booking-confirmed-icon-circle">
-            <i className="fa-solid fa-calendar-check"></i>
+            <span className="material-symbols-outlined" style={{ fontSize: '24px', color: '#10b981' }}>
+              event_available
+            </span>
           </div>
           <div>
             <h3 className="booking-confirmed-title">
@@ -43,29 +45,61 @@ export default function BookingConfirmedCard({ data = {}, onAction }) {
 
         <div className="booking-confirmed-details-box">
           <div className="booking-confirmed-detail-row">
-            <span className="detail-key"><i className="fa-solid fa-user-gear"></i> Technician:</span>
-            <span className="detail-val">{workerName} (Worker #{workerId})</span>
+            <span className="detail-key">
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                engineering
+              </span>{' '}
+              Technician:
+            </span>
+            <span className="detail-val">
+              {workerName} (Worker #{workerId})
+            </span>
           </div>
           <div className="booking-confirmed-detail-row">
-            <span className="detail-key"><i className="fa-regular fa-calendar"></i> Scheduled Date:</span>
+            <span className="detail-key">
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                calendar_today
+              </span>{' '}
+              Scheduled Date:
+            </span>
             <span className="detail-val">{formattedDate || 'Upcoming appointment'}</span>
           </div>
           <div className="booking-confirmed-detail-row">
-            <span className="detail-key"><i className="fa-solid fa-briefcase"></i> Service:</span>
+            <span className="detail-key">
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                construction
+              </span>{' '}
+              Service:
+            </span>
             <span className="detail-val">{jobTitle}</span>
           </div>
           <div className="booking-confirmed-detail-row">
-            <span className="detail-key"><i className="fa-solid fa-location-dot"></i> Location:</span>
+            <span className="detail-key">
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                location_on
+              </span>{' '}
+              Location:
+            </span>
             <span className="detail-val">{locationAddress}</span>
           </div>
           {contactPhone && (
             <div className="booking-confirmed-detail-row">
-              <span className="detail-key"><i className="fa-solid fa-phone"></i> Contact Phone:</span>
+              <span className="detail-key">
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                  call
+                </span>{' '}
+                Contact Phone:
+              </span>
               <span className="detail-val">{contactPhone}</span>
             </div>
           )}
           <div className="booking-confirmed-detail-row">
-            <span className="detail-key"><i className="fa-solid fa-shield-halved"></i> Status:</span>
+            <span className="detail-key">
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                verified_user
+              </span>{' '}
+              Status:
+            </span>
             <span className="detail-val status-badge-confirmed">{status}</span>
           </div>
         </div>
@@ -77,7 +111,9 @@ export default function BookingConfirmedCard({ data = {}, onAction }) {
             onClick={() => onAction && onAction('send_prompt', 'Show all my upcoming resident bookings')}
           >
             <span>View My Bookings</span>
-            <i className="fa-solid fa-arrow-right"></i>
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+              arrow_forward
+            </span>
           </button>
         </div>
       </div>

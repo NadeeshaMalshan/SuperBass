@@ -32,6 +32,7 @@ from agent_backend.schemas.card_models import (
     WorkerSummary,
     SpecialistConversationalOutput,
     BookingFormCard,
+    BookingConfirmationReviewCard,
     BookingConfirmedCard,
     BookingSummary,
     BookingListCard,
@@ -864,7 +865,7 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
             card = BookingFormCard(
                 workerId=worker_id,
                 workerName=worker_name,
-                workerAvatar=data.get("workerAvatar"),
+                workerAvatar=data.get("workerAvatar") or data.get("profileImage") or data.get("profilePicture") or data.get("avatarUrl") or data.get("ProfileImage"),
                 category=cat_val,
                 hourlyRate=h_rate,
                 location=loc_val,
@@ -1371,7 +1372,20 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
     # -------------------------------------------------------------------------
     # 0B. BOOKING FORM INTENT (e.g. user asks to book a worker / technician)
     # -------------------------------------------------------------------------
-    is_booking_flow = has_book_kw and (extracted_worker_id is not None or extracted_worker_name is not None or metadata.get("agent") == "booking_agent")
+    is_confirm_flow = (
+        "confirm_booking" in lower_content
+        or "confirm booking" in lower_content
+        or any(
+            getattr(m, "type", "") in ("human", "user")
+            and ("confirm_booking" in extract_text_content(getattr(m, "content", "")).lower() or "confirm booking" in extract_text_content(getattr(m, "content", "")).lower())
+            for m in reversed(messages[:4])
+        )
+    )
+    is_booking_flow = (
+        not is_confirm_flow
+        and has_book_kw
+        and (extracted_worker_id is not None or extracted_worker_name is not None or metadata.get("agent") == "booking_agent")
+    )
 
     if is_booking_flow and (extracted_worker_id or extracted_worker_name):
         worker_id_val = extracted_worker_id or "44"

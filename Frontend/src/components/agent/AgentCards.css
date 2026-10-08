@@ -2022,20 +2022,137 @@ select.icon-input-field.location-select-field {
   border: 2px solid #e2e8f0;
 }
 
+.booking-worker-avatar-fallback {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #f1f5f9;
+  border: 2px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+
 .booking-verified-badge {
   position: absolute;
   bottom: 0;
   right: 0;
   background: #10b981;
   color: #ffffff;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 0.65rem;
   border: 2px solid #ffffff;
+}
+
+/* Input with inline GPS action button */
+.booking-input-with-action {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.booking-input-with-action .booking-text-input {
+  padding-right: 110px;
+}
+
+.booking-inline-gps-btn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  background: #000000;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+.booking-inline-gps-btn:hover:not(:disabled) {
+  background: #262626;
+  transform: translateY(-50%) scale(1.02);
+}
+
+.booking-inline-gps-btn:disabled {
+  background: #94a3b8;
+  cursor: wait;
+}
+
+.booking-inline-gps-btn .material-symbols-outlined {
+  font-size: 15px;
+}
+
+/* Floating Locate Me FAB button inside Map */
+.booking-map-locate-fab {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+  background: #ffffff;
+  color: #0f172a;
+  border: 1.5px solid #e2e8f0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.booking-map-locate-fab:hover:not(:disabled) {
+  background: #000000;
+  color: #ffffff;
+  border-color: #000000;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22);
+}
+
+.booking-map-locate-fab:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.booking-map-locate-fab .material-symbols-outlined {
+  font-size: 16px;
+}
+
+.booking-map-container {
+  height: 200px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1.5px solid #e2e8f0;
+  position: relative;
+  margin-top: 4px;
+  width: 100%;
+}
+
+.booking-coords-preview {
+  margin-top: 6px;
+  font-size: 0.78rem;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .booking-worker-meta {
@@ -2469,6 +2586,15 @@ select.icon-input-field.location-select-field {
   padding: 2px 10px;
   border-radius: 999px;
   font-size: 0.75rem;
+}
+
+.status-badge-pending {
+  background: #fef3c7;
+  color: #92400e;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
 }
 
 .booking-confirmed-actions-row {
@@ -4373,6 +4499,179 @@ select.icon-input-field.location-select-field {
 .post-updated-action-tertiary:hover {
   background: #f1f5f9;
   color: #0f172a;
+}
+
+/* ==========================================================================
+   Booking Confirmation / Review Card (HITL 2-Step Verification)
+   ========================================================================== */
+
+.booking-confirmation-card {
+  padding: 20px 22px;
+  background: #ffffff;
+  border-radius: 16px;
+}
+
+.booking-review-badge-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-top: 14px;
+}
+
+.booking-review-badge-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.booking-review-badge-text strong {
+  font-size: 0.86rem;
+  color: #1e40af;
+  font-weight: 700;
+}
+
+.booking-review-badge-text span {
+  font-size: 0.78rem;
+  color: #3b82f6;
+}
+
+.booking-review-details-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.booking-review-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.86rem;
+  gap: 12px;
+}
+
+.booking-review-row.pricing-row {
+  padding-top: 8px;
+  border-top: 1px dashed #cbd5e1;
+  margin-top: 2px;
+}
+
+.booking-review-row .review-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #64748b;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.booking-review-row .review-val {
+  color: #0f172a;
+  font-weight: 700;
+  text-align: right;
+  word-break: break-word;
+}
+
+.booking-review-row .review-val.highlight {
+  color: #2563eb;
+  font-weight: 800;
+}
+
+.booking-review-row .review-val.price-highlight {
+  color: #0f172a;
+  font-weight: 800;
+  font-size: 1.05rem;
+}
+
+.booking-review-row .review-val.note-text {
+  font-style: italic;
+  font-weight: 500;
+  color: #475569;
+}
+
+.booking-confirmation-question {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 10px 14px;
+  background: #f1f5f9;
+  border-radius: 10px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.booking-confirmation-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 14px;
+  width: 100%;
+}
+
+.booking-btn-yes {
+  flex: 1.5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #000000;
+  color: #ffffff;
+  border: none;
+  padding: 12px 18px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+.booking-btn-yes:hover:not(:disabled) {
+  background: #1e293b;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+.booking-btn-yes:disabled {
+  background: #94a3b8;
+  cursor: wait;
+}
+
+.booking-btn-no {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: #ffffff;
+  color: #dc2626;
+  border: 1.5px solid #fecaca;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.booking-btn-no:hover:not(:disabled) {
+  background: #fef2f2;
+  border-color: #dc2626;
+  transform: translateY(-1px);
+}
+
+.booking-btn-no:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 
