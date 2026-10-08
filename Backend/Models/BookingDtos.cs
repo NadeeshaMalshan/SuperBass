@@ -44,6 +44,7 @@ namespace Superbass.Models
         public string WorkerEmail { get; set; } = null!;
         public string? WorkerPhone { get; set; }
         public string? WorkerProfileImage { get; set; }
+        public string? ResidentProfileImage { get; set; }
         public string JobTitle { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public string Urgency { get; set; } = "Medium";

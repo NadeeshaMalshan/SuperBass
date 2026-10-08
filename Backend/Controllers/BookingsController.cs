@@ -66,6 +66,7 @@ namespace Superbass.Controllers
                 ResidentEmail = b.ResidentEmail,
                 ResidentName = b.Resident?.Name ?? b.ResidentEmail.Split('@')[0],
                 ResidentPhone = b.Resident?.PhoneNo ?? b.ContactPhone,
+                ResidentProfileImage = b.Resident?.ProfileImage,
                 WorkerId = b.WorkerId,
                 WorkerName = b.Worker?.Name ?? "Worker",
                 WorkerEmail = b.Worker?.Email ?? b.Worker?.ResidentEmail ?? string.Empty,
@@ -321,13 +322,6 @@ namespace Superbass.Controllers
                 .FirstOrDefaultAsync(b => b.Id == id);
 
             if (booking == null) return NotFound(new { message = "Booking not found." });
-
-            // Check if worker already has an active InProgress job
-            var isWorkerBusy = await _context.Bookings.AnyAsync(b => b.WorkerId == booking.WorkerId && b.Status == "InProgress");
-            if (isWorkerBusy)
-            {
-                return BadRequest(new { message = "You are currently busy with an ongoing job. Please complete your active job before accepting new booking requests." });
-            }
 
             booking.Status = "Confirmed";
             booking.UpdatedAt = DateTime.UtcNow;
