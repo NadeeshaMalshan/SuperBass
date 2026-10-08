@@ -1007,6 +1007,24 @@ class ApiService {
     }
   }
 
+  /// Delete/Clear conversation: DELETE /api/conversations/{id}?userEmail={email}
+  Future<bool> deleteConversation(int conversationId, String userEmail) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/conversations/$conversationId').replace(
+        queryParameters: {'userEmail': userEmail},
+      );
+      final response = await http.delete(uri, headers: _headers);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return true;
+      }
+      debugPrint('Delete conversation failed (${response.statusCode}): ${response.body}');
+      return false;
+    } catch (e) {
+      debugPrint('Error deleting conversation: $e');
+      return false;
+    }
+  }
+
   /// Complete Onboarding: POST /api/auth/onboarding
   Future<Map<String, dynamic>> completeOnboarding({
     required String phoneNo,

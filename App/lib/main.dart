@@ -14,6 +14,7 @@ import 'screens/join_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/worker/worker_portal_screen.dart';
+import 'screens/workio_ai_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'services/api_config.dart';
@@ -214,6 +215,10 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
 
             return Scaffold(
               body: IndexedStack(index: effectiveIndex, children: pages),
+              floatingActionButton: (isLoggedIn && effectiveIndex == 0)
+                  ? _buildAiFloatingButton(context)
+                  : null,
+              floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
               bottomNavigationBar: M3BottomNavigationBar(
                 selectedIndex: effectiveIndex,
                 items: navItems,
@@ -227,6 +232,91 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
           },
         );
       },
+    );
+  }
+
+  Widget _buildAiFloatingButton(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6.0, right: 2.0),
+      child: Material(
+        color: Colors.transparent,
+        elevation: 6,
+        shadowColor: Colors.black.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(28),
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => WorkioAiScreen(
+                  onNavigateToTab: (index) {
+                    setState(() {
+                      _currentIndex = index;
+                    });
+                  },
+                ),
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(28),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+            decoration: BoxDecoration(
+              color: Colors.black,
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.2),
+                width: 1.2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.25),
+                  blurRadius: 14,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  padding: const EdgeInsets.all(4),
+                  child: Image.asset(
+                    'assets/images/Workio_Logo_Black_WithOut_Text.png',
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, error, stackTrace) => const Center(
+                      child: Text(
+                        'W',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Workio AI',
+                  style: GoogleFonts.dmSans(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13.5,
+                    color: Colors.white,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -386,8 +476,9 @@ class _FindTabScreenState extends State<FindTabScreen> {
       final prefs = await SharedPreferences.getInstance();
       final isManual = prefs.getBool('is_manual_location') ?? false;
       final saved = prefs.getString('selected_find_location');
+      final bool isSavedNumeric = saved != null && (double.tryParse(saved) != null || RegExp(r'^\s*[-+]?[0-9]').hasMatch(saved));
 
-      if (isManual && saved != null && saved.isNotEmpty) {
+      if (isManual && saved != null && saved.isNotEmpty && !isSavedNumeric) {
         if (mounted) {
           setState(() {
             _selectedCity = saved;
@@ -395,17 +486,22 @@ class _FindTabScreenState extends State<FindTabScreen> {
         }
         _fetchWorkers();
       } else {
-        // Default must be taken from GPS
+        // Resolve district from user's primary address or GPS
+        final user = AuthService().currentUser;
+        final primaryDistrict = await LocationService.getPrimaryAddressCity(user?.email);
         final gpsCity = await LocationService.detectGpsCity();
-        final cityToUse = (gpsCity != null && gpsCity.isNotEmpty)
-            ? gpsCity
-            : (saved ?? 'Colombo');
+        final cityToUse = (primaryDistrict != null && primaryDistrict.isNotEmpty && !RegExp(r'^\s*[-+]?[0-9]').hasMatch(primaryDistrict))
+            ? primaryDistrict
+            : ((gpsCity != null && gpsCity.isNotEmpty)
+                ? gpsCity
+                : ((saved != null && !isSavedNumeric) ? saved : 'Colombo'));
         if (mounted) {
           setState(() {
             _selectedCity = cityToUse;
           });
         }
         await LocationService.setSelectedCity(cityToUse);
+        await prefs.setString('selected_find_location', cityToUse);
         _fetchWorkers();
       }
     } catch (_) {
@@ -418,10 +514,20 @@ class _FindTabScreenState extends State<FindTabScreen> {
     try {
       final user = AuthService().currentUser;
       final city = await LocationService.getPrimaryAddressCity(user?.email);
-      if (mounted && city != null && city.isNotEmpty) {
+      if (mounted && city != null && city.isNotEmpty && !RegExp(r'^\s*[-+]?[0-9]').hasMatch(city)) {
+        final prefs = await SharedPreferences.getInstance();
+        final isNumericCity = RegExp(r'^\s*[-+]?[0-9]').hasMatch(_selectedCity);
         setState(() {
           _primaryAddressCity = city;
+          if (_selectedCity.isEmpty || isNumericCity) {
+            _selectedCity = city;
+          }
         });
+        if (isNumericCity) {
+          await LocationService.setSelectedCity(city);
+          await prefs.setString('selected_find_location', city);
+          _fetchWorkers();
+        }
       }
     } catch (_) {}
   }
@@ -1468,6 +1574,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
     bool hasSavedCoordinates = initialLat != null && initialLng != null;
     double locationLat = initialLat ?? 6.9271;
     double locationLng = initialLng ?? 79.8612;
+    bool isLocatingGps = false;
 
     bool shareGps = hasSavedCoordinates;
 
@@ -1859,13 +1966,57 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                 top: 10,
                                 left: 10,
                                 child: InkWell(
-                                  onTap: () {
-                                    setModalState(() {
-                                      locationLat = 6.9271;
-                                      locationLng = 79.8612;
-                                      hasSavedCoordinates = true;
-                                    });
-                                  },
+                                  borderRadius: BorderRadius.circular(20),
+                                  onTap: isLocatingGps
+                                      ? null
+                                      : () async {
+                                          setModalState(() {
+                                            isLocatingGps = true;
+                                          });
+                                          try {
+                                            final coords = await LocationService.getCurrentCoordinates();
+                                            if (coords != null &&
+                                                coords['lat'] != null &&
+                                                coords['lng'] != null) {
+                                              final lat = coords['lat']!;
+                                              final lng = coords['lng']!;
+                                              setModalState(() {
+                                                locationLat = lat;
+                                                locationLng = lng;
+                                                hasSavedCoordinates = true;
+                                                isLocatingGps = false;
+                                              });
+                                              try {
+                                                final district = await LocationService.reverseGeocodeToDistrict(lat, lng);
+                                                if (district != null && addressController.text.trim().isEmpty) {
+                                                  setModalState(() {
+                                                    addressController.text = district;
+                                                  });
+                                                }
+                                              } catch (_) {}
+                                            } else {
+                                              setModalState(() {
+                                                isLocatingGps = false;
+                                              });
+                                              if (sheetContext.mounted) {
+                                                ScaffoldMessenger.of(sheetContext).showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text('Could not access device GPS. Please enable location permissions.'),
+                                                  ),
+                                                );
+                                              }
+                                            }
+                                          } catch (e) {
+                                            setModalState(() {
+                                              isLocatingGps = false;
+                                            });
+                                            if (sheetContext.mounted) {
+                                              ScaffoldMessenger.of(sheetContext).showSnackBar(
+                                                SnackBar(content: Text('GPS error: $e')),
+                                              );
+                                            }
+                                          }
+                                        },
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                     decoration: BoxDecoration(
@@ -1882,16 +2033,36 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        const Icon(Icons.my_location, size: 14, color: Colors.black),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          'Use my location',
-                                          style: GoogleFonts.dmSans(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w700,
-                                            color: Colors.black,
+                                        if (isLocatingGps) ...[
+                                          const SizedBox(
+                                            width: 14,
+                                            height: 14,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                                            ),
                                           ),
-                                        ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            'Locating...',
+                                            style: GoogleFonts.dmSans(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.black,
+                                            ),
+                                          ),
+                                        ] else ...[
+                                          const Icon(Icons.my_location, size: 14, color: Colors.black),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            'Use my location',
+                                            style: GoogleFonts.dmSans(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.black,
+                                            ),
+                                          ),
+                                        ],
                                       ],
                                     ),
                                   ),
@@ -4404,17 +4575,36 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
 
     setState(() => _isLoading = true);
     final convs = await ApiService().fetchConversations(email);
+    final prefs = await SharedPreferences.getInstance();
+
+    final filteredConvs = <Map<String, dynamic>>[];
     int totalUnread = 0;
     for (final c in convs) {
+      final convId = c['id']?.toString() ?? '';
+      final clearedBeforeStr = prefs.getString('cleared_chat_before_${email}_$convId');
+      if (clearedBeforeStr != null) {
+        final clearedBefore = DateTime.tryParse(clearedBeforeStr);
+        final lastMsgAtStr = c['lastMessageAt']?.toString() ?? c['updatedAt']?.toString();
+        final lastMsgAt = lastMsgAtStr != null ? DateTime.tryParse(lastMsgAtStr) : null;
+        if (clearedBefore != null && lastMsgAt != null) {
+          if (lastMsgAt.toUtc().isBefore(clearedBefore) || lastMsgAt.toUtc().isAtSameMomentAs(clearedBefore)) {
+            continue; // Chat was cleared: hide from conversation list
+          }
+        } else if (clearedBefore != null && lastMsgAt == null) {
+          continue; // Empty/cleared
+        }
+      }
+
       if (c['unreadCount'] is int) {
         totalUnread += c['unreadCount'] as int;
       }
+      filteredConvs.add(c);
     }
     ChatSignalRService().setUnreadChatCount(totalUnread);
 
     if (mounted) {
       setState(() {
-        _conversations = convs;
+        _conversations = filteredConvs;
         _isLoading = false;
       });
     }
@@ -4531,11 +4721,9 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
                             c['otherPartyName']?.toString() ??
                             'Worker';
                         final profileImg = (c['workerProfileImage'] ??
-                                c['otherPartyProfileImage'] ??
-                                c['residentProfileImage'] ??
-                                c['profileImage'] ??
-                                c['avatar'] ??
-                                c['otherPartyAvatar'])
+                                c['WorkerProfileImage'] ??
+                                c['workerAvatar'] ??
+                                c['otherPartyProfileImage'])
                             ?.toString();
                         String lastMsg =
                             c['lastMessage']?.toString() ??
@@ -4565,27 +4753,46 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
                           leading: CircleAvatar(
                             radius: 26,
                             backgroundColor: AppColors.surfaceVariant,
-                            backgroundImage:
-                                (profileImg != null &&
-                                    profileImg.isNotEmpty &&
-                                    profileImg != 'null')
-                                ? NetworkImage(profileImg)
-                                : null,
-                            child:
-                                (profileImg == null ||
-                                    profileImg.isEmpty ||
-                                    profileImg == 'null')
-                                ? Text(
-                                    name.isNotEmpty
-                                        ? name[0].toUpperCase()
-                                        : 'W',
-                                    style: GoogleFonts.dmSans(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 18,
-                                      color: AppColors.onSurfaceVariant,
+                            child: ClipOval(
+                              child: (profileImg != null &&
+                                      profileImg.isNotEmpty &&
+                                      profileImg != 'null' &&
+                                      profileImg.startsWith('http'))
+                                  ? Image.network(
+                                      profileImg,
+                                      width: 52,
+                                      height: 52,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Container(
+                                        width: 52,
+                                        height: 52,
+                                        color: AppColors.surfaceVariant,
+                                        alignment: Alignment.center,
+                                        child: Text(
+                                          name.isNotEmpty ? name[0].toUpperCase() : 'W',
+                                          style: GoogleFonts.dmSans(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 18,
+                                            color: AppColors.onSurfaceVariant,
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                  : Container(
+                                      width: 52,
+                                      height: 52,
+                                      color: AppColors.surfaceVariant,
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        name.isNotEmpty ? name[0].toUpperCase() : 'W',
+                                        style: GoogleFonts.dmSans(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 18,
+                                          color: AppColors.onSurfaceVariant,
+                                        ),
+                                      ),
                                     ),
-                                  )
-                                : null,
+                            ),
                           ),
                           title: Row(
                             children: [

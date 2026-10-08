@@ -11,6 +11,7 @@ import 'worker_dashboard_screen.dart';
 import 'worker_jobs_screen.dart';
 import 'worker_profile_screen.dart';
 import '../community_screen.dart';
+import '../workio_ai_screen.dart';
 
 class WorkerPortalScreen extends StatefulWidget {
   const WorkerPortalScreen({super.key});
@@ -218,6 +219,10 @@ class _WorkerPortalScreenState extends State<WorkerPortalScreen> {
               ),
             ),
       body: IndexedStack(index: _currentIndex, children: pages),
+      floatingActionButton: (AuthService().currentUser != null && _currentIndex == 0)
+          ? _buildAiFloatingButton(context)
+          : null,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: ValueListenableBuilder<int>(
         valueListenable: ChatSignalRService().unreadChatCountNotifier,
         builder: (context, unreadChats, _) {
@@ -259,6 +264,83 @@ class _WorkerPortalScreenState extends State<WorkerPortalScreen> {
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildAiFloatingButton(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6.0, right: 2.0),
+      child: Material(
+        color: Colors.transparent,
+        elevation: 6,
+        shadowColor: Colors.black.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(28),
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const WorkioAiScreen()),
+            );
+          },
+          borderRadius: BorderRadius.circular(28),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+            decoration: BoxDecoration(
+              color: Colors.black,
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.2),
+                width: 1.2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.25),
+                  blurRadius: 14,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  padding: const EdgeInsets.all(4),
+                  child: Image.asset(
+                    'assets/images/Workio_Logo_Black_WithOut_Text.png',
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, error, stackTrace) => const Center(
+                      child: Text(
+                        'W',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Workio AI',
+                  style: GoogleFonts.dmSans(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13.5,
+                    color: Colors.white,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/chat_signalr_service.dart';
@@ -55,17 +56,36 @@ class _WorkerChatsScreenState extends State<WorkerChatsScreen> {
 
     try {
       final convs = await ApiService().fetchConversations(email);
+      final prefs = await SharedPreferences.getInstance();
+
+      final filteredConvs = <Map<String, dynamic>>[];
       int totalUnread = 0;
       for (final c in convs) {
+        final convId = c['id']?.toString() ?? '';
+        final clearedBeforeStr = prefs.getString('cleared_chat_before_${email}_$convId');
+        if (clearedBeforeStr != null) {
+          final clearedBefore = DateTime.tryParse(clearedBeforeStr);
+          final lastMsgAtStr = c['lastMessageAt']?.toString() ?? c['updatedAt']?.toString();
+          final lastMsgAt = lastMsgAtStr != null ? DateTime.tryParse(lastMsgAtStr) : null;
+          if (clearedBefore != null && lastMsgAt != null) {
+            if (lastMsgAt.toUtc().isBefore(clearedBefore) || lastMsgAt.toUtc().isAtSameMomentAs(clearedBefore)) {
+              continue; // Chat cleared: hide from home screen
+            }
+          } else if (clearedBefore != null && lastMsgAt == null) {
+            continue; // Empty/cleared
+          }
+        }
+
         if (c['unreadCount'] is int) {
           totalUnread += c['unreadCount'] as int;
         }
+        filteredConvs.add(c);
       }
       ChatSignalRService().setUnreadChatCount(totalUnread);
 
       if (mounted) {
         setState(() {
-          _conversations = convs;
+          _conversations = filteredConvs;
           _isLoading = false;
         });
       }
@@ -138,21 +158,50 @@ class _WorkerChatsScreenState extends State<WorkerChatsScreen> {
   }
 
   Widget _buildConversationItem(Map<String, dynamic> c) {
-    final clientName = (c['residentName'] ?? c['otherPartyName'] ?? c['name'] ?? 'Client').toString();
-    final profileImage = (c['residentProfileImage'] ??
-            c['otherPartyProfileImage'] ??
-            c['otherPartyAvatar'] ??
-            c['profileImage'] ??
-            c['avatar'] ??
-            c['residentAvatar'])
+    final String myEmail = (AuthService().currentUser?.email ?? '').trim().toLowerCase();
+    final String resEmail = (c['residentEmail'] ?? c['ResidentEmail'] ?? '').toString().trim().toLowerCase();
+    final bool amIResident = myEmail.isNotEmpty && resEmail == myEmail;
+
+    final clientName = (amIResident
+        ? (c['workerName'] ?? c['WorkerName'] ?? c['residentName'] ?? c['ResidentName'] ?? c['otherPartyName'] ?? c['name'] ?? 'Worker')
+        : (c['residentName'] ?? c['ResidentName'] ?? c['workerName'] ?? c['WorkerName'] ?? c['otherPartyName'] ?? c['name'] ?? 'Client')
+    ).toString();
+
+    // In WorkerChatsScreen, only resolve the other party's (client/resident) avatar.
+    // Never fall back to workerProfileImage or workerAvatar!
+    String? profileImage = (amIResident
+        ? (c['workerProfileImage'] ?? c['WorkerProfileImage'] ?? c['workerAvatar'])
+        : (c['residentProfileImage'] ?? c['ResidentProfileImage'] ?? c['residentAvatar'] ?? c['ResidentAvatar']))
         ?.toString();
+
+    if (profileImage == null ||
+        profileImage.isEmpty ||
+        profileImage == 'null' ||
+        profileImage.toLowerCase() == 'default') {
+      profileImage = null;
+    }
+
+    // Safety check: Never show the worker's own avatar as the client's avatar
+    final myPicture = AuthService().currentUser?.picture;
+    final workerAvatar = (c['workerProfileImage'] ??
+            c['WorkerProfileImage'] ??
+            c['workerAvatar'])
+        ?.toString();
+
+    if (!amIResident && profileImage != null) {
+      if ((myPicture != null && myPicture.isNotEmpty && profileImage == myPicture) ||
+          (workerAvatar != null && workerAvatar.isNotEmpty && profileImage == workerAvatar)) {
+        profileImage = null;
+      }
+    }
+
     final String lastMsg = (c['lastMessage'] ?? 'Started a conversation').toString();
     final int unread = (c['unreadCount'] is int) ? c['unreadCount'] as int : 0;
     final String timeStr = _formatMessageTime(
       c['updatedAt']?.toString() ?? c['lastMessageAt']?.toString(),
     );
     final bool isOnline = c['isOnline'] == true;
-    final bool isClientVerified = c['isResidentVerified'] == true;
+    final bool isClientVerified = c['isResidentVerified'] == true || c['isWorkerVerified'] == true;
 
     final Widget messageWidget = _buildMessageDisplay(lastMsg, context, c, unread);
 
@@ -197,23 +246,20 @@ class _WorkerChatsScreenState extends State<WorkerChatsScreen> {
                 CircleAvatar(
                   radius: 24,
                   backgroundColor: const Color(0xFFF1F5F9),
-                  backgroundImage: (profileImage != null &&
-                          profileImage.isNotEmpty &&
-                          profileImage != 'null')
-                      ? NetworkImage(profileImage)
-                      : null,
-                  child: (profileImage == null ||
-                          profileImage.isEmpty ||
-                          profileImage == 'null')
-                      ? Text(
-                          clientName.isNotEmpty ? clientName[0].toUpperCase() : 'C',
-                          style: GoogleFonts.dmSans(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 16,
-                            color: Colors.black,
-                          ),
-                        )
-                      : null,
+                  child: ClipOval(
+                    child: (profileImage != null &&
+                            profileImage.isNotEmpty &&
+                            profileImage != 'null' &&
+                            profileImage.startsWith('http'))
+                        ? Image.network(
+                            profileImage,
+                            width: 48,
+                            height: 48,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _buildFallbackInitial(clientName),
+                          )
+                        : _buildFallbackInitial(clientName),
+                  ),
                 ),
                 if (isOnline)
                   Positioned(
@@ -366,6 +412,31 @@ class _WorkerChatsScreenState extends State<WorkerChatsScreen> {
                   separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
                   itemBuilder: (_, i) => _buildConversationItem(filtered[i]),
                 ),
+    );
+  }
+
+  Widget _buildFallbackInitial(String name) {
+    final clean = name.trim();
+    final initial = clean.isNotEmpty ? clean[0].toUpperCase() : '';
+    return Container(
+      width: 48,
+      height: 48,
+      color: const Color(0xFFF1F5F9),
+      alignment: Alignment.center,
+      child: initial.isNotEmpty && RegExp(r'[A-Za-z0-9]').hasMatch(initial)
+          ? Text(
+              initial,
+              style: GoogleFonts.dmSans(
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+                color: const Color(0xFF334155),
+              ),
+            )
+          : const Icon(
+              Icons.person_rounded,
+              size: 26,
+              color: Color(0xFF64748B),
+            ),
     );
   }
 }

@@ -186,6 +186,7 @@ namespace Superbass.Controllers
                     {
                         Email = email,
                         Name = name ?? email,
+                        ProfileImage = picture,
                         PasswordHash = jwtHash,
                         PhoneNo = request.PhoneNo,
                         Address = request.Address,
@@ -198,6 +199,10 @@ namespace Superbass.Controllers
                 else
                 {
                     existingResident.PasswordHash = jwtHash;
+                    if (!string.IsNullOrEmpty(picture) && string.IsNullOrEmpty(existingResident.ProfileImage))
+                    {
+                        existingResident.ProfileImage = picture;
+                    }
                     if (request.PhoneNo != null) existingResident.PhoneNo = request.PhoneNo;
                     if (request.Address != null) existingResident.Address = request.Address;
                     if (request.LocationLat != null) existingResident.LocationLat = request.LocationLat;
