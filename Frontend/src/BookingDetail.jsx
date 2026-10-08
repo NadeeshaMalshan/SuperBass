@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import './BookingDetail.css';
-import { API_BASE_URL } from './config.js';
+import { API_BASE_URL, BACKEND_URL } from './config.js';
 import { showToast } from './utils/toast.js';
 import AiAssistantWidget from './components/AiAssistantWidget.jsx';
 
@@ -64,6 +64,18 @@ const cleanAddress = (addr) => {
   return addr.replace(/\s*\[GPS:[^\]]+\]/gi, '').trim() || 'Location not specified';
 };
 
+const getValidUrl = (url) => {
+  if (!url || url === 'null' || typeof url !== 'string' || url.trim() === '') return null;
+  if (url.startsWith('http') || url.startsWith('blob:') || url.startsWith('data:')) return url;
+  return `${BACKEND_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+};
+
+const getInitial = (name) => {
+  if (!name || typeof name !== 'string') return '?';
+  const trimmed = name.trim();
+  return trimmed.length > 0 ? trimmed[0].toUpperCase() : '?';
+};
+
 const extractCoordinates = (booking) => {
   if (!booking) return null;
   const lat = booking.locationLat ?? booking.latitude ?? booking.lat;
@@ -115,6 +127,7 @@ export default function BookingDetail() {
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [avatarFailed, setAvatarFailed] = useState(false);
 
   // Auth Context
   const activeRole = localStorage.getItem('activeRole') || 'Resident';
@@ -206,8 +219,27 @@ export default function BookingDetail() {
     }
   };
 
+  const [activeInProgressJob, setActiveInProgressJob] = useState(null);
+
+  const fetchActiveWorkerJob = async () => {
+    if (!isWorker || !currentUserEmail) return;
+    try {
+      const res = await axios.get(`${API_BASE_URL}/bookings/worker?email=${encodeURIComponent(currentUserEmail)}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      if (res.data && Array.isArray(res.data)) {
+        const inProgress = res.data.find(b => b.status === 'InProgress');
+        setActiveInProgressJob(inProgress || null);
+      }
+    } catch (e) {
+      console.warn("Could not check active worker jobs:", e);
+    }
+  };
+
   useEffect(() => {
     fetchBooking();
+    fetchActiveWorkerJob();
+    setAvatarFailed(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [bookingId]);
 
@@ -215,20 +247,11 @@ export default function BookingDetail() {
   const handleAction = async (action) => {
     if (!booking) return;
     try {
-      const res = await axios.post(`${API_BASE_URL}/bookings/${booking.id}/${action}`, {}, {
+      await axios.post(`${API_BASE_URL}/bookings/${booking.id}/${action}`, {}, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       showToast(`Booking ${action}ed successfully!`);
       fetchBooking();
-
-      if (action === 'accept') {
-        const convId = res.data?.conversationId;
-        if (convId) {
-          navigate(`/chats?conversationId=${convId}&bookingId=${booking.id}`);
-        } else {
-          navigate(`/chats?bookingId=${booking.id}`);
-        }
-      }
     } catch (err) {
       console.error(`Error performing action ${action}:`, err);
       alert(err.response?.data?.message || `Failed to ${action} booking.`);
@@ -358,9 +381,11 @@ export default function BookingDetail() {
   const otherPartyPhone = isResident
     ? (booking.workerPhone || (booking.isContactShared ? 'Shared in chat' : 'Private • Shared in chat'))
     : (booking.residentPhone || booking.contactPhone);
-  const otherPartyAvatar = isResident
-    ? (booking.workerProfileImage || `https://api.dicebear.com/7.x/avataaars/svg?seed=${booking.workerId || 'Worker'}`)
-    : `https://api.dicebear.com/7.x/avataaars/svg?seed=${booking.residentEmail || 'Resident'}`;
+
+  const rawAvatarUrl = isResident
+    ? (booking.workerProfileImage || null)
+    : (booking.residentProfileImage || booking.residentPicture || booking.userPicture || null);
+  const otherPartyAvatar = getValidUrl(rawAvatarUrl);
 
   const coords = extractCoordinates(booking);
   const defaultCenter = [6.74016, 80.38114];
@@ -750,11 +775,22 @@ export default function BookingDetail() {
           {/* Party Profile Card */}
           <div className="bd-sidebar-card">
             <div className="bd-party-profile">
-              <img
-                src={otherPartyAvatar}
-                alt={otherPartyName}
-                className="bd-party-avatar"
-              />
+              {otherPartyAvatar && !avatarFailed ? (
+                <img
+                  src={otherPartyAvatar}
+                  alt={otherPartyName}
+                  className="bd-party-avatar"
+                  referrerPolicy="no-referrer"
+                  onError={() => setAvatarFailed(true)}
+                />
+              ) : (
+                <div
+                  className={`bd-party-avatar bd-party-avatar-initials ${isResident ? 'avatar-worker' : 'avatar-resident'}`}
+                  title={otherPartyName}
+                >
+                  {getInitial(otherPartyName)}
+                </div>
+              )}
               <div className="bd-party-name">{otherPartyName}</div>
               <span className="bd-party-role-tag">
                 {isResident ? 'Assigned Worker' : 'Client Resident'}
@@ -835,10 +871,33 @@ export default function BookingDetail() {
 
               {isWorker && booking.status === 'Confirmed' && (
                 <>
+                  {Boolean(activeInProgressJob && activeInProgressJob.id !== booking.id) && (
+                    <div style={{
+                      backgroundColor: '#fff1f2',
+                      border: '1px solid #fecdd3',
+                      borderRadius: '12px',
+                      padding: '10px 14px',
+                      fontSize: '0.82rem',
+                      color: '#9f1239',
+                      lineHeight: 1.4,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}>
+                      <i className="fa-solid fa-lock" style={{ fontSize: '0.9rem', color: '#e11d48' }}></i>
+                      <span>You have an ongoing job (<strong>"{activeInProgressJob.jobTitle}"</strong>). Finish it before starting this job.</span>
+                    </div>
+                  )}
                   <button
                     type="button"
                     className="bd-btn-primary"
+                    disabled={Boolean(activeInProgressJob && activeInProgressJob.id !== booking.id)}
                     onClick={() => handleAction('start')}
+                    title={activeInProgressJob && activeInProgressJob.id !== booking.id ? `Active job "${activeInProgressJob.jobTitle}" is currently in progress.` : ""}
+                    style={{
+                      opacity: Boolean(activeInProgressJob && activeInProgressJob.id !== booking.id) ? 0.45 : 1,
+                      cursor: Boolean(activeInProgressJob && activeInProgressJob.id !== booking.id) ? 'not-allowed' : 'pointer'
+                    }}
                   >
                     <i className="fa-solid fa-play"></i>
                     <span>Start Job Now</span>

@@ -1,18 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import './UserMenu.css';
-import { API_BASE_URL } from '../config.js';
+import { API_BASE_URL, BACKEND_URL } from '../config.js';
 
 export default function UserMenu({ variant = 'default' }) {
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [avatarFailed, setAvatarFailed] = useState(false);
   const menuRef = useRef(null);
 
   const token = localStorage.getItem('token');
-  const userEmail = localStorage.getItem('email') || '';
+  const activeRole = localStorage.getItem('activeRole') || 'Resident';
+  const isWorker = (activeRole || '').toLowerCase() === 'worker';
+  const userEmail = (isWorker
+    ? (localStorage.getItem('workerEmail') || localStorage.getItem('email'))
+    : (localStorage.getItem('email') || localStorage.getItem('workerEmail'))) || '';
+
   const [userName, setUserName] = useState(localStorage.getItem('userName') || (userEmail ? userEmail.split('@')[0] : 'Account'));
   const [userPicture, setUserPicture] = useState(localStorage.getItem('userPicture'));
-  const activeRole = localStorage.getItem('activeRole') || 'Resident';
 
   if (!token) return null;
 
@@ -39,6 +44,12 @@ export default function UserMenu({ variant = 'default' }) {
     return name.trim().charAt(0).toUpperCase();
   };
 
+  const getValidUrl = (url) => {
+    if (!url || url === 'null' || typeof url !== 'string' || url.trim() === '') return null;
+    if (url.startsWith('http') || url.startsWith('blob:') || url.startsWith('data:')) return url;
+    return `${BACKEND_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+  };
+
   // Close when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -50,11 +61,60 @@ export default function UserMenu({ variant = 'default' }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Fetch profile photo directly from database table (Residents or Workers) on mount & sync to localStorage
+  useEffect(() => {
+    const fetchUserProfileFromTable = async () => {
+      if (!userEmail) return;
+      const authToken = localStorage.getItem('token');
+      try {
+        if (isWorker) {
+          const res = await axios.get(`${API_BASE_URL}/workers/me?email=${encodeURIComponent(userEmail)}`, {
+            headers: authToken ? { Authorization: `Bearer ${authToken}` } : {}
+          });
+          const w = res.data?.worker;
+          if (w) {
+            if (w.name) {
+              setUserName(w.name);
+              localStorage.setItem('userName', w.name);
+            }
+            if (w.profileImage) {
+              setUserPicture(w.profileImage);
+              localStorage.setItem('userPicture', w.profileImage);
+              setAvatarFailed(false);
+            }
+          }
+        } else {
+          const res = await axios.get(`${API_BASE_URL}/residents/${encodeURIComponent(userEmail)}`, {
+            headers: authToken ? { Authorization: `Bearer ${authToken}` } : {}
+          });
+          if (res.data) {
+            if (res.data.name) {
+              setUserName(res.data.name);
+              localStorage.setItem('userName', res.data.name);
+            }
+            if (res.data.profileImage) {
+              setUserPicture(res.data.profileImage);
+              localStorage.setItem('userPicture', res.data.profileImage);
+              setAvatarFailed(false);
+            }
+          }
+        }
+      } catch (err) {
+        // Silently ignore if offline
+      }
+    };
+
+    fetchUserProfileFromTable();
+  }, [userEmail, isWorker]);
+
   // Listen for profile updates from ResidentProfile/WorkerProfile
   useEffect(() => {
     const handleProfileUpdate = () => {
-      setUserName(localStorage.getItem('userName') || (userEmail ? userEmail.split('@')[0] : 'Account'));
-      setUserPicture(localStorage.getItem('userPicture'));
+      const currentPic = localStorage.getItem('userPicture');
+      const currentName = localStorage.getItem('userName') || (userEmail ? userEmail.split('@')[0] : 'Account');
+      setUserName(currentName);
+      setUserPicture(currentPic);
+      setAvatarFailed(false);
     };
     window.addEventListener('profileUpdated', handleProfileUpdate);
     return () => window.removeEventListener('profileUpdated', handleProfileUpdate);
@@ -80,7 +140,7 @@ export default function UserMenu({ variant = 'default' }) {
     fetchUnread();
   }, [userEmail]);
 
-  const isWorker = (activeRole || localStorage.getItem('activeRole') || '').toLowerCase() === 'worker';
+  const avatarUrl = getValidUrl(userPicture);
 
   return (
     <div className="user-menu-wrapper" ref={menuRef}>
@@ -94,8 +154,14 @@ export default function UserMenu({ variant = 'default' }) {
           aria-label="User Account Menu"
         >
           <div className={`m3-google-avatar-ring ${isWorker ? 'worker-ring' : 'resident-ring'}`}>
-            {userPicture ? (
-              <img src={userPicture} alt={userName} className="m3-google-avatar-img" referrerPolicy="no-referrer" />
+            {avatarUrl && !avatarFailed ? (
+              <img
+                src={avatarUrl}
+                alt={userName}
+                className="m3-google-avatar-img"
+                referrerPolicy="no-referrer"
+                onError={() => setAvatarFailed(true)}
+              />
             ) : (
               <div className="m3-google-avatar-letter">{getInitial(userName)}</div>
             )}
@@ -108,8 +174,14 @@ export default function UserMenu({ variant = 'default' }) {
           onClick={() => setIsOpen(prev => !prev)}
           title="User menu"
         >
-          {userPicture ? (
-            <img src={userPicture} alt="User" className="user-menu-avatar" referrerPolicy="no-referrer" />
+          {avatarUrl && !avatarFailed ? (
+            <img
+              src={avatarUrl}
+              alt="User"
+              className="user-menu-avatar"
+              referrerPolicy="no-referrer"
+              onError={() => setAvatarFailed(true)}
+            />
           ) : (
             <div className="user-menu-avatar">{getInitial(userName)}</div>
           )}
@@ -128,8 +200,14 @@ export default function UserMenu({ variant = 'default' }) {
             style={{ cursor: 'pointer' }}
             title="Open Account Settings"
           >
-            {userPicture ? (
-              <img src={userPicture} alt="Avatar" className="user-menu-header-avatar" referrerPolicy="no-referrer" />
+            {avatarUrl && !avatarFailed ? (
+              <img
+                src={avatarUrl}
+                alt="Avatar"
+                className="user-menu-header-avatar"
+                referrerPolicy="no-referrer"
+                onError={() => setAvatarFailed(true)}
+              />
             ) : (
               <div className="user-menu-header-avatar">{getInitial(userName)}</div>
             )}

@@ -208,8 +208,8 @@ namespace Superbass.Controllers
                 return Ok(new { 
                     token = jwt, 
                     email = email, 
-                    name = name ?? email, 
-                    picture = picture, 
+                    name = existingResident.Name ?? name ?? email, 
+                    picture = existingResident.ProfileImage ?? picture, 
                     isNewUser = isNewUser,
                     isWorker = false,
                     isNewWorker = false,
