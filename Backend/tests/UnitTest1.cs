@@ -1,0 +1,1 @@
+// Default placeholder replaced by component tests
