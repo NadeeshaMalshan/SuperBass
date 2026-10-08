@@ -16,6 +16,12 @@ analyzer:
     - windows/**
     - macos/**
     - linux/**
+  errors:
+    deprecated_member_use: info
+    unused_local_variable: info
+    unused_element: info
+    library_private_types_in_public_api: info
+    unnecessary_underscores: info
 include: package:flutter_lints/flutter.yaml
 
 linter:
