@@ -149,38 +149,54 @@ async def check_worker_availability_api(
 @app.get("/api/conversations")
 async def list_user_conversations(email: str = Query(..., description="User email")):
     """List all previous conversation threads for a user."""
-    threads = await chat_repository.list_conversations(email)
-    return {"conversations": threads}
+    try:
+        threads = await chat_repository.list_conversations(email)
+        return {"conversations": threads}
+    except Exception as e:
+        logger.error(f"Error listing conversations for {email}: {e}")
+        raise HTTPException(status_code=500, detail="Could not load conversations")
 
 
 @app.post("/api/conversations")
 async def create_new_conversation(req: CreateConversationRequest):
     """Create a new blank conversation session."""
     conv_id = str(uuid.uuid4())
-    conv = await chat_repository.get_or_create_conversation(conv_id, req.email, req.title)
-    return {
-        "conversation_id": conv.id,
-        "title": conv.title,
-        "user_email": conv.user_email,
-        "created_at": conv.created_at.isoformat() if conv.created_at else None
-    }
+    try:
+        conv = await chat_repository.get_or_create_conversation(conv_id, req.email, req.title)
+        return {
+            "conversation_id": conv.id,
+            "title": conv.title,
+            "user_email": conv.user_email,
+            "created_at": conv.created_at.isoformat() if conv.created_at else None
+        }
+    except Exception as e:
+        logger.error(f"Error creating conversation for {req.email}: {e}")
+        raise HTTPException(status_code=500, detail="Could not create conversation")
 
 
 @app.get("/api/conversations/{conversation_id}")
 async def get_conversation_details(conversation_id: str):
     """Fetch complete message and card history for a conversation thread."""
-    messages = await chat_repository.get_conversation_messages(conversation_id)
-    return {
-        "conversation_id": conversation_id,
-        "messages": messages
-    }
+    try:
+        messages = await chat_repository.get_conversation_messages(conversation_id)
+        return {
+            "conversation_id": conversation_id,
+            "messages": messages
+        }
+    except Exception as e:
+        logger.error(f"Error loading conversation {conversation_id}: {e}")
+        raise HTTPException(status_code=500, detail="Could not load conversation")
 
 
 @app.delete("/api/conversations/{conversation_id}")
 async def delete_user_conversation(conversation_id: str, email: Optional[str] = None):
     """Delete a conversation thread and its messages."""
-    deleted = await chat_repository.delete_conversation(conversation_id, email)
-    return {"success": deleted, "conversation_id": conversation_id}
+    try:
+        deleted = await chat_repository.delete_conversation(conversation_id, email)
+        return {"success": deleted, "conversation_id": conversation_id}
+    except Exception as e:
+        logger.error(f"Error deleting conversation {conversation_id}: {e}")
+        raise HTTPException(status_code=500, detail="Could not delete conversation")
 
 
 # -------------------------------------------------------------
