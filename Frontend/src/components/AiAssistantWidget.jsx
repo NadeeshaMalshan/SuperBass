@@ -4,6 +4,9 @@ import AgentCardDispatcher from './agent/AgentCardDispatcher.jsx';
 import { sendAgentMessage } from '../services/agentApi.js';
 
 export default function AiAssistantWidget() {
+  const isLoggedIn = !!localStorage.getItem('token');
+  if (!isLoggedIn) return null;
+
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     {
