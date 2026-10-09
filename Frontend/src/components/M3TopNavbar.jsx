@@ -86,7 +86,7 @@ export default function M3TopNavbar({
         <button
           type="button"
           className={`m3-nav-btn m3-nav-btn-ai ${activePage === 'ai' ? 'active' : ''}`}
-          onClick={() => navigate('/ai/chat')}
+          onClick={() => navigate(isLoggedIn ? '/ai/chat' : '/join')}
           title="Workio AI Assistant"
         >
           <span>Ask AI</span>
