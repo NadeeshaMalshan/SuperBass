@@ -126,10 +126,44 @@ const getGoogleMapsUrl = (booking) => {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cleanAddr)}`;
 };
 
+const SORT_OPTIONS = [
+  {
+    id: 'newest',
+    label: 'Sort: Newest First',
+    shortLabel: 'Newest First',
+    description: 'Most recent bookings first',
+    icon: 'schedule'
+  },
+  {
+    id: 'oldest',
+    label: 'Sort: Oldest First',
+    shortLabel: 'Oldest First',
+    description: 'Earliest scheduled bookings first',
+    icon: 'history'
+  },
+  {
+    id: 'priority-high',
+    label: 'Sort: Priority (High to Low)',
+    shortLabel: 'Priority (High to Low)',
+    description: 'Emergency & High priority first',
+    icon: 'flag',
+    badge: 'Urgent'
+  },
+  {
+    id: 'priority-low',
+    label: 'Sort: Priority (Low to High)',
+    shortLabel: 'Priority (Low to High)',
+    description: 'Low & Medium priority first',
+    icon: 'low_priority'
+  }
+];
+
 export default function Bookings() {
   const [bookings, setBookings] = useState([]);
   const [bookingSearch, setBookingSearch] = useState('');
   const [sortBy, setSortBy] = useState('newest');
+  const [isSortOpen, setIsSortOpen] = useState(false);
+  const sortDropdownRef = useRef(null);
   const [viewMode, setViewMode] = useState('list');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -140,6 +174,18 @@ export default function Bookings() {
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const reviewDialogRef = useRef(null);
+
+  useEffect(() => {
+    const handleSortOutside = (e) => {
+      if (sortDropdownRef.current && !sortDropdownRef.current.contains(e.target)) {
+        setIsSortOpen(false);
+      }
+    };
+    if (isSortOpen) {
+      document.addEventListener('mousedown', handleSortOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleSortOutside);
+  }, [isSortOpen]);
 
   useEffect(() => {
     if (reviewModalOpen && selectedBooking) {
@@ -229,22 +275,11 @@ export default function Bookings() {
 
   const handleAction = async (bookingId, action) => {
     try {
-      const res = await axios.post(`${API_BASE_URL}/bookings/${bookingId}/${action}`, {}, {
+      await axios.post(`${API_BASE_URL}/bookings/${bookingId}/${action}`, {}, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       showToast(`Booking ${action}ed successfully!`);
       fetchBookings(); // Refresh list after action
-
-      if (action === 'accept') {
-        const convId = res.data?.conversationId;
-        if (convId) {
-          window.history.pushState({}, '', `/chats?conversationId=${convId}&bookingId=${bookingId}`);
-          window.dispatchEvent(new PopStateEvent('popstate'));
-        } else {
-          window.history.pushState({}, '', `/chats?bookingId=${bookingId}`);
-          window.dispatchEvent(new PopStateEvent('popstate'));
-        }
-      }
     } catch (err) {
       console.error(`Error performing action ${action}:`, err);
       const msg = err.response?.data?.message || `Failed to ${action} booking.`;
@@ -305,10 +340,19 @@ export default function Bookings() {
     setReviewModalOpen(true);
   };
 
+  // Navigate to full-screen booking detail page
   const openViewModal = (booking) => {
-    setSelectedViewBooking(booking);
-    setViewModalOpen(true);
+    navigate(`/booking-detail?id=${booking.id}`);
   };
+
+  // Check URL query params on load (e.g. /bookings?id=123)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const targetId = params.get('id') || params.get('bookingId');
+    if (targetId) {
+      navigate(`/booking-detail?id=${targetId}`);
+    }
+  }, []);
 
   const submitReview = async (e) => {
     if (e && typeof e.preventDefault === 'function') {
@@ -459,7 +503,34 @@ export default function Bookings() {
     );
   });
 
+  const getPriorityWeight = (urgency) => {
+    const val = (urgency || '').trim().toLowerCase();
+    switch (val) {
+      case 'emergency':
+      case 'critical':
+        return 4;
+      case 'high':
+        return 3;
+      case 'medium':
+        return 2;
+      case 'low':
+        return 1;
+      default:
+        return 0;
+    }
+  };
+
   const sortedBookings = [...filteredBookings].sort((a, b) => {
+    if (sortBy === 'priority-high') {
+      const diff = getPriorityWeight(b.urgency) - getPriorityWeight(a.urgency);
+      if (diff !== 0) return diff;
+      return new Date(b.scheduledDate) - new Date(a.scheduledDate);
+    }
+    if (sortBy === 'priority-low') {
+      const diff = getPriorityWeight(a.urgency) - getPriorityWeight(b.urgency);
+      if (diff !== 0) return diff;
+      return new Date(b.scheduledDate) - new Date(a.scheduledDate);
+    }
     if (sortBy === 'oldest') {
       return new Date(a.scheduledDate) - new Date(b.scheduledDate);
     }
@@ -564,14 +635,66 @@ export default function Bookings() {
               </div>
 
               <div className="uber-toolbar-actions">
-                <select
-                  className="uber-sort-select"
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                >
-                  <option value="newest">Sort: Newest First</option>
-                  <option value="oldest">Sort: Oldest First</option>
-                </select>
+                {/* Redesigned Custom Sort Dropdown */}
+                <div className="custom-sort-dropdown-container" ref={sortDropdownRef}>
+                  <button
+                    type="button"
+                    className={`custom-sort-trigger ${isSortOpen ? 'open' : ''}`}
+                    onClick={() => setIsSortOpen(prev => !prev)}
+                    aria-expanded={isSortOpen}
+                    aria-haspopup="listbox"
+                    title="Sort Bookings"
+                  >
+                    <span className="custom-sort-trigger-content">
+                      <md-icon className="custom-sort-trigger-icon">
+                        {(SORT_OPTIONS.find(o => o.id === sortBy) || SORT_OPTIONS[0]).icon}
+                      </md-icon>
+                      <span className="custom-sort-label">
+                        {(SORT_OPTIONS.find(o => o.id === sortBy) || SORT_OPTIONS[0]).label}
+                      </span>
+                    </span>
+                    <i className={`fa-solid fa-chevron-down custom-sort-chevron ${isSortOpen ? 'open' : ''}`}></i>
+                  </button>
+
+                  {isSortOpen && (
+                    <div className="custom-sort-menu" role="listbox">
+                      <div className="custom-sort-menu-header">Order Bookings By</div>
+                      {SORT_OPTIONS.map((opt) => {
+                        const isSelected = sortBy === opt.id;
+                        return (
+                          <div
+                            key={opt.id}
+                            className={`custom-sort-option ${isSelected ? 'selected' : ''}`}
+                            onClick={() => {
+                              setSortBy(opt.id);
+                              setIsSortOpen(false);
+                            }}
+                            role="option"
+                            aria-selected={isSelected}
+                          >
+                            <div className="custom-sort-option-icon">
+                              <md-icon style={{ fontSize: '18px' }}>{opt.icon}</md-icon>
+                            </div>
+                            <div className="custom-sort-option-info">
+                              <div className="custom-sort-option-label">
+                                {opt.shortLabel}
+                                {opt.badge && (
+                                  <span className="custom-sort-urgent-badge">{opt.badge}</span>
+                                )}
+                              </div>
+                              <div className="custom-sort-option-desc">{opt.description}</div>
+                            </div>
+                            {isSelected && (
+                              <div className="custom-sort-check">
+                                <i className="fa-solid fa-check"></i>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
 
                 {/* Grid View Mode Switcher Button Group (Icon Only) */}
                 <div className="uber-view-mode-group" role="group" aria-label="Card grid view mode">
@@ -613,7 +736,7 @@ export default function Bookings() {
                     </span>
                   </div>
                   <div style={{ color: '#71717a', fontSize: '0.88rem', marginTop: '4px', lineHeight: 1.5 }}>
-                    You are currently working on <strong style={{ color: '#000000' }}>"{activeJob?.jobTitle}"</strong>. New requests and other job starts are paused until this active job is completed.
+                    You are currently working on <strong style={{ color: '#000000' }}>"{activeJob?.jobTitle}"</strong>. You can accept incoming booking requests for your upcoming schedule, but starting another job is paused until this active job is completed.
                   </div>
                 </div>
               </div>
@@ -749,12 +872,6 @@ export default function Bookings() {
                           type="button"
                           className="booking-btn-black"
                           onClick={() => handleAction(booking.id, 'accept')}
-                          disabled={hasInProgressJob}
-                          title={hasInProgressJob ? "You cannot accept new requests while an active job is in progress." : ""}
-                          style={{
-                            opacity: hasInProgressJob ? 0.4 : 1,
-                            cursor: hasInProgressJob ? 'not-allowed' : 'pointer'
-                          }}
                         >
                           Accept Request
                         </button>
@@ -937,8 +1054,8 @@ export default function Bookings() {
         document.body
       )}
 
-      {/* View Booking Details Modal (Material 3 md-dialog Web Component) */}
-      {createPortal(
+      {/* View Booking Details Modal (Replaced by dedicated full screen page /booking-detail) */}
+      {false && createPortal(
         <md-dialog
           ref={viewDialogRef}
           onClose={() => setViewModalOpen(false)}

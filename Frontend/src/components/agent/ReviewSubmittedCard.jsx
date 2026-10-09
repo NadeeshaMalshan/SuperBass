@@ -14,10 +14,16 @@ export default function ReviewSubmittedCard({ data = {}, onAction }) {
     submittedAt
   } = data;
 
-  const formattedDate = submittedAt ? new Date(submittedAt).toLocaleDateString([], {
-    dateStyle: 'medium',
-    timeStyle: 'short'
-  }) : 'Just now';
+  let formattedDate = 'Just now';
+  if (submittedAt && submittedAt !== null && submittedAt !== "") {
+    const d = new Date(submittedAt);
+    if (!isNaN(d.getTime())) {
+      formattedDate = d.toLocaleString([], {
+        dateStyle: 'medium',
+        timeStyle: 'short'
+      });
+    }
+  }
 
   return (
     <div className="agent-card-container">

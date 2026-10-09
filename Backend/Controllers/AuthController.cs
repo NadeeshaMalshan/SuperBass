@@ -186,6 +186,7 @@ namespace Superbass.Controllers
                     {
                         Email = email,
                         Name = name ?? email,
+                        ProfileImage = picture,
                         PasswordHash = jwtHash,
                         PhoneNo = request.PhoneNo,
                         Address = request.Address,
@@ -198,6 +199,10 @@ namespace Superbass.Controllers
                 else
                 {
                     existingResident.PasswordHash = jwtHash;
+                    if (!string.IsNullOrEmpty(picture) && string.IsNullOrEmpty(existingResident.ProfileImage))
+                    {
+                        existingResident.ProfileImage = picture;
+                    }
                     if (request.PhoneNo != null) existingResident.PhoneNo = request.PhoneNo;
                     if (request.Address != null) existingResident.Address = request.Address;
                     if (request.LocationLat != null) existingResident.LocationLat = request.LocationLat;
@@ -208,8 +213,8 @@ namespace Superbass.Controllers
                 return Ok(new { 
                     token = jwt, 
                     email = email, 
-                    name = name ?? email, 
-                    picture = picture, 
+                    name = existingResident.Name ?? name ?? email, 
+                    picture = existingResident.ProfileImage ?? picture, 
                     isNewUser = isNewUser,
                     isWorker = false,
                     isNewWorker = false,
@@ -349,3 +354,4 @@ namespace Superbass.Controllers
         public double? LocationLng { get; set; }
     }
 }
+// This controller handles authentication and onboarding for both residents and workers. It supports Google login via ID tokens or access tokens, generates JWTs for authenticated users, and manages user profiles in the database. The controller also enforces role-based restrictions to prevent users from switching roles without proper account deletion.

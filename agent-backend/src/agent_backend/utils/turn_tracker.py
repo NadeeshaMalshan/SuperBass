@@ -36,6 +36,10 @@ class TurnUsageLogger(BaseCallbackHandler):
         info = self.runs.get(str(run_id), {})
         duration = time.perf_counter() - info.get("start", time.perf_counter())
         usage = (response.llm_output or {}).get("token_usage") or {}
+        
+        prompt_tokens = usage.get("prompt_tokens", 0)
+        completion_tokens = usage.get("completion_tokens", 0)
+        total_tokens = usage.get("total_tokens", 0)
 
         # Extract generated content or tool calls
         gen_texts = []
@@ -43,6 +47,13 @@ class TurnUsageLogger(BaseCallbackHandler):
             for g in gen_list:
                 msg = getattr(g, "message", None)
                 if msg:
+                    # Fall back to usage_metadata if llm_output was empty
+                    if not usage:
+                        usage_meta = getattr(msg, "usage_metadata", None) or {}
+                        prompt_tokens += usage_meta.get("input_tokens", 0)
+                        completion_tokens += usage_meta.get("output_tokens", 0)
+                        total_tokens += usage_meta.get("total_tokens", 0)
+                        
                     content = getattr(msg, "content", None)
                     t_calls = getattr(msg, "tool_calls", None)
                     if t_calls:
@@ -56,9 +67,9 @@ class TurnUsageLogger(BaseCallbackHandler):
             "node": info.get("node", "agent"),
             "model": info.get("model", "gpt-4o-mini"),
             "duration_sec": round(duration, 3),
-            "prompt_tokens": usage.get("prompt_tokens", 0),
-            "completion_tokens": usage.get("completion_tokens", 0),
-            "total_tokens": usage.get("total_tokens", 0),
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": total_tokens,
             "output_summary": " | ".join(gen_texts)
         })
 

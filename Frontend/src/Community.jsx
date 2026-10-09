@@ -11,6 +11,7 @@ import hero2Img from './assets/community.png';
 import sriLankaDistricts from './data/sriLankaDistricts.json';
 import { BACKEND_URL } from './config.js';
 import { showToast } from './utils/toast.js';
+import { useDebouncedValue } from './hooks/useDebouncedValue.js';
 
 const API_BASE_URL = `${BACKEND_URL}/api/community-posts`;
 
@@ -24,6 +25,7 @@ export default function Community() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm] = useDebouncedValue(searchTerm, 400);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedProvince, setSelectedProvince] = useState('all');
@@ -45,7 +47,7 @@ export default function Community() {
   // Reset page to 1 whenever filters, search, or sort change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, selectedCategory, selectedProvince, selectedDistrict, sortBy]);
+  }, [debouncedSearchTerm, selectedCategory, selectedProvince, selectedDistrict, sortBy]);
 
   // Detail Modal State
   const [selectedPostForDetail, setSelectedPostForDetail] = useState(null);
@@ -130,11 +132,11 @@ export default function Community() {
   };
 
   // Fetch Posts strictly from Backend Database
-  const fetchPosts = async () => {
+  const fetchPosts = async (abortSignal) => {
     try {
       setLoading(true);
       const params = {};
-      if (searchTerm) params.search = searchTerm;
+      if (debouncedSearchTerm) params.search = debouncedSearchTerm;
       if (selectedCategory !== 'all') params.category = selectedCategory;
       if (selectedDistrict !== 'all') {
         params.location = selectedDistrict;
@@ -143,7 +145,7 @@ export default function Community() {
       }
       if (sortBy) params.sort = sortBy;
 
-      const res = await axios.get(API_BASE_URL, { params });
+      const res = await axios.get(API_BASE_URL, { params, signal: abortSignal });
       if (res.data && Array.isArray(res.data)) {
         let results = res.data;
         if (selectedProvince !== 'all' && selectedDistrict === 'all') {
@@ -184,8 +186,10 @@ export default function Community() {
   };
 
   useEffect(() => {
-    fetchPosts();
-  }, [searchTerm, selectedCategory, selectedProvince, selectedDistrict, sortBy]);
+    const controller = new AbortController();
+    fetchPosts(controller.signal);
+    return () => controller.abort();
+  }, [debouncedSearchTerm, selectedCategory, selectedProvince, selectedDistrict, sortBy]);
 
   // Handle Like
   const handleLike = async (postId, e) => {
@@ -251,12 +255,19 @@ export default function Community() {
     }
   };
 
-  // Click card to open detail view
+  // Navigate to full-screen page on card click
   const handleCardClick = (post) => {
-    setSelectedPostForDetail(post);
-    setSelectedGalleryImage(post.images && post.images.length > 0 ? post.images[0] : null);
-    fetchComments(post.postId);
+    navigate(`/community-post?id=${post.postId}`);
   };
+
+  // Check URL query params on load (e.g. /community?post=123 or ?id=123)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const targetPostId = params.get('post') || params.get('id');
+    if (targetPostId) {
+      navigate(`/community-post?id=${targetPostId}`);
+    }
+  }, []);
 
   // Check if current user is owner of a post
   const isPostOwner = (post) => {
@@ -534,7 +545,7 @@ export default function Community() {
               <button
                 type="button"
                 className="community-hero-secondary-btn"
-                onClick={() => navigate('/ai/chat')}
+                onClick={() => navigate(localStorage.getItem('token') ? '/ai/chat' : '/join')}
               >
                 <i className="fa-solid fa-wand-magic-sparkles"></i>
                 <span>Ask Workio AI</span>
@@ -1124,222 +1135,7 @@ export default function Community() {
         </main>
       </div>
 
-      {/* 3. DETAIL POST MODAL (Uber Clean Minimalist Window) */}
-      {selectedPostForDetail && (
-        <div className="uber-modal-backdrop" onClick={() => setSelectedPostForDetail(null)}>
-          <div className="uber-modal-window uber-detail-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="uber-modal-header">
-              <div>
-                <span className="uber-category-pill" style={{ marginBottom: '6px' }}>
-                  {selectedPostForDetail.serviceCategoryName || selectedPostForDetail.category}
-                </span>
-                <h2 className="uber-modal-title">
-                  {selectedPostForDetail.title}
-                </h2>
-              </div>
-              <button
-                type="button"
-                className="uber-modal-close-btn"
-                onClick={() => setSelectedPostForDetail(null)}
-                title="Close"
-              >
-                ✕
-              </button>
-            </div>
 
-            <div className="uber-modal-body">
-              {/* Main Image Gallery */}
-              {selectedPostForDetail.images && selectedPostForDetail.images.length > 0 && (
-                <div>
-                  <img
-                    src={selectedGalleryImage || selectedPostForDetail.images[0]}
-                    alt={selectedPostForDetail.title}
-                    className="uber-detail-gallery-main"
-                  />
-                  {selectedPostForDetail.images.length > 1 && (
-                    <div className="uber-detail-thumbnails" style={{ marginTop: '10px' }}>
-                      {selectedPostForDetail.images.map((img, idx) => (
-                        <img
-                          key={idx}
-                          src={img}
-                          alt="Thumbnail"
-                          className={`uber-detail-thumb-img ${selectedGalleryImage === img ? 'active' : ''}`}
-                          onClick={() => setSelectedGalleryImage(img)}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Location & Posted Date Header (Uber Minimalist) */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f6f6f6', padding: '14px 20px', borderRadius: '14px', border: '1px solid #e5e5e5' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <i className="fa-solid fa-location-dot" style={{ color: '#000000', fontSize: '1.1rem' }}></i>
-                  <div>
-                    <span style={{ fontSize: '0.75rem', color: '#666666', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>Location</span>
-                    <span style={{ fontWeight: '700', color: '#000000', fontSize: '0.95rem' }}>
-                      {selectedPostForDetail.location || 'Sri Lanka'}
-                    </span>
-                  </div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <span style={{ fontSize: '0.75rem', color: '#666666', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block' }}>Posted</span>
-                  <span style={{ fontWeight: '600', color: '#555555', fontSize: '0.9rem' }}>
-                    {formatTimeAgo(selectedPostForDetail.createdAt)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Poster Info Card */}
-              <div className="uber-poster-card">
-                <div className="uber-poster-left">
-                  <img
-                    src={getPostAvatar(selectedPostForDetail)}
-                    alt={getPostAuthorName(selectedPostForDetail)}
-                    className="uber-poster-avatar"
-                  />
-                  <div>
-                    <div className="uber-poster-name">
-                      {getPostAuthorName(selectedPostForDetail)}
-                    </div>
-                    <div className="uber-poster-email">
-                      Posted {formatTimeAgo(selectedPostForDetail.createdAt)}
-                    </div>
-                  </div>
-                </div>
-
-                {activeRole === 'Worker' && (
-                  <button
-                    type="button"
-                    className="uber-btn-primary"
-                    onClick={() => handleOpenChat(selectedPostForDetail)}
-                  >
-                    <i className="fa-solid fa-comment-dots"></i>
-                    <span>Chat / Contact</span>
-                  </button>
-                )}
-              </div>
-
-              {/* Description */}
-              <div>
-                <h4 style={{ margin: '0 0 8px 0', fontSize: '0.95rem', fontWeight: '800', color: '#000000', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Description</h4>
-                <p style={{ fontSize: '0.95rem', color: '#262626', lineHeight: '1.6', margin: 0, whiteSpace: 'pre-line' }}>
-                  {selectedPostForDetail.content}
-                </p>
-              </div>
-
-              {/* Actions & Report Bar */}
-              <div className="uber-detail-actions">
-                {isLoggedIn ? (
-                  <button
-                    type="button"
-                    className={selectedPostForDetail.isLiked ? "uber-btn-primary" : "uber-btn-secondary"}
-                    onClick={(e) => handleLike(selectedPostForDetail.postId, e)}
-                  >
-                    <i className="fa-solid fa-thumbs-up"></i>
-                    <span>Interested ({selectedPostForDetail.likesCount || 0})</span>
-                  </button>
-                ) : (
-                  <div className="uber-btn-secondary" style={{ cursor: 'default' }}>
-                    <i className="fa-solid fa-thumbs-up"></i>
-                    <span>{selectedPostForDetail.likesCount || 0} Interested</span>
-                  </div>
-                )}
-
-                {isPostOwner(selectedPostForDetail) && (
-                  <>
-                    <button
-                      type="button"
-                      className="uber-btn-outline"
-                      onClick={(e) => { setSelectedPostForDetail(null); handleOpenEdit(selectedPostForDetail, e); }}
-                    >
-                      <i className="fa-solid fa-pen"></i> Edit Post
-                    </button>
-                    <button
-                      type="button"
-                      className="uber-btn-secondary"
-                      onClick={(e) => handleDeletePost(selectedPostForDetail.postId, e)}
-                      style={{ color: '#ef4444' }}
-                    >
-                      <i className="fa-solid fa-trash"></i> Delete Post
-                    </button>
-                  </>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => setReportingPostId(selectedPostForDetail.postId)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#757575',
-                    fontSize: '0.85rem',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    marginLeft: 'auto',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px'
-                  }}
-                >
-                  <i className="fa-solid fa-flag"></i> Report
-                </button>
-              </div>
-
-              {/* Comments Thread Section */}
-              <div style={{ borderTop: '1px solid #eeeeee', paddingTop: '1.25rem' }}>
-                <h4 style={{ margin: '0 0 12px 0', fontSize: '0.95rem', fontWeight: '800', color: '#000000' }}>
-                  Comments & Inquiries ({selectedPostForDetail.commentsCount || (commentsMap[selectedPostForDetail.postId] || []).length})
-                </h4>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '1rem' }}>
-                  {(commentsMap[selectedPostForDetail.postId] || []).length === 0 ? (
-                    <p style={{ color: '#757575', fontSize: '0.875rem' }}>No comments yet. Ask a question or express interest!</p>
-                  ) : (
-                    (commentsMap[selectedPostForDetail.postId] || []).map(comment => (
-                      <div key={comment.commentId} style={{ backgroundColor: '#f6f6f6', padding: '12px 14px', borderRadius: '10px', border: '1px solid #eeeeee' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                          <span style={{ fontWeight: '700', fontSize: '0.875rem', color: '#000000' }}>
-                            {comment.userName}
-                          </span>
-                          <span style={{ fontSize: '0.75rem', color: '#757575' }}>
-                            {formatTimeAgo(comment.createdAt)}
-                          </span>
-                        </div>
-                        <p style={{ margin: 0, fontSize: '0.9rem', color: '#262626' }}>
-                          {comment.content}
-                        </p>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                {/* Add Comment Input */}
-                {isLoggedIn && (
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <input
-                      type="text"
-                      className="uber-input"
-                      placeholder="Write a message or question..."
-                      value={newCommentText}
-                      onChange={(e) => setNewCommentText(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleAddComment(selectedPostForDetail.postId)}
-                    />
-                    <button
-                      type="button"
-                      className="uber-btn-primary"
-                      onClick={() => handleAddComment(selectedPostForDetail.postId)}
-                    >
-                      Send
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 4. EDIT POST MODAL (Uber Theme) */}
       {editingPost && (
@@ -1724,3 +1520,8 @@ export default function Community() {
     </div>
   );
 }
+
+
+
+
+

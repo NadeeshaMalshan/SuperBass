@@ -3,24 +3,15 @@ import './M3Navbar.css';
 import UserMenu from './UserMenu.jsx';
 import '@material/web/icon/icon.js';
 import workioLogoWhite from '../assets/Workio_Logo/Workio_Logo_White_With_Text.png';
-import workioLogoBlack from '../assets/Workio_Logo/Workio_Logo_Black_With_Text.png';
 
 export default function M3TopNavbar({
   activePage = '',
-  searchValue = '',
-  onSearchChange = null,
-  onSearchSubmit = null,
-  onSearchFocus = null,
-  searchPlaceholder = 'Search Workio...',
-  showSearch = true,
   showSidebarToggle = false,
   isSidebarCollapsed = false,
   onToggleSidebar = null,
-  searchDropdown = null,
   theme = 'light',
   alwaysShowLinks = false,
 }) {
-  const [internalSearch, setInternalSearch] = useState(searchValue || '');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
@@ -36,40 +27,9 @@ export default function M3TopNavbar({
     };
   }, []);
 
-  useEffect(() => {
-    setInternalSearch(searchValue);
-  }, [searchValue]);
-
   const navigate = (newPath) => {
     window.history.pushState({}, '', newPath);
     window.dispatchEvent(new PopStateEvent('popstate'));
-  };
-
-  const handleInputChange = (e) => {
-    const val = e.target.value;
-    setInternalSearch(val);
-    if (onSearchChange) {
-      onSearchChange(val);
-    }
-  };
-
-  const handleClear = () => {
-    setInternalSearch('');
-    if (onSearchChange) {
-      onSearchChange('');
-    }
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Escape') {
-      handleClear();
-    } else if (e.key === 'Enter') {
-      if (onSearchSubmit) {
-        onSearchSubmit(internalSearch);
-      } else if (!onSearchChange && internalSearch.trim()) {
-        navigate(`/find?q=${encodeURIComponent(internalSearch.trim())}`);
-      }
-    }
   };
 
   return (
@@ -97,8 +57,6 @@ export default function M3TopNavbar({
           <img src={workioLogoWhite} alt="Workio" className="m3-brand-logo-img" />
         </a>
       </div>
-
-      {/* Center: Search Pill Removed as per instructions */}
 
       {/* Right: Navigation Buttons & User Avatar */}
       <div className="m3-navbar-right">
@@ -128,7 +86,7 @@ export default function M3TopNavbar({
         <button
           type="button"
           className={`m3-nav-btn m3-nav-btn-ai ${activePage === 'ai' ? 'active' : ''}`}
-          onClick={() => navigate('/ai/chat')}
+          onClick={() => navigate(isLoggedIn ? '/ai/chat' : '/join')}
           title="Workio AI Assistant"
         >
           <span>Ask AI</span>

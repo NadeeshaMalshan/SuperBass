@@ -195,3 +195,4 @@ namespace Superbass.Migrations
         }
     }
 }
+// This is an auto-generated designer file for the migration that adds the "Residents" table to the database. It defines the structure of the "Residents" table, including columns for Email (primary key), Name, PasswordHash, PhoneNo, Address, LocationLat, and LocationLng. The BuildTargetModel method is used by Entity Framework Core to build the model for the migration.

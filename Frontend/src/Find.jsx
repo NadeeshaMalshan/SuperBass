@@ -14,7 +14,7 @@ import '@material/web/iconbutton/icon-button.js';
 import '@material/web/progress/circular-progress.js';
 import Loader from './components/Loader.jsx';
 import UserMenu from './components/UserMenu.jsx';
-import M3TopNavbar from './components/M3TopNavbar.jsx';
+
 import LocationSelector from './components/LocationSelector.jsx';
 import './components/M3Navbar.css';
 import { API_BASE_URL } from './config.js';
@@ -23,6 +23,7 @@ import sriLankaDistricts from './data/sriLankaDistricts.json';
 import { getCoordinatesForCity, matchesWorkerLocation, extractCityFromAddress } from './data/cityCoordinates.js';
 import workioLogoWhite from './assets/Workio_Logo/Workio_Logo_White_With_Text.png';
 import craftsmanHeroImg from './assets/workersBackgrond.png';
+import { useDebouncedValue } from './hooks/useDebouncedValue.js';
 
 export default function Find() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -38,7 +39,20 @@ export default function Find() {
       return '';
     }
   });
-  const [appliedSearchQuery, setAppliedSearchQuery] = useState(searchQuery);
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useDebouncedValue(searchQuery, 400);
+  const [backendTotalWorkers, setBackendTotalWorkers] = useState(0);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const currentQ = params.get('q') || '';
+    if (currentQ !== debouncedSearchQuery) {
+      if (debouncedSearchQuery) params.set('q', debouncedSearchQuery);
+      else params.delete('q');
+      const qs = params.toString();
+      const newUrl = `${window.location.pathname}${qs ? '?' + qs : ''}`;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [debouncedSearchQuery]);
 
   const sanitizeLocationParam = (raw) => {
     if (!raw) return '';
@@ -150,7 +164,7 @@ export default function Find() {
       const rawLoc = params.get('location') || '';
       const loc = sanitizeLocationParam(rawLoc);
       setSearchQuery(q);
-      setAppliedSearchQuery(q);
+      setDebouncedSearchQuery(q);
       setLocationQuery(loc);
       setAppliedLocationQuery(loc);
       if (loc) {
@@ -320,7 +334,7 @@ export default function Find() {
   }, []);
 
   useEffect(() => {
-    const fetchWorkers = async () => {
+    const fetchWorkers = async (abortSignal) => {
       try {
         setLoading(true);
         const [lat, lng] = userLocation;
@@ -328,6 +342,8 @@ export default function Find() {
           residentLat: lat,
           residentLng: lng,
           onlyVerified: false,
+          page: currentPage,
+          pageSize: WORKERS_PER_PAGE
         };
         if (selectedProvince && selectedProvince !== 'all') {
           params.province = selectedProvince;
@@ -335,16 +351,40 @@ export default function Find() {
         if (selectedDistrict && selectedDistrict !== 'all') {
           params.district = selectedDistrict;
         }
-        const res = await axios.get(`${API_BASE_URL}/workers/search`, { params });
+        if (debouncedSearchQuery) {
+          params.q = debouncedSearchQuery;
+        }
+        if (selectedCategories.length > 0) {
+          params.skill = selectedCategories[0];
+        }
+        const res = await axios.get(`${API_BASE_URL}/workers/search`, { 
+          params,
+          signal: abortSignal 
+        });
         setWorkers(res.data || []);
+        
+        const total = res.headers['x-total-count'];
+        if (total) {
+          setBackendTotalWorkers(parseInt(total, 10));
+        } else {
+          setBackendTotalWorkers(res.data?.length || 0);
+        }
       } catch (err) {
-        console.error('Error fetching workers:', err);
+        if (!axios.isCancel(err)) {
+          console.error('Error fetching workers:', err);
+        }
       } finally {
         setLoading(false);
       }
     };
-    fetchWorkers();
-  }, [userLocation, selectedProvince, selectedDistrict]);
+    
+    const controller = new AbortController();
+    fetchWorkers(controller.signal);
+
+    return () => {
+      controller.abort();
+    };
+  }, [userLocation, selectedProvince, selectedDistrict, debouncedSearchQuery, selectedCategories, currentPage]);
 
   const getInitial = (name) => {
     if (!name) return 'U';
@@ -365,7 +405,7 @@ export default function Find() {
     selectedCategories.length > 0 ||
     minRating !== 'Any' ||
     selectedBadge !== 'all' ||
-    appliedSearchQuery !== '' ||
+    debouncedSearchQuery !== '' ||
     appliedLocationQuery !== '' ||
     selectedProvince !== 'all' ||
     selectedDistrict !== 'all';
@@ -380,7 +420,7 @@ export default function Find() {
     setMinRating('Any');
     setSelectedBadge('all');
     setSearchQuery('');
-    setAppliedSearchQuery('');
+    setDebouncedSearchQuery('');
     setLocationQuery('');
     setAppliedLocationQuery('');
     setSelectedProvince('all');
@@ -459,20 +499,6 @@ export default function Find() {
       if ((w.overallRating ?? 0) < 4.8) return false;
     }
 
-    // 1. Search Query (Skills, sub-skills, service names, craftsman name, description)
-    if (appliedSearchQuery.trim() !== '') {
-      const q = appliedSearchQuery.toLowerCase();
-      const nameMatch = w.name && w.name.toLowerCase().includes(q);
-      const locMatch = w.primaryServiceArea && w.primaryServiceArea.toLowerCase().includes(q);
-      const skillMatch = w.skills && w.skills.some(s => {
-        const sName = typeof s === 'string' ? s : (s.skillName || s.serviceName || '');
-        const subSkills = Array.isArray(s.skills) ? s.skills : [];
-        return sName.toLowerCase().includes(q) || subSkills.some(sub => sub.toLowerCase().includes(q));
-      });
-      const descMatch = w.description && w.description.toLowerCase().includes(q);
-      if (!nameMatch && !locMatch && !skillMatch && !descMatch) return false;
-    }
-
     // 1.5 Province & District Filter
     if (selectedProvince && selectedProvince !== 'all') {
       const provDistricts = sriLankaDistricts[selectedProvince] || [];
@@ -538,17 +564,6 @@ export default function Find() {
       }
     }
 
-    // 5. Selected Categories
-    if (selectedCategories.length > 0) {
-      const matchesAnyCategory = selectedCategories.some(catId => {
-        if (w.skills && w.skills.length > 0) {
-          return w.skills.some(s => s.skillName.toLowerCase().includes(catId.toLowerCase()));
-        }
-        return w.description && w.description.toLowerCase().includes(catId.toLowerCase());
-      });
-      if (!matchesAnyCategory) return false;
-    }
-
     // 6. Rating Filter
     if (minRating !== 'Any') {
       const requiredRating = parseFloat(minRating);
@@ -577,7 +592,7 @@ export default function Find() {
   useEffect(() => {
     setCurrentPage(1);
   }, [
-    appliedSearchQuery,
+    debouncedSearchQuery,
     appliedLocationQuery,
     rateType,
     availableNowOnly,
@@ -593,11 +608,14 @@ export default function Find() {
   ]);
 
   // Pagination calculations (9 cards per page)
-  const totalWorkers = filteredWorkers.length;
+  const totalWorkers = backendTotalWorkers;
   const totalPages = Math.ceil(totalWorkers / WORKERS_PER_PAGE) || 1;
   const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  
+  // Since we fetch only WORKERS_PER_PAGE from backend, filteredWorkers is the current page.
+  // Note: Client-side filters might further reduce this page's items, but we don't slice again.
   const startIndex = (safeCurrentPage - 1) * WORKERS_PER_PAGE;
-  const paginatedWorkers = filteredWorkers.slice(startIndex, startIndex + WORKERS_PER_PAGE);
+  const paginatedWorkers = filteredWorkers;
 
   const handlePageChange = (newPage) => {
     if (newPage < 1 || newPage > totalPages) return;
@@ -921,7 +939,7 @@ export default function Find() {
   const renderWorkerSearchDropdown = () => {
     if (!isWorkerDropdownOpen || !searchQuery.trim()) return null;
 
-    // The dropdown uses the live searchQuery, not the appliedSearchQuery
+    // The dropdown uses the live searchQuery, not the debouncedSearchQuery
     const dropdownWorkers = workers.filter(w => {
       if (!w.isVerified && !w.verified) return false;
       const q = searchQuery.toLowerCase();
@@ -950,7 +968,7 @@ export default function Find() {
                 <md-filled-button
                   onClick={() => {
                     setIsWorkerDropdownOpen(false);
-                    setAppliedSearchQuery(searchQuery);
+                    setDebouncedSearchQuery(searchQuery);
                     navigate(`/find?q=${encodeURIComponent(searchQuery)}`);
                   }}
                   style={{
@@ -1066,7 +1084,7 @@ export default function Find() {
               className="m3-search-dropdown-footer-link"
               onClick={() => {
                 setIsWorkerDropdownOpen(false);
-                setAppliedSearchQuery(searchQuery);
+                setDebouncedSearchQuery(searchQuery);
                 navigate(`/find?q=${encodeURIComponent(searchQuery)}`);
               }}
             >
@@ -1120,7 +1138,7 @@ export default function Find() {
                 <button
                   type="button"
                   className="community-hero-secondary-btn"
-                  onClick={() => navigate('/ai/chat')}
+                  onClick={() => navigate(localStorage.getItem('token') ? '/ai/chat' : '/join')}
                 >
                   <i className="fa-solid fa-wand-magic-sparkles"></i>
                   <span>Ask Workio AI</span>
@@ -1296,7 +1314,7 @@ export default function Find() {
                   {/* Map Header Status Badge */}
                   <div className="sidebar-map-badge">
                     <span className="pulse-dot"></span>
-                    <span>{filteredWorkers.length} near {appliedLocationQuery || 'you'}</span>
+                    <span>{totalWorkers} near {appliedLocationQuery || 'you'}</span>
                   </div>
 
                   {/* Leaflet Map Canvas */}
@@ -1598,13 +1616,10 @@ export default function Find() {
                 className="uber-search-input"
                 placeholder="Search craftsmen by name, skill, service (e.g. Electrician)..."
                 value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setAppliedSearchQuery(e.target.value);
-                }}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
-                    setAppliedSearchQuery(searchQuery);
+                    setDebouncedSearchQuery(searchQuery);
                     const params = new URLSearchParams(window.location.search);
                     if (searchQuery) params.set('q', searchQuery);
                     else params.delete('q');
@@ -1618,7 +1633,7 @@ export default function Find() {
                   type="button"
                   onClick={() => {
                     setSearchQuery('');
-                    setAppliedSearchQuery('');
+                    setDebouncedSearchQuery('');
                     const params = new URLSearchParams(window.location.search);
                     params.delete('q');
                     const qs = params.toString();
@@ -1679,7 +1694,7 @@ export default function Find() {
           {/* Results Count & Active Filter Chips Bar */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', margin: '4px 0 4px 0' }}>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#000000', margin: 0, letterSpacing: '-0.02em' }}>
-              {loading ? 'Searching workers...' : `${filteredWorkers.length} verified worker${filteredWorkers.length === 1 ? '' : 's'} available`}
+              {loading ? 'Searching workers...' : `${totalWorkers} verified worker${totalWorkers === 1 ? '' : 's'} available`}
             </h2>
             {!loading && totalWorkers > 0 && (
               <div style={{ fontSize: '0.85rem', color: '#71717a', fontWeight: 600 }}>
@@ -1688,9 +1703,9 @@ export default function Find() {
             )}
           </div>
 
-          {(appliedSearchQuery || (appliedLocationQuery && appliedLocationQuery.trim() !== '') || selectedCategories.length > 0 || availableNowOnly || favoritesOnly || minRating !== 'Any' || selectedBadge !== 'all') && (
+          {(debouncedSearchQuery || (appliedLocationQuery && appliedLocationQuery.trim() !== '') || selectedCategories.length > 0 || availableNowOnly || favoritesOnly || minRating !== 'Any' || selectedBadge !== 'all') && (
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
-              {appliedSearchQuery && (
+              {debouncedSearchQuery && (
                 <div style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -1703,12 +1718,12 @@ export default function Find() {
                   fontWeight: 600
                 }}>
                   <md-icon style={{ fontSize: '16px' }}>search</md-icon>
-                  <span>"{appliedSearchQuery}"</span>
+                  <span>"{debouncedSearchQuery}"</span>
                   <md-icon
                     style={{ fontSize: '16px', cursor: 'pointer', marginLeft: '4px' }}
                     onClick={() => {
                       setSearchQuery('');
-                      setAppliedSearchQuery('');
+                      setDebouncedSearchQuery('');
                       const params = new URLSearchParams(window.location.search);
                       params.delete('q');
                       const qs = params.toString();
@@ -1889,7 +1904,7 @@ export default function Find() {
               marginTop: '10px'
             }}>
               <md-icon style={{ fontSize: '48px', '--md-icon-size': '48px', color: '#cbd5e1', marginBottom: '16px' }}>person_off</md-icon>
-              <h3 style={{ fontSize: '1.3rem', fontWeight: 800, margin: '0 0 8px 0', color: '#0f172a' }}>No Matching Workers Found</h3>
+              <h3 style={{ fontSize: '1.3rem', fontWeight: 800, margin: '0 0 8px 0', color: '#0f172a' }}>{debouncedSearchQuery ? "No workers found for '" + debouncedSearchQuery + "'" : 'No Matching Workers Found'}</h3>
               <p style={{ color: '#64748b', margin: '0 0 20px 0', fontSize: '0.95rem' }}>
                 Try adjusting your rate range, price filters, or category selections.
               </p>
@@ -1923,3 +1938,9 @@ export default function Find() {
     </div>
   );
 }
+
+
+
+
+
+

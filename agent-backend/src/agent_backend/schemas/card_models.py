@@ -213,10 +213,34 @@ class BookingFormCard(BaseModel):
     selectedStartTime: Optional[str] = Field(default="09:00", description="Pre-filled start time (HH:MM)")
     durationHours: Optional[int] = Field(default=2, description="Duration in hours")
     jobTitle: Optional[str] = Field(default=None, description="Service title or problem description")
+    description: Optional[str] = Field(default=None, description="Detailed problem description")
+    priority: Optional[str] = Field(default="Medium", description="Priority level: Low, Medium, High")
     notes: Optional[str] = Field(default=None, description="Additional instructions for the worker")
+    specificAddress: Optional[str] = Field(default=None, description="Specific street address")
+    latitude: Optional[float] = Field(default=None, description="GPS latitude")
+    longitude: Optional[float] = Field(default=None, description="GPS longitude")
     isAvailable: Optional[bool] = Field(default=True, description="Whether worker is currently verified available")
     availabilityStatus: Optional[str] = Field(default="Available", description="'Available', 'Busy', 'Checking'")
     availabilityReason: Optional[str] = Field(default=None, description="Explanation of availability")
+
+
+class BookingConfirmationReviewCard(BaseModel):
+    """UI Card rendered before final booking creation, summarizing appointment details with Yes/No confirmation buttons."""
+    workerId: Union[int, str] = Field(description="Worker ID")
+    workerName: str = Field(description="Worker display name")
+    workerAvatar: Optional[str] = Field(default=None, description="Worker avatar/photo URL")
+    category: Optional[str] = Field(default="General", description="Service category")
+    jobTitle: str = Field(description="Service job title")
+    description: Optional[str] = Field(default=None, description="Detailed problem description")
+    priority: Optional[str] = Field(default="Medium", description="Booking priority level: Low, Medium, High")
+    scheduledDate: str = Field(description="Scheduled appointment date & time")
+    locationAddress: str = Field(description="Service location")
+    contactPhone: str = Field(description="Contact phone number")
+    hourlyRate: Optional[float] = Field(default=None, description="Hourly rate in LKR")
+    estimatedPrice: Optional[float] = Field(default=None, description="Estimated total in LKR")
+    notes: Optional[str] = Field(default=None, description="Resident notes / instructions")
+    confirmPrompt: Optional[str] = Field(default=None, description="Prompt to send on 'Yes' click")
+    cancelPrompt: Optional[str] = Field(default=None, description="Prompt to send on 'No' click")
 
 
 class BookingConfirmedCard(BaseModel):
@@ -315,6 +339,7 @@ ResponseTypeLiteral = Literal[
     "service_categories",
     "worker_list",
     "booking_form",
+    "booking_confirmation",
     "booking_confirmed",
     "booking_list",
     "review_form",

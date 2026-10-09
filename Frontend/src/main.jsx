@@ -12,6 +12,8 @@ import AiCommunityChat from './pages/AiCommunityChat.jsx'
 import LoginPortal from './pages/LoginPortal.jsx'
 
 import WorkerDetail from './WorkerDetail.jsx'
+import CommunityPostDetail from './CommunityPostDetail.jsx'
+import BookingDetail from './BookingDetail.jsx'
 import M3TopNavbar from './components/M3TopNavbar.jsx'
 import GlobalToast from './components/GlobalToast.jsx'
 
@@ -89,6 +91,12 @@ function Router() {
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    if (document.documentElement) document.documentElement.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
+  }, [path]);
+
   const activeRole = localStorage.getItem('activeRole') || 'Resident';
 
   // Role-based Theme: Switch yellow accents to Worker Blue except on landing and worker-detail
@@ -141,8 +149,15 @@ function Router() {
     if (path === '/join' || path === '/join.jsx' || path === '/login' || path === '/login.jsx') {
       return <LoginPortal />;
     }
-    if (path === '/ai/chat' || path === '/community/chat' || path === '/ai-chat' || path === '/agent') {
+    if (path === '/ai/chat' || path === '/community/chat' || path === '/ai-chat' || path === '/agent' || path.startsWith('/ai')) {
+      if (!localStorage.getItem('token')) {
+        window.history.replaceState({}, '', '/login');
+        return <LoginPortal />;
+      }
       return <AiCommunityChat />;
+    }
+    if (path === '/community-post' || path === '/community-post.jsx' || path.startsWith('/community-post') || path === '/community/post' || path.startsWith('/community/post')) {
+      return <CommunityPostDetail />;
     }
     if (path === '/community' || path === '/community.jsx') {
       return <Community />;
@@ -153,6 +168,13 @@ function Router() {
         return <LoginPortal />;
       }
       return <Chats />;
+    }
+    if (path === '/booking-detail' || path === '/booking-detail.jsx' || path.startsWith('/booking-detail') || path === '/booking/detail' || path.startsWith('/booking/detail')) {
+      if (!localStorage.getItem('token')) {
+        window.history.replaceState({}, '', '/login');
+        return <LoginPortal />;
+      }
+      return <BookingDetail />;
     }
     if (path === '/bookings' || path === '/bookings.jsx' || path === '/booking' || path === '/booking.jsx') {
       if (!localStorage.getItem('token')) {

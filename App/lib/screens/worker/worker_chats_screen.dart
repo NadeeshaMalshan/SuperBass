@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/chat_signalr_service.dart';
@@ -11,7 +13,7 @@ class WorkerChatsScreen extends StatefulWidget {
   const WorkerChatsScreen({super.key});
 
   @override
-  State<WorkerChatsScreen> createState() => _WorkerChatsScreenState();
+  _WorkerChatsScreenState createState() => _WorkerChatsScreenState();
 }
 
 class _WorkerChatsScreenState extends State<WorkerChatsScreen> {
@@ -54,17 +56,36 @@ class _WorkerChatsScreenState extends State<WorkerChatsScreen> {
 
     try {
       final convs = await ApiService().fetchConversations(email);
+      final prefs = await SharedPreferences.getInstance();
+
+      final filteredConvs = <Map<String, dynamic>>[];
       int totalUnread = 0;
       for (final c in convs) {
+        final convId = c['id']?.toString() ?? '';
+        final clearedBeforeStr = prefs.getString('cleared_chat_before_${email}_$convId');
+        if (clearedBeforeStr != null) {
+          final clearedBefore = DateTime.tryParse(clearedBeforeStr);
+          final lastMsgAtStr = c['lastMessageAt']?.toString() ?? c['updatedAt']?.toString();
+          final lastMsgAt = lastMsgAtStr != null ? DateTime.tryParse(lastMsgAtStr) : null;
+          if (clearedBefore != null && lastMsgAt != null) {
+            if (lastMsgAt.toUtc().isBefore(clearedBefore) || lastMsgAt.toUtc().isAtSameMomentAs(clearedBefore)) {
+              continue; // Chat cleared: hide from home screen
+            }
+          } else if (clearedBefore != null && lastMsgAt == null) {
+            continue; // Empty/cleared
+          }
+        }
+
         if (c['unreadCount'] is int) {
           totalUnread += c['unreadCount'] as int;
         }
+        filteredConvs.add(c);
       }
       ChatSignalRService().setUnreadChatCount(totalUnread);
 
       if (mounted) {
         setState(() {
-          _conversations = convs;
+          _conversations = filteredConvs;
           _isLoading = false;
         });
       }
@@ -97,183 +118,98 @@ class _WorkerChatsScreenState extends State<WorkerChatsScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final filtered = _conversations.where((c) {
-      if (_searchQuery.trim().isEmpty) return true;
-      final q = _searchQuery.toLowerCase();
-      final name = (c['residentName'] ?? c['otherPartyName'] ?? c['workerName'] ?? '').toString().toLowerCase();
-      final lastMsg = (c['lastMessage'] ?? '').toString().toLowerCase();
-      return name.contains(q) || lastMsg.contains(q);
-    }).toList();
-
-    return Container(
-      color: Colors.white,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header Title
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Chats',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.black,
-                    letterSpacing: -0.6,
-                  ),
-                ),
-                if (_conversations.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      '${_conversations.length} ${_conversations.length == 1 ? 'chat' : 'chats'}',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF64748B),
-                      ),
-                    ),
-                  ),
-              ],
+  Widget _buildMessageDisplay(
+    String lastMsg,
+    BuildContext context,
+    Map<String, dynamic> c,
+    int unreadCount,
+  ) {
+    if (lastMsg.trimLeft().startsWith('{')) {
+      try {
+        final decoded = jsonDecode(lastMsg);
+        if (decoded is Map &&
+            (decoded.containsKey('phoneNo') || decoded.containsKey('PhoneNo'))) {
+          return Text(
+            'Shared contact card',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.dmSans(
+              fontSize: 13,
+              color: unreadCount > 0 ? const Color(0xFF0F172A) : const Color(0xFF64748B),
+              fontWeight: unreadCount > 0 ? FontWeight.w700 : FontWeight.w400,
+              fontStyle: FontStyle.italic,
             ),
-          ),
-
-          // Search Bar
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFF4F6F8),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Row(
-                children: [
-                  const Icon(Icons.search_rounded, size: 20, color: Color(0xFF94A3B8)),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: TextField(
-                      onChanged: (val) => setState(() => _searchQuery = val),
-                      style: GoogleFonts.dmSans(fontSize: 14, color: Colors.black),
-                      decoration: InputDecoration(
-                        hintText: 'Search chats or clients...',
-                        hintStyle: GoogleFonts.dmSans(fontSize: 14, color: const Color(0xFF94A3B8)),
-                        border: InputBorder.none,
-                        isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                    ),
-                  ),
-                  if (_searchQuery.isNotEmpty)
-                    GestureDetector(
-                      onTap: () => setState(() => _searchQuery = ''),
-                      child: const Icon(Icons.close_rounded, size: 18, color: Color(0xFF94A3B8)),
-                    ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-
-          // Chat list
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator(color: Colors.black))
-                : RefreshIndicator(
-                    onRefresh: _fetchChats,
-                    color: Colors.black,
-                    backgroundColor: Colors.white,
-                    child: filtered.isEmpty
-                        ? _buildEmptyState()
-                        : ListView.separated(
-                            padding: const EdgeInsets.fromLTRB(20, 6, 20, 110),
-                            itemCount: filtered.length,
-                            separatorBuilder: (_, _) => const Divider(
-                              height: 1,
-                              color: Color(0xFFF1F5F9),
-                              indent: 68,
-                            ),
-                            itemBuilder: (context, index) {
-                              final c = filtered[index];
-                              return _buildConversationItem(c);
-                            },
-                          ),
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF1F5F9),
-                  shape: BoxShape.circle,
-                ),
-                child: const Center(
-                  child: Icon(Icons.chat_bubble_outline_rounded, size: 30, color: Colors.black),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                _searchQuery.isNotEmpty ? 'No matches found' : 'No messages yet',
-                style: GoogleFonts.dmSans(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                _searchQuery.isNotEmpty
-                    ? 'Try searching with a different client name or keyword.'
-                    : 'Conversations with residents and clients will appear here.',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.dmSans(
-                  fontSize: 13,
-                  color: const Color(0xFF64748B),
-                ),
-              ),
-            ],
-          ),
-        ),
+          );
+        }
+      } catch (_) {
+        // fall through to text display
+      }
+    }
+    return Text(
+      lastMsg,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: GoogleFonts.dmSans(
+        fontSize: 13,
+        color: unreadCount > 0 ? const Color(0xFF0F172A) : const Color(0xFF64748B),
+        fontWeight: unreadCount > 0 ? FontWeight.w700 : FontWeight.w400,
       ),
     );
   }
 
   Widget _buildConversationItem(Map<String, dynamic> c) {
-    final clientName = (c['residentName'] ?? 'Client').toString();
-    final profileImage = c['residentProfileImage']?.toString();
-    final lastMsg = (c['lastMessage'] ?? 'Started a conversation').toString();
-    final unread = (c['unreadCount'] is int) ? c['unreadCount'] as int : 0;
-    final timeStr = _formatMessageTime(c['updatedAt']?.toString() ?? c['lastMessageAt']?.toString());
-    final isOnline = c['isOnline'] == true;
+    final String myEmail = (AuthService().currentUser?.email ?? '').trim().toLowerCase();
+    final String resEmail = (c['residentEmail'] ?? c['ResidentEmail'] ?? '').toString().trim().toLowerCase();
+    final bool amIResident = myEmail.isNotEmpty && resEmail == myEmail;
 
-    final isClientVerified = c['isResidentVerified'] == true;
+    final clientName = (amIResident
+        ? (c['workerName'] ?? c['WorkerName'] ?? c['residentName'] ?? c['ResidentName'] ?? c['otherPartyName'] ?? c['name'] ?? 'Worker')
+        : (c['residentName'] ?? c['ResidentName'] ?? c['workerName'] ?? c['WorkerName'] ?? c['otherPartyName'] ?? c['name'] ?? 'Client')
+    ).toString();
+
+    // In WorkerChatsScreen, only resolve the other party's (client/resident) avatar.
+    // Never fall back to workerProfileImage or workerAvatar!
+    String? profileImage = (amIResident
+        ? (c['workerProfileImage'] ?? c['WorkerProfileImage'] ?? c['workerAvatar'])
+        : (c['residentProfileImage'] ?? c['ResidentProfileImage'] ?? c['residentAvatar'] ?? c['ResidentAvatar']))
+        ?.toString();
+
+    if (profileImage == null ||
+        profileImage.isEmpty ||
+        profileImage == 'null' ||
+        profileImage.toLowerCase() == 'default') {
+      profileImage = null;
+    }
+
+    // Safety check: Never show the worker's own avatar as the client's avatar
+    final myPicture = AuthService().currentUser?.picture;
+    final workerAvatar = (c['workerProfileImage'] ??
+            c['WorkerProfileImage'] ??
+            c['workerAvatar'])
+        ?.toString();
+
+    if (!amIResident && profileImage != null) {
+      if ((myPicture != null && myPicture.isNotEmpty && profileImage == myPicture) ||
+          (workerAvatar != null && workerAvatar.isNotEmpty && profileImage == workerAvatar)) {
+        profileImage = null;
+      }
+    }
+
+    final String lastMsg = (c['lastMessage'] ?? 'Started a conversation').toString();
+    final int unread = (c['unreadCount'] is int) ? c['unreadCount'] as int : 0;
+    final String timeStr = _formatMessageTime(
+      c['updatedAt']?.toString() ?? c['lastMessageAt']?.toString(),
+    );
+    final bool isOnline = c['isOnline'] == true;
+    final bool isClientVerified = c['isResidentVerified'] == true || c['isWorkerVerified'] == true;
+
+    final Widget messageWidget = _buildMessageDisplay(lastMsg, context, c, unread);
 
     return InkWell(
       onTap: () async {
-        final convId = c['id'] is int ? c['id'] as int : int.tryParse(c['id']?.toString() ?? '0') ?? 0;
+        final int convId = c['id'] is int
+            ? c['id'] as int
+            : int.tryParse(c['id']?.toString() ?? '') ?? 0;
         final userEmail = AuthService().currentUser?.email;
 
         // Optimistically mark as read
@@ -303,26 +239,27 @@ class _WorkerChatsScreenState extends State<WorkerChatsScreen> {
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
         child: Row(
           children: [
-            // Client Avatar with Online indicator
+            // Client Avatar with optional online indicator
             Stack(
               clipBehavior: Clip.none,
               children: [
                 CircleAvatar(
                   radius: 24,
                   backgroundColor: const Color(0xFFF1F5F9),
-                  backgroundImage: (profileImage != null && profileImage.isNotEmpty && profileImage != 'null')
-                      ? NetworkImage(profileImage)
-                      : null,
-                  child: (profileImage == null || profileImage.isEmpty || profileImage == 'null')
-                      ? Text(
-                          clientName.isNotEmpty ? clientName[0].toUpperCase() : 'C',
-                          style: GoogleFonts.dmSans(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 16,
-                            color: Colors.black,
-                          ),
-                        )
-                      : null,
+                  child: ClipOval(
+                    child: (profileImage != null &&
+                            profileImage.isNotEmpty &&
+                            profileImage != 'null' &&
+                            profileImage.startsWith('http'))
+                        ? Image.network(
+                            profileImage,
+                            width: 48,
+                            height: 48,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _buildFallbackInitial(clientName),
+                          )
+                        : _buildFallbackInitial(clientName),
+                  ),
                 ),
                 if (isOnline)
                   Positioned(
@@ -342,7 +279,7 @@ class _WorkerChatsScreenState extends State<WorkerChatsScreen> {
             ),
             const SizedBox(width: 14),
 
-            // Name & Last message preview
+            // Name & last message preview
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -383,18 +320,7 @@ class _WorkerChatsScreenState extends State<WorkerChatsScreen> {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Expanded(
-                        child: Text(
-                          lastMsg,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.dmSans(
-                            fontSize: 13,
-                            color: unread > 0 ? const Color(0xFF0F172A) : const Color(0xFF64748B),
-                            fontWeight: unread > 0 ? FontWeight.w700 : FontWeight.w400,
-                          ),
-                        ),
-                      ),
+                      Expanded(child: messageWidget),
                       if (unread > 0) ...[
                         const SizedBox(width: 8),
                         Container(
@@ -421,6 +347,96 @@ class _WorkerChatsScreenState extends State<WorkerChatsScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = _searchQuery.isEmpty
+        ? _conversations
+        : _conversations.where((c) {
+            final name = (c['residentName'] ?? '').toString().toLowerCase();
+            return name.contains(_searchQuery.toLowerCase());
+          }).toList();
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: Text(
+          'Messages',
+          style: GoogleFonts.dmSans(
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+            color: Colors.black,
+          ),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(56),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: TextField(
+              onChanged: (v) => setState(() => _searchQuery = v),
+              decoration: InputDecoration(
+                hintText: 'Search clients…',
+                hintStyle: GoogleFonts.dmSans(color: const Color(0xFF94A3B8)),
+                prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF94A3B8)),
+                filled: true,
+                fillColor: const Color(0xFFF8FAFC),
+                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : filtered.isEmpty
+              ? Center(
+                  child: Text(
+                    _searchQuery.isEmpty ? 'No conversations yet' : 'No results found',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 15,
+                      color: const Color(0xFF94A3B8),
+                    ),
+                  ),
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  itemCount: filtered.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                  itemBuilder: (_, i) => _buildConversationItem(filtered[i]),
+                ),
+    );
+  }
+
+  Widget _buildFallbackInitial(String name) {
+    final clean = name.trim();
+    final initial = clean.isNotEmpty ? clean[0].toUpperCase() : '';
+    return Container(
+      width: 48,
+      height: 48,
+      color: const Color(0xFFF1F5F9),
+      alignment: Alignment.center,
+      child: initial.isNotEmpty && RegExp(r'[A-Za-z0-9]').hasMatch(initial)
+          ? Text(
+              initial,
+              style: GoogleFonts.dmSans(
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+                color: const Color(0xFF334155),
+              ),
+            )
+          : const Icon(
+              Icons.person_rounded,
+              size: 26,
+              color: Color(0xFF64748B),
+            ),
     );
   }
 }

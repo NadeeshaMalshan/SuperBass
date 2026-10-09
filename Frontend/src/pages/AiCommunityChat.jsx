@@ -22,6 +22,14 @@ export default function AiCommunityChat() {
     window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
+  // Auth Guard: Require login to access agentic platform
+  useEffect(() => {
+    if (!localStorage.getItem('token')) {
+      window.history.replaceState({}, '', '/login');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }
+  }, []);
+
   const getLoggedInUser = () => {
     let email = localStorage.getItem('email') || localStorage.getItem('workerEmail') || '';
     let name = localStorage.getItem('userName') || '';
@@ -62,7 +70,7 @@ export default function AiCommunityChat() {
   };
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [activeSidebarItem, setActiveSidebarItem] = useState('AC Repair');
+  const [activeSidebarItem, setActiveSidebarItem] = useState('');
   const [conversationId, setConversationId] = useState(() => {
     const email = (localStorage.getItem('email') || '').trim().toLowerCase();
     const key = email ? `workio_ai_active_conv_${email}` : 'workio_ai_active_conv_guest';

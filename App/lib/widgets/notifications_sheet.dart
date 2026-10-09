@@ -172,7 +172,7 @@ class _NotificationsSheetState extends State<NotificationsSheet> {
                         style: GoogleFonts.dmSans(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
-                          color: const Color(0xFF111827),
+                          color: Colors.white,
                         ),
                       ),
                     );

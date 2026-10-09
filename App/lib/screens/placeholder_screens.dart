@@ -7,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/location_service.dart';
 import '../models/auth_user.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -215,10 +216,23 @@ class _SavedAddressesScreenState extends State<SavedAddressesScreen> {
   void initState() {
     super.initState();
     _mapController = MapController();
+    final user = AuthService().currentUserNotifier.value;
+    if (user != null && user.locationLat != null && user.locationLng != null && user.locationLat != 0) {
+      _mapCenter = LatLng(user.locationLat!, user.locationLng!);
+    }
     _fetchAddress();
   }
 
   LatLng _deriveCoordinates(String address) {
+    // Check if address is raw coordinates like "6.92710, 79.86120" or contains them
+    final parts = address.split(',');
+    if (parts.length >= 2) {
+      final lat = double.tryParse(parts[0].trim());
+      final lng = double.tryParse(parts[1].trim());
+      if (lat != null && lng != null && lat >= 5.0 && lat <= 10.5 && lng >= 79.0 && lng <= 82.5) {
+        return LatLng(lat, lng);
+      }
+    }
     final lower = address.toLowerCase();
     for (final entry in _cityCoordinates.entries) {
       if (lower.contains(entry.key)) {
@@ -241,16 +255,65 @@ class _SavedAddressesScreenState extends State<SavedAddressesScreen> {
     }
 
     try {
-      final address = await ApiService().getUserAddress(user.email);
+      final profile = await ApiService().getResidentProfile(user.email);
+      final prefs = await SharedPreferences.getInstance();
+
+      String? addressStr = profile?['address']?.toString() ?? profile?['Address']?.toString();
+      if (addressStr == null || addressStr.trim().isEmpty || addressStr == 'null') {
+        addressStr = prefs.getString('address') ?? prefs.getString('userAddress');
+      }
+
+      double? lat = (profile?['locationLat'] as num?)?.toDouble() ??
+                    (profile?['LocationLat'] as num?)?.toDouble() ??
+                    (profile?['latitude'] as num?)?.toDouble() ??
+                    (profile?['Latitude'] as num?)?.toDouble();
+
+      double? lng = (profile?['locationLng'] as num?)?.toDouble() ??
+                    (profile?['LocationLng'] as num?)?.toDouble() ??
+                    (profile?['longitude'] as num?)?.toDouble() ??
+                    (profile?['Longitude'] as num?)?.toDouble();
+
+      if (lat == null || lng == null || (lat == 0 && lng == 0)) {
+        lat = prefs.getDouble('locationLat') ??
+              (prefs.getString('locationLat') != null ? double.tryParse(prefs.getString('locationLat')!) : null) ??
+              user.locationLat;
+        lng = prefs.getDouble('locationLng') ??
+              (prefs.getString('locationLng') != null ? double.tryParse(prefs.getString('locationLng')!) : null) ??
+              user.locationLng;
+      }
+
+      LatLng targetCoord;
+      if (lat != null && lng != null && (lat != 0 || lng != 0)) {
+        targetCoord = LatLng(lat, lng);
+      } else if (addressStr != null && addressStr.trim().isNotEmpty) {
+        targetCoord = _deriveCoordinates(addressStr);
+      } else {
+        targetCoord = const LatLng(6.9271, 79.8612);
+      }
+
+      // Sync to local preferences and auth user
+      if (lat != null && lng != null) {
+        await prefs.setDouble('locationLat', lat);
+        await prefs.setDouble('locationLng', lng);
+        if (AuthService().currentUserNotifier.value != null) {
+          AuthService().currentUserNotifier.value =
+              AuthService().currentUserNotifier.value!.copyWith(
+                locationLat: lat,
+                locationLng: lng,
+              );
+        }
+      }
+      if (addressStr != null && addressStr.isNotEmpty) {
+        await prefs.setString('address', addressStr);
+      }
+
       if (mounted) {
         setState(() {
-          _currentAddress = (address != null && address.trim().isNotEmpty) ? address.trim() : null;
-          if (_currentAddress != null) {
-            _mapCenter = _deriveCoordinates(_currentAddress!);
-          }
+          _currentAddress = (addressStr != null && addressStr.trim().isNotEmpty) ? addressStr.trim() : null;
+          _mapCenter = targetCoord;
           _isLoading = false;
         });
-        _mapController.move(_mapCenter, 14.5);
+        _mapController.move(targetCoord, 15.0);
       }
     } catch (e) {
       debugPrint('Error fetching address: $e');
@@ -267,7 +330,10 @@ class _SavedAddressesScreenState extends State<SavedAddressesScreen> {
   Future<void> _showAddAddressSheet() async {
     final result = await Navigator.of(context).push<Map<String, dynamic>>(
       MaterialPageRoute(
-        builder: (_) => _MapPickerScreen(initialPoint: _mapCenter),
+        builder: (_) => _MapPickerScreen(
+          initialPoint: _mapCenter,
+          initialLabel: (_currentAddress != null && !_currentAddress!.contains(',')) ? _currentAddress : null,
+        ),
         fullscreenDialog: true,
       ),
     );
@@ -283,15 +349,19 @@ class _SavedAddressesScreenState extends State<SavedAddressesScreen> {
       return;
     }
 
-    // Build the address string: use the label if provided, else fall back to
-    // a "lat, lng" representation so something is always stored.
-    final String addressToSave =
-        label.isNotEmpty ? label : '${picked.latitude.toStringAsFixed(5)}, ${picked.longitude.toStringAsFixed(5)}';
+    final String nearestDist = LocationService.findNearestDistrict(picked.latitude, picked.longitude);
+    final String addressToSave = label.isNotEmpty ? label : nearestDist;
 
     final success = await ApiService().updateProfile(
       user.email,
       {
         'Address': addressToSave,
+        'District': nearestDist,
+        'district': nearestDist,
+        'LocationLat': picked.latitude,
+        'LocationLng': picked.longitude,
+        'locationLat': picked.latitude,
+        'locationLng': picked.longitude,
         'Latitude': picked.latitude,
         'Longitude': picked.longitude,
       },
@@ -299,6 +369,20 @@ class _SavedAddressesScreenState extends State<SavedAddressesScreen> {
 
     if (mounted) {
       if (success) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('address', addressToSave);
+        await prefs.setString('selected_city', nearestDist);
+        await prefs.setString('selected_find_location', nearestDist);
+        await prefs.setDouble('locationLat', picked.latitude);
+        await prefs.setDouble('locationLng', picked.longitude);
+        if (AuthService().currentUserNotifier.value != null) {
+          AuthService().currentUserNotifier.value =
+              AuthService().currentUserNotifier.value!.copyWith(
+                locationLat: picked.latitude,
+                locationLng: picked.longitude,
+              );
+        }
+
         setState(() {
           _currentAddress = addressToSave;
           _mapCenter = picked;
@@ -472,32 +556,7 @@ class _SavedAddressesScreenState extends State<SavedAddressesScreen> {
             ),
           ),
 
-          // -------------------------------------------------------------
-          // RE-CENTER LOCATION BUTTON (RIGHT FLOATING CIRCLE)
-          // -------------------------------------------------------------
-          Positioned(
-            top: mapHeight - 52,
-            right: 16,
-            child: Material(
-              color: Colors.white,
-              elevation: 4,
-              shadowColor: Colors.black26,
-              shape: const CircleBorder(),
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onTap: _recenterMap,
-                child: const SizedBox(
-                  width: 44,
-                  height: 44,
-                  child: Icon(
-                    Icons.my_location_rounded,
-                    size: 22,
-                    color: Colors.black,
-                  ),
-                ),
-              ),
-            ),
-          ),
+
 
           // -------------------------------------------------------------
           // BOTTOM SHEET: SAVED ADDRESSES
@@ -575,7 +634,7 @@ class _SavedAddressesScreenState extends State<SavedAddressesScreen> {
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
                                             Text(
-                                              'address',
+                                              'Saved Address',
                                               style: GoogleFonts.dmSans(
                                                 fontSize: 17,
                                                 fontWeight: FontWeight.w800,
@@ -663,7 +722,8 @@ class _SavedAddressesScreenState extends State<SavedAddressesScreen> {
 // -----------------------------------------------------------------------------
 class _MapPickerScreen extends StatefulWidget {
   final LatLng initialPoint;
-  const _MapPickerScreen({required this.initialPoint});
+  final String? initialLabel;
+  const _MapPickerScreen({required this.initialPoint, this.initialLabel});
 
   @override
   State<_MapPickerScreen> createState() => _MapPickerScreenState();
@@ -673,13 +733,14 @@ class _MapPickerScreenState extends State<_MapPickerScreen> {
   late final MapController _mc;
   late LatLng _picked;
   bool _locating = false;
-  final _labelCtrl = TextEditingController();
+  late final TextEditingController _labelCtrl;
 
   @override
   void initState() {
     super.initState();
     _mc = MapController();
     _picked = widget.initialPoint;
+    _labelCtrl = TextEditingController(text: widget.initialLabel ?? '');
   }
 
   @override
@@ -978,10 +1039,11 @@ class _MapPickerScreenState extends State<_MapPickerScreen> {
                       const Icon(Icons.pin_drop_outlined, size: 15, color: Colors.grey),
                       const SizedBox(width: 6),
                       Text(
-                        '${_picked.latitude.toStringAsFixed(5)},  ${_picked.longitude.toStringAsFixed(5)}',
+                        '${LocationService.findNearestDistrict(_picked.latitude, _picked.longitude)} • ${_picked.latitude.toStringAsFixed(4)}, ${_picked.longitude.toStringAsFixed(4)}',
                         style: GoogleFonts.dmSans(
                           fontSize: 13,
-                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade800,
                           fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       ),

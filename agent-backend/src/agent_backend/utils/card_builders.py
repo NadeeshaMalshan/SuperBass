@@ -32,6 +32,7 @@ from agent_backend.schemas.card_models import (
     WorkerSummary,
     SpecialistConversationalOutput,
     BookingFormCard,
+    BookingConfirmationReviewCard,
     BookingConfirmedCard,
     BookingSummary,
     BookingListCard,
@@ -103,6 +104,207 @@ def generate_issue_title(raw_title: Optional[str] = None, issue_text: str = "", 
     if category and category.lower() != 'general':
         return f"{category} Repair & Service Request"
     return "Home Maintenance Service Request"
+
+
+def extract_smart_booking_details(
+    messages: List[Any],
+    data: Dict[str, Any],
+    metadata: Dict[str, Any],
+    user_profile: Dict[str, Any],
+    default_category: str = "Home Service"
+) -> Dict[str, Any]:
+    """
+    Intelligently extracts priority, date, district, specific address, specialized title,
+    and detailed problem description from the user prompt & conversation context.
+    """
+    user_msgs = []
+    if messages:
+        for m in messages:
+            content = ""
+            m_type = ""
+            if isinstance(m, dict):
+                content = m.get("content", "")
+                m_type = m.get("type") or m.get("role") or ""
+            elif hasattr(m, "content"):
+                content = getattr(m, "content", "")
+                m_type = getattr(m, "type", "") or getattr(m, "role", "")
+            elif isinstance(m, str):
+                content = m
+                m_type = "user"
+            
+            # Extract content if human/user or unspecified
+            if not m_type or m_type.lower() in ("human", "user", "resident"):
+                text = extract_text_content(content)
+                if text:
+                    user_msgs.append(text)
+            elif m_type.lower() not in ("system",):
+                text = extract_text_content(content)
+                if text:
+                    user_msgs.append(text)
+
+    # Also include prompt from data / metadata if provided
+    extra_prompt = data.get("prompt") or data.get("message") or metadata.get("message") or metadata.get("prompt")
+    if extra_prompt and isinstance(extra_prompt, str) and extra_prompt not in user_msgs:
+        user_msgs.append(extra_prompt)
+
+    last_user_text = user_msgs[-1] if user_msgs else ""
+    conv_text = " ".join(user_msgs).lower()
+
+    # 1. PRIORITY / URGENCY (Low, Medium, High)
+    priority = data.get("priority") or data.get("urgency") or metadata.get("priority")
+    if priority:
+        p_lower = str(priority).lower().strip()
+        if p_lower in ("high", "urgent", "emergency"):
+            priority = "High"
+        elif p_lower in ("low",):
+            priority = "Low"
+        else:
+            priority = "Medium"
+    else:
+        if any(w in conv_text for w in [
+            "emergency", "burst", "flooding", "spark", "sparking", "shock", "fire",
+            "exploded", "danger", "hazard", "leaking heavily", "urgent", "urgently",
+            "asap", "immediately", "right now", "hurry", "critical", "severe",
+            "ikmanin", "ikmnta", "danma", "high", "high priority", "quickly", "fast", "speedy"
+        ]):
+            priority = "High"
+        elif any(w in conv_text for w in ["low", "low priority", "not urgent", "whenever", "next week", "flexible", "slow"]):
+            priority = "Low"
+        else:
+            priority = "Medium"
+
+    # 2. DATE
+    scheduled_date = data.get("requestedDate") or data.get("selectedDate") or data.get("scheduledDate") or data.get("date")
+    if not scheduled_date:
+        today_date = datetime.now()
+        if "today" in conv_text or "tonight" in conv_text or "adha" in conv_text:
+            scheduled_date = today_date.strftime("%Y-%m-%d")
+        elif "day after tomorrow" in conv_text or "after tomorrow" in conv_text or "anidhdha" in conv_text:
+            scheduled_date = (today_date + timedelta(days=2)).strftime("%Y-%m-%d")
+        elif "tomorrow" in conv_text or "tmrw" in conv_text or "heta" in conv_text:
+            scheduled_date = (today_date + timedelta(days=1)).strftime("%Y-%m-%d")
+        else:
+            d_match = re.search(r'\b(202\d-\d{1,2}-\d{1,2})\b', last_user_text)
+            if d_match:
+                scheduled_date = d_match.group(1)
+            else:
+                scheduled_date = (today_date + timedelta(days=1)).strftime("%Y-%m-%d")
+
+    # 3. LOCATION & SPECIFIC ADDRESS
+    res_dict = user_profile.get("resident") if isinstance(user_profile.get("resident"), dict) else {}
+    profile_loc = (
+        res_dict.get("district")
+        or res_dict.get("address")
+        or user_profile.get("address")
+        or metadata.get("location")
+        or metadata.get("user_location_name")
+        or data.get("location")
+        or data.get("primaryServiceArea")
+        or "Ratnapura"
+    )
+    profile_address = res_dict.get("specificAddress") or res_dict.get("address") or user_profile.get("address") or ""
+
+    district_val = profile_loc
+    specific_addr_val = profile_address if profile_address != profile_loc else ""
+
+    SL_DISTRICTS = [
+        "Ratnapura", "Colombo", "Gampaha", "Kalutara", "Kandy", "Matale", "Nuwara Eliya",
+        "Galle", "Matara", "Hambantota", "Jaffna", "Kilinochchi", "Mannar", "Vavuniya",
+        "Mullaitivu", "Batticaloa", "Ampara", "Trincomalee", "Kurunegala", "Puttalam",
+        "Anuradhapura", "Polonnaruwa", "Badulla", "Monaragala", "Kegalle", "Nugegoda",
+        "Dehiwala", "Moratuwa", "Negombo", "Bambalapitiya", "Rajagiriya", "Maharagama"
+    ]
+    for d in SL_DISTRICTS:
+        if d.lower() in conv_text:
+            district_val = d
+            break
+
+    addr_match = re.search(r'\b(?:at|address[:\s]+|location[:\s]+)\b\s*([0-9A-Za-z\s,.\/-]{5,40}(?:road|street|lane|mawatha|batuhena|colombo|ratnapura|kandy|place|gardens|ave|avenue|house|flat)?)', last_user_text, re.IGNORECASE)
+    if addr_match:
+        extracted = addr_match.group(1).strip().rstrip(".,")
+        if len(extracted) > 4:
+            specific_addr_val = extracted
+
+    if not specific_addr_val:
+        specific_addr_val = res_dict.get("street") or res_dict.get("specificAddress") or ""
+
+    # 4. CATEGORY, JOB TITLE & DETAILED PROBLEM DESCRIPTION
+    cat_val = data.get("category") or default_category or "Home Service"
+    if not cat_val or cat_val in ("General", "None", "Others", "Home Service"):
+        if any(w in conv_text for w in ["plumb", "pipe", "tap", "leak", "sink", "drain", "water", "wathura", "toilet", "kadila"]):
+            cat_val = "Plumbing"
+        elif any(w in conv_text for w in ["electric", "wire", "wiring", "breaker", "fuse", "short", "socket", "light", "fan", "switch", "current", "power"]):
+            cat_val = "Electrical"
+        elif any(w in conv_text for w in ["ac", "air condition", "cooling", "filter", "compressor"]):
+            cat_val = "AC Repair"
+        elif any(w in conv_text for w in ["clean", "wash", "scrub", "housekeep"]):
+            cat_val = "Cleaning"
+        elif any(w in conv_text for w in ["roof", "tile", "seep"]):
+            cat_val = "Roofing"
+        elif any(w in conv_text for w in ["carpent", "wood", "door", "lock"]):
+            cat_val = "Carpentry"
+        elif any(w in conv_text for w in ["paint", "wall"]):
+            cat_val = "Painting"
+
+    custom_title = data.get("jobTitle")
+    custom_desc = data.get("description") or data.get("notes")
+
+    if not custom_title or custom_title.endswith("Service Request") or "appointment" in custom_title.lower():
+        if any(w in conv_text for w in ["kitchen sink", "sink leak", "sink pipe"]):
+            custom_title = "Kitchen Sink Pipe Leak Repair"
+            custom_desc = custom_desc or "Kitchen sink pipe is leaking heavily under the counter. Requires pipe joint inspection, washer replacement, and leak sealing."
+        elif any(w in conv_text for w in ["pipe burst", "burst pipe", "pipe leak", "water leak", "leaking pipe", "wathura pipe", "pipe eka burst", "pipe kadila", "burst wela"]):
+            custom_title = "Water Pipe Leak Repair & Sealing"
+            custom_desc = custom_desc or "Water pipe line has developed a leak. Inspection and replacement of damaged pipe section or joint sealing required."
+        elif any(w in conv_text for w in ["drain", "clogged", "blocked", "overflowing"]):
+            custom_title = "Drain Cleaning & Unclogging"
+            custom_desc = custom_desc or "Drainage line is blocked causing water accumulation. Professional unclogging and line flushing needed."
+        elif any(w in conv_text for w in ["toilet", "commode", "flush"]):
+            custom_title = "Toilet Flush & Mechanism Repair"
+            custom_desc = custom_desc or "Toilet flush mechanism issue or inlet valve leakage. Requires component repair or replacement."
+        elif any(w in conv_text for w in ["tap", "faucet", "shower"]):
+            custom_title = "Tap & Faucet Fixture Repair"
+            custom_desc = custom_desc or "Leaking water tap or faulty faucet fixture. Requires washer replacement or new fixture installation."
+        elif any(w in conv_text for w in ["trip", "tripping", "breaker", "fuse"]):
+            custom_title = "Circuit Breaker Tripping Diagnosis"
+            custom_desc = custom_desc or "Main circuit breaker trips frequently when appliances are active. Requires electrical load diagnosis and breaker check."
+        elif any(w in conv_text for w in ["short circuit", "spark", "sparking", "wiring"]):
+            custom_title = "Electrical Wiring & Short Circuit Fix"
+            custom_desc = custom_desc or "Sparks or burning smell detected in electrical wiring. Urgent inspection and cable replacement required."
+        elif any(w in conv_text for w in ["switch", "socket", "plug", "switchboard"]):
+            custom_title = "Power Socket & Switchboard Fix"
+            custom_desc = custom_desc or "Wall power sockets or switchboard malfunctioning. Replacement and safe wiring termination required."
+        elif any(w in conv_text for w in ["ac not cooling", "not cooling", "warm air", "gas refill"]):
+            custom_title = "AC Cooling & Refrigerant Gas Refill"
+            custom_desc = custom_desc or "AC unit runs but does not cool room adequately. Requires refrigerant pressure check, gas top-up, and cooling coil check."
+        elif any(w in conv_text for w in ["chemical wash", "filter", "servicing"]):
+            custom_title = "AC Full Chemical Wash & Maintenance"
+            custom_desc = custom_desc or "Routine AC maintenance and deep chemical cleaning of indoor evaporator and outdoor condenser coils."
+        elif any(w in conv_text for w in ["deep clean", "house cleaning"]):
+            custom_title = "Full House Deep Cleaning & Sanitization"
+            custom_desc = custom_desc or "Comprehensive deep cleaning, dust removal, and floor sanitization across living areas."
+        elif any(w in conv_text for w in ["roof", "seepage", "ceiling"]):
+            custom_title = "Roof Leak Sealing & Waterproofing"
+            custom_desc = custom_desc or "Water seepage through roof tiles or ceiling during rain. Waterproofing seal and tile adjustment required."
+        elif any(w in conv_text for w in ["door", "lock", "hinge"]):
+            custom_title = "Door Lock & Woodwork Repair"
+            custom_desc = custom_desc or "Door lock jam or wooden frame alignment issue. Adjustment of hinges and locking mechanism needed."
+        else:
+            custom_title = f"{cat_val} Service Request"
+            custom_desc = custom_desc or f"Resident requested professional assistance for {cat_val.lower()} work. On-site diagnostics and repair required."
+
+    if not custom_desc:
+        custom_desc = f"Standard on-site {custom_title.lower()} requested via Workio AI."
+
+    return {
+        "priority": priority,
+        "selectedDate": scheduled_date,
+        "location": district_val,
+        "specificAddress": specific_addr_val,
+        "category": cat_val,
+        "jobTitle": custom_title,
+        "description": custom_desc,
+    }
 
 
 def _clean_card_intro_message(raw_msg: str, default_intro: str, card_type: str = "card") -> str:
@@ -716,16 +918,25 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
             for item in raw_workers:
                 if isinstance(item, dict):
                     raw_skills = item.get("skills") or []
+                    w_img = item.get("profileImage") or item.get("ProfileImage") or item.get("avatarUrl") or item.get("profilePicture") or item.get("image") or item.get("workerAvatar")
+                    w_role = item.get("primaryRole") or item.get("role") or item.get("category")
+                    if not w_role and raw_skills:
+                        first_sk = raw_skills[0]
+                        w_role = first_sk.get("skillName") if isinstance(first_sk, dict) else str(first_sk)
                     all_summaries.append(
                         WorkerSummary(
                             id=item.get("id", 0),
                             name=item.get("name", "Verified Technician"),
-                            rating=float(item.get("rating", 5.0) or 5.0),
-                            hourlyRate=float(item.get("hourlyRate", 0.0) or 0.0),
+                            profileImage=w_img,
+                            primaryRole=w_role or "Verified Community Service Professional",
                             skills=_normalize_skills(raw_skills),
-                            primaryServiceArea=item.get("primaryServiceArea") or "Colombo",
-                            availability=item.get("availability") or "Available",
-                            avatarUrl=item.get("avatarUrl") or item.get("profilePicture")
+                            primaryServiceArea=item.get("primaryServiceArea") or item.get("district") or item.get("location") or "Colombo",
+                            hourlyRate=float(item.get("hourlyRate", 0.0) or 0.0) if item.get("hourlyRate") else None,
+                            dailyRate=float(item.get("dailyRate", 0.0) or 0.0) if item.get("dailyRate") else None,
+                            overallRating=float(item.get("overallRating") or item.get("rating", 5.0) or 5.0),
+                            completedJobs=int(item.get("completedJobs") or 0),
+                            isAvailable=item.get("isAvailable", True) if item.get("isAvailable") is not None else True,
+                            distance=float(item.get("distance")) if item.get("distance") is not None else None,
                         )
                     )
 
@@ -806,17 +1017,24 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
             res_dict = user_profile.get("resident") if isinstance(user_profile.get("resident"), dict) else {}
             metadata = state.get("metadata") or {}
 
-            # Location: prioritize resident's registered district / address from profile
-            loc_val = (
-                res_dict.get("district")
-                or res_dict.get("address")
-                or user_profile.get("address")
-                or metadata.get("location")
-                or metadata.get("user_location_name")
-                or data.get("location")
-                or data.get("primaryServiceArea")
-                or "Ratnapura"
+            # Smart extraction of all booking fields from user prompt & conversation
+            smart_ctx = extract_smart_booking_details(
+                messages=messages,
+                data=data,
+                metadata=metadata,
+                user_profile=user_profile,
+                default_category=data.get("category") or "Home Service"
             )
+
+            loc_val = smart_ctx["location"]
+            specific_addr_val = smart_ctx["specificAddress"]
+            cat_val = smart_ctx["category"]
+            job_title_val = smart_ctx["jobTitle"]
+            desc_val = smart_ctx["description"]
+            priority_val = smart_ctx["priority"]
+            req_date = smart_ctx["selectedDate"]
+            req_time = data.get("requestedStartTime", "09:00")
+            dur_hours = int(data.get("durationHours") or 2)
 
             # Phone: resident's registered phone
             phone_val = (
@@ -827,30 +1045,8 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                 or "0771756463"
             )
 
-            # Category & Job Title
-            cat_val = data.get("category") or metadata.get("inferred_category")
-            conv_text = " ".join([extract_text_content(getattr(m, "content", "")) for m in messages]).lower()
-            if not cat_val or cat_val in ("General", "None", "Others"):
-                if "plumb" in conv_text:
-                    cat_val = "Plumbing"
-                elif "electric" in conv_text:
-                    cat_val = "Electrical"
-                elif "ac" in conv_text or "air" in conv_text:
-                    cat_val = "AC Repair"
-                elif "clean" in conv_text:
-                    cat_val = "Cleaning"
-                else:
-                    cat_val = "Home Service"
-
-            job_title_val = f"{cat_val} Service Request"
-
-            # Parse requested date & time
-            req_date = data.get("requestedDate")
-            req_time = data.get("requestedStartTime", "09:00")
-            dur_hours = int(data.get("durationHours") or 2)
-
             slot = data.get("requestedSlot") or {}
-            if not req_date and slot.get("startTime"):
+            if slot.get("startTime"):
                 s_part = str(slot["startTime"])
                 if "T" in s_part:
                     req_date = s_part.split("T")[0]
@@ -864,15 +1060,19 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
             card = BookingFormCard(
                 workerId=worker_id,
                 workerName=worker_name,
-                workerAvatar=data.get("workerAvatar"),
+                workerAvatar=data.get("workerAvatar") or data.get("profileImage") or data.get("profilePicture") or data.get("avatarUrl") or data.get("ProfileImage"),
                 category=cat_val,
                 hourlyRate=h_rate,
                 location=loc_val,
+                specificAddress=specific_addr_val,
                 contactPhone=phone_val,
                 selectedDate=req_date,
                 selectedStartTime=req_time,
                 durationHours=dur_hours,
                 jobTitle=job_title_val,
+                description=desc_val,
+                priority=priority_val,
+                notes=desc_val,
                 isAvailable=is_avail,
                 availabilityStatus=status_val,
                 availabilityReason=reason_val
@@ -1371,7 +1571,20 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
     # -------------------------------------------------------------------------
     # 0B. BOOKING FORM INTENT (e.g. user asks to book a worker / technician)
     # -------------------------------------------------------------------------
-    is_booking_flow = has_book_kw and (extracted_worker_id is not None or extracted_worker_name is not None or metadata.get("agent") == "booking_agent")
+    is_confirm_flow = (
+        "confirm_booking" in lower_content
+        or "confirm booking" in lower_content
+        or any(
+            getattr(m, "type", "") in ("human", "user")
+            and ("confirm_booking" in extract_text_content(getattr(m, "content", "")).lower() or "confirm booking" in extract_text_content(getattr(m, "content", "")).lower())
+            for m in reversed(messages[:4])
+        )
+    )
+    is_booking_flow = (
+        not is_confirm_flow
+        and has_book_kw
+        and (extracted_worker_id is not None or extracted_worker_name is not None or metadata.get("agent") == "booking_agent")
+    )
 
     if is_booking_flow and (extracted_worker_id or extracted_worker_name):
         worker_id_val = extracted_worker_id or "44"
@@ -1431,23 +1644,33 @@ def _deterministic_card_builder(state: AgentState, ai_message: Optional[Any] = N
                 if worker_avatar_val or (worker_id_val and worker_name_val != f"Technician #{worker_id_val}"):
                     break
 
-        user_loc_default = metadata.get("location") or user_profile.get("address") or worker_location_val or "Colombo"
+        smart_ctx = extract_smart_booking_details(
+            messages=messages,
+            data={"hourlyRate": hourly_rate_val, "category": worker_cat_val},
+            metadata=metadata,
+            user_profile=user_profile,
+            default_category=worker_cat_val
+        )
+
+        user_loc_default = smart_ctx["location"] or metadata.get("location") or user_profile.get("address") or worker_location_val or "Colombo"
         user_phone_default = user_profile.get("phoneNo") or "0771234567"
-        tomorrow_str = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
 
         booking_card = BookingFormCard(
             workerId=worker_id_val,
             workerName=worker_name_val,
             workerAvatar=worker_avatar_val,
-            category=worker_cat_val,
+            category=smart_ctx["category"],
             hourlyRate=hourly_rate_val,
             location=user_loc_default,
+            specificAddress=smart_ctx["specificAddress"],
             contactPhone=user_phone_default,
-            selectedDate=tomorrow_str,
+            selectedDate=smart_ctx["selectedDate"],
             selectedStartTime="09:00",
             durationHours=2,
-            jobTitle=f"{worker_cat_val} Service Request",
-            notes="",
+            jobTitle=smart_ctx["jobTitle"],
+            description=smart_ctx["description"],
+            priority=smart_ctx["priority"],
+            notes=smart_ctx["description"],
             isAvailable=True,
             availabilityStatus="Available",
             availabilityReason=f"{worker_name_val} is available for booking."

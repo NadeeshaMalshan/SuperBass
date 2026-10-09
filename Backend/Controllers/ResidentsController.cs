@@ -77,3 +77,4 @@ namespace Superbass.Controllers
         }
     }
 }
+// This controller handles API requests related to resident profiles, including retrieving, updating, verifying, and deleting resident information. It uses a repository pattern to interact with the data layer and provides appropriate HTTP responses based on the success or failure of each operation.

@@ -3,11 +3,13 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_colors.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/chat_signalr_service.dart';
 import '../widgets/verified_badge.dart';
+import '../widgets/worker_contact_card.dart';
 import 'package:loading_indicator_m3e/loading_indicator_m3e.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -38,6 +40,8 @@ class _ChatScreenState extends State<ChatScreen> {
   
   bool _isOnline = false;
   String _lastSeenStr = '';
+  String? _resolvedProfileImage;
+  String? _convWorkerPhone;
   bool _isOtherTyping = false;
   Timer? _typingDebounce;
   Timer? _pollTimer;
@@ -191,15 +195,25 @@ class _ChatScreenState extends State<ChatScreen> {
             child: Text('Cancel', style: GoogleFonts.dmSans(color: AppColors.onSurfaceVariant)),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              setState(() {
-                _messages.removeWhere((m) => _selectedMessageIds.contains(m['id']));
-                _selectedMessageIds.clear();
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Message(s) deleted for you')),
-              );
+              final email = AuthService().currentUser?.email;
+              if (email != null && _selectedMessageIds.isNotEmpty) {
+                final prefs = await SharedPreferences.getInstance();
+                final key = 'deleted_msgs_${email}_${widget.conversationId}';
+                final existing = prefs.getStringList(key) ?? [];
+                final updated = {...existing, ..._selectedMessageIds.map((id) => id.toString())}.toList();
+                await prefs.setStringList(key, updated);
+              }
+              if (mounted) {
+                setState(() {
+                  _messages.removeWhere((m) => _selectedMessageIds.contains(m['id']));
+                  _selectedMessageIds.clear();
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Message(s) deleted for you')),
+                );
+              }
             },
             child: Text('Delete', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: AppColors.error)),
           ),
@@ -297,6 +311,54 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  void _clearChat() {
+    if (_messages.isEmpty) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Clear chat?', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+        content: Text(
+          'Are you sure you want to remove all ${_messages.length} messages from this device? They will still be visible to the other person.',
+          style: GoogleFonts.dmSans(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancel', style: GoogleFonts.dmSans(color: AppColors.onSurfaceVariant)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final email = AuthService().currentUser?.email;
+              if (email != null) {
+                final prefs = await SharedPreferences.getInstance();
+                final now = DateTime.now().toUtc();
+                await prefs.setString('cleared_chat_before_${email}_${widget.conversationId}', now.toIso8601String());
+                try {
+                  await ApiService().deleteConversation(widget.conversationId, email);
+                } catch (e) {
+                  debugPrint('Error deleting conversation on server: $e');
+                }
+              }
+              // Clear from local UI view
+              if (mounted) {
+                setState(() {
+                  _messages.clear();
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Chat cleared')),
+                );
+              }
+            },
+            child: Text('Clear', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: AppColors.error)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _pickImage() async {
     try {
       final picker = ImagePicker();
@@ -326,6 +388,140 @@ class _ChatScreenState extends State<ChatScreen> {
     } catch (e) {
       debugPrint('Error picking image: $e');
     }
+  }
+
+
+  Future<void> _sendWorkerCard() async {
+    final user = AuthService().currentUser;
+    if (user == null) return;
+
+    // Fetch phone number from SharedPreferences (saved during onboarding)
+    final prefs = await SharedPreferences.getInstance();
+    String phoneNo = prefs.getString('phoneNo') ?? prefs.getString('userPhone') ?? '';
+    String location = '';
+
+    try {
+      final workerProfile = await ApiService().fetchMyWorkerProfile(user.email);
+      if (workerProfile != null) {
+        if (phoneNo.isEmpty && workerProfile.phoneNo != null && workerProfile.phoneNo!.isNotEmpty) {
+          phoneNo = workerProfile.phoneNo!;
+          await prefs.setString('phoneNo', phoneNo);
+        }
+        location = workerProfile.primaryServiceArea ?? '';
+      }
+    } catch (_) {}
+
+    if (phoneNo.isEmpty && _convWorkerPhone != null && _convWorkerPhone!.isNotEmpty) {
+      phoneNo = _convWorkerPhone!;
+    }
+
+    final cardJson = jsonEncode({
+      'type': 'WorkerContactCard',
+      'workerName': user.name,
+      'phoneNo': phoneNo,
+      'location': location,
+      'avatar': user.picture ?? '',
+    });
+    final sent = await ApiService().sendMessage(
+      conversationId: widget.conversationId,
+      content: cardJson,
+      senderEmail: user.email,
+      senderRole: user.activeRole,
+      messageType: 'ContactCard',
+    );
+    if (sent != null) {
+      await _fetchMessages(isBackground: true);
+      _scrollToBottom(isInitial: false);
+    }
+  }
+
+  void _showAttachmentSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                ListTile(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.photo_outlined, color: Color(0xFF334155)),
+                  ),
+                  title: Text(
+                    'Add a photo',
+                    style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, fontSize: 15),
+                  ),
+                  subtitle: Text(
+                    'Share an image from your gallery',
+                    style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF94A3B8)),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _pickImage();
+                  },
+                ),
+                const SizedBox(height: 4),
+                ListTile(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.contact_phone_outlined, color: Color(0xFF334155)),
+                  ),
+                  title: Text(
+                    'Share worker card',
+                    style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, fontSize: 15),
+                  ),
+                  subtitle: Text(
+                    'Send your contact card to this chat',
+                    style: GoogleFonts.dmSans(fontSize: 12, color: const Color(0xFF94A3B8)),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _sendWorkerCard();
+                  },
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+  bool _isContactCard(String? text) {
+    if (text == null || !text.trimLeft().startsWith('{')) return false;
+    try {
+      final decoded = jsonDecode(text);
+      if (decoded is Map && (decoded.containsKey('phoneNo') || decoded.containsKey('PhoneNo') || decoded['type'] == 'WorkerContactCard')) {
+        return true;
+      }
+    } catch (_) {}
+    return false;
   }
 
   Widget _buildImageError() {
@@ -467,6 +663,15 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    final myPicture = AuthService().currentUser?.picture;
+    if (widget.profileImage != null &&
+        widget.profileImage!.isNotEmpty &&
+        widget.profileImage != 'null' &&
+        widget.profileImage != myPicture) {
+      _resolvedProfileImage = widget.profileImage;
+    } else {
+      _resolvedProfileImage = null;
+    }
     _fetchMessages();
     _initSignalR();
 
@@ -571,7 +776,44 @@ class _ChatScreenState extends State<ChatScreen> {
     if (convDetails != null) {
       isOnline = convDetails['isOnline'] == true;
       String? lastSeenAt = convDetails['lastSeenAt']?.toString();
-      
+
+      // Resolve worker phone if available in conversation
+      final phone = convDetails['workerPhone']?.toString() ??
+          convDetails['WorkerPhone']?.toString() ??
+          convDetails['residentPhone']?.toString() ??
+          convDetails['ResidentPhone']?.toString();
+      if (phone != null && phone.isNotEmpty && phone != 'null') {
+        _convWorkerPhone = phone;
+      }
+
+      // Resolve profile image of the other party
+      final user = AuthService().currentUser;
+      final myEmail = (user?.email ?? '').trim().toLowerCase();
+      final resEmail = (convDetails['residentEmail'] ?? convDetails['ResidentEmail'] ?? '').toString().trim().toLowerCase();
+      final isMeResident = myEmail.isNotEmpty && resEmail == myEmail;
+
+      final otherAvatar = (isMeResident
+          ? (convDetails['workerProfileImage'] ?? convDetails['WorkerProfileImage'] ?? convDetails['workerAvatar'])
+          : (convDetails['residentProfileImage'] ?? convDetails['ResidentProfileImage'] ?? convDetails['residentAvatar'])
+      ) ?? convDetails['otherPartyProfileImage'];
+
+      if (otherAvatar != null &&
+          otherAvatar.toString().isNotEmpty &&
+          otherAvatar.toString() != 'null' &&
+          otherAvatar.toString().toLowerCase() != 'default') {
+        final avatarStr = otherAvatar.toString();
+        final myPicture = user?.picture;
+        final workerAvatar = (convDetails['workerProfileImage'] ?? convDetails['WorkerProfileImage'])?.toString();
+        if (!isMeResident &&
+            ((myPicture != null && myPicture.isNotEmpty && avatarStr == myPicture) ||
+             (workerAvatar != null && workerAvatar.isNotEmpty && avatarStr == workerAvatar))) {
+          _resolvedProfileImage = null;
+        } else {
+          _resolvedProfileImage = avatarStr;
+        }
+      } else {
+        _resolvedProfileImage = null;
+      }
 
       if (lastSeenAt != null && lastSeenAt.isNotEmpty && lastSeenAt != 'null') {
         try {
@@ -591,18 +833,42 @@ class _ChatScreenState extends State<ChatScreen> {
         } catch (_) {}
       }
     }
+
+    // Load local soft-delete filters from SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    final clearedBeforeStr = prefs.getString('cleared_chat_before_${email}_${widget.conversationId}');
+    DateTime? clearedBefore = clearedBeforeStr != null ? DateTime.tryParse(clearedBeforeStr) : null;
+    final deletedIdsList = prefs.getStringList('deleted_msgs_${email}_${widget.conversationId}') ?? [];
+    final deletedIds = deletedIdsList.map((e) => int.tryParse(e) ?? 0).toSet();
     
     // Process messages to inject date headers
     final List<Map<String, dynamic>> processed = [];
     String? lastDateStr;
 
-    // API usually returns messages ordered by created_at (ascending or descending).
-    // Assuming they are ascending (oldest first). If they are descending, we might need to reverse them.
-    // Let's assume we get them ascending.
-    for (var msg in data.reversed.toList().reversed) {
-      final isMe = msg['senderEmail'] == email;
+    // API usually returns messages ordered by created_at ascending
+    for (var msg in data) {
+      final id = msg['id'] is int
+          ? msg['id'] as int
+          : int.tryParse(msg['id']?.toString() ?? '0') ?? 0;
+
+      // Soft delete: filter out individually deleted messages
+      if (id > 0 && deletedIds.contains(id)) {
+        continue;
+      }
+
       final dtStr = msg['createdAt']?.toString();
-      
+
+      // Soft delete: filter out messages before the cleared-chat timestamp
+      if (clearedBefore != null && dtStr != null) {
+        try {
+          final dt = DateTime.parse(dtStr);
+          if (dt.toUtc().isBefore(clearedBefore) || dt.toUtc().isAtSameMomentAs(clearedBefore)) {
+            continue;
+          }
+        } catch (_) {}
+      }
+
+      final isMe = msg['senderEmail'] == email;
       String timeStr = '';
       if (dtStr != null) {
         try {
@@ -629,10 +895,6 @@ class _ChatScreenState extends State<ChatScreen> {
           }
         } catch (_) {}
       }
-      
-      final id = msg['id'] is int
-          ? msg['id'] as int
-          : int.tryParse(msg['id']?.toString() ?? '0') ?? 0;
 
       final attachmentUrl = msg['attachmentUrl']?.toString() ?? msg['AttachmentUrl']?.toString();
 
@@ -645,6 +907,7 @@ class _ChatScreenState extends State<ChatScreen> {
         'timeStr': timeStr,
         'createdAt': dtStr,
         'senderEmail': msg['senderEmail'],
+        'messageType': msg['messageType']?.toString() ?? '',
       });
     }
 
@@ -654,6 +917,7 @@ class _ChatScreenState extends State<ChatScreen> {
         _messages = processed;
         _isOnline = isOnline;
         _lastSeenStr = lastSeenStr;
+        _resolvedProfileImage = _resolvedProfileImage;
         _isLoading = false;
       });
 
@@ -731,18 +995,20 @@ class _ChatScreenState extends State<ChatScreen> {
             CircleAvatar(
               radius: 18,
               backgroundColor: AppColors.outlineVariant,
-              backgroundImage: widget.profileImage != null && widget.profileImage!.isNotEmpty && widget.profileImage != 'null'
-                  ? NetworkImage(widget.profileImage!)
-                  : null,
-              child: widget.profileImage == null || widget.profileImage!.isEmpty || widget.profileImage == 'null'
-                  ? Text(
-                      widget.name.isNotEmpty ? widget.name[0].toUpperCase() : 'W',
-                      style: GoogleFonts.dmSans(
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.onSurfaceVariant,
-                      ),
-                    )
-                  : null,
+              child: ClipOval(
+                child: (_resolvedProfileImage != null &&
+                        _resolvedProfileImage!.isNotEmpty &&
+                        _resolvedProfileImage != 'null' &&
+                        _resolvedProfileImage!.startsWith('http'))
+                    ? Image.network(
+                        _resolvedProfileImage!,
+                        width: 36,
+                        height: 36,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _buildAppBarFallback(),
+                      )
+                    : _buildAppBarFallback(),
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -802,7 +1068,87 @@ class _ChatScreenState extends State<ChatScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.more_vert, color: AppColors.onSurfaceVariant),
-            onPressed: () {},
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                backgroundColor: Colors.white,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                builder: (ctx) {
+                  return SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade300,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          ListTile(
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.select_all, color: AppColors.onSurfaceVariant),
+                            ),
+                            title: Text(
+                              'Select messages',
+                              style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, fontSize: 15),
+                            ),
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              // Enter selection mode by selecting first message if there are messages
+                              if (_messages.isNotEmpty) {
+                                setState(() {
+                                  // Select the first message to enter selection mode
+                                  final firstMsg = _messages
+                                      .cast<Map<String, dynamic>?>()
+                                      .firstWhere(
+                                        (m) => m != null && m['id'] != null && m['id'] is int && m['id'] > 0,
+                                        orElse: () => null,
+                                      );
+                                  if (firstMsg != null && firstMsg['id'] is int) {
+                                    _selectedMessageIds.add(firstMsg['id'] as int);
+                                  }
+                                });
+                              }
+                            },
+                          ),
+                          const Divider(height: 1),
+                          ListTile(
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.delete_outline, color: AppColors.onSurfaceVariant),
+                            ),
+                            title: Text(
+                              'Clear chat',
+                              style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, fontSize: 15),
+                            ),
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              _clearChat();
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
           ),
         ],
       ),
@@ -884,47 +1230,81 @@ class _ChatScreenState extends State<ChatScreen> {
                                 ),
                               ),
                             ],
+                            // Avatar for incoming messages
+                            if (!isMe) ...[
+                              Padding(
+                                padding: const EdgeInsets.only(right: 8, bottom: 4),
+                                child: CircleAvatar(
+                                  radius: 14,
+                                  backgroundColor: AppColors.outlineVariant,
+                                  child: ClipOval(
+                                    child: (_resolvedProfileImage != null &&
+                                            _resolvedProfileImage!.isNotEmpty &&
+                                            _resolvedProfileImage != 'null' &&
+                                            _resolvedProfileImage!.startsWith('http'))
+                                        ? Image.network(
+                                            _resolvedProfileImage!,
+                                            width: 28,
+                                            height: 28,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) => _buildBubbleFallback(),
+                                          )
+                                        : _buildBubbleFallback(),
+                                  ),
+                                ),
+                              ),
+                            ],
                             Flexible(
                               child: Column(
                                 crossAxisAlignment: isMe
                                     ? CrossAxisAlignment.end
                                     : CrossAxisAlignment.start,
                                 children: [
-                                  if (msg['attachmentUrl'] != null && msg['attachmentUrl'].toString().isNotEmpty) ...[
-                                    _buildMessageImage(msg['attachmentUrl'], isMe),
+                                  if (msg['messageType'] == 'ContactCard' || _isContactCard(msg['text']?.toString())) ...[
+                                    WorkerContactCard(
+                                      rawContent: msg['text'] ?? '',
+                                      workerPhone: _convWorkerPhone,
+                                      workerName: isMe ? (AuthService().currentUser?.name) : widget.name,
+                                      avatarUrl: isMe ? (AuthService().currentUser?.picture) : _resolvedProfileImage,
+                                    ),
                                     const SizedBox(height: 4),
+                                  ] else ...[
+                                    if (msg['attachmentUrl'] != null && msg['attachmentUrl'].toString().isNotEmpty) ...[
+                                      _buildMessageImage(msg['attachmentUrl'], isMe),
+                                      const SizedBox(height: 4),
+                                    ],
+                                    if (msg['text'] != null && msg['text'].toString().isNotEmpty)
+                                      Container(
+                                      margin: const EdgeInsets.only(bottom: 4),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 16, vertical: 12),
+                                      decoration: BoxDecoration(
+                                        color: isSelected
+                                            ? (isMe
+                                                ? const Color(0xFF27272A)
+                                                : const Color(0xFFE4E4E7))
+                                            : (isMe ? myBubbleColor : otherBubbleColor),
+                                        borderRadius: BorderRadius.only(
+                                          topLeft: const Radius.circular(24),
+                                          topRight: const Radius.circular(24),
+                                          bottomLeft: Radius.circular(isMe ? 24 : 8),
+                                          bottomRight: Radius.circular(isMe ? 8 : 24),
+                                        ),
+                                        border: isSelected
+                                            ? Border.all(
+                                                color: Colors.black, width: 2)
+                                            : null,
+                                      ),
+                                      child: Text(
+                                        msg['text'],
+                                        style: GoogleFonts.dmSans(
+                                          fontSize: 15,
+                                          color: isMe ? Colors.white : const Color(0xFF000000),
+                                          fontWeight: FontWeight.w400,
+                                        ),
+                                      ),
+                                    ),
                                   ],
-                                  if (msg['text'] != null && msg['text'].toString().isNotEmpty)
-                                    Container(
-                                    margin: const EdgeInsets.only(bottom: 4),
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 16, vertical: 12),
-                                    decoration: BoxDecoration(
-                                      color: isSelected
-                                          ? (isMe
-                                              ? const Color(0xFF27272A)
-                                              : const Color(0xFFE4E4E7))
-                                          : (isMe ? myBubbleColor : otherBubbleColor),
-                                      borderRadius: BorderRadius.only(
-                                        topLeft: const Radius.circular(24),
-                                        topRight: const Radius.circular(24),
-                                        bottomLeft: Radius.circular(isMe ? 24 : 8),
-                                        bottomRight: Radius.circular(isMe ? 8 : 24),
-                                      ),
-                                      border: isSelected
-                                          ? Border.all(
-                                              color: Colors.black, width: 2)
-                                          : null,
-                                    ),
-                                    child: Text(
-                                      msg['text'],
-                                      style: GoogleFonts.dmSans(
-                                        fontSize: 15,
-                                        color: isMe ? Colors.white : const Color(0xFF000000),
-                                        fontWeight: FontWeight.w400,
-                                      ),
-                                    ),
-                                  ),
                                   if (timeStr.toString().isNotEmpty)
                                     Padding(
                                       padding: const EdgeInsets.only(
@@ -1024,7 +1404,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             const SizedBox(width: 4),
                             IconButton(
                               icon: const Icon(Icons.add_circle_outline, color: AppColors.onSurfaceVariant),
-                              onPressed: _pickImage,
+                              onPressed: _showAttachmentSheet,
                             ),
                             Expanded(
                               child: TextField(
@@ -1116,6 +1496,43 @@ class _ChatScreenState extends State<ChatScreen> {
         ],
       ),
     ),
+    );
+  }
+
+  Widget _buildAppBarFallback() {
+    final clean = widget.name.trim();
+    final initial = clean.isNotEmpty ? clean[0].toUpperCase() : '';
+    return Container(
+      width: 36,
+      height: 36,
+      color: AppColors.outlineVariant,
+      alignment: Alignment.center,
+      child: initial.isNotEmpty && RegExp(r'[A-Za-z0-9]').hasMatch(initial)
+          ? Text(
+              initial,
+              style: GoogleFonts.dmSans(
+                fontWeight: FontWeight.w700,
+                color: AppColors.onSurfaceVariant,
+              ),
+            )
+          : const Icon(Icons.person, color: AppColors.onSurfaceVariant, size: 20),
+    );
+  }
+
+  Widget _buildBubbleFallback() {
+    return Container(
+      width: 28,
+      height: 28,
+      color: AppColors.outlineVariant,
+      alignment: Alignment.center,
+      child: Text(
+        widget.name.isNotEmpty ? widget.name[0].toUpperCase() : 'W',
+        style: GoogleFonts.dmSans(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: AppColors.onSurfaceVariant,
+        ),
+      ),
     );
   }
 }

@@ -16,7 +16,9 @@ from agent_backend.tools.worker_matching_tools import (
     normalize_service_category,
     get_city_coords,
     SRI_LANKA_CITY_COORDS,
-    haversine_distance
+    haversine_distance,
+    search_workers,
+    get_worker_details
 )
 
 logger = logging.getLogger("agent_backend.booking_tools")
@@ -189,6 +191,8 @@ async def get_live_service_categories() -> List[str]:
 
 
 BOOKING_TOOLS = [
+    search_workers,
+    get_worker_details,
     check_worker_availability,
     create_booking,
     get_resident_bookings,

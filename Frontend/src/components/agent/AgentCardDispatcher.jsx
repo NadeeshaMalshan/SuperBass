@@ -1,3 +1,4 @@
+import React, { Component } from 'react';
 import CreateCommunityPostCard from './CreateCommunityPostCard.jsx';
 import EditCommunityPostCard from './EditCommunityPostCard.jsx';
 import PostConfirmationCard from './PostConfirmationCard.jsx';
@@ -12,6 +13,7 @@ import ErrorCard from './ErrorCard.jsx';
 import ServiceCategoriesCard from './ServiceCategoriesCard.jsx';
 import WorkerListCard from './WorkerListCard.jsx';
 import BookingFormCard from './BookingFormCard.jsx';
+import BookingConfirmationCard from './BookingConfirmationCard.jsx';
 import BookingConfirmedCard from './BookingConfirmedCard.jsx';
 import BookingListCard from './BookingListCard.jsx';
 import ReviewFormCard from './ReviewFormCard.jsx';
@@ -22,10 +24,34 @@ import InitialWelcomeCard from './InitialWelcomeCard.jsx';
 /**
  * Dispatcher component that examines `response_type` and renders the matching UI card.
  */
+class CardErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("Card render error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <ErrorCard data={{ message: "This card failed to load." }} onAction={this.props.onAction} />;
+    }
+    return this.props.children;
+  }
+}
+
 export default function AgentCardDispatcher({ response, onAction }) {
   if (!response) return null;
 
   const { response_type, message, card_data = {} } = response;
+
+  const renderCard = () => {
 
   switch (response_type) {
     case 'initial_welcome':
@@ -58,6 +84,8 @@ export default function AgentCardDispatcher({ response, onAction }) {
       return <WorkerListCard data={card_data} onAction={onAction} />;
     case 'booking_form':
       return <BookingFormCard data={card_data} onAction={onAction} />;
+    case 'booking_confirmation':
+      return <BookingConfirmationCard data={card_data} onAction={onAction} />;
     case 'booking_confirmed':
       return <BookingConfirmedCard data={card_data} onAction={onAction} />;
     case 'booking_list':
@@ -83,4 +111,7 @@ export default function AgentCardDispatcher({ response, onAction }) {
               />
             );
   }
+  };
+
+  return <CardErrorBoundary onAction={onAction}>{renderCard()}</CardErrorBoundary>;
 }

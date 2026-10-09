@@ -149,14 +149,17 @@ namespace Superbass.Services
 
         public async Task<List<ConversationSummaryDto>> GetUserConversationsAsync(string userEmail)
         {
+            var lowerEmail = userEmail.Trim().ToLower();
             // Find worker profiles associated with this email
-            var worker = await _context.Workers.FirstOrDefaultAsync(w => w.ResidentEmail == userEmail || w.Email == userEmail);
+            var worker = await _context.Workers.FirstOrDefaultAsync(w => 
+                (w.ResidentEmail != null && w.ResidentEmail.ToLower() == lowerEmail) || 
+                (w.Email != null && w.Email.ToLower() == lowerEmail));
             int? workerId = worker?.Id;
 
             var conversations = await _context.Conversations
                 .Include(c => c.Resident)
                 .Include(c => c.Worker)
-                .Where(c => (c.ResidentEmail == userEmail && !c.IsDeletedByResident) || (workerId.HasValue && c.WorkerId == workerId.Value && !c.IsDeletedByWorker))
+                .Where(c => (c.ResidentEmail.ToLower() == lowerEmail && !c.IsDeletedByResident) || (workerId.HasValue && c.WorkerId == workerId.Value && !c.IsDeletedByWorker))
                 .OrderByDescending(c => c.UpdatedAt)
                 .ToListAsync();
 
@@ -250,7 +253,8 @@ namespace Superbass.Services
             var otherEmail = isUserWorker ? conv.ResidentEmail : (conv.Worker?.Email ?? conv.Worker?.ResidentEmail ?? string.Empty);
 
             var residentWorker = await _context.Workers.AsNoTracking().FirstOrDefaultAsync(w => 
-                w.ResidentEmail == conv.ResidentEmail || w.Email == conv.ResidentEmail);
+                (w.ResidentEmail != null && w.ResidentEmail.ToLower() == conv.ResidentEmail.ToLower()) || 
+                (w.Email != null && w.Email.ToLower() == conv.ResidentEmail.ToLower()));
 
             var cleanResidentName = conv.Resident?.Name;
             if (string.IsNullOrWhiteSpace(cleanResidentName) || cleanResidentName.Contains('@') || cleanResidentName == conv.ResidentEmail.Split('@')[0])
@@ -261,7 +265,21 @@ namespace Superbass.Services
                 }
             }
 
-            var residentProfileImage = residentWorker?.ProfileImage;
+            var residentProfileImage = !string.IsNullOrWhiteSpace(conv.Resident?.ProfileImage)
+                ? conv.Resident.ProfileImage
+                : (residentWorker != null && residentWorker.Id != conv.WorkerId ? residentWorker.ProfileImage : null);
+
+            var workerProfileImage = conv.Worker?.ProfileImage;
+            if (string.IsNullOrWhiteSpace(workerProfileImage) && conv.Worker != null)
+            {
+                var workerResidentEmail = conv.Worker.ResidentEmail ?? conv.Worker.Email;
+                if (!string.IsNullOrWhiteSpace(workerResidentEmail))
+                {
+                    var workerResident = await _context.Residents.AsNoTracking().FirstOrDefaultAsync(r => 
+                        r.Email.ToLower() == workerResidentEmail.ToLower());
+                    workerProfileImage = workerResident?.ProfileImage;
+                }
+            }
 
             return new ConversationDetailsDto
             {
@@ -274,7 +292,7 @@ namespace Superbass.Services
                 WorkerName = conv.Worker?.Name ?? "Worker",
                 WorkerEmail = conv.Worker?.Email ?? string.Empty,
                 WorkerPhone = (isUserWorker || await _context.ChatMessages.AnyAsync(m => m.ConversationId == conversationId && m.MessageType == "ContactCard")) ? conv.Worker?.PhoneNo : null,
-                WorkerProfileImage = conv.Worker?.ProfileImage,
+                WorkerProfileImage = workerProfileImage,
                 BookingId = conv.BookingId,
                 IsOnline = ChatHub.IsUserOnline(otherEmail),
                 IsWorkerVerified = conv.Worker?.IsVerified ?? false,
@@ -538,7 +556,8 @@ namespace Superbass.Services
             var otherEmail = isUserWorker ? conv.ResidentEmail : (conv.Worker?.Email ?? conv.Worker?.ResidentEmail ?? string.Empty);
 
             var residentWorker = await _context.Workers.AsNoTracking().FirstOrDefaultAsync(w => 
-                w.ResidentEmail == conv.ResidentEmail || w.Email == conv.ResidentEmail);
+                (w.ResidentEmail != null && w.ResidentEmail.ToLower() == conv.ResidentEmail.ToLower()) || 
+                (w.Email != null && w.Email.ToLower() == conv.ResidentEmail.ToLower()));
 
             var cleanResidentName = conv.Resident?.Name;
             if (string.IsNullOrWhiteSpace(cleanResidentName) || cleanResidentName.Contains('@') || cleanResidentName == conv.ResidentEmail.Split('@')[0])
@@ -548,7 +567,21 @@ namespace Superbass.Services
                     cleanResidentName = residentWorker.Name;
                 }
             }
-            var residentProfileImage = residentWorker?.ProfileImage ?? conv.Resident?.ProfileImage;
+            var residentProfileImage = !string.IsNullOrWhiteSpace(conv.Resident?.ProfileImage)
+                ? conv.Resident.ProfileImage
+                : (residentWorker != null && residentWorker.Id != conv.WorkerId ? residentWorker.ProfileImage : null);
+
+            var workerProfileImage = conv.Worker?.ProfileImage;
+            if (string.IsNullOrWhiteSpace(workerProfileImage) && conv.Worker != null)
+            {
+                var workerResidentEmail = conv.Worker.ResidentEmail ?? conv.Worker.Email;
+                if (!string.IsNullOrWhiteSpace(workerResidentEmail))
+                {
+                    var workerResident = await _context.Residents.AsNoTracking().FirstOrDefaultAsync(r => 
+                        r.Email.ToLower() == workerResidentEmail.ToLower());
+                    workerProfileImage = workerResident?.ProfileImage;
+                }
+            }
 
             var lastMsg = await _context.ChatMessages
                 .Where(m => m.ConversationId == conv.Id && !m.IsDeleted)
@@ -567,7 +600,7 @@ namespace Superbass.Services
                 WorkerName = conv.Worker?.Name ?? "Worker",
                 WorkerEmail = !string.IsNullOrWhiteSpace(conv.Worker?.Email) ? conv.Worker.Email : (conv.Worker?.ResidentEmail ?? string.Empty),
                 WorkerPhone = (isUserWorker || await _context.ChatMessages.AnyAsync(m => m.ConversationId == conv.Id && m.MessageType == "ContactCard")) ? conv.Worker?.PhoneNo : null,
-                WorkerProfileImage = conv.Worker?.ProfileImage,
+                WorkerProfileImage = workerProfileImage,
                 BookingId = conv.BookingId,
                 LastMessage = lastMsg != null ? lastMsg.Content : conv.LastMessage,
                 LastMessageAt = lastMsg != null ? lastMsg.CreatedAt : conv.LastMessageAt,
