@@ -559,10 +559,9 @@ export default function App() {
               <button
                 type="button"
                 className="uber-primary-black-btn landing-ai-btn"
-                onClick={() => navigate('/ai/chat')}
+                onClick={() => navigate(localStorage.getItem('token') ? '/ai/chat' : '/join')}
               >
                 <span>Try Workio AI</span>
-
               </button>
 
 
