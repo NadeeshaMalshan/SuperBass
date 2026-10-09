@@ -476,6 +476,7 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
     );
   }
 
+//check
   Future<void> _handleRemoveSkill(WorkerSkillItem skill) async {
     final workerId = widget.worker?.id;
     if (workerId == null) return;
