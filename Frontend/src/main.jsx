@@ -149,7 +149,11 @@ function Router() {
     if (path === '/join' || path === '/join.jsx' || path === '/login' || path === '/login.jsx') {
       return <LoginPortal />;
     }
-    if (path === '/ai/chat' || path === '/community/chat' || path === '/ai-chat' || path === '/agent') {
+    if (path === '/ai/chat' || path === '/community/chat' || path === '/ai-chat' || path === '/agent' || path.startsWith('/ai')) {
+      if (!localStorage.getItem('token')) {
+        window.history.replaceState({}, '', '/login');
+        return <LoginPortal />;
+      }
       return <AiCommunityChat />;
     }
     if (path === '/community-post' || path === '/community-post.jsx' || path.startsWith('/community-post') || path === '/community/post' || path.startsWith('/community/post')) {
