@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/ai_service.dart';
 import '../services/auth_service.dart';
 import '../widgets/agent_cards/agent_card_dispatcher.dart';
@@ -32,6 +34,7 @@ class _WorkioAiScreenState extends State<WorkioAiScreen> {
   void initState() {
     super.initState();
     _initChat();
+    _loadChatHistory();
   }
 
   void _initChat() {
@@ -48,6 +51,172 @@ class _WorkioAiScreenState extends State<WorkioAiScreen> {
             'Hi! I can help you find workers, create a community post, view your bookings or rate technicians. What would you like to do?',
       },
     ];
+  }
+
+  dynamic _sanitizeForJson(dynamic value) {
+    if (value is Map) {
+      final Map<String, dynamic> result = {};
+      value.forEach((k, v) {
+        result[k.toString()] = _sanitizeForJson(v);
+      });
+      return result;
+    } else if (value is List) {
+      return value.map((v) => _sanitizeForJson(v)).toList();
+    } else if (value is num || value is bool || value is String || value == null) {
+      return value;
+    }
+    return value.toString();
+  }
+
+  Future<void> _saveChatHistory() async {
+    try {
+      final user = AuthService().currentUser;
+      final email = (user?.email ?? 'guest').toLowerCase().trim();
+      final prefs = await SharedPreferences.getInstance();
+
+      final convKey = 'workio_ai_chat_conv_id_$email';
+      final msgsKey = 'workio_ai_chat_messages_$email';
+
+      await prefs.setString(convKey, _conversationId);
+      final sanitized = _messages.map((m) => _sanitizeForJson(m)).toList();
+      await prefs.setString(msgsKey, jsonEncode(sanitized));
+    } catch (e) {
+      debugPrint('[WorkioAiScreen] Failed to save chat history: $e');
+    }
+  }
+
+  Future<void> _loadChatHistory() async {
+    final user = AuthService().currentUser;
+    final email = (user?.email ?? 'guest').toLowerCase().trim();
+
+    // 1. Fast load from local storage
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final convKey = 'workio_ai_chat_conv_id_$email';
+      final msgsKey = 'workio_ai_chat_messages_$email';
+
+      final savedConvId = prefs.getString(convKey);
+      final savedMsgsJson = prefs.getString(msgsKey);
+
+      if (savedMsgsJson != null && savedMsgsJson.trim().isNotEmpty) {
+        final List<dynamic> decoded = jsonDecode(savedMsgsJson);
+        final List<Map<String, dynamic>> loadedList = [];
+        for (final item in decoded) {
+          if (item is Map) {
+            loadedList.add(Map<String, dynamic>.from(_sanitizeForJson(item) as Map));
+          }
+        }
+
+        if (loadedList.isNotEmpty && mounted) {
+          setState(() {
+            if (savedConvId != null && savedConvId.isNotEmpty) {
+              _conversationId = savedConvId;
+            }
+            _messages = loadedList;
+          });
+          _scrollToBottom();
+        }
+      }
+    } catch (e) {
+      debugPrint('[WorkioAiScreen] Failed to load local chat history: $e');
+    }
+
+    // 2. Sync with database (Neon PostgreSQL) via Agent Backend
+    if (email.isNotEmpty && email != 'guest') {
+      try {
+        String targetConvId = _conversationId;
+        final dbConvs = await AiService().listConversations(email);
+        if (dbConvs.isNotEmpty) {
+          final firstId = dbConvs.first['id']?.toString();
+          if (firstId != null && firstId.isNotEmpty) {
+            targetConvId = firstId;
+          }
+        }
+
+        if (targetConvId.isNotEmpty) {
+          final dbMsgs = await AiService().getConversationMessages(targetConvId);
+          if (dbMsgs.isNotEmpty && mounted) {
+            final List<Map<String, dynamic>> dbList = [];
+            for (final m in dbMsgs) {
+              final isUser = m['sender'] == 'user';
+              final createdStr = m['created_at']?.toString();
+              String timeStr = _formatTime(DateTime.now());
+              if (createdStr != null) {
+                final dt = DateTime.tryParse(createdStr);
+                if (dt != null) timeStr = _formatTime(dt.toLocal());
+              }
+
+              dbList.add({
+                'sender': isUser ? 'user' : 'assistant',
+                'isWelcome': false,
+                'time': timeStr,
+                'text': m['message']?.toString() ?? '',
+                if (!isUser && m['card_data'] != null) 'card_data': m['card_data'],
+                if (!isUser && m['response_type'] != null) 'response_type': m['response_type'],
+              });
+            }
+
+            if (dbList.isNotEmpty && mounted) {
+              setState(() {
+                _conversationId = targetConvId;
+                _messages = dbList;
+              });
+              _scrollToBottom();
+              _saveChatHistory();
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('[WorkioAiScreen] Failed to sync with remote DB: $e');
+      }
+    }
+  }
+
+  Future<void> _resetChat() async {
+    final oldConvId = _conversationId;
+    final user = AuthService().currentUser;
+    final email = (user?.email ?? 'guest').toLowerCase().trim();
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final convKey = 'workio_ai_chat_conv_id_$email';
+      final msgsKey = 'workio_ai_chat_messages_$email';
+
+      await prefs.remove(convKey);
+      await prefs.remove(msgsKey);
+    } catch (e) {
+      debugPrint('[WorkioAiScreen] Failed to clear local chat: $e');
+    }
+
+    if (oldConvId.isNotEmpty && email.isNotEmpty && email != 'guest') {
+      unawaited(AiService().deleteConversation(oldConvId, email));
+    }
+
+    if (mounted) {
+      _inputController.clear();
+      setState(() {
+        _selectedEmergencyService = null;
+        _initChat();
+      });
+      _scrollToBottom();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'New chat started',
+            style: GoogleFonts.dmSans(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
+          ),
+          backgroundColor: Colors.black87,
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    }
   }
 
   @override
@@ -94,6 +263,7 @@ class _WorkioAiScreenState extends State<WorkioAiScreen> {
       _isLoading = true;
     });
     _scrollToBottom();
+    _saveChatHistory();
 
     final user = AuthService().currentUser;
     final email = user?.email ?? 'guest@superbass.lk';
@@ -125,6 +295,7 @@ class _WorkioAiScreenState extends State<WorkioAiScreen> {
           });
         });
         _scrollToBottom();
+        _saveChatHistory();
       }
     } catch (e) {
       if (mounted) {
@@ -138,6 +309,7 @@ class _WorkioAiScreenState extends State<WorkioAiScreen> {
           });
         });
         _scrollToBottom();
+        _saveChatHistory();
       }
     }
   }
@@ -211,6 +383,7 @@ class _WorkioAiScreenState extends State<WorkioAiScreen> {
         });
       });
       _scrollToBottom();
+      _saveChatHistory();
     } else if (actionType == 'book_worker') {
       final w = payload is Map ? payload : {};
       final workerId = (w['id'] ?? w['workerId'] ?? '').toString();
@@ -395,24 +568,23 @@ class _WorkioAiScreenState extends State<WorkioAiScreen> {
         Padding(
           padding: const EdgeInsets.only(right: 16),
           child: Center(
-            child: InkWell(
-              onTap: () {
-                setState(() {
-                  _initChat();
-                });
-              },
-              borderRadius: BorderRadius.circular(22),
-              child: Container(
-                width: 42,
-                height: 42,
-                decoration: const BoxDecoration(
-                  color: Colors.black,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.add_rounded,
-                  color: Colors.white,
-                  size: 22,
+            child: Tooltip(
+              message: 'New Chat',
+              child: InkWell(
+                onTap: _resetChat,
+                borderRadius: BorderRadius.circular(22),
+                child: Container(
+                  width: 42,
+                  height: 42,
+                  decoration: const BoxDecoration(
+                    color: Colors.black,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.add_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
                 ),
               ),
             ),

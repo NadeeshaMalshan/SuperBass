@@ -131,10 +131,17 @@ async def booking_agent_node(state: AgentState) -> Dict[str, Any]:
         rate_val = float(booking_data.get("hourlyRate") or 2800)
         est_price_val = float(booking_data.get("estimatedPrice") or rate_val)
 
-        priority_val = booking_data.get("priority") or booking_data.get("urgency") or "Normal"
+        raw_p = booking_data.get("priority") or booking_data.get("urgency") or ""
         p_match = re.search(r'priority:\s*([a-zA-Z]+)', last_user_text, re.IGNORECASE)
         if p_match:
-            priority_val = p_match.group(1).capitalize()
+            raw_p = p_match.group(1)
+        p_str = str(raw_p).strip().lower()
+        if p_str in ("high", "urgent", "emergency"):
+            priority_val = "High"
+        elif p_str in ("low",):
+            priority_val = "Low"
+        else:
+            priority_val = "Medium"
 
         desc_val = booking_data.get("description") or booking_data.get("notes") or ""
         d_match = re.search(r'description:\s*([^.\n]+)', last_user_text, re.IGNORECASE)
@@ -188,7 +195,14 @@ async def booking_agent_node(state: AgentState) -> Dict[str, Any]:
         location_val = booking_data.get("locationAddress") or user_address
         phone_val = booking_data.get("contactPhone") or user_phone
         notes_val = booking_data.get("notes") or "Standard booking request via Workio AI"
-        priority_val = booking_data.get("priority") or booking_data.get("urgency") or "Normal"
+        raw_p = booking_data.get("priority") or booking_data.get("urgency") or ""
+        p_str = str(raw_p).strip().lower()
+        if p_str in ("high", "urgent", "emergency"):
+            priority_val = "High"
+        elif p_str in ("low",):
+            priority_val = "Low"
+        else:
+            priority_val = "Medium"
         desc_val = booking_data.get("description") or notes_val
         full_booking_notes = f"[{priority_val} Priority] {desc_val}" if priority_val else desc_val
 

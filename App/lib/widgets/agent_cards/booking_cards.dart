@@ -481,7 +481,7 @@ class _BookingFormCardState extends State<BookingFormCard> {
   late TextEditingController _addressCtrl;
   late TextEditingController _phoneCtrl;
   late DateTime _selectedDate;
-  String _priority = 'Normal';
+  String _priority = 'Medium';
   bool _isSubmitting = false;
   bool _isCompleted = false;
 
@@ -494,9 +494,17 @@ class _BookingFormCardState extends State<BookingFormCard> {
   @override
   void initState() {
     super.initState();
-    _priority = widget.data['priority']?.toString() ??
+    final rawP = widget.data['priority']?.toString() ??
         widget.data['urgency']?.toString() ??
-        'Normal';
+        'Medium';
+    final pLower = rawP.toLowerCase().trim();
+    if (pLower == 'high' || pLower == 'urgent' || pLower == 'emergency') {
+      _priority = 'High';
+    } else if (pLower == 'low') {
+      _priority = 'Low';
+    } else {
+      _priority = 'Medium';
+    }
 
     // Parse pre-filled date if provided
     final rawDate = widget.data['selectedDate'] ??
@@ -869,21 +877,15 @@ class _BookingFormCardState extends State<BookingFormCard> {
                     scrollDirection: Axis.horizontal,
                     physics: const BouncingScrollPhysics(),
                     child: Row(
-                      children: ['Low', 'Normal', 'High', 'Urgent', 'Emergency'].map((p) {
+                      children: ['Low', 'Medium', 'High'].map((p) {
                         final isSel = _priority.toLowerCase() == p.toLowerCase();
                         Color activeBg = Colors.black;
                         Color activeBorder = Colors.black;
 
-                        if (p == 'Emergency') {
+                        if (p == 'High') {
                           activeBg = const Color(0xFFDC2626);
                           activeBorder = const Color(0xFFDC2626);
-                        } else if (p == 'Urgent') {
-                          activeBg = const Color(0xFFEA580C);
-                          activeBorder = const Color(0xFFEA580C);
-                        } else if (p == 'High') {
-                          activeBg = const Color(0xFFD97706);
-                          activeBorder = const Color(0xFFD97706);
-                        } else if (p == 'Normal') {
+                        } else if (p == 'Medium') {
                           activeBg = const Color(0xFF0F172A);
                           activeBorder = const Color(0xFF0F172A);
                         } else {
@@ -898,7 +900,7 @@ class _BookingFormCardState extends State<BookingFormCard> {
                             borderRadius: BorderRadius.circular(20),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 180),
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                               decoration: BoxDecoration(
                                 color: isSel ? activeBg : const Color(0xFFF8FAFC),
                                 borderRadius: BorderRadius.circular(20),
@@ -912,7 +914,7 @@ class _BookingFormCardState extends State<BookingFormCard> {
                                 children: [
                                   if (isSel) ...[
                                     Icon(
-                                      p == 'Emergency' || p == 'Urgent'
+                                      p == 'High'
                                           ? Icons.warning_amber_rounded
                                           : Icons.check_circle_rounded,
                                       size: 13,

@@ -14,12 +14,18 @@ export default function BookingConfirmationCard({ data = {}, onAction }) {
     contactPhone = '',
     hourlyRate = 2800,
     estimatedPrice = null,
-    priority = 'Normal',
+    priority: rawPriority = 'Medium',
     description = '',
     notes = '',
     confirmPrompt = '',
     cancelPrompt = '',
   } = data;
+
+  const priority = ['high', 'urgent', 'emergency'].includes((rawPriority || '').toLowerCase())
+    ? 'High'
+    : (rawPriority || '').toLowerCase() === 'low'
+    ? 'Low'
+    : 'Medium';
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -86,17 +92,15 @@ export default function BookingConfirmationCard({ data = {}, onAction }) {
 
   const getPriorityStyle = (lvl) => {
     switch (lvl?.toLowerCase()) {
-      case 'emergency':
-        return { bg: '#fee2e2', text: '#dc2626', border: '#fca5a5' };
-      case 'urgent':
-        return { bg: '#ffedd5', text: '#ea580c', border: '#fdba74' };
       case 'high':
-        return { bg: '#fef3c7', text: '#d97706', border: '#fcd34d' };
+      case 'emergency':
+      case 'urgent':
+        return { bg: '#fee2e2', text: '#dc2626', border: '#fca5a5' };
       case 'low':
         return { bg: '#f1f5f9', text: '#64748b', border: '#cbd5e1' };
-      case 'normal':
+      case 'medium':
       default:
-        return { bg: '#eff6ff', text: '#2563eb', border: '#bfdbfe' };
+        return { bg: '#e0f2fe', text: '#0284c7', border: '#bae6fd' };
     }
   };
   const pStyle = getPriorityStyle(priority);

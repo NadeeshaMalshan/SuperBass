@@ -150,19 +150,28 @@ def extract_smart_booking_details(
     last_user_text = user_msgs[-1] if user_msgs else ""
     conv_text = " ".join(user_msgs).lower()
 
-    # 1. PRIORITY / URGENCY
+    # 1. PRIORITY / URGENCY (Low, Medium, High)
     priority = data.get("priority") or data.get("urgency") or metadata.get("priority")
-    if not priority:
-        if any(w in conv_text for w in ["emergency", "burst", "flooding", "spark", "sparking", "shock", "fire", "exploded", "danger", "hazard", "leaking heavily"]):
-            priority = "Emergency"
-        elif any(w in conv_text for w in ["urgent", "urgently", "asap", "immediately", "right now", "hurry", "critical", "severe", "ikmanin", "ikmnta", "danma"]):
-            priority = "Urgent"
-        elif any(w in conv_text for w in ["high priority", "soon", "today", "tonight", "quickly", "fast", "speedy", "adha", "ada"]):
+    if priority:
+        p_lower = str(priority).lower().strip()
+        if p_lower in ("high", "urgent", "emergency"):
             priority = "High"
-        elif any(w in conv_text for w in ["low priority", "not urgent", "whenever", "next week", "flexible", "slow"]):
+        elif p_lower in ("low",):
             priority = "Low"
         else:
-            priority = "Normal"
+            priority = "Medium"
+    else:
+        if any(w in conv_text for w in [
+            "emergency", "burst", "flooding", "spark", "sparking", "shock", "fire",
+            "exploded", "danger", "hazard", "leaking heavily", "urgent", "urgently",
+            "asap", "immediately", "right now", "hurry", "critical", "severe",
+            "ikmanin", "ikmnta", "danma", "high", "high priority", "quickly", "fast", "speedy"
+        ]):
+            priority = "High"
+        elif any(w in conv_text for w in ["low", "low priority", "not urgent", "whenever", "next week", "flexible", "slow"]):
+            priority = "Low"
+        else:
+            priority = "Medium"
 
     # 2. DATE
     scheduled_date = data.get("requestedDate") or data.get("selectedDate") or data.get("scheduledDate") or data.get("date")

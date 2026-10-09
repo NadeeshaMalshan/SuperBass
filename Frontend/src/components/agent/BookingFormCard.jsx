@@ -55,7 +55,11 @@ export default function BookingFormCard({ data = {}, onAction }) {
 
   const [selectedDate, setSelectedDate] = useState(data.selectedDate || defaultDateStr);
   const [jobTitle, setJobTitle] = useState(data.jobTitle || `${category} Service Request`);
-  const [priority, setPriority] = useState(data.priority || data.urgency || 'Normal');
+  const rawPriority = data.priority || data.urgency || 'Medium';
+  const initPriority = ['high', 'urgent', 'emergency'].includes(rawPriority.toLowerCase())
+    ? 'High'
+    : (rawPriority.toLowerCase() === 'low' ? 'Low' : 'Medium');
+  const [priority, setPriority] = useState(initPriority);
   const [description, setDescription] = useState(data.description || data.notes || '');
   const [notes, setNotes] = useState(data.notes || '');
   const [location, setLocation] = useState(resolveDistrict(data.location));
@@ -509,13 +513,11 @@ export default function BookingFormCard({ data = {}, onAction }) {
               Priority Level
             </label>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>
-              {['Low', 'Normal', 'High', 'Urgent', 'Emergency'].map((p) => {
+              {['Low', 'Medium', 'High'].map((p) => {
                 const isSel = priority.toLowerCase() === p.toLowerCase();
                 let activeColor = '#0f172a';
-                if (p === 'Emergency') activeColor = '#dc2626';
-                else if (p === 'Urgent') activeColor = '#ea580c';
-                else if (p === 'High') activeColor = '#d97706';
-                else if (p === 'Normal') activeColor = '#0f172a';
+                if (p === 'High') activeColor = '#dc2626';
+                else if (p === 'Medium') activeColor = '#0f172a';
                 else activeColor = '#475569';
 
                 return (
@@ -540,7 +542,7 @@ export default function BookingFormCard({ data = {}, onAction }) {
                   >
                     {isSel && (
                       <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>
-                        {p === 'Emergency' || p === 'Urgent' ? 'warning' : 'check'}
+                        {p === 'High' ? 'priority_high' : 'check'}
                       </span>
                     )}
                     {p}

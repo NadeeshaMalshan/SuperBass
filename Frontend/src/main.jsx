@@ -91,6 +91,12 @@ function Router() {
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    if (document.documentElement) document.documentElement.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
+  }, [path]);
+
   const activeRole = localStorage.getItem('activeRole') || 'Resident';
 
   // Role-based Theme: Switch yellow accents to Worker Blue except on landing and worker-detail

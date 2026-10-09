@@ -318,4 +318,55 @@ class AiService {
       },
     };
   }
+
+  /// List all previous conversation threads for a user from PostgreSQL
+  Future<List<Map<String, dynamic>>> listConversations(String email) async {
+    try {
+      final backendUrl = ApiConfig.agentBackendUrl;
+      final uri = Uri.parse('$backendUrl/api/conversations?email=${Uri.encodeComponent(email)}');
+      final response = await http.get(uri).timeout(const Duration(seconds: 8));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final convs = data['conversations'] as List<dynamic>?;
+        if (convs != null) {
+          return convs.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('[AiService] Error listing conversations: $e');
+    }
+    return [];
+  }
+
+  /// Fetch all messages for a specific conversation from PostgreSQL
+  Future<List<Map<String, dynamic>>> getConversationMessages(String convId) async {
+    try {
+      final backendUrl = ApiConfig.agentBackendUrl;
+      final uri = Uri.parse('$backendUrl/api/conversations/$convId');
+      final response = await http.get(uri).timeout(const Duration(seconds: 8));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final msgs = data['messages'] as List<dynamic>?;
+        if (msgs != null) {
+          return msgs.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('[AiService] Error fetching messages for $convId: $e');
+    }
+    return [];
+  }
+
+  /// Delete a conversation session from the agent backend
+  Future<bool> deleteConversation(String convId, String email) async {
+    try {
+      final backendUrl = ApiConfig.agentBackendUrl;
+      final uri = Uri.parse('$backendUrl/api/conversations/$convId?email=${Uri.encodeComponent(email)}');
+      final response = await http.delete(uri).timeout(const Duration(seconds: 5));
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (e) {
+      debugPrint('[AiService] Error deleting conversation: $e');
+      return false;
+    }
+  }
 }
