@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/ai_service.dart';
 import '../services/auth_service.dart';
+import '../widgets/agent_cards/agent_card_dispatcher.dart';
 
 class WorkioAiScreen extends StatefulWidget {
   final Function(int tabIndex)? onNavigateToTab;
@@ -21,7 +22,7 @@ class _WorkioAiScreenState extends State<WorkioAiScreen> {
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
 
-  String? _selectedEmergencyService = 'AC repair';
+  String? _selectedEmergencyService;
   bool _isLoading = false;
   String _conversationId = 'conv_${DateTime.now().millisecondsSinceEpoch}';
 
@@ -76,7 +77,7 @@ class _WorkioAiScreenState extends State<WorkioAiScreen> {
     });
   }
 
-  Future<void> _sendMessage(String text) async {
+  Future<void> _sendMessage(String text, {Map<String, dynamic>? metadata}) async {
     final clean = text.trim();
     if (clean.isEmpty) return;
 
@@ -104,6 +105,7 @@ class _WorkioAiScreenState extends State<WorkioAiScreen> {
         email: email,
         userType: role,
         conversationId: _conversationId,
+        metadata: metadata,
       );
 
       final respData = res['response'] as Map<String, dynamic>?;
@@ -142,28 +144,133 @@ class _WorkioAiScreenState extends State<WorkioAiScreen> {
 
   void _handleActionCardTap(String actionKey) {
     if (actionKey == 'find_workers') {
-      if (widget.onNavigateToTab != null) {
-        Navigator.pop(context);
-        widget.onNavigateToTab!(0); // Find tab
-      } else {
-        _sendMessage('Find top-rated workers near me');
-      }
+      _sendMessage('Find top-rated verified professionals near me');
     } else if (actionKey == 'create_post') {
-      if (widget.onNavigateToTab != null) {
-        Navigator.pop(context);
-        widget.onNavigateToTab!(1); // Community tab
-      } else {
-        _sendMessage('I want to create a community service request post');
-      }
+      _sendMessage('I want to create a community service request post');
     } else if (actionKey == 'see_bookings') {
+      _sendMessage('Show my active bookings and schedule');
+    } else if (actionKey == 'rate_workers') {
+      _sendMessage('Show completed bookings to rate technicians');
+    }
+  }
+
+  void _handleCardAction(String actionType, dynamic payload) {
+    if (actionType == 'navigate') {
+      final String route = payload?.toString() ?? '';
+      if (route.contains('/find') || route.contains('find')) {
+        if (widget.onNavigateToTab != null) {
+          Navigator.pop(context);
+          widget.onNavigateToTab!(0);
+        } else {
+          _sendMessage('Find top-rated workers near me');
+        }
+      } else if (route.contains('/community') || route.contains('community')) {
+        if (widget.onNavigateToTab != null) {
+          Navigator.pop(context);
+          widget.onNavigateToTab!(1);
+        } else {
+          _sendMessage('Show recent community posts');
+        }
+      } else if (route.contains('/bookings') || route.contains('booking')) {
+        if (widget.onNavigateToTab != null) {
+          Navigator.pop(context);
+          widget.onNavigateToTab!(2);
+        } else {
+          _sendMessage('Show my active bookings');
+        }
+      }
+    } else if (actionType == 'select_post') {
+      final postId = payload is Map ? (payload['id'] ?? payload['postId']) : payload;
+      if (postId != null) {
+        _sendMessage('Show details for post #$postId');
+      }
+    } else if (actionType == 'view_community') {
       if (widget.onNavigateToTab != null) {
         Navigator.pop(context);
-        widget.onNavigateToTab!(2); // Bookings tab
+        widget.onNavigateToTab!(1);
       } else {
-        _sendMessage('Show my active bookings and schedule');
+        _sendMessage('Show community posts');
       }
-    } else if (actionKey == 'rate_workers') {
-      _sendMessage('How can I rate and review technicians for completed services?');
+    } else if (actionType == 'edit_post') {
+      final p = payload is Map ? payload : {};
+      final postId = p['id'] ?? p['postId'] ?? '1';
+      setState(() {
+        _messages.add({
+          'sender': 'assistant',
+          'isWelcome': false,
+          'time': _formatTime(DateTime.now()),
+          'text': "Please edit the details for post #$postId below and tap 'Save Changes':",
+          'response_type': 'edit_community_post',
+          'card_data': {
+            'action': 'update',
+            'postId': postId,
+            'title': p['title'] ?? '',
+            'content': p['content'] ?? '',
+            'location': p['location'] ?? 'Colombo',
+          },
+        });
+      });
+      _scrollToBottom();
+    } else if (actionType == 'book_worker') {
+      final w = payload is Map ? payload : {};
+      final workerId = (w['id'] ?? w['workerId'] ?? '').toString();
+      final workerName = w['name'] ?? 'technician';
+      final idStr = workerId.isNotEmpty ? ' (Worker ID: $workerId)' : '';
+      _sendMessage('I would like to book $workerName$idStr');
+    } else if (actionType == 'view_worker') {
+      final w = payload is Map ? payload : {};
+      final name = w['name'] ?? 'Worker';
+      final id = w['id'] ?? w['workerId'] ?? '';
+      _sendMessage('Show details and reviews for $name (Worker ID: $id)');
+    } else if (actionType == 'review_worker') {
+      final b = payload is Map ? payload : {};
+      final bId = (b['id'] ?? b['bookingId'] ?? '').toString();
+      final workerName = b['workerName']?.toString() ?? 'technician';
+      final workerId = (b['workerId'] ?? '').toString();
+      final status = (b['status'] ?? '').toString().toLowerCase();
+      final isCompleted = status.contains('complete') || status.contains('done') || status.contains('reviewed');
+
+      if (bId.isNotEmpty && !isCompleted) {
+        _sendMessage('Can I review booking #$bId with $workerName?');
+      } else if (bId.isNotEmpty) {
+        final wStr = workerId.isNotEmpty ? ' (Worker ID: $workerId)' : '';
+        _sendMessage('I would like to review $workerName$wStr for completed booking #$bId');
+      } else {
+        _sendMessage('Show completed bookings to rate technicians');
+      }
+    } else if (actionType == 'send_prompt' ||
+        actionType == 'confirm_post' ||
+        actionType == 'confirm_update' ||
+        actionType == 'confirm_booking') {
+      if (payload is Map) {
+        final prompt = (payload['prompt'] ?? payload['text'] ?? '').toString();
+        final Map<String, dynamic> extraMeta = {};
+        if (payload['bookingData'] != null) {
+          extraMeta['booking_data'] = payload['bookingData'];
+        }
+        if (payload['postData'] != null) {
+          extraMeta['post_data'] = payload['postData'];
+        }
+        if (payload['reviewData'] != null) {
+          extraMeta['review_data'] = payload['reviewData'];
+        }
+        if (payload['action'] != null) {
+          extraMeta['action'] = payload['action'];
+        }
+        _sendMessage(prompt, metadata: extraMeta);
+      } else {
+        _sendMessage(payload.toString());
+      }
+    } else if (actionType == 'retry') {
+      final lastUserMsg = _messages.reversed.firstWhere(
+        (m) => m['sender'] == 'user',
+        orElse: () => {},
+      );
+      if (lastUserMsg['text'] != null) {
+        _sendMessage(lastUserMsg['text']);
+      }
+    } else if (payload is String) {
+      _sendMessage(payload);
     }
   }
 
@@ -438,33 +545,56 @@ class _WorkioAiScreenState extends State<WorkioAiScreen> {
               ),
 
               // Embedded Action Cards (shown on welcome message)
+              // Embedded Action Cards (shown on welcome message) - Horizontally scrollable row
               if (isWelcome) ...[
-                const SizedBox(height: 10),
-                _buildActionCard(
-                  title: 'Find workers',
-                  subtitle: 'Trusted workers near you',
-                  icon: Icons.search_rounded,
-                  onTap: () => _handleActionCardTap('find_workers'),
-                ),
-                _buildActionCard(
-                  title: 'Create community post',
-                  subtitle: 'Post your service needs',
-                  icon: Icons.chat_bubble_outline_rounded,
-                  onTap: () => _handleActionCardTap('create_post'),
-                ),
-                _buildActionCard(
-                  title: 'See my bookings',
-                  subtitle: 'Upcoming and past bookings',
-                  icon: Icons.calendar_today_outlined,
-                  onTap: () => _handleActionCardTap('see_bookings'),
-                ),
-                _buildActionCard(
-                  title: 'Rate workers',
-                  subtitle: 'Review completed services',
-                  icon: Icons.star_outline_rounded,
-                  onTap: () => _handleActionCardTap('rate_workers'),
+                const SizedBox(height: 12),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  clipBehavior: Clip.none,
+                  physics: const BouncingScrollPhysics(),
+                  child: Row(
+                    children: [
+                      _buildActionCard(
+                        title: 'Find workers',
+                        subtitle: 'Trusted pros near you',
+                        icon: Icons.search_rounded,
+                        onTap: () => _handleActionCardTap('find_workers'),
+                      ),
+                      _buildActionCard(
+                        title: 'Community post',
+                        subtitle: 'Post your service needs',
+                        icon: Icons.chat_bubble_outline_rounded,
+                        onTap: () => _handleActionCardTap('create_post'),
+                      ),
+                      _buildActionCard(
+                        title: 'My bookings',
+                        subtitle: 'Upcoming & past jobs',
+                        icon: Icons.calendar_today_outlined,
+                        onTap: () => _handleActionCardTap('see_bookings'),
+                      ),
+                      _buildActionCard(
+                        title: 'Rate workers',
+                        subtitle: 'Review completed services',
+                        icon: Icons.star_outline_rounded,
+                        onTap: () => _handleActionCardTap('rate_workers'),
+                      ),
+                    ],
+                  ),
                 ),
               ],
+
+              // Structured AI Response Cards
+              if (!isWelcome && (msg['response_type'] != null || msg['card_data'] != null))
+                AgentCardDispatcher(
+                  responseType: msg['response_type']?.toString(),
+                  cardData: msg['card_data'] is Map<String, dynamic>
+                      ? msg['card_data'] as Map<String, dynamic>
+                      : (msg['card_data'] is Map
+                          ? Map<String, dynamic>.from(msg['card_data'] as Map)
+                          : null),
+                  message: msg['text']?.toString(),
+                  onAction: _handleCardAction,
+                ),
 
               const SizedBox(height: 4),
               Text(
@@ -488,64 +618,72 @@ class _WorkioAiScreenState extends State<WorkioAiScreen> {
     required VoidCallback onTap,
   }) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
+      padding: const EdgeInsets.only(right: 12.0),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          width: 195,
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: const Color(0xFFF1F3F5),
-            borderRadius: BorderRadius.circular(16),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              // Black Circular Icon Avatar
-              Container(
-                width: 44,
-                height: 44,
-                decoration: const BoxDecoration(
-                  color: Colors.black,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  icon,
-                  size: 20,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(width: 12),
-
-              // Text info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black,
-                      ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: const BoxDecoration(
+                      color: Colors.black,
+                      shape: BoxShape.circle,
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 12.5,
-                        color: const Color(0xFF64748B),
-                      ),
+                    child: Icon(
+                      icon,
+                      size: 18,
+                      color: Colors.white,
                     ),
-                  ],
-                ),
+                  ),
+                  const Icon(
+                    Icons.arrow_forward_rounded,
+                    size: 15,
+                    color: Color(0xFF94A3B8),
+                  ),
+                ],
               ),
-
-              // Chevron Right
-              const Icon(
-                Icons.chevron_right_rounded,
-                size: 22,
-                color: Color(0xFF64748B),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                style: GoogleFonts.dmSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF0F172A),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 3),
+              Text(
+                subtitle,
+                style: GoogleFonts.dmSans(
+                  fontSize: 12,
+                  color: const Color(0xFF64748B),
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -784,7 +922,7 @@ class _WorkioAiScreenState extends State<WorkioAiScreen> {
     return InkWell(
       onTap: () {
         setState(() {
-          _selectedEmergencyService = serviceName;
+          _selectedEmergencyService = isSelected ? null : serviceName;
         });
         _sendMessage('I need an emergency $serviceName immediately');
       },

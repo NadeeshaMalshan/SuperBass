@@ -1335,16 +1335,48 @@ export default function WorkerDetail() {
                   gap: '12px'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', userSelect: 'none', margin: 0 }}>
-                      <md-checkbox
-                        checked={bookingForm.shareGps ? true : undefined}
-                        touch-target="wrapper"
-                        onChange={(e) => setBookingForm(prev => ({ ...prev, shareGps: e.target.checked }))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newShare = !bookingForm.shareGps;
+                        setBookingForm(prev => ({ ...prev, shareGps: newShare }));
+                        if (newShare && (!bookingForm.locationLat || !bookingForm.locationLng)) {
+                          setShowMapPicker(true);
+                        }
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        margin: 0,
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        textAlign: 'left'
+                      }}
+                    >
+                      <div
                         style={{
-                          '--md-sys-color-primary': '#0f172a',
-                          '--md-sys-color-on-primary': '#ffffff'
+                          width: '22px',
+                          height: '22px',
+                          borderRadius: '6px',
+                          border: bookingForm.shareGps ? '2px solid #0f172a' : '2px solid #cbd5e1',
+                          backgroundColor: bookingForm.shareGps ? '#0f172a' : '#ffffff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'all 0.15s ease',
+                          flexShrink: 0
                         }}
-                      ></md-checkbox>
+                      >
+                        {bookingForm.shareGps && (
+                          <span className="material-symbols-outlined" style={{ fontSize: '16px', color: '#ffffff', fontWeight: 'bold' }}>
+                            check
+                          </span>
+                        )}
+                      </div>
                       <div>
                         <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <md-icon style={{ fontSize: '18px', color: '#0f172a' }}>my_location</md-icon>
@@ -1361,7 +1393,7 @@ export default function WorkerDetail() {
                           )}
                         </div>
                       </div>
-                    </label>
+                    </button>
 
                     <md-text-button
                       type="button"

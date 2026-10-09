@@ -55,14 +55,22 @@ export default function BookingFormCard({ data = {}, onAction }) {
 
   const [selectedDate, setSelectedDate] = useState(data.selectedDate || defaultDateStr);
   const [jobTitle, setJobTitle] = useState(data.jobTitle || `${category} Service Request`);
+  const [priority, setPriority] = useState(data.priority || data.urgency || 'Normal');
+  const [description, setDescription] = useState(data.description || data.notes || '');
   const [notes, setNotes] = useState(data.notes || '');
   const [location, setLocation] = useState(resolveDistrict(data.location));
   const [specificAddress, setSpecificAddress] = useState(
     data.specificAddress || data.address || (data.location && data.location.includes(',') ? data.location : '')
   );
   const [contactPhone, setContactPhone] = useState(data.contactPhone || '0771756463');
-  const [mapLat, setMapLat] = useState(null);
-  const [mapLng, setMapLng] = useState(null);
+
+  // Check if initial coordinates were provided
+  const initialLat = data.locationLat || data.latitude || (data.location && data.location.includes(',') ? parseFloat(data.location.split(',')[0]) : null);
+  const initialLng = data.locationLng || data.longitude || (data.location && data.location.includes(',') ? parseFloat(data.location.split(',')[1]) : null);
+
+  const [mapLat, setMapLat] = useState(initialLat || 6.74006);
+  const [mapLng, setMapLng] = useState(initialLng || 80.38106);
+  const [shareGps, setShareGps] = useState(true);
   const [isLocating, setIsLocating] = useState(false);
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
 
@@ -248,16 +256,17 @@ export default function BookingFormCard({ data = {}, onAction }) {
   };
 
   const handleConfirmBooking = () => {
-    let fullAddress;
-    if (mapLat !== null && mapLng !== null) {
-      fullAddress = `${specificAddress || `${mapLat.toFixed(6)}, ${mapLng.toFixed(6)}`}, ${location}`;
-    } else if (specificAddress) {
-      fullAddress = `${specificAddress}, ${location}`;
-    } else {
-      fullAddress = location;
-    }
+    let fullAddress = specificAddress
+      ? `${specificAddress}, ${location}`
+      : location;
 
-    const promptToExecute = `REVIEW_BOOKING: Please review booking details for worker ID ${workerId} (${workerName}) on ${selectedDate}. Service: ${jobTitle}. Location: ${fullAddress}. Phone: ${contactPhone}. Notes: ${notes || 'Standard booking'}`;
+    const gpsSuffix = (shareGps && mapLat && mapLng)
+      ? ` [GPS: ${mapLat.toFixed(5)}, ${mapLng.toFixed(5)}]`
+      : '';
+
+    const descSuffix = description ? ` Description: ${description}.` : '';
+
+    const promptToExecute = `REVIEW_BOOKING: Please review booking details for worker ID ${workerId} (${workerName}) on ${selectedDate}. Priority: ${priority}. Service: ${jobTitle}.${descSuffix} Location: ${fullAddress}${gpsSuffix}. Phone: ${contactPhone}. Notes: ${notes || description || 'Standard booking'}`;
 
     const payloadObj = {
       prompt: promptToExecute,
@@ -271,11 +280,19 @@ export default function BookingFormCard({ data = {}, onAction }) {
         date: selectedDate,
         scheduledDate: `${selectedDate}T09:00:00`,
         jobTitle,
+        description,
+        priority,
+        urgency: priority,
         locationAddress: fullAddress,
+        specificAddress,
+        district: location,
         contactPhone,
-        notes,
+        notes: notes || description,
         hourlyRate,
         estimatedPrice: hourlyRate,
+        locationLat: shareGps ? mapLat : null,
+        locationLng: shareGps ? mapLng : null,
+        shareGps,
       },
     };
 
@@ -461,6 +478,78 @@ export default function BookingFormCard({ data = {}, onAction }) {
             />
           </div>
 
+          {/* 2B. Detailed Problem Description */}
+          <div className="booking-form-field">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+              <label className="booking-field-label" style={{ margin: 0 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                  assignment
+                </span>{' '}
+                Problem Description / Details
+              </label>
+              <span style={{ fontSize: '11px', fontWeight: '700', color: '#2563eb', backgroundColor: 'rgba(37, 99, 235, 0.1)', padding: '2px 7px', borderRadius: '4px' }}>
+                AI Auto-Filled
+              </span>
+            </div>
+            <textarea
+              className="booking-textarea-input"
+              rows={2}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Detailed description of the issue or problem..."
+            />
+          </div>
+
+          {/* 2C. Priority Level Selector */}
+          <div className="booking-form-field">
+            <label className="booking-field-label">
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                flag
+              </span>{' '}
+              Priority Level
+            </label>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>
+              {['Low', 'Normal', 'High', 'Urgent', 'Emergency'].map((p) => {
+                const isSel = priority.toLowerCase() === p.toLowerCase();
+                let activeColor = '#0f172a';
+                if (p === 'Emergency') activeColor = '#dc2626';
+                else if (p === 'Urgent') activeColor = '#ea580c';
+                else if (p === 'High') activeColor = '#d97706';
+                else if (p === 'Normal') activeColor = '#0f172a';
+                else activeColor = '#475569';
+
+                return (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setPriority(p)}
+                    style={{
+                      padding: '6px 14px',
+                      borderRadius: '20px',
+                      fontSize: '12px',
+                      fontWeight: isSel ? '700' : '500',
+                      cursor: 'pointer',
+                      border: isSel ? `1.5px solid ${activeColor}` : '1px solid #e2e8f0',
+                      backgroundColor: isSel ? activeColor : '#f8fafc',
+                      color: isSel ? '#ffffff' : '#475569',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {isSel && (
+                      <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>
+                        {p === 'Emergency' || p === 'Urgent' ? 'warning' : 'check'}
+                      </span>
+                    )}
+                    {p}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* 3. Notes & Specific Instructions */}
           <div className="booking-form-field">
             <label className="booking-field-label">
@@ -528,59 +617,138 @@ export default function BookingFormCard({ data = {}, onAction }) {
               </span>{' '}
               Specific Address / Street
             </label>
-            <div className="booking-input-with-action">
-              <input
-                type="text"
-                className="booking-text-input"
-                value={specificAddress}
-                onChange={(e) => setSpecificAddress(e.target.value)}
-                placeholder="e.g. 5656, Batuhena, Ratnapura"
-              />
+            <input
+              type="text"
+              className="booking-text-input"
+              value={specificAddress}
+              onChange={(e) => setSpecificAddress(e.target.value)}
+              placeholder="e.g. 5656, Batuhena, Ratnapura"
+            />
+          </div>
+
+          {/* 6. Share saved GPS location (Tick Button & Interactive Map) */}
+          <div
+            className="booking-form-field"
+            style={{
+              backgroundColor: '#f8fafc',
+              borderRadius: '16px',
+              padding: '14px 16px',
+              border: '1px solid #e2e8f0',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
               <button
                 type="button"
-                className="booking-inline-gps-btn"
+                onClick={() => setShareGps(!shareGps)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  margin: 0,
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  textAlign: 'left',
+                }}
+              >
+                <div
+                  style={{
+                    width: '22px',
+                    height: '22px',
+                    borderRadius: '6px',
+                    border: shareGps ? '2px solid #0f172a' : '2px solid #cbd5e1',
+                    backgroundColor: shareGps ? '#0f172a' : '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.15s ease',
+                    flexShrink: 0,
+                  }}
+                >
+                  {shareGps && (
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px', color: '#ffffff', fontWeight: 'bold' }}>
+                      check
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: '18px', color: '#0f172a' }}>
+                      my_location
+                    </span>
+                    Share saved GPS location
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
+                    {shareGps && mapLat && mapLng ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '15px', color: '#0f172a' }}>
+                          pin_drop
+                        </span>
+                        Saved Pin: <strong>{mapLat.toFixed(5)}, {mapLng.toFixed(5)}</strong>
+                      </span>
+                    ) : (
+                      <span>GPS coordinates will not be attached</span>
+                    )}
+                  </div>
+                </div>
+              </button>
+
+              <button
+                type="button"
                 onClick={handleGetLocation}
                 disabled={isLocating}
-                title="Detect current GPS location"
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid #cbd5e1',
+                  color: '#0f172a',
+                  borderRadius: '20px',
+                  padding: '6px 14px',
+                  fontWeight: 700,
+                  fontSize: '0.8rem',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                }}
               >
                 <span
                   className="material-symbols-outlined"
                   style={{
+                    fontSize: '16px',
                     animation: isLocating ? 'spin 1s linear infinite' : 'none',
                   }}
                 >
                   {isLocating ? 'progress_activity' : 'my_location'}
                 </span>
-                <span>{isLocating ? 'Detecting...' : 'Use GPS'}</span>
+                <span>{isLocating ? 'Locating...' : 'Use My GPS'}</span>
               </button>
             </div>
-          </div>
 
-          {/* 6. Map & GPS Location */}
-          <div className="booking-form-field">
-            <label className="booking-field-label">
-              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
-                map
-              </span>{' '}
-              Map Location
-            </label>
-
-            <MapPicker
-              lat={mapLat}
-              lng={mapLng}
-              onChange={(lat, lng) => {
-                reverseGeocodeAndSet(lat, lng);
-              }}
-            />
-
-            {mapLat && mapLng && (
-              <div className="booking-coords-preview">
-                <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#10b981' }}>
-                  check_circle
-                </span>
-                <span>
-                  Pinned: {mapLat.toFixed(6)}, {mapLng.toFixed(6)}
-                </span>
+            {shareGps && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '6px', borderTop: '1px solid #e2e8f0' }}>
+                <MapPicker
+                  lat={mapLat}
+                  lng={mapLng}
+                  onChange={(lat, lng) => {
+                    reverseGeocodeAndSet(lat, lng);
+                  }}
+                />
+                {mapLat && mapLng && (
+                  <div className="booking-coords-preview">
+                    <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#10b981' }}>
+                      check_circle
+                    </span>
+                    <span>
+                      Pinned: {mapLat.toFixed(6)}, {mapLng.toFixed(6)} • Click map to move pin
+                    </span>
+                  </div>
+                )}
               </div>
             )}
           </div>

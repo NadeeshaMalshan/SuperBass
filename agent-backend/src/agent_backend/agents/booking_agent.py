@@ -131,19 +131,31 @@ async def booking_agent_node(state: AgentState) -> Dict[str, Any]:
         rate_val = float(booking_data.get("hourlyRate") or 2800)
         est_price_val = float(booking_data.get("estimatedPrice") or rate_val)
 
+        priority_val = booking_data.get("priority") or booking_data.get("urgency") or "Normal"
+        p_match = re.search(r'priority:\s*([a-zA-Z]+)', last_user_text, re.IGNORECASE)
+        if p_match:
+            priority_val = p_match.group(1).capitalize()
+
+        desc_val = booking_data.get("description") or booking_data.get("notes") or ""
+        d_match = re.search(r'description:\s*([^.\n]+)', last_user_text, re.IGNORECASE)
+        if d_match:
+            desc_val = d_match.group(1).strip()
+
         review_card = BookingConfirmationReviewCard(
             workerId=worker_id_val,
             workerName=worker_name_val,
             workerAvatar=worker_avatar_val,
             category=cat_val,
             jobTitle=job_title_val,
+            description=desc_val,
+            priority=priority_val,
             scheduledDate=scheduled_date_val,
             locationAddress=location_val,
             contactPhone=phone_val,
             hourlyRate=rate_val,
             estimatedPrice=est_price_val,
             notes=notes_val,
-            confirmPrompt=f"CONFIRM_BOOKING: Yes, please book worker ID {worker_id_val} ({worker_name_val}) for {scheduled_date_val}. Service: {job_title_val}. Location: {location_val}. Phone: {phone_val}. Notes: {notes_val}",
+            confirmPrompt=f"CONFIRM_BOOKING: Yes, please book worker ID {worker_id_val} ({worker_name_val}) for {scheduled_date_val}. Priority: {priority_val}. Service: {job_title_val}. Description: {desc_val or notes_val}. Location: {location_val}. Phone: {phone_val}.",
             cancelPrompt=f"CANCEL_BOOKING: Cancel this booking request with {worker_name_val}."
         )
 
@@ -176,6 +188,9 @@ async def booking_agent_node(state: AgentState) -> Dict[str, Any]:
         location_val = booking_data.get("locationAddress") or user_address
         phone_val = booking_data.get("contactPhone") or user_phone
         notes_val = booking_data.get("notes") or "Standard booking request via Workio AI"
+        priority_val = booking_data.get("priority") or booking_data.get("urgency") or "Normal"
+        desc_val = booking_data.get("description") or notes_val
+        full_booking_notes = f"[{priority_val} Priority] {desc_val}" if priority_val else desc_val
 
         # If workerId wasn't in booking_data, extract from prompt
         if not worker_id_val:
@@ -205,7 +220,7 @@ async def booking_agent_node(state: AgentState) -> Dict[str, Any]:
                 "jobTitle": job_title_val,
                 "locationAddress": location_val,
                 "contactPhone": phone_val,
-                "notes": notes_val,
+                "notes": full_booking_notes,
             })
 
             tool_msg = ToolMessage(
