@@ -22,7 +22,7 @@ class _WorkioAiScreenState extends State<WorkioAiScreen> {
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
 
-  String? _selectedEmergencyService = 'AC repair';
+  String? _selectedEmergencyService;
   bool _isLoading = false;
   String _conversationId = 'conv_${DateTime.now().millisecondsSinceEpoch}';
 
@@ -922,7 +922,7 @@ class _WorkioAiScreenState extends State<WorkioAiScreen> {
     return InkWell(
       onTap: () {
         setState(() {
-          _selectedEmergencyService = serviceName;
+          _selectedEmergencyService = isSelected ? null : serviceName;
         });
         _sendMessage('I need an emergency $serviceName immediately');
       },
