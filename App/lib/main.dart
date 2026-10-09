@@ -13,6 +13,7 @@ import 'screens/join_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/worker/worker_portal_screen.dart';
+import 'screens/worker/worker_onboarding_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'services/api_config.dart';
@@ -161,6 +162,9 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
         // Role Guard: When an authenticated user is a Worker, lock the interface to the Worker Portal.
         // They cannot be a resident unless they explicitly revert via Worker Profile & Settings ("Revert to Resident Mode").
         if (isLoggedIn && (user.isWorker || user.activeRole == 'Worker')) {
+          if (user.isNewWorker) {
+            return const WorkerOnboardingScreen();
+          }
           return const WorkerPortalScreen();
         }
 
