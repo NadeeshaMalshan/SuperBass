@@ -801,6 +801,24 @@ class ApiService {
     }
   }
 
+  /// Permanently delete Worker Account: DELETE /api/workers/delete-account?email=...
+  Future<bool> deleteWorkerAccount(String email) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/workers/delete-account').replace(
+        queryParameters: {'email': email},
+      );
+      final response = await http.delete(uri, headers: _headers);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return true;
+      }
+      debugPrint('Failed to delete worker account (${response.statusCode}): ${response.body}');
+      return false;
+    } catch (e) {
+      debugPrint('Error deleting worker account: $e');
+      return false;
+    }
+  }
+
   /// Upgrade Resident to Worker: POST /api/workers/become-worker
   Future<WorkerModel?> becomeWorker({
     required String email,

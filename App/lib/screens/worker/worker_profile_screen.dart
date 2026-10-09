@@ -585,34 +585,165 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
     }
   }
 
-  // 6. Delete Worker Profile
-  Future<void> _handleDeleteWorkerProfile() async {
+  // 6. Delete Worker Account (Permanent Deletion)
+  Future<void> _handleDeleteWorkerAccount() async {
+    final TextEditingController confirmController = TextEditingController();
+
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(
-          'Delete Worker Profile?',
-          style: GoogleFonts.dmSans(fontWeight: FontWeight.w800, color: WorkerColors.error),
-        ),
-        content: Text(
-          'Are you sure you want to delete your worker profile? Your worker listings, services, and profile will be permanently removed.',
-          style: GoogleFonts.dmSans(fontSize: 13),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('Cancel', style: GoogleFonts.dmSans(color: WorkerColors.onSurfaceVariant)),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: WorkerColors.error,
-              foregroundColor: Colors.white,
-            ),
-            child: Text('Delete Worker Profile', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
+      barrierDismissible: false,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final bool isConfirmed = confirmController.text.trim() == 'DELETE';
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: WorkerColors.errorLight,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.warning_amber_rounded, color: WorkerColors.error, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Delete Worker Account?',
+                      style: GoogleFonts.dmSans(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 18,
+                        color: WorkerColors.error,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Are you sure you want to permanently delete your Worker account?',
+                      style: GoogleFonts.dmSans(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: WorkerColors.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '• This action is permanent and cannot be undone.\n'
+                      '• All your services, skills, bookings, and reviews will be erased.\n'
+                      '• Your email will be freed up and you will be signed out.',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 13,
+                        color: WorkerColors.onSurfaceVariant,
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: WorkerColors.surfaceVariant.withValues(alpha: 0.35),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: WorkerColors.outlineVariant),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'To confirm, please type DELETE below:',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: WorkerColors.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          TextField(
+                            controller: confirmController,
+                            autofocus: true,
+                            decoration: InputDecoration(
+                              hintText: 'Type DELETE to confirm',
+                              hintStyle: GoogleFonts.dmSans(fontSize: 13, color: WorkerColors.outline),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(
+                                  color: isConfirmed ? WorkerColors.error : WorkerColors.outline,
+                                  width: isConfirmed ? 2 : 1,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: const BorderSide(color: WorkerColors.error, width: 2),
+                              ),
+                            ),
+                            style: GoogleFonts.dmSans(
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1.2,
+                              color: WorkerColors.error,
+                            ),
+                            onChanged: (_) => setDialogState(() {}),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              actions: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                        style: OutlinedButton.styleFrom(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: Text(
+                          'No, Cancel',
+                          style: GoogleFonts.dmSans(
+                            fontWeight: FontWeight.w700,
+                            color: WorkerColors.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: isConfirmed ? () => Navigator.of(ctx).pop(true) : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: WorkerColors.error,
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: WorkerColors.error.withValues(alpha: 0.35),
+                          disabledForegroundColor: Colors.white70,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: Text(
+                          'Yes, Delete',
+                          style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
 
     if (confirm != true) return;
@@ -621,19 +752,17 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
     if (user == null) return;
 
     setState(() => _isSaving = true);
-    final success = await ApiService().revertToResident(user.email);
+    final success = await ApiService().deleteWorkerAccount(user.email);
     if (mounted) {
       setState(() => _isSaving = false);
       if (success) {
-        await AuthService().updateWorkerStatus(
-          isWorker: false,
-          activeRole: 'Resident',
-          workerId: null,
-        );
-        _showFeedback('Worker profile permanently deleted.');
-        widget.onExitWorkerMode?.call();
+        _showFeedback('Worker account permanently deleted.');
+        await AuthService().logout();
+        if (mounted) {
+          Navigator.of(context).pushNamedAndRemoveUntil('/join', (route) => false);
+        }
       } else {
-        _showFeedback('Failed to delete worker profile.', isError: true);
+        _showFeedback('Failed to delete worker account. Please try again.', isError: true);
       }
     }
   }
@@ -1192,7 +1321,7 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
               const Divider(height: 1),
               const SizedBox(height: 20),
 
-              // Danger Zone: Delete Worker Profile
+              // Danger Zone: Delete Worker Account
               Text(
                 'Danger Zone',
                 style: GoogleFonts.dmSans(
@@ -1203,7 +1332,7 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Permanently delete your worker profile and revert your account to a standard resident.',
+                'Permanently delete your Worker account. All your services, active jobs, reviews, and worker credentials will be permanently erased.',
                 style: GoogleFonts.dmSans(
                   fontSize: 12,
                   color: WorkerColors.onSurfaceVariant,
@@ -1213,7 +1342,7 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  onPressed: _isSaving ? null : _handleDeleteWorkerProfile,
+                  onPressed: _isSaving ? null : _handleDeleteWorkerAccount,
                   icon: const Icon(Icons.delete_outline_rounded, size: 18),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: WorkerColors.error,
@@ -1222,7 +1351,7 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                   label: Text(
-                    'Delete Worker Profile',
+                    'Delete Worker Account',
                     style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
                   ),
                 ),
