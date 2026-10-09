@@ -8,8 +8,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from langchain_core.messages import HumanMessage, AIMessage
 from pydantic import BaseModel, Field
 import uuid
+import sys
 import logging
 from pathlib import Path
+
+# Ensure src directory is in sys.path
+_src_dir = str(Path(__file__).resolve().parent.parent)
+if _src_dir not in sys.path:
+    sys.path.insert(0, _src_dir)
 
 from agent_backend.config import settings
 from agent_backend.schemas.api_models import ChatRequest, ChatResponse
@@ -22,18 +28,21 @@ from agent_backend.tools.community_tools import current_post_images
 from agent_backend.utils.sanitizer import sanitize_text, extract_text_content
 from agent_backend.utils.turn_tracker import TurnUsageLogger
 
-# Configure logging to both console and dedicated ai_chat.log file
+# Configure logging to console and dedicated ai_chat.log file if writable (e.g. read-only in Vercel serverless)
 log_file_path = Path(__file__).resolve().parent.parent.parent / "ai_chat.log"
+log_handlers = [logging.StreamHandler()]
+try:
+    log_handlers.append(logging.FileHandler(str(log_file_path), encoding="utf-8", mode="a"))
+except (OSError, PermissionError):
+    pass
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler(str(log_file_path), encoding="utf-8", mode="a")
-    ]
+    handlers=log_handlers
 )
 logger = logging.getLogger("agent_backend.api")
-logger.info(f"AI Chat logging active. Writing logs to console and {log_file_path}")
+logger.info("AI Chat logging active.")
 
 
 @asynccontextmanager
