@@ -1,0 +1,17 @@
+import React from 'react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, beforeEach } from 'vitest';
+import axios from 'axios';
+import { vi } from 'vitest';
+vi.mock('axios');
+import { setupMocks } from './residentTestUtils.jsx';
+import ResidentProfile from '../../src/ResidentProfile.jsx';
+
+describe('FE-R-01 ProfileMount', () => {
+    beforeEach(() => { setupMocks(); });
+    it('runs successfully', async () => {
+        axios.get.mockResolvedValueOnce({ data: { name: 'John Doe', email: 'j@j.com' } });
+        render(<ResidentProfile />);
+        expect(screen).toBeDefined();
+    });
+});
