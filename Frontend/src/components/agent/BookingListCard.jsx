@@ -177,52 +177,83 @@ export default function BookingListCard({ data, onAction }) {
                   </div>
 
                   {/* Action Buttons */}
+                  {/* Action Buttons: Review is ONLY visible for completed bookings */}
                   <div className="agent-booking-actions-row">
-                    <button
-                      type="button"
-                      className="booking-action-btn primary"
-                      onClick={() => onAction && onAction('send_prompt', `Show details for booking #${bId}`)}
-                      title="View full booking details"
-                    >
-                      <i className="fa-regular fa-eye"></i> Details
-                    </button>
+                    {(() => {
+                      const statusLower = String(booking.status || '').toLowerCase().trim();
+                      const isCompleted = statusLower === 'completed' || statusLower === 'done' || statusLower === 'finished';
 
+                      if (isCompleted) {
+                        return (
+                          <>
+                            <button
+                              type="button"
+                              className="booking-action-btn review"
+                              style={{
+                                background: '#000000',
+                                color: '#ffffff',
+                                borderColor: '#000000',
+                                fontWeight: 800,
+                                borderRadius: '26px'
+                              }}
+                              onClick={() => onAction && onAction('review_worker', {
+                                bookingId: bId,
+                                workerId: booking.workerId,
+                                workerName: booking.workerName,
+                                jobTitle: booking.jobTitle,
+                                workerProfileImage: booking.workerProfileImage
+                              })}
+                              title="Leave a review for this technician"
+                            >
+                              <i className="fa-solid fa-star" style={{ color: '#f59e0b', marginRight: '4px' }}></i> Review
+                            </button>
 
-                    <button
-                      type="button"
-                      className="booking-action-btn review"
-                      style={{ background: '#fef3c7', color: '#92400e', borderColor: '#fde68a' }}
-                      onClick={() => onAction && onAction('review_worker', {
-                        bookingId: bId,
-                        workerId: booking.workerId,
-                        workerName: booking.workerName,
-                        jobTitle: booking.jobTitle,
-                        workerProfileImage: booking.workerProfileImage
-                      })}
-                      title="Leave a review for this technician"
-                    >
-                      <i className="fa-solid fa-star"></i> Review
-                    </button>
+                            <button
+                              type="button"
+                              className="booking-action-btn primary"
+                              style={{ borderRadius: '26px' }}
+                              onClick={() => onAction && onAction('send_prompt', `Show details for booking #${bId}`)}
+                              title="View full booking details"
+                            >
+                              <i className="fa-regular fa-eye"></i> Details
+                            </button>
+                          </>
+                        );
+                      }
 
-                    {booking.workerId && (
-                      <button
-                        type="button"
-                        className="booking-action-btn chat"
-                        onClick={() => onAction && onAction('navigate', `/chats?workerId=${booking.workerId}`)}
-                        title="Chat with this technician"
-                      >
-                        <i className="fa-regular fa-comment-dots"></i> Chat
-                      </button>
-                    )}
+                      return (
+                        <>
+                          <button
+                            type="button"
+                            className="booking-action-btn primary"
+                            style={{
+                              background: '#000000',
+                              color: '#ffffff',
+                              borderColor: '#000000',
+                              fontWeight: 800,
+                              borderRadius: '26px',
+                              flex: 1
+                            }}
+                            onClick={() => onAction && onAction('send_prompt', `Show details for booking #${bId}`)}
+                            title="View full booking details"
+                          >
+                            <i className="fa-regular fa-eye"></i> View Details
+                          </button>
 
-                    <button
-                      type="button"
-                      className="booking-action-btn danger"
-                      onClick={() => onAction && onAction('send_prompt', `I would like to cancel booking #${bId}`)}
-                      title="Cancel this booking"
-                    >
-                      <i className="fa-solid fa-xmark"></i> Cancel
-                    </button>
+                          {statusLower !== 'cancelled' && statusLower !== 'rejected' && (
+                            <button
+                              type="button"
+                              className="booking-action-btn danger"
+                              style={{ borderRadius: '26px' }}
+                              onClick={() => onAction && onAction('send_prompt', `I would like to cancel booking #${bId}`)}
+                              title="Cancel this booking"
+                            >
+                              <i className="fa-solid fa-xmark"></i> Cancel
+                            </button>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               );

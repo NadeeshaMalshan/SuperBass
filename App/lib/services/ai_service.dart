@@ -39,7 +39,7 @@ class AiService {
             },
             body: jsonEncode(payload),
           )
-          .timeout(const Duration(seconds: 3));
+          .timeout(const Duration(seconds: 45));
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -50,7 +50,7 @@ class AiService {
     }
 
     // 2. Intelligent local response engine if agent-backend is offline
-    await Future.delayed(const Duration(milliseconds: 650));
+    await Future.delayed(const Duration(milliseconds: 400));
     final lower = message.toLowerCase().trim();
 
     String replyText = '';
@@ -58,35 +58,252 @@ class AiService {
     Map<String, dynamic> cardData = {};
 
     if (lower.contains('plumber') || lower.contains('plumbing')) {
-      replyText = 'I found trusted plumbers nearby who can help with leaks, pipe repairs, and installations. Would you like to view top-rated plumbing experts or book an emergency technician?';
-      responseType = 'worker_recommendation';
-      cardData = {'category': 'Plumber'};
+      replyText = 'Here are verified plumbing professionals available in your area ready for fast dispatch.';
+      responseType = 'worker_list';
+      cardData = {
+        'category': 'Plumber',
+        'query': 'plumber',
+        'totalCount': 3,
+        'workers': [
+          {
+            'id': 1,
+            'name': 'Kamal Perera',
+            'primaryRole': 'Master Plumber',
+            'skills': ['Pipe Leak Repair', 'Bathroom Fitting', 'Drain Cleaning'],
+            'primaryServiceArea': 'Colombo',
+            'overallRating': 4.9,
+            'completedJobs': 42,
+            'hourlyRate': 2500,
+            'isVerified': true,
+            'isAvailable': true,
+          },
+          {
+            'id': 2,
+            'name': 'Sunil Shantha',
+            'primaryRole': 'Licensed Plumber',
+            'skills': ['Water Pump Fix', 'CCTV Pipe Inspection'],
+            'primaryServiceArea': 'Dehiwala',
+            'overallRating': 4.8,
+            'completedJobs': 29,
+            'hourlyRate': 2200,
+            'isVerified': true,
+            'isAvailable': true,
+          },
+        ]
+      };
     } else if (lower.contains('electrician') || lower.contains('wiring') || lower.contains('power')) {
-      replyText = 'Need electrical repairs or wiring assistance? Here are certified electricians available in your area ready for fast dispatch.';
-      responseType = 'worker_recommendation';
-      cardData = {'category': 'Electrician'};
+      replyText = 'Need electrical repairs or wiring assistance? Here are certified electricians available in your area.';
+      responseType = 'worker_list';
+      cardData = {
+        'category': 'Electrician',
+        'query': 'electrician',
+        'totalCount': 2,
+        'workers': [
+          {
+            'id': 3,
+            'name': 'Nimal Jayasinghe',
+            'primaryRole': 'Certified Electrician',
+            'skills': ['Tripping Fuse Fix', 'House Wiring', 'Solar Inverter Setup'],
+            'primaryServiceArea': 'Colombo',
+            'overallRating': 5.0,
+            'completedJobs': 56,
+            'hourlyRate': 2800,
+            'isVerified': true,
+            'isAvailable': true,
+          },
+          {
+            'id': 4,
+            'name': 'Nuwan Bandara',
+            'primaryRole': 'Electrician & Technician',
+            'skills': ['Short Circuit Repair', 'Lighting Installation'],
+            'primaryServiceArea': 'Nugegoda',
+            'overallRating': 4.7,
+            'completedJobs': 21,
+            'hourlyRate': 2400,
+            'isVerified': true,
+            'isAvailable': true,
+          },
+        ]
+      };
     } else if (lower.contains('ac') || lower.contains('air condition') || lower.contains('cooling')) {
-      replyText = 'AC repair and servicing specialists are available nearby. They handle gas refills, general servicing, and compressor diagnostics.';
-      responseType = 'worker_recommendation';
-      cardData = {'category': 'AC repair'};
+      replyText = 'AC repair and servicing specialists are available nearby.';
+      responseType = 'worker_list';
+      cardData = {
+        'category': 'AC repair',
+        'query': 'ac repair',
+        'totalCount': 2,
+        'workers': [
+          {
+            'id': 5,
+            'name': 'Dinesh Fernando',
+            'primaryRole': 'HVAC Specialist',
+            'skills': ['Gas Refill R410A', 'Inverter AC Board Repair', 'Deep Chemical Wash'],
+            'primaryServiceArea': 'Colombo',
+            'overallRating': 4.9,
+            'completedJobs': 63,
+            'hourlyRate': 3000,
+            'isVerified': true,
+            'isAvailable': true,
+          }
+        ]
+      };
     } else if (lower.contains('clean') || lower.contains('housekeep')) {
-      replyText = 'Verified home cleaning and sanitization professionals are ready to assist you. Choose deep cleaning or standard maintenance.';
-      responseType = 'worker_recommendation';
-      cardData = {'category': 'Cleaner'};
-    } else if (lower.contains('post') || lower.contains('community')) {
-      replyText = 'You can broadcast service needs to local neighborhood technicians! Tell me what service you need, your area, and preferred budget, and I will help you post it.';
-      responseType = 'community_post_prompt';
-    } else if (lower.contains('booking') || lower.contains('appointment') || lower.contains('schedule')) {
-      replyText = 'You can check all your ongoing and past appointments under the "Bookings" tab. Need help rescheduling or tracking an active job?';
-      responseType = 'bookings_overview';
-    } else if (lower.contains('rate') || lower.contains('review')) {
-      replyText = 'Feedback helps our community maintain quality! To rate a technician, go to your completed bookings and tap "Leave Review".';
-      responseType = 'rate_workers_info';
+      replyText = 'Verified home cleaning and sanitization professionals are ready to assist you.';
+      responseType = 'worker_list';
+      cardData = {
+        'category': 'Cleaner',
+        'query': 'cleaning',
+        'totalCount': 1,
+        'workers': [
+          {
+            'id': 6,
+            'name': 'Priyani Silva',
+            'primaryRole': 'Home Care Specialist',
+            'skills': ['Deep Floor Cleaning', 'Window Sanitization', 'Post-Construction Wash'],
+            'primaryServiceArea': 'Colombo',
+            'overallRating': 4.9,
+            'completedJobs': 38,
+            'hourlyRate': 1800,
+            'isVerified': true,
+            'isAvailable': true,
+          }
+        ]
+      };
     } else if (lower.contains('find') || lower.contains('craftsmen') || lower.contains('worker')) {
-      replyText = 'SuperBass connects you with background-verified service professionals across Sri Lanka. Select an emergency category or search directly by town!';
-      responseType = 'find_workers_overview';
+      replyText = 'Here are top-rated verified service professionals near your location:';
+      responseType = 'worker_list';
+      cardData = {
+        'category': 'All Pros',
+        'query': 'verified pros',
+        'totalCount': 3,
+        'workers': [
+          {
+            'id': 1,
+            'name': 'Kamal Perera',
+            'primaryRole': 'Master Plumber',
+            'skills': ['Leak Detection', 'Pipe Replacement'],
+            'primaryServiceArea': 'Colombo',
+            'overallRating': 4.9,
+            'completedJobs': 42,
+            'hourlyRate': 2500,
+            'isVerified': true,
+            'isAvailable': true,
+          },
+          {
+            'id': 3,
+            'name': 'Nimal Jayasinghe',
+            'primaryRole': 'Certified Electrician',
+            'skills': ['Fuse Board Fix', 'Lighting'],
+            'primaryServiceArea': 'Colombo',
+            'overallRating': 5.0,
+            'completedJobs': 56,
+            'hourlyRate': 2800,
+            'isVerified': true,
+            'isAvailable': true,
+          }
+        ]
+      };
+    } else if (lower.contains('create') && (lower.contains('post') || lower.contains('request') || lower.contains('community'))) {
+      replyText = 'Please complete the details below to create your community service request:';
+      responseType = 'create_community_post';
+      cardData = {
+        'title': 'Need Emergency Service',
+        'content': 'I am looking for a verified technician in Colombo to assist with repair work.',
+        'communityId': 'General',
+        'location': 'Colombo',
+      };
+    } else if (lower.contains('post') || lower.contains('community')) {
+      replyText = 'Here are recent community service requests posted by residents in your area:';
+      responseType = 'post_list';
+      cardData = {
+        'category': 'Recent',
+        'totalCount': 2,
+        'posts': [
+          {
+            'id': 12,
+            'title': 'Emergency Kitchen Sink Pipe Repair',
+            'content': 'Main water line under kitchen counter is leaking heavily. Need experienced plumber today.',
+            'communityId': 'Plumbing',
+            'location': 'Colombo 03',
+            'authorName': 'Ruwan Dias',
+            'likesCount': 4,
+            'commentsCount': 2,
+          },
+          {
+            'id': 14,
+            'title': 'Need AC Servicing before summer',
+            'content': 'Looking for Panasonic inverter AC technician for full maintenance.',
+            'communityId': 'AC repair',
+            'location': 'Rajagiriya',
+            'authorName': 'Chathura Fernando',
+            'likesCount': 6,
+            'commentsCount': 3,
+          }
+        ]
+      };
+    } else if (lower.contains('booking') || lower.contains('appointment') || lower.contains('schedule')) {
+      replyText = 'Here is your active bookings and appointments overview:';
+      responseType = 'booking_list';
+      cardData = {
+        'statusFilter': 'Active',
+        'totalCount': 1,
+        'bookings': [
+          {
+            'id': 101,
+            'workerName': 'Kamal Perera',
+            'jobTitle': 'Kitchen Pipe Leak Repair',
+            'scheduledDate': DateTime.now().add(const Duration(days: 1)).toIso8601String(),
+            'status': 'Confirmed',
+            'locationAddress': 'No. 45, Galle Road, Colombo',
+            'agreedPrice': 2500,
+          }
+        ]
+      };
+    } else if (lower.contains('review_booking') || metadata?['action'] == 'review_booking') {
+      final bData = metadata?['booking_data'] is Map ? metadata!['booking_data'] as Map : {};
+      final workerName = bData['workerName']?.toString() ?? 'Technician';
+      replyText = "I've prepared the booking confirmation for $workerName. Please review the details below and confirm if you want to proceed:";
+      responseType = 'booking_confirmation';
+      cardData = Map<String, dynamic>.from(bData);
+    } else if (lower.contains('confirm_booking') || metadata?['action'] == 'create_booking') {
+      final bData = metadata?['booking_data'] is Map ? metadata!['booking_data'] as Map : {};
+      final workerName = bData['workerName']?.toString() ?? 'Technician';
+      replyText = 'Your appointment with $workerName has been successfully confirmed!';
+      responseType = 'booking_confirmed';
+      cardData = {
+        'bookingId': 'BK-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+        'status': 'Confirmed',
+        ...Map<String, dynamic>.from(bData),
+      };
+    } else if (lower.contains('rate') || lower.contains('review')) {
+      replyText = 'Please rate your recent completed service appointment:';
+      responseType = 'review_form';
+      cardData = {
+        'bookingId': '101',
+        'workerId': '1',
+        'workerName': 'Kamal Perera',
+        'jobTitle': 'Kitchen Pipe Leak Repair',
+      };
+    } else if (lower.contains('category') || lower.contains('service')) {
+      replyText = 'Explore all available home service categories:';
+      responseType = 'service_categories';
+      cardData = {
+        'categories': [
+          'Plumber', 'Electrician', 'AC repair', 'Cleaner',
+          'Carpenter', 'Painter', 'Mason', 'Roofing'
+        ]
+      };
     } else {
-      replyText = 'I am your Workio AI Assistant. I can help find top-rated workers, check job status, draft community requests, or diagnose household repair needs. What can I help you with today?';
+      replyText = 'I am your Workio AI Assistant. I can help find top-rated workers, check job status, draft community requests, or diagnose household repair needs. What would you like to do?';
+      responseType = 'text_message';
+      cardData = {
+        'suggestions': [
+          'Find top plumbers near me',
+          'Show my bookings',
+          'Create community post',
+          'Emergency AC repair'
+        ]
+      };
     }
 
     return {

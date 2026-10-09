@@ -14,6 +14,8 @@ export default function BookingConfirmationCard({ data = {}, onAction }) {
     contactPhone = '',
     hourlyRate = 2800,
     estimatedPrice = null,
+    priority = 'Normal',
+    description = '',
     notes = '',
     confirmPrompt = '',
     cancelPrompt = '',
@@ -42,7 +44,7 @@ export default function BookingConfirmationCard({ data = {}, onAction }) {
     setIsSubmitting(true);
     const promptToSend =
       confirmPrompt ||
-      `CONFIRM_BOOKING: Please book worker ID ${workerId} (${workerName}) for ${scheduledDate}. Service: ${jobTitle}. Location: ${locationAddress}. Phone: ${contactPhone}. Notes: ${notes || 'Standard booking'}`;
+      `CONFIRM_BOOKING: Please book worker ID ${workerId} (${workerName}) for ${scheduledDate}. Service: ${jobTitle}. Priority: ${priority}. Description: ${description || notes || 'Service request'}. Location: ${locationAddress}. Phone: ${contactPhone}. Notes: ${notes || 'Standard booking'}`;
 
     const payloadObj = {
       prompt: promptToSend,
@@ -58,6 +60,9 @@ export default function BookingConfirmationCard({ data = {}, onAction }) {
         jobTitle,
         locationAddress,
         contactPhone,
+        priority,
+        urgency: priority,
+        description: description || notes,
         notes,
         hourlyRate,
         estimatedPrice: estimatedPrice || hourlyRate,
@@ -78,6 +83,23 @@ export default function BookingConfirmationCard({ data = {}, onAction }) {
       workerId,
     });
   };
+
+  const getPriorityStyle = (lvl) => {
+    switch (lvl?.toLowerCase()) {
+      case 'emergency':
+        return { bg: '#fee2e2', text: '#dc2626', border: '#fca5a5' };
+      case 'urgent':
+        return { bg: '#ffedd5', text: '#ea580c', border: '#fdba74' };
+      case 'high':
+        return { bg: '#fef3c7', text: '#d97706', border: '#fcd34d' };
+      case 'low':
+        return { bg: '#f1f5f9', text: '#64748b', border: '#cbd5e1' };
+      case 'normal':
+      default:
+        return { bg: '#eff6ff', text: '#2563eb', border: '#bfdbfe' };
+    }
+  };
+  const pStyle = getPriorityStyle(priority);
 
   return (
     <div className="agent-card-container">
@@ -132,6 +154,59 @@ export default function BookingConfirmationCard({ data = {}, onAction }) {
             </span>
             <span className="detail-val">{jobTitle || category || 'Service Request'}</span>
           </div>
+
+          {/* Priority Row */}
+          {priority && (
+            <div className="booking-confirmed-detail-row">
+              <span className="detail-key">
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                  flag
+                </span>{' '}
+                Priority:
+              </span>
+              <span
+                className="detail-val"
+                style={{
+                  padding: '3px 10px',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  letterSpacing: '0.5px',
+                  textTransform: 'uppercase',
+                  backgroundColor: pStyle.bg,
+                  color: pStyle.text,
+                  border: `1px solid ${pStyle.border}`,
+                }}
+              >
+                {priority}
+              </span>
+            </div>
+          )}
+
+          {/* Problem Details */}
+          {description && (
+            <div className="booking-confirmed-detail-row" style={{ alignItems: 'flex-start' }}>
+              <span className="detail-key">
+                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
+                  notes
+                </span>{' '}
+                Problem Details:
+              </span>
+              <span
+                className="detail-val"
+                style={{
+                  maxWidth: '65%',
+                  textAlign: 'right',
+                  wordBreak: 'break-word',
+                  fontSize: '13px',
+                  color: '#1e293b',
+                  fontWeight: 500,
+                }}
+              >
+                {description}
+              </span>
+            </div>
+          )}
 
           <div className="booking-confirmed-detail-row">
             <span className="detail-key">

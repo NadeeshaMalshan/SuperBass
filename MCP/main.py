@@ -777,7 +777,8 @@ async def call_create_booking(args: Dict[str, Any]):
         "workerId": worker_id,
         "residentEmail": resident_email,
         "jobTitle": args.get("jobTitle") or args.get("notes") or "General Maintenance Service",
-        "description": args.get("notes") or "Booking created via MCP Tool",
+        "description": args.get("description") or args.get("notes") or "Booking created via MCP Tool",
+        "urgency": args.get("urgency") or args.get("priority") or "Medium",
         "scheduledDate": normalized_start,
         "locationAddress": args.get("locationAddress", "Colombo"),
         "contactPhone": args.get("contactPhone", "0771234567")
