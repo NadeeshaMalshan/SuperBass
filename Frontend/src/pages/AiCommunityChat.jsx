@@ -22,6 +22,14 @@ export default function AiCommunityChat() {
     window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
+  // Auth Guard: Require login to access agentic platform
+  useEffect(() => {
+    if (!localStorage.getItem('token')) {
+      window.history.replaceState({}, '', '/login');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }
+  }, []);
+
   const getLoggedInUser = () => {
     let email = localStorage.getItem('email') || localStorage.getItem('workerEmail') || '';
     let name = localStorage.getItem('userName') || '';
