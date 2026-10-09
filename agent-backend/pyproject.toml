@@ -33,6 +33,6 @@ asyncio_default_fixture_loop_scope = "function"
 pythonpath = ["src"]
 
 [tool.vercel]
-entrypoint = "main.py"
+entrypoint = "main:app"
 
 
