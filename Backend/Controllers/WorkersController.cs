@@ -495,10 +495,14 @@ namespace Superbass.Controllers
                 return BadRequest(new { message = "Email is required or must be provided in Authorization header." });
             }
 
-            var worker = await _workerRepository.GetWorkerByEmailAsync(targetEmail);
-            if (worker != null)
+            var deleted = await _workerRepository.DeleteWorkerByEmailAsync(targetEmail);
+            if (!deleted)
             {
-                await _workerRepository.DeleteWorkerAsync(worker.Id);
+                var worker = await _workerRepository.GetWorkerByEmailAsync(targetEmail);
+                if (worker != null)
+                {
+                    await _workerRepository.DeleteWorkerAsync(worker.Id);
+                }
             }
 
             return Ok(new { message = "Worker account and all associated data permanently deleted." });
