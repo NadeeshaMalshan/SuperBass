@@ -1138,7 +1138,7 @@ export default function Find() {
                 <button
                   type="button"
                   className="community-hero-secondary-btn"
-                  onClick={() => navigate('/ai/chat')}
+                  onClick={() => navigate(localStorage.getItem('token') ? '/ai/chat' : '/join')}
                 >
                   <i className="fa-solid fa-wand-magic-sparkles"></i>
                   <span>Ask Workio AI</span>
