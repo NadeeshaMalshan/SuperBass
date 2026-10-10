@@ -9,7 +9,7 @@ namespace Superbass.Services
         Task<Worker?> GetWorkerByEmailAsync(string email);
         Task<(IEnumerable<Worker> Workers, int TotalCount)> SearchWorkersAsync(string? q = null, string? skill = null, string? location = null, double? maxDistanceKm = null, double? residentLat = null, double? residentLng = null, decimal? maxHourlyRate = null, decimal? minHourlyRate = null, string? province = null, string? district = null, bool onlyVerified = true, int page = 1, int pageSize = 20);
         Task<Worker> CreateWorkerAsync(Worker worker);
-        Task<Worker> CreateWorkerFromResidentAsync(string residentEmail, string? description, string primaryServiceArea, double coverageRadiusKm, string pricingModel, decimal? hourlyRate, decimal? dailyRate, List<WorkerSkill> skills);
+        Task<Worker> CreateWorkerDirectAsync(string email, string? name, string? description, string primaryServiceArea, double coverageRadiusKm, string pricingModel, decimal? hourlyRate, decimal? dailyRate, List<WorkerSkill> skills);
         Task<Worker?> UpdateWorkerAsync(int id, Worker updatedWorker);
         Task<bool> DeleteWorkerAsync(int id);
         Task<bool> DeleteWorkerByEmailAsync(string email);
