@@ -222,7 +222,8 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
               floatingActionButton: (isLoggedIn && effectiveIndex == 0)
                   ? _buildAiFloatingButton(context)
                   : null,
-              floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+              floatingActionButtonLocation:
+                  FloatingActionButtonLocation.endFloat,
               bottomNavigationBar: M3BottomNavigationBar(
                 selectedIndex: effectiveIndex,
                 items: navItems,
@@ -481,7 +482,10 @@ class _FindTabScreenState extends State<FindTabScreen> {
       final prefs = await SharedPreferences.getInstance();
       final isManual = prefs.getBool('is_manual_location') ?? false;
       final saved = prefs.getString('selected_find_location');
-      final bool isSavedNumeric = saved != null && (double.tryParse(saved) != null || RegExp(r'^\s*[-+]?[0-9]').hasMatch(saved));
+      final bool isSavedNumeric =
+          saved != null &&
+          (double.tryParse(saved) != null ||
+              RegExp(r'^\s*[-+]?[0-9]').hasMatch(saved));
 
       if (isManual && saved != null && saved.isNotEmpty && !isSavedNumeric) {
         if (mounted) {
@@ -493,13 +497,18 @@ class _FindTabScreenState extends State<FindTabScreen> {
       } else {
         // Resolve district from user's primary address or GPS
         final user = AuthService().currentUser;
-        final primaryDistrict = await LocationService.getPrimaryAddressCity(user?.email);
+        final primaryDistrict = await LocationService.getPrimaryAddressCity(
+          user?.email,
+        );
         final gpsCity = await LocationService.detectGpsCity();
-        final cityToUse = (primaryDistrict != null && primaryDistrict.isNotEmpty && !RegExp(r'^\s*[-+]?[0-9]').hasMatch(primaryDistrict))
+        final cityToUse =
+            (primaryDistrict != null &&
+                primaryDistrict.isNotEmpty &&
+                !RegExp(r'^\s*[-+]?[0-9]').hasMatch(primaryDistrict))
             ? primaryDistrict
             : ((gpsCity != null && gpsCity.isNotEmpty)
-                ? gpsCity
-                : ((saved != null && !isSavedNumeric) ? saved : 'Colombo'));
+                  ? gpsCity
+                  : ((saved != null && !isSavedNumeric) ? saved : 'Colombo'));
         if (mounted) {
           setState(() {
             _selectedCity = cityToUse;
@@ -519,7 +528,10 @@ class _FindTabScreenState extends State<FindTabScreen> {
     try {
       final user = AuthService().currentUser;
       final city = await LocationService.getPrimaryAddressCity(user?.email);
-      if (mounted && city != null && city.isNotEmpty && !RegExp(r'^\s*[-+]?[0-9]').hasMatch(city)) {
+      if (mounted &&
+          city != null &&
+          city.isNotEmpty &&
+          !RegExp(r'^\s*[-+]?[0-9]').hasMatch(city)) {
         final prefs = await SharedPreferences.getInstance();
         final isNumericCity = RegExp(r'^\s*[-+]?[0-9]').hasMatch(_selectedCity);
         setState(() {
@@ -664,7 +676,9 @@ class _FindTabScreenState extends State<FindTabScreen> {
         _residentLng = resLng;
       }
 
-      debugPrint('SEARCHDBG: starting _fetchWorkers. q: "$_searchQuery", skill: "$selectedSkill", location: "$locationQuery"');
+      debugPrint(
+        'SEARCHDBG: starting _fetchWorkers. q: "$_searchQuery", skill: "$selectedSkill", location: "$locationQuery"',
+      );
 
       final list = await ApiService().fetchWorkers(
         q: _searchQuery,
@@ -688,14 +702,18 @@ class _FindTabScreenState extends State<FindTabScreen> {
               );
             }).toList();
 
-      debugPrint('SEARCHDBG: after filtering (isAllLocations=$isAllLocations), remaining: ${filtered.length}');
+      debugPrint(
+        'SEARCHDBG: after filtering (isAllLocations=$isAllLocations), remaining: ${filtered.length}',
+      );
 
       if (mounted) {
         setState(() {
           _workers = filtered;
           _isLoading = false;
         });
-        debugPrint('SEARCHDBG: assigned _workers, new count: ${_workers.length}');
+        debugPrint(
+          'SEARCHDBG: assigned _workers, new count: ${_workers.length}',
+        );
       }
     } catch (e, st) {
       debugPrint('SEARCHDBG: error in _fetchWorkers - $e\n$st');
@@ -1300,8 +1318,6 @@ class _FindTabScreenState extends State<FindTabScreen> {
     _fetchWorkers();
   }
 
-
-
   void _showBookingSheet(WorkerModel worker) async {
     final prefs = await SharedPreferences.getInstance();
     final user = AuthService().currentUser;
@@ -1442,7 +1458,9 @@ class _FindTabScreenState extends State<FindTabScreen> {
                         ),
                         child: Center(
                           child: Text(
-                            worker.name.isNotEmpty ? worker.name[0].toUpperCase() : 'W',
+                            worker.name.isNotEmpty
+                                ? worker.name[0].toUpperCase()
+                                : 'W',
                             style: GoogleFonts.dmSans(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
@@ -1465,7 +1483,9 @@ class _FindTabScreenState extends State<FindTabScreen> {
                               ),
                             ),
                             Text(
-                              worker.skills.isNotEmpty ? worker.skills.first : 'General Service',
+                              worker.skills.isNotEmpty
+                                  ? worker.skills.first
+                                  : 'General Service',
                               style: GoogleFonts.dmSans(
                                 fontSize: 13,
                                 color: const Color(0xFF8E8E93),
@@ -1501,18 +1521,34 @@ class _FindTabScreenState extends State<FindTabScreen> {
                 const SizedBox(height: 6),
                 TextField(
                   controller: titleController,
-                  style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black),
+                  style: GoogleFonts.dmSans(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
                   decoration: InputDecoration(
-                    hintText: 'Need help with ${worker.skills.isNotEmpty ? worker.skills.first : "home service"}',
-                    hintStyle: GoogleFonts.dmSans(color: const Color(0xFF8E8E93), fontSize: 15, fontWeight: FontWeight.normal),
-                    prefixIcon: const Icon(Icons.work_outline_rounded, size: 20, color: Colors.black87),
+                    hintText:
+                        'Need help with ${worker.skills.isNotEmpty ? worker.skills.first : "home service"}',
+                    hintStyle: GoogleFonts.dmSans(
+                      color: const Color(0xFF8E8E93),
+                      fontSize: 15,
+                      fontWeight: FontWeight.normal,
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.work_outline_rounded,
+                      size: 20,
+                      color: Colors.black87,
+                    ),
                     filled: true,
                     fillColor: const Color(0xFFF1F3F5),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
                       borderSide: BorderSide.none,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 18),
@@ -1533,14 +1569,20 @@ class _FindTabScreenState extends State<FindTabScreen> {
                   style: GoogleFonts.dmSans(fontSize: 14, color: Colors.black),
                   decoration: InputDecoration(
                     hintText: 'Describe what needs to be done',
-                    hintStyle: GoogleFonts.dmSans(color: const Color(0xFF8E8E93), fontSize: 14),
+                    hintStyle: GoogleFonts.dmSans(
+                      color: const Color(0xFF8E8E93),
+                      fontSize: 14,
+                    ),
                     filled: true,
                     fillColor: const Color(0xFFF1F3F5),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
                       borderSide: BorderSide.none,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 18),
@@ -1562,10 +1604,14 @@ class _FindTabScreenState extends State<FindTabScreen> {
                       child: GestureDetector(
                         onTap: () => setModalState(() => selectedUrgency = urg),
                         child: Container(
-                          margin: EdgeInsets.only(right: urg == 'High' ? 0 : 10),
+                          margin: EdgeInsets.only(
+                            right: urg == 'High' ? 0 : 10,
+                          ),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           decoration: BoxDecoration(
-                            color: isSelected ? Colors.black : const Color(0xFFF1F3F5),
+                            color: isSelected
+                                ? Colors.black
+                                : const Color(0xFFF1F3F5),
                             borderRadius: BorderRadius.circular(24),
                           ),
                           child: Center(
@@ -1602,16 +1648,27 @@ class _FindTabScreenState extends State<FindTabScreen> {
                     FilteringTextInputFormatter.digitsOnly,
                     LengthLimitingTextInputFormatter(10),
                   ],
-                  style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black),
+                  style: GoogleFonts.dmSans(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
                   decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.phone_outlined, size: 20, color: Colors.black87),
+                    prefixIcon: const Icon(
+                      Icons.phone_outlined,
+                      size: 20,
+                      color: Colors.black87,
+                    ),
                     filled: true,
                     fillColor: const Color(0xFFF1F3F5),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
                       borderSide: BorderSide.none,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 18),
@@ -1631,18 +1688,29 @@ class _FindTabScreenState extends State<FindTabScreen> {
                   controller: TextEditingController(
                     text: selectedDate == null
                         ? ''
-                        : '${selectedDate!.day} ${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][selectedDate!.month - 1]} ${selectedDate!.year}',
+                        : '${selectedDate!.day} ${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][selectedDate!.month - 1]} ${selectedDate!.year}',
                   ),
-                  style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black),
+                  style: GoogleFonts.dmSans(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
                   decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.calendar_today_outlined, size: 19, color: Colors.black87),
+                    prefixIcon: const Icon(
+                      Icons.calendar_today_outlined,
+                      size: 19,
+                      color: Colors.black87,
+                    ),
                     filled: true,
                     fillColor: const Color(0xFFF1F3F5),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
                       borderSide: BorderSide.none,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                   ),
                   onTap: () async {
                     final d = await showDatePicker(
@@ -1668,16 +1736,27 @@ class _FindTabScreenState extends State<FindTabScreen> {
                 const SizedBox(height: 6),
                 TextField(
                   controller: addressController,
-                  style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black),
+                  style: GoogleFonts.dmSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
                   decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.location_on_outlined, size: 20, color: Colors.black87),
+                    prefixIcon: const Icon(
+                      Icons.location_on_outlined,
+                      size: 20,
+                      color: Colors.black87,
+                    ),
                     filled: true,
                     fillColor: const Color(0xFFF1F3F5),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
                       borderSide: BorderSide.none,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 18),
@@ -1765,7 +1844,8 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                             isLocatingGps = true;
                                           });
                                           try {
-                                            final coords = await LocationService.getCurrentCoordinates();
+                                            final coords =
+                                                await LocationService.getCurrentCoordinates();
                                             if (coords != null &&
                                                 coords['lat'] != null &&
                                                 coords['lng'] != null) {
@@ -1778,10 +1858,18 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                                 isLocatingGps = false;
                                               });
                                               try {
-                                                final district = await LocationService.reverseGeocodeToDistrict(lat, lng);
-                                                if (district != null && addressController.text.trim().isEmpty) {
+                                                final district =
+                                                    await LocationService.reverseGeocodeToDistrict(
+                                                      lat,
+                                                      lng,
+                                                    );
+                                                if (district != null &&
+                                                    addressController.text
+                                                        .trim()
+                                                        .isEmpty) {
                                                   setModalState(() {
-                                                    addressController.text = district;
+                                                    addressController.text =
+                                                        district;
                                                   });
                                                 }
                                               } catch (_) {}
@@ -1790,9 +1878,13 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                                 isLocatingGps = false;
                                               });
                                               if (sheetContext.mounted) {
-                                                ScaffoldMessenger.of(sheetContext).showSnackBar(
+                                                ScaffoldMessenger.of(
+                                                  sheetContext,
+                                                ).showSnackBar(
                                                   const SnackBar(
-                                                    content: Text('Could not access device GPS. Please enable location permissions.'),
+                                                    content: Text(
+                                                      'Could not access device GPS. Please enable location permissions.',
+                                                    ),
                                                   ),
                                                 );
                                               }
@@ -1802,14 +1894,23 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                               isLocatingGps = false;
                                             });
                                             if (sheetContext.mounted) {
-                                              ScaffoldMessenger.of(sheetContext).showSnackBar(
-                                                SnackBar(content: Text('GPS error: $e')),
+                                              ScaffoldMessenger.of(
+                                                sheetContext,
+                                              ).showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                    'GPS error: $e',
+                                                  ),
+                                                ),
                                               );
                                             }
                                           }
                                         },
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: Colors.white,
                                       borderRadius: BorderRadius.circular(20),
@@ -1830,7 +1931,10 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                             height: 14,
                                             child: CircularProgressIndicator(
                                               strokeWidth: 2,
-                                              valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                                              valueColor:
+                                                  AlwaysStoppedAnimation<Color>(
+                                                    Colors.black,
+                                                  ),
                                             ),
                                           ),
                                           const SizedBox(width: 6),
@@ -1843,7 +1947,11 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                             ),
                                           ),
                                         ] else ...[
-                                          const Icon(Icons.my_location, size: 14, color: Colors.black),
+                                          const Icon(
+                                            Icons.my_location,
+                                            size: 14,
+                                            color: Colors.black,
+                                          ),
                                           const SizedBox(width: 6),
                                           Text(
                                             'Use my location',
@@ -2015,12 +2123,12 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                     color: Colors.white,
                                   ),
                                 ),
-                          ),
                         ),
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ),
@@ -2398,9 +2506,12 @@ class _FindTabScreenState extends State<FindTabScreen> {
                           _searchQuery = val.trim();
                         });
                         if (_debounce?.isActive ?? false) _debounce!.cancel();
-                        _debounce = Timer(const Duration(milliseconds: 400), () {
-                          _fetchWorkers();
-                        });
+                        _debounce = Timer(
+                          const Duration(milliseconds: 400),
+                          () {
+                            _fetchWorkers();
+                          },
+                        );
                       },
                     ),
                   ],
@@ -2413,7 +2524,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
                 child: UberPromoCarousel(
                   banners: [
                     UberPromoBanner(
-                      title: 'Join Neighborhood\nCommunity Hub',
+                      title: 'Find workers from\nCommunity Hub',
                       subtitle: 'Connect, discuss & get trusted local help',
                       buttonText: 'Explore now',
                       imageAsset: 'assets/icons/community.png',
@@ -2502,8 +2613,9 @@ class _FindTabScreenState extends State<FindTabScreen> {
               // Nearby Pros with Sorting / Filter List (All, Verified)
               Builder(
                 builder: (context) {
-                  final verifiedWorkers =
-                      _workers.where((worker) => worker.isVerified).toList();
+                  final verifiedWorkers = _workers
+                      .where((worker) => worker.isVerified)
+                      .toList();
                   final displayWorkers = _workerFilter == 'verified'
                       ? verifiedWorkers
                       : _workers;
@@ -2541,79 +2653,83 @@ class _FindTabScreenState extends State<FindTabScreen> {
                               shadowColor: Colors.black.withValues(alpha: 0.12),
                               color: Colors.white,
                               position: PopupMenuPosition.under,
-                              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                                PopupMenuItem<String>(
-                                  value: 'all',
-                                  height: 42,
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.people_outline_rounded,
-                                        size: 18,
-                                        color: _workerFilter == 'all'
-                                            ? Colors.black
-                                            : Colors.grey[600],
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Text(
-                                          'All (${_workers.length})',
-                                          style: GoogleFonts.dmSans(
-                                            fontSize: 13.5,
-                                            fontWeight: _workerFilter == 'all'
-                                                ? FontWeight.w700
-                                                : FontWeight.w500,
+                              itemBuilder: (BuildContext context) =>
+                                  <PopupMenuEntry<String>>[
+                                    PopupMenuItem<String>(
+                                      value: 'all',
+                                      height: 42,
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.people_outline_rounded,
+                                            size: 18,
                                             color: _workerFilter == 'all'
                                                 ? Colors.black
-                                                : Colors.grey[800],
+                                                : Colors.grey[600],
                                           ),
-                                        ),
-                                      ),
-                                      if (_workerFilter == 'all')
-                                        const Icon(
-                                          Icons.check_rounded,
-                                          size: 17,
-                                          color: Colors.black,
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                                const PopupMenuDivider(height: 1),
-                                PopupMenuItem<String>(
-                                  value: 'verified',
-                                  height: 42,
-                                  child: Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.verified,
-                                        size: 18,
-                                        color: AppColors.brandYellowHover,
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Text(
-                                          'Verified (${verifiedWorkers.length})',
-                                          style: GoogleFonts.dmSans(
-                                            fontSize: 13.5,
-                                            fontWeight: _workerFilter == 'verified'
-                                                ? FontWeight.w700
-                                                : FontWeight.w500,
-                                            color: _workerFilter == 'verified'
-                                                ? Colors.black
-                                                : Colors.grey[800],
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: Text(
+                                              'All (${_workers.length})',
+                                              style: GoogleFonts.dmSans(
+                                                fontSize: 13.5,
+                                                fontWeight:
+                                                    _workerFilter == 'all'
+                                                    ? FontWeight.w700
+                                                    : FontWeight.w500,
+                                                color: _workerFilter == 'all'
+                                                    ? Colors.black
+                                                    : Colors.grey[800],
+                                              ),
+                                            ),
                                           ),
-                                        ),
+                                          if (_workerFilter == 'all')
+                                            const Icon(
+                                              Icons.check_rounded,
+                                              size: 17,
+                                              color: Colors.black,
+                                            ),
+                                        ],
                                       ),
-                                      if (_workerFilter == 'verified')
-                                        const Icon(
-                                          Icons.check_rounded,
-                                          size: 17,
-                                          color: AppColors.brandYellowHover,
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                              ],
+                                    ),
+                                    const PopupMenuDivider(height: 1),
+                                    PopupMenuItem<String>(
+                                      value: 'verified',
+                                      height: 42,
+                                      child: Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.verified,
+                                            size: 18,
+                                            color: AppColors.brandYellowHover,
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: Text(
+                                              'Verified (${verifiedWorkers.length})',
+                                              style: GoogleFonts.dmSans(
+                                                fontSize: 13.5,
+                                                fontWeight:
+                                                    _workerFilter == 'verified'
+                                                    ? FontWeight.w700
+                                                    : FontWeight.w500,
+                                                color:
+                                                    _workerFilter == 'verified'
+                                                    ? Colors.black
+                                                    : Colors.grey[800],
+                                              ),
+                                            ),
+                                          ),
+                                          if (_workerFilter == 'verified')
+                                            const Icon(
+                                              Icons.check_rounded,
+                                              size: 17,
+                                              color: AppColors.brandYellowHover,
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 10,
@@ -2624,8 +2740,9 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
                                     color: _workerFilter == 'verified'
-                                        ? AppColors.brandYellowHover
-                                            .withValues(alpha: 0.5)
+                                        ? AppColors.brandYellowHover.withValues(
+                                            alpha: 0.5,
+                                          )
                                         : const Color(0xFFE2E8F0),
                                     width: 1.2,
                                   ),
@@ -2722,11 +2839,12 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                     Text(
                                       _searchQuery.isNotEmpty
                                           ? 'No workers matching "$_searchQuery"'
-                                          : (_workerFilter == 'verified' && _workers.isNotEmpty)
-                                              ? 'No verified workers found in $_selectedCity'
-                                              : (_selectedCity == 'All Locations'
-                                                    ? 'No workers found in this category'
-                                                    : 'No workers found in $_selectedCity'),
+                                          : (_workerFilter == 'verified' &&
+                                                _workers.isNotEmpty)
+                                          ? 'No verified workers found in $_selectedCity'
+                                          : (_selectedCity == 'All Locations'
+                                                ? 'No workers found in this category'
+                                                : 'No workers found in $_selectedCity'),
                                       textAlign: TextAlign.center,
                                       style: GoogleFonts.dmSans(
                                         fontWeight: FontWeight.w700,
@@ -2735,7 +2853,8 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      (_workerFilter == 'verified' && _workers.isNotEmpty)
+                                      (_workerFilter == 'verified' &&
+                                              _workers.isNotEmpty)
                                           ? 'Switch filter to "All" to view all available workers'
                                           : (_selectedCity == 'All Locations'
                                                 ? 'Try selecting "All Pros" or refreshing'
@@ -2745,7 +2864,8 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                         color: AppColors.onSurfaceVariant,
                                       ),
                                     ),
-                                    if (_workerFilter == 'verified' && _workers.isNotEmpty) ...[
+                                    if (_workerFilter == 'verified' &&
+                                        _workers.isNotEmpty) ...[
                                       const SizedBox(height: 14),
                                       ElevatedButton(
                                         onPressed: () {
@@ -2767,7 +2887,8 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                           ),
                                         ),
                                       ),
-                                    ] else if (_selectedCity != 'All Locations') ...[
+                                    ] else if (_selectedCity !=
+                                        'All Locations') ...[
                                       const SizedBox(height: 14),
                                       ElevatedButton(
                                         onPressed: () =>
@@ -2953,18 +3074,34 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
             ),
             const SizedBox(height: 12),
             ListTile(
-              leading: const Icon(Icons.calendar_today_rounded, color: Colors.black),
-              title: Text('Date (Newest First)', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
-              trailing: _sortBy == 'Date' ? const Icon(Icons.check_circle_rounded, color: Colors.black) : null,
+              leading: const Icon(
+                Icons.calendar_today_rounded,
+                color: Colors.black,
+              ),
+              title: Text(
+                'Date (Newest First)',
+                style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
+              ),
+              trailing: _sortBy == 'Date'
+                  ? const Icon(Icons.check_circle_rounded, color: Colors.black)
+                  : null,
               onTap: () {
                 setState(() => _sortBy = 'Date');
                 Navigator.pop(ctx);
               },
             ),
             ListTile(
-              leading: const Icon(Icons.priority_high_rounded, color: Colors.black),
-              title: Text('Priority (High Urgency First)', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
-              trailing: _sortBy == 'Priority' ? const Icon(Icons.check_circle_rounded, color: Colors.black) : null,
+              leading: const Icon(
+                Icons.priority_high_rounded,
+                color: Colors.black,
+              ),
+              title: Text(
+                'Priority (High Urgency First)',
+                style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
+              ),
+              trailing: _sortBy == 'Priority'
+                  ? const Icon(Icons.check_circle_rounded, color: Colors.black)
+                  : null,
               onTap: () {
                 setState(() => _sortBy = 'Priority');
                 Navigator.pop(ctx);
@@ -3035,12 +3172,21 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
     String scheduledDateStr = 'Flexible / ASAP';
     if (b.scheduledDate != null) {
       final months = [
-        'Jan','Feb','Mar','Apr','May','Jun',
-        'Jul','Aug','Sep','Oct','Nov','Dec',
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
       ];
       final d = b.scheduledDate!;
-      scheduledDateStr =
-          '${d.day} ${months[d.month - 1]} ${d.year}';
+      scheduledDateStr = '${d.day} ${months[d.month - 1]} ${d.year}';
     }
 
     // ── Progress step (1-based) ───────────────────────────────────
@@ -3049,7 +3195,9 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
     if (status == 'accepted') currentStep = 2;
     if (status == 'confirmed') currentStep = 3;
     if (status == 'in progress' || status == 'inprogress') currentStep = 4;
-    if (status == 'completed' || status == 'reviewed' || status == 'cancelled') {
+    if (status == 'completed' ||
+        status == 'reviewed' ||
+        status == 'cancelled') {
       currentStep = 5;
     }
 
@@ -3388,9 +3536,7 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                         decoration: BoxDecoration(
                           color: const Color(0xFFF7F7F7),
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: const Color(0xFFE4E4E4),
-                          ),
+                          border: Border.all(color: const Color(0xFFE4E4E4)),
                         ),
                         child: Text(
                           b.description.isNotEmpty
@@ -3658,18 +3804,9 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
         'title': 'Worker accepts or rejects',
         'subtitle': 'Worker accepted the booking',
       },
-      {
-        'title': 'Confirmed',
-        'subtitle': 'Schedule locked in',
-      },
-      {
-        'title': 'In progress',
-        'subtitle': 'Work started on site',
-      },
-      {
-        'title': 'Completed',
-        'subtitle': 'Job finished',
-      },
+      {'title': 'Confirmed', 'subtitle': 'Schedule locked in'},
+      {'title': 'In progress', 'subtitle': 'Work started on site'},
+      {'title': 'Completed', 'subtitle': 'Job finished'},
     ];
 
     return Column(
@@ -3717,9 +3854,7 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                   Container(
                     width: 2,
                     height: 36,
-                    color: isDone
-                        ? Colors.black
-                        : const Color(0xFFE4E4E4),
+                    color: isDone ? Colors.black : const Color(0xFFE4E4E4),
                   ),
               ],
             ),
@@ -3966,14 +4101,26 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                 // Filter Pills & Sort By Bar
                 Builder(
                   builder: (context) {
-                    final requests = _bookings.where((b) => b.status.toLowerCase() == 'requested' || b.status.toLowerCase() == 'pending').toList();
+                    final requests = _bookings
+                        .where(
+                          (b) =>
+                              b.status.toLowerCase() == 'requested' ||
+                              b.status.toLowerCase() == 'pending',
+                        )
+                        .toList();
                     final active = _bookings.where((b) {
                       final s = b.status.toLowerCase();
-                      return s == 'accepted' || s == 'confirmed' || s == 'in progress' || s == 'inprogress';
+                      return s == 'accepted' ||
+                          s == 'confirmed' ||
+                          s == 'in progress' ||
+                          s == 'inprogress';
                     }).toList();
                     final history = _bookings.where((b) {
                       final s = b.status.toLowerCase();
-                      return s == 'completed' || s == 'reviewed' || s == 'cancelled' || s == 'rejected';
+                      return s == 'completed' ||
+                          s == 'reviewed' ||
+                          s == 'cancelled' ||
+                          s == 'rejected';
                     }).toList();
 
                     final tabs = [
@@ -4000,14 +4147,25 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                                   return Padding(
                                     padding: const EdgeInsets.only(right: 8),
                                     child: InkWell(
-                                      onTap: () => setState(() => _selectedTabIndex = idx),
+                                      onTap: () => setState(
+                                        () => _selectedTabIndex = idx,
+                                      ),
                                       borderRadius: BorderRadius.circular(24),
                                       child: AnimatedContainer(
-                                        duration: const Duration(milliseconds: 200),
-                                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                        duration: const Duration(
+                                          milliseconds: 200,
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 8,
+                                        ),
                                         decoration: BoxDecoration(
-                                          color: isSelected ? Colors.black : const Color(0xFFF1F3F5),
-                                          borderRadius: BorderRadius.circular(24),
+                                          color: isSelected
+                                              ? Colors.black
+                                              : const Color(0xFFF1F3F5),
+                                          borderRadius: BorderRadius.circular(
+                                            24,
+                                          ),
                                         ),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
@@ -4016,8 +4174,12 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                                               tab['label'] as String,
                                               style: GoogleFonts.dmSans(
                                                 fontSize: 13,
-                                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                                                color: isSelected ? Colors.white : Colors.black,
+                                                fontWeight: isSelected
+                                                    ? FontWeight.w700
+                                                    : FontWeight.w600,
+                                                color: isSelected
+                                                    ? Colors.white
+                                                    : Colors.black,
                                               ),
                                             ),
                                             if (count > 0 && idx == 0) ...[
@@ -4026,7 +4188,9 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                                                 width: 18,
                                                 height: 18,
                                                 decoration: BoxDecoration(
-                                                  color: isSelected ? Colors.white : Colors.black,
+                                                  color: isSelected
+                                                      ? Colors.white
+                                                      : Colors.black,
                                                   shape: BoxShape.circle,
                                                 ),
                                                 child: Center(
@@ -4034,8 +4198,11 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                                                     '$count',
                                                     style: GoogleFonts.dmSans(
                                                       fontSize: 10,
-                                                      fontWeight: FontWeight.w900,
-                                                      color: isSelected ? Colors.black : Colors.white,
+                                                      fontWeight:
+                                                          FontWeight.w900,
+                                                      color: isSelected
+                                                          ? Colors.black
+                                                          : Colors.white,
                                                     ),
                                                   ),
                                                 ),
@@ -4056,7 +4223,10 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                             onTap: _showSortOptions,
                             borderRadius: BorderRadius.circular(24),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 8,
+                              ),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFF1F3F5),
                                 borderRadius: BorderRadius.circular(24),
@@ -4073,7 +4243,11 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                                     ),
                                   ),
                                   const SizedBox(width: 4),
-                                  const Icon(Icons.arrow_drop_down, size: 18, color: Colors.black),
+                                  const Icon(
+                                    Icons.arrow_drop_down,
+                                    size: 18,
+                                    color: Colors.black,
+                                  ),
                                 ],
                               ),
                             ),
@@ -4098,14 +4272,26 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                           )
                         : Builder(
                             builder: (context) {
-                              final requests = _bookings.where((b) => b.status.toLowerCase() == 'requested' || b.status.toLowerCase() == 'pending').toList();
+                              final requests = _bookings
+                                  .where(
+                                    (b) =>
+                                        b.status.toLowerCase() == 'requested' ||
+                                        b.status.toLowerCase() == 'pending',
+                                  )
+                                  .toList();
                               final active = _bookings.where((b) {
                                 final s = b.status.toLowerCase();
-                                return s == 'accepted' || s == 'confirmed' || s == 'in progress' || s == 'inprogress';
+                                return s == 'accepted' ||
+                                    s == 'confirmed' ||
+                                    s == 'in progress' ||
+                                    s == 'inprogress';
                               }).toList();
                               final history = _bookings.where((b) {
                                 final s = b.status.toLowerCase();
-                                return s == 'completed' || s == 'reviewed' || s == 'cancelled' || s == 'rejected';
+                                return s == 'completed' ||
+                                    s == 'reviewed' ||
+                                    s == 'cancelled' ||
+                                    s == 'rejected';
                               }).toList();
 
                               List<BookingModel> filtered = _bookings;
@@ -4158,344 +4344,414 @@ class _BookingsTabScreenState extends State<BookingsTabScreen> {
                               }
 
                               return ListView.separated(
-                                padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  12,
+                                  16,
+                                  100,
+                                ),
                                 itemCount: displayed.length,
-                                separatorBuilder: (_, _) => const SizedBox(height: 16),
+                                separatorBuilder: (_, _) =>
+                                    const SizedBox(height: 16),
                                 itemBuilder: (context, index) {
                                   final b = displayed[index];
-                        final scheduled = b.scheduledDate != null
-                            ? '${b.scheduledDate!.day}/${b.scheduledDate!.month}/${b.scheduledDate!.year}'
-                            : 'Flexible / ASAP';
-                        final isCancellable =
-                            b.status.toLowerCase() == 'requested' ||
-                            b.status.toLowerCase() == 'pending';
-                        final isCompleted =
-                            b.status.toLowerCase() == 'completed';
+                                  final scheduled = b.scheduledDate != null
+                                      ? '${b.scheduledDate!.day}/${b.scheduledDate!.month}/${b.scheduledDate!.year}'
+                                      : 'Flexible / ASAP';
+                                  final isCancellable =
+                                      b.status.toLowerCase() == 'requested' ||
+                                      b.status.toLowerCase() == 'pending';
+                                  final isCompleted =
+                                      b.status.toLowerCase() == 'completed';
 
-                        return Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () => _showBookingDetails(b),
-                            borderRadius: BorderRadius.circular(24),
-                            child: Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF4F6F8),
-                                borderRadius: BorderRadius.circular(24),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Top Row: Worker Name + Status Pill
-                                  Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.center,
-                                    children: [
-                                      Expanded(
-                                        child: Row(
+                                  return Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: () => _showBookingDetails(b),
+                                      borderRadius: BorderRadius.circular(24),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(20),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFF4F6F8),
+                                          borderRadius: BorderRadius.circular(
+                                            24,
+                                          ),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
-                                            Flexible(
-                                              child: Text(
-                                                b.workerName,
-                                                style: GoogleFonts.dmSans(
-                                                  fontWeight: FontWeight.w800,
-                                                  fontSize: 20,
-                                                  color: Colors.black,
-                                                  letterSpacing: -0.4,
+                                            // Top Row: Worker Name + Status Pill
+                                            Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.center,
+                                              children: [
+                                                Expanded(
+                                                  child: Row(
+                                                    children: [
+                                                      Flexible(
+                                                        child: Text(
+                                                          b.workerName,
+                                                          style:
+                                                              GoogleFonts.dmSans(
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w800,
+                                                                fontSize: 20,
+                                                                color: Colors
+                                                                    .black,
+                                                                letterSpacing:
+                                                                    -0.4,
+                                                              ),
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                        ),
+                                                      ),
+                                                      if (b.isWorkerVerified)
+                                                        const VerifiedBadge(
+                                                          size: 18,
+                                                        ),
+                                                    ],
+                                                  ),
                                                 ),
-                                                overflow: TextOverflow.ellipsis,
+                                                const SizedBox(width: 8),
+                                                if (b.status.toLowerCase() ==
+                                                    'reviewed')
+                                                  Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 10,
+                                                          vertical: 6,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.black,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            20,
+                                                          ),
+                                                    ),
+                                                    child: Row(
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
+                                                      children: [
+                                                        const Icon(
+                                                          Icons.star_rounded,
+                                                          color: Colors.white,
+                                                          size: 14,
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 4,
+                                                        ),
+                                                        Text(
+                                                          'Reviewed',
+                                                          style:
+                                                              GoogleFonts.dmSans(
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w700,
+                                                                fontSize: 12,
+                                                                color: Colors
+                                                                    .white,
+                                                              ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  )
+                                                else
+                                                  Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 12,
+                                                          vertical: 6,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.white,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            20,
+                                                          ),
+                                                    ),
+                                                    child: Row(
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
+                                                      children: [
+                                                        Container(
+                                                          width: 7,
+                                                          height: 7,
+                                                          decoration: BoxDecoration(
+                                                            color:
+                                                                _getStatusDotColor(
+                                                                  b.status,
+                                                                ),
+                                                            shape:
+                                                                BoxShape.circle,
+                                                          ),
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 6,
+                                                        ),
+                                                        Text(
+                                                          _formatStatus(
+                                                            b.status,
+                                                          ),
+                                                          style:
+                                                              GoogleFonts.dmSans(
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w700,
+                                                                fontSize: 12,
+                                                                color: Colors
+                                                                    .black,
+                                                              ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 6),
+
+                                            // Job Title
+                                            Text(
+                                              b.jobTitle,
+                                              style: GoogleFonts.dmSans(
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.black,
                                               ),
                                             ),
-                                            if (b.isWorkerVerified)
-                                              const VerifiedBadge(size: 18),
+
+                                            // Description / notes
+                                            if (b.description.isNotEmpty) ...[
+                                              const SizedBox(height: 3),
+                                              Text(
+                                                b.description,
+                                                style: GoogleFonts.dmSans(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w400,
+                                                  color: const Color(
+                                                    0xFF64748B,
+                                                  ),
+                                                ),
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ],
+
+                                            const SizedBox(height: 16),
+                                            const Divider(
+                                              color: Color(0xFFE2E8F0),
+                                              thickness: 1,
+                                              height: 1,
+                                            ),
+                                            const SizedBox(height: 16),
+
+                                            // Date & Price Row
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    const Icon(
+                                                      Icons.access_time_rounded,
+                                                      size: 18,
+                                                      color: Color(0xFF475569),
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    Text(
+                                                      scheduled,
+                                                      style: GoogleFonts.dmSans(
+                                                        fontSize: 14,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                        color: const Color(
+                                                          0xFF475569,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                Text(
+                                                  'Rs. ${b.estimatedPrice.toStringAsFixed(0)}',
+                                                  style: GoogleFonts.dmSans(
+                                                    fontWeight: FontWeight.w900,
+                                                    fontSize: 22,
+                                                    color: Colors.black,
+                                                    letterSpacing: -0.5,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+
+                                            const SizedBox(height: 18),
+
+                                            // Action Buttons Row: View & Cancel/Review
+                                            if (b.status.toLowerCase() ==
+                                                'reviewed')
+                                              ReviewSummary(booking: b),
+                                            const SizedBox(height: 18),
+                                            Wrap(
+                                              spacing: 12,
+                                              runSpacing: 12,
+                                              children: [
+                                                OutlinedButton.icon(
+                                                  onPressed: () =>
+                                                      _showBookingDetails(b),
+                                                  icon: const Icon(
+                                                    Icons.visibility_outlined,
+                                                    size: 17,
+                                                  ),
+                                                  label: Text(
+                                                    'View Details',
+                                                    style: GoogleFonts.dmSans(
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                    ),
+                                                  ),
+                                                  style: OutlinedButton.styleFrom(
+                                                    foregroundColor:
+                                                        Colors.black,
+                                                    side: const BorderSide(
+                                                      color: Colors.black,
+                                                    ),
+                                                    shape: RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            26,
+                                                          ),
+                                                    ),
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 20,
+                                                          vertical: 12,
+                                                        ),
+                                                  ),
+                                                ),
+                                                if (b.conversationId != null)
+                                                  OutlinedButton.icon(
+                                                    onPressed:
+                                                        () {}, // Handled elsewhere or just UI mock
+                                                    icon: const Icon(
+                                                      Icons.message_outlined,
+                                                      size: 17,
+                                                    ),
+                                                    label: Text(
+                                                      'Message',
+                                                      style: GoogleFonts.dmSans(
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                      ),
+                                                    ),
+                                                    style: OutlinedButton.styleFrom(
+                                                      foregroundColor:
+                                                          Colors.black,
+                                                      side: const BorderSide(
+                                                        color: Colors.black,
+                                                      ),
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              26,
+                                                            ),
+                                                      ),
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 20,
+                                                            vertical: 12,
+                                                          ),
+                                                    ),
+                                                  ),
+                                                if (isCancellable)
+                                                  OutlinedButton.icon(
+                                                    onPressed: () =>
+                                                        _confirmCancelBooking(
+                                                          b,
+                                                        ),
+                                                    icon: const Icon(
+                                                      Icons.cancel_outlined,
+                                                      size: 17,
+                                                    ),
+                                                    label: Text(
+                                                      'Cancel',
+                                                      style: GoogleFonts.dmSans(
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                      ),
+                                                    ),
+                                                    style: OutlinedButton.styleFrom(
+                                                      foregroundColor:
+                                                          Colors.black,
+                                                      side: const BorderSide(
+                                                        color: Colors.black,
+                                                      ),
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              26,
+                                                            ),
+                                                      ),
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 20,
+                                                            vertical: 12,
+                                                          ),
+                                                    ),
+                                                  ),
+                                                if (isCompleted)
+                                                  FilledButton.icon(
+                                                    onPressed: () =>
+                                                        showReviewSheet(
+                                                          context,
+                                                          b,
+                                                          _fetchBookings,
+                                                        ),
+                                                    icon: const Icon(
+                                                      Icons.star_rounded,
+                                                      size: 17,
+                                                    ),
+                                                    label: Text(
+                                                      'Leave a Review',
+                                                      style: GoogleFonts.dmSans(
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                      ),
+                                                    ),
+                                                    style: FilledButton.styleFrom(
+                                                      backgroundColor:
+                                                          Colors.black,
+                                                      foregroundColor:
+                                                          Colors.white,
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              26,
+                                                            ),
+                                                      ),
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 20,
+                                                            vertical: 12,
+                                                          ),
+                                                    ),
+                                                  ),
+                                              ],
+                                            ),
                                           ],
                                         ),
                                       ),
-                                      const SizedBox(width: 8),
-                                      if (b.status.toLowerCase() == 'reviewed')
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                            vertical: 6,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Colors.black,
-                                            borderRadius: BorderRadius.circular(
-                                              20,
-                                            ),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              const Icon(
-                                                Icons.star_rounded,
-                                                color: Colors.white,
-                                                size: 14,
-                                              ),
-                                              const SizedBox(width: 4),
-                                              Text(
-                                                'Reviewed',
-                                                style: GoogleFonts.dmSans(
-                                                  fontWeight: FontWeight.w700,
-                                                  fontSize: 12,
-                                                  color: Colors.white,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        )
-                                      else
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 6,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            borderRadius: BorderRadius.circular(
-                                              20,
-                                            ),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Container(
-                                                width: 7,
-                                                height: 7,
-                                                decoration: BoxDecoration(
-                                                  color: _getStatusDotColor(
-                                                    b.status,
-                                                  ),
-                                                  shape: BoxShape.circle,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 6),
-                                              Text(
-                                                _formatStatus(b.status),
-                                                style: GoogleFonts.dmSans(
-                                                  fontWeight: FontWeight.w700,
-                                                  fontSize: 12,
-                                                  color: Colors.black,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 6),
-
-                                  // Job Title
-                                  Text(
-                                    b.jobTitle,
-                                    style: GoogleFonts.dmSans(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.black,
                                     ),
-                                  ),
-
-                                  // Description / notes
-                                  if (b.description.isNotEmpty) ...[
-                                    const SizedBox(height: 3),
-                                    Text(
-                                      b.description,
-                                      style: GoogleFonts.dmSans(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w400,
-                                        color: const Color(0xFF64748B),
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-
-                                  const SizedBox(height: 16),
-                                  const Divider(
-                                    color: Color(0xFFE2E8F0),
-                                    thickness: 1,
-                                    height: 1,
-                                  ),
-                                  const SizedBox(height: 16),
-
-                                  // Date & Price Row
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.access_time_rounded,
-                                            size: 18,
-                                            color: Color(0xFF475569),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            scheduled,
-                                            style: GoogleFonts.dmSans(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500,
-                                              color: const Color(0xFF475569),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      Text(
-                                        'Rs. ${b.estimatedPrice.toStringAsFixed(0)}',
-                                        style: GoogleFonts.dmSans(
-                                          fontWeight: FontWeight.w900,
-                                          fontSize: 22,
-                                          color: Colors.black,
-                                          letterSpacing: -0.5,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-
-                                  const SizedBox(height: 18),
-
-                                  // Action Buttons Row: View & Cancel/Review
-                                  if (b.status.toLowerCase() == 'reviewed')
-                                    ReviewSummary(booking: b),
-                                  const SizedBox(height: 18),
-                                  Wrap(
-                                    spacing: 12,
-                                    runSpacing: 12,
-                                    children: [
-                                      OutlinedButton.icon(
-                                        onPressed: () => _showBookingDetails(b),
-                                        icon: const Icon(
-                                          Icons.visibility_outlined,
-                                          size: 17,
-                                        ),
-                                        label: Text(
-                                          'View Details',
-                                          style: GoogleFonts.dmSans(
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                        style: OutlinedButton.styleFrom(
-                                          foregroundColor: Colors.black,
-                                          side: const BorderSide(
-                                            color: Colors.black,
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              26,
-                                            ),
-                                          ),
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 20,
-                                            vertical: 12,
-                                          ),
-                                        ),
-                                      ),
-                                      if (b.conversationId != null)
-                                        OutlinedButton.icon(
-                                          onPressed:
-                                              () {}, // Handled elsewhere or just UI mock
-                                          icon: const Icon(
-                                            Icons.message_outlined,
-                                            size: 17,
-                                          ),
-                                          label: Text(
-                                            'Message',
-                                            style: GoogleFonts.dmSans(
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                          style: OutlinedButton.styleFrom(
-                                            foregroundColor: Colors.black,
-                                            side: const BorderSide(
-                                              color: Colors.black,
-                                            ),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(26),
-                                            ),
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 20,
-                                              vertical: 12,
-                                            ),
-                                          ),
-                                        ),
-                                      if (isCancellable)
-                                        OutlinedButton.icon(
-                                          onPressed: () =>
-                                              _confirmCancelBooking(b),
-                                          icon: const Icon(
-                                            Icons.cancel_outlined,
-                                            size: 17,
-                                          ),
-                                          label: Text(
-                                            'Cancel',
-                                            style: GoogleFonts.dmSans(
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                          style: OutlinedButton.styleFrom(
-                                            foregroundColor: Colors.black,
-                                            side: const BorderSide(
-                                              color: Colors.black,
-                                            ),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(26),
-                                            ),
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 20,
-                                              vertical: 12,
-                                            ),
-                                          ),
-                                        ),
-                                      if (isCompleted)
-                                        FilledButton.icon(
-                                          onPressed: () => showReviewSheet(
-                                            context,
-                                            b,
-                                            _fetchBookings,
-                                          ),
-                                          icon: const Icon(
-                                            Icons.star_rounded,
-                                            size: 17,
-                                          ),
-                                          label: Text(
-                                            'Leave a Review',
-                                            style: GoogleFonts.dmSans(
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                          style: FilledButton.styleFrom(
-                                            backgroundColor: Colors.black,
-                                            foregroundColor: Colors.white,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(26),
-                                            ),
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 20,
-                                              vertical: 12,
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
-                        },
-                      );
+                                  );
+                                },
+                              );
                             },
                           ),
-                        ),
-                      ),
-                    ],
                   ),
-                );
-
+                ),
+              ],
+            ),
+    );
   }
 }
 
@@ -4550,13 +4806,19 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
     int totalUnread = 0;
     for (final c in convs) {
       final convId = c['id']?.toString() ?? '';
-      final clearedBeforeStr = prefs.getString('cleared_chat_before_${email}_$convId');
+      final clearedBeforeStr = prefs.getString(
+        'cleared_chat_before_${email}_$convId',
+      );
       if (clearedBeforeStr != null) {
         final clearedBefore = DateTime.tryParse(clearedBeforeStr);
-        final lastMsgAtStr = c['lastMessageAt']?.toString() ?? c['updatedAt']?.toString();
-        final lastMsgAt = lastMsgAtStr != null ? DateTime.tryParse(lastMsgAtStr) : null;
+        final lastMsgAtStr =
+            c['lastMessageAt']?.toString() ?? c['updatedAt']?.toString();
+        final lastMsgAt = lastMsgAtStr != null
+            ? DateTime.tryParse(lastMsgAtStr)
+            : null;
         if (clearedBefore != null && lastMsgAt != null) {
-          if (lastMsgAt.toUtc().isBefore(clearedBefore) || lastMsgAt.toUtc().isAtSameMomentAs(clearedBefore)) {
+          if (lastMsgAt.toUtc().isBefore(clearedBefore) ||
+              lastMsgAt.toUtc().isAtSameMomentAs(clearedBefore)) {
             continue; // Chat was cleared: hide from conversation list
           }
         } else if (clearedBefore != null && lastMsgAt == null) {
@@ -4689,11 +4951,12 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
                             c['workerName']?.toString() ??
                             c['otherPartyName']?.toString() ??
                             'Worker';
-                        final profileImg = (c['workerProfileImage'] ??
-                                c['WorkerProfileImage'] ??
-                                c['workerAvatar'] ??
-                                c['otherPartyProfileImage'])
-                            ?.toString();
+                        final profileImg =
+                            (c['workerProfileImage'] ??
+                                    c['WorkerProfileImage'] ??
+                                    c['workerAvatar'] ??
+                                    c['otherPartyProfileImage'])
+                                ?.toString();
                         String lastMsg =
                             c['lastMessage']?.toString() ??
                             'Conversation started';
@@ -4701,7 +4964,10 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
                         if (lastMsg.trimLeft().startsWith('{')) {
                           try {
                             final decoded = jsonDecode(lastMsg);
-                            if (decoded is Map && (decoded.containsKey('phoneNo') || decoded.containsKey('PhoneNo') || decoded['type'] == 'WorkerContactCard')) {
+                            if (decoded is Map &&
+                                (decoded.containsKey('phoneNo') ||
+                                    decoded.containsKey('PhoneNo') ||
+                                    decoded['type'] == 'WorkerContactCard')) {
                               lastMsg = 'Shared contact card';
                             }
                           } catch (_) {}
@@ -4723,7 +4989,8 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
                             radius: 26,
                             backgroundColor: AppColors.surfaceVariant,
                             child: ClipOval(
-                              child: (profileImg != null &&
+                              child:
+                                  (profileImg != null &&
                                       profileImg.isNotEmpty &&
                                       profileImg != 'null' &&
                                       profileImg.startsWith('http'))
@@ -4738,7 +5005,9 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
                                         color: AppColors.surfaceVariant,
                                         alignment: Alignment.center,
                                         child: Text(
-                                          name.isNotEmpty ? name[0].toUpperCase() : 'W',
+                                          name.isNotEmpty
+                                              ? name[0].toUpperCase()
+                                              : 'W',
                                           style: GoogleFonts.dmSans(
                                             fontWeight: FontWeight.w700,
                                             fontSize: 18,
@@ -4753,7 +5022,9 @@ class _ChatsTabScreenState extends State<ChatsTabScreen> {
                                       color: AppColors.surfaceVariant,
                                       alignment: Alignment.center,
                                       child: Text(
-                                        name.isNotEmpty ? name[0].toUpperCase() : 'W',
+                                        name.isNotEmpty
+                                            ? name[0].toUpperCase()
+                                            : 'W',
                                         style: GoogleFonts.dmSans(
                                           fontWeight: FontWeight.w700,
                                           fontSize: 18,
