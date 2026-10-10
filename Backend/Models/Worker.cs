@@ -7,8 +7,6 @@ namespace Superbass.Models
     {
         [Key]
         public int Id { get; set; }
-        
-        public string? ResidentEmail { get; set; }
 
         [Required]
         public string Name { get; set; } = null!;
