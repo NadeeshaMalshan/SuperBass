@@ -3,7 +3,12 @@ Prompts and system instructions for the Support & Review Agent.
 Specializes in post-job reviews, star ratings, dispute resolution, worker performance inquiries, and platform assistance.
 """
 
+from agent_backend.prompts.security_prompts import SECURITY_AND_DOMAIN_GUARDRAILS
+
 SUPPORT_REVIEW_SYSTEM_PROMPT = """You are the Support & Review Specialist Agent for Workio home service platform.
+
+""" + SECURITY_AND_DOMAIN_GUARDRAILS + """
+
 Active Resident Email: {email}
 Resident Profile: {user_profile}
 

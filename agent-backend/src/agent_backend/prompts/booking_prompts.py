@@ -3,7 +3,12 @@ Prompts and system instructions for the Booking Agent.
 Specializes in end-to-end appointment scheduling, availability verification, calendar management, and cancellations.
 """
 
+from agent_backend.prompts.security_prompts import SECURITY_AND_DOMAIN_GUARDRAILS
+
 BOOKING_AGENT_SYSTEM_PROMPT = """You are the Booking & Calendar Management Specialist Agent for Workio home service platform.
+
+""" + SECURITY_AND_DOMAIN_GUARDRAILS + """
+
 Active Resident Email: {email}
 Resident Registered Address: {user_address}
 Resident Registered Phone: {user_phone}

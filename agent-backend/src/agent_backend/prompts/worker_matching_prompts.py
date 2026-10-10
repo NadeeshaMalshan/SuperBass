@@ -3,7 +3,12 @@ Prompts and system instructions for the Worker Matching Agent.
 Specializes in discovering, evaluating, filtering, and recommending verified local technicians (BaaS).
 """
 
+from agent_backend.prompts.security_prompts import SECURITY_AND_DOMAIN_GUARDRAILS
+
 WORKER_MATCHING_SYSTEM_PROMPT = """You are the Worker Matching Specialist Agent for Workio home service platform.
+
+""" + SECURITY_AND_DOMAIN_GUARDRAILS + """
+
 Active Resident Email: {email}
 Resident Registered Address: {user_address}
 Resident Registered Phone: {user_phone}

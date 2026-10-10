@@ -27,6 +27,11 @@ from agent_backend.db.chat_repository import chat_repository
 from agent_backend.tools.community_tools import current_post_images
 from agent_backend.utils.sanitizer import sanitize_text, extract_text_content
 from agent_backend.utils.turn_tracker import TurnUsageLogger
+from agent_backend.utils.guardrails import (
+    check_prompt_injection,
+    SECURITY_REFUSAL_TEXT,
+    OUT_OF_SCOPE_CHIPS
+)
 
 # Configure logging to console and dedicated ai_chat.log file if writable (e.g. read-only in Vercel serverless)
 log_file_path = Path(__file__).resolve().parent.parent.parent / "ai_chat.log"
@@ -264,6 +269,39 @@ async def chat_endpoint(request: ChatRequest):
             current_post_images.set(post_images)
 
         clean_user_message = sanitize_text(request.message)
+
+        # Fast pre-LLM Guardrail: Detect Prompt Injection / Jailbreaks early
+        injection_alert = check_prompt_injection(clean_user_message)
+        if injection_alert:
+            logger.warning(f"🛡️ [Gateway Security Guard] Blocked injection in thread '{conv_id}': {injection_alert}")
+            guard_card = TextMessageCard(
+                text=SECURITY_REFUSAL_TEXT,
+                suggestions=OUT_OF_SCOPE_CHIPS
+            )
+            card_response = AgentCardResponse(
+                response_type="text_message",
+                message=SECURITY_REFUSAL_TEXT,
+                card_data=guard_card.model_dump(),
+                metadata={"agent": "security_guardrail", "user_email": request.email, "security_violation": True}
+            )
+            _IN_MEMORY_CONV_CACHE.setdefault(conv_id, []).extend([
+                {"sender": "user", "message": clean_user_message},
+                {"sender": "assistant", "message": SECURITY_REFUSAL_TEXT}
+            ])
+            try:
+                await chat_repository.save_chat_turn(
+                    conv_id=conv_id,
+                    user_email=request.email,
+                    user_text=clean_user_message,
+                    assistant_card_response=card_response
+                )
+            except Exception as db_err:
+                logger.error(f"Failed to persist security guard turn to DB: {db_err}")
+
+            return ChatResponse(
+                conversation_id=conv_id,
+                response=card_response
+            )
 
         # 1. Retrieve prior messages to supply bounded conversational context
         history_msgs = []
