@@ -117,9 +117,10 @@ using (var scope = app.Services.CreateScope())
             BEGIN 
                 IF EXISTS (
                     SELECT 1 FROM information_schema.columns 
-                    WHERE table_name='Workers' AND column_name='ResidentEmail' AND is_nullable='NO'
+                    WHERE table_name='Workers' AND column_name='ResidentEmail'
                 ) THEN
-                    ALTER TABLE ""Workers"" ALTER COLUMN ""ResidentEmail"" DROP NOT NULL;
+                    UPDATE ""Workers"" SET ""Email"" = ""ResidentEmail"" WHERE ""Email"" IS NULL OR ""Email"" = '';
+                    ALTER TABLE ""Workers"" DROP COLUMN IF EXISTS ""ResidentEmail"";
                 END IF;
 
                 IF NOT EXISTS (

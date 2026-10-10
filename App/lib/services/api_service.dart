@@ -787,17 +787,57 @@ class ApiService {
     }
   }
 
-  /// Revert Worker profile back to Resident: DELETE /api/workers/revert-to-resident?email=...
-  Future<bool> revertToResident(String email) async {
+  /// Complete Worker Onboarding: POST /api/workers/onboarding
+  Future<Map<String, dynamic>> workerOnboarding({
+    required String email,
+    required String name,
+    required String phoneNo,
+    String? profileImage,
+    String? description,
+    required String primaryServiceArea,
+    String? province,
+    String? district,
+    double? locationLat,
+    double? locationLng,
+    double coverageRadiusKm = 10.0,
+    String pricingModel = 'Hourly',
+    double? hourlyRate,
+    double? dailyRate,
+    required List<Map<String, dynamic>> skills,
+  }) async {
     try {
-      final uri = Uri.parse('${ApiConfig.baseUrl}/api/workers/revert-to-resident').replace(
-        queryParameters: {'email': email},
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/workers/onboarding');
+      final response = await http.post(
+        uri,
+        headers: _headers,
+        body: jsonEncode({
+          'email': email,
+          'name': name,
+          'phoneNo': phoneNo,
+          'profileImage': profileImage,
+          'description': description,
+          'primaryServiceArea': primaryServiceArea,
+          'province': province,
+          'district': district,
+          'locationLat': locationLat,
+          'locationLng': locationLng,
+          'coverageRadiusKm': coverageRadiusKm,
+          'pricingModel': pricingModel,
+          'hourlyRate': hourlyRate,
+          'dailyRate': dailyRate,
+          'isAvailable': true,
+          'skills': skills,
+        }),
       );
-      final response = await http.delete(uri, headers: _headers);
-      return response.statusCode >= 200 && response.statusCode < 300;
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = jsonDecode(response.body);
+        return {'success': true, 'data': data};
+      }
+      final err = jsonDecode(response.body);
+      return {'success': false, 'message': err['message'] ?? 'Failed to complete worker onboarding'};
     } catch (e) {
-      debugPrint('Error reverting worker to resident: $e');
-      return false;
+      debugPrint('Error in worker onboarding: $e');
+      return {'success': false, 'message': e.toString()};
     }
   }
 

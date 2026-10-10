@@ -63,8 +63,7 @@ namespace Superbass.Controllers
 
             var requesterEmail = GetEmailFromRequest();
             var isSelf = !string.IsNullOrEmpty(requesterEmail) && 
-                (string.Equals(requesterEmail, worker.Email, StringComparison.OrdinalIgnoreCase) || 
-                 string.Equals(requesterEmail, worker.ResidentEmail, StringComparison.OrdinalIgnoreCase));
+                string.Equals(requesterEmail, worker.Email, StringComparison.OrdinalIgnoreCase);
 
             if (!isSelf)
             {
@@ -238,21 +237,7 @@ namespace Superbass.Controllers
                 worker.NicNumber = dto.NicNumber.Trim();
             }
 
-            // Sync to resident account if exists
-            var targetEmail = !string.IsNullOrEmpty(worker.ResidentEmail) ? worker.ResidentEmail : worker.Email;
-            if (!string.IsNullOrEmpty(targetEmail))
-            {
-                var cleanEmail = targetEmail.Trim().ToLower();
-                var resident = await _dbContext.Residents.FirstOrDefaultAsync(r => r.Email.ToLower() == cleanEmail);
-                if (resident != null)
-                {
-                    resident.IsVerified = true;
-                    if (!string.IsNullOrWhiteSpace(dto.NicNumber))
-                    {
-                        resident.NicNumber = dto.NicNumber.Trim();
-                    }
-                }
-            }
+            // Workers are independent — no sync to residents table
 
             await _dbContext.SaveChangesAsync();
 
@@ -296,19 +281,9 @@ namespace Superbass.Controllers
 
             var cleanEmail = targetEmail.Trim().ToLower();
 
-            // Strict rule: If this email is already registered as an active Resident (and not a worker)
-            var existingResident = await _dbContext.Residents.FirstOrDefaultAsync(r => r.Email.ToLower() == cleanEmail);
+            // Workers and residents are independent entities — check worker table only
             var existingWorker = await _dbContext.Workers.Include(w => w.Skills)
-                .FirstOrDefaultAsync(w => (w.ResidentEmail != null && w.ResidentEmail.ToLower() == cleanEmail) ||
-                                          (w.Email != null && w.Email.ToLower() == cleanEmail));
-
-            bool isFullyOnboardedWorker = existingWorker != null && existingWorker.Skills != null && existingWorker.Skills.Any();
-            if (existingResident != null && !isFullyOnboardedWorker && existingWorker == null)
-            {
-                return BadRequest(new { 
-                    message = "This email is registered as a Resident. You cannot register as a Worker with this email." 
-                });
-            }
+                .FirstOrDefaultAsync(w => w.Email != null && w.Email.ToLower() == cleanEmail);
 
             if (dto.Skills == null || !dto.Skills.Any())
             {
@@ -346,7 +321,6 @@ namespace Superbass.Controllers
             {
                 existingWorker = new Worker
                 {
-                    ResidentEmail = cleanEmail,
                     Email = cleanEmail,
                     Name = dto.Name ?? cleanEmail.Split('@')[0],
                     PhoneNo = dto.PhoneNo,
@@ -443,8 +417,9 @@ namespace Superbass.Controllers
                     };
                 }).ToList();
 
-                var worker = await _workerRepository.CreateWorkerFromResidentAsync(
+                var worker = await _workerRepository.CreateWorkerDirectAsync(
                     targetEmail,
+                    null,
                     dto.Description,
                     dto.PrimaryServiceArea,
                     dto.CoverageRadiusKm,
@@ -466,24 +441,7 @@ namespace Superbass.Controllers
             }
         }
 
-        // DELETE: /api/workers/revert-to-resident
-        [HttpDelete("revert-to-resident")]
-        public async Task<IActionResult> RevertToResident([FromQuery] string? email)
-        {
-            var targetEmail = email ?? GetEmailFromRequest();
-            if (string.IsNullOrEmpty(targetEmail))
-            {
-                return BadRequest(new { message = "Email is required or must be provided in Authorization header." });
-            }
 
-            var success = await _workerRepository.DeleteWorkerByEmailAsync(targetEmail);
-            if (!success)
-            {
-                return NotFound(new { message = "Worker record not found for this user." });
-            }
-
-            return Ok(new { message = "Worker profile deleted successfully. User reverted to Resident.", activeRole = "Resident" });
-        }
 
         // DELETE: /api/workers/delete-account
         [HttpDelete("delete-account")]

@@ -22,7 +22,7 @@ namespace Superbass.Services
         {
             // Prevent workers from initiating conversation with other workers
             var isSenderWorker = await _context.Workers.AnyAsync(w => 
-                w.Email == residentEmail || w.ResidentEmail == residentEmail);
+                w.Email == residentEmail);
             if (isSenderWorker)
             {
                 throw new InvalidOperationException("Workers cannot initiate direct chats with other workers. Chatting is only permitted between residents and workers.");
@@ -38,35 +38,20 @@ namespace Superbass.Services
             if (worker == null && !string.IsNullOrWhiteSpace(request.WorkerEmail))
             {
                 worker = await _context.Workers.FirstOrDefaultAsync(w => 
-                    w.Email == request.WorkerEmail || w.ResidentEmail == request.WorkerEmail);
+                    w.Email == request.WorkerEmail);
             }
 
             if (worker == null)
             {
-                // Ensure a Resident entry exists for the worker
                 var workerEmail = !string.IsNullOrWhiteSpace(request.WorkerEmail) 
                     ? request.WorkerEmail 
                     : $"worker{DateTime.UtcNow.Ticks}@superbass.lk";
 
-                var workerResident = await _context.Residents.FindAsync(workerEmail);
-                if (workerResident == null)
-                {
-                    workerResident = new Resident
-                    {
-                        Email = workerEmail,
-                        Name = request.WorkerName ?? "SuperBass Worker",
-                        PhoneNo = "0771234567"
-                    };
-                    _context.Residents.Add(workerResident);
-                    await _context.SaveChangesAsync();
-                }
-
-                // Create a Worker profile
+                // Create a Worker profile directly (independent from Resident)
                 worker = new Worker
                 {
-                    ResidentEmail = workerEmail,
                     Email = workerEmail,
-                    Name = request.WorkerName ?? workerResident.Name ?? "Worker",
+                    Name = request.WorkerName ?? "Worker",
                     ProfileImage = request.WorkerAvatar,
                     Description = "Verified Community Service Professional",
                     PrimaryServiceArea = "Colombo",
@@ -125,7 +110,7 @@ namespace Superbass.Services
                         ConversationId = conversation.Id,
                         SenderEmail = residentEmail,
                         SenderRole = "Resident",
-                        ReceiverEmail = worker.Email ?? worker.ResidentEmail,
+                        ReceiverEmail = worker.Email,
                         ReceiverRole = "Worker",
                         MessageType = "Text",
                         Content = request.InitialMessage.Trim(),
@@ -152,8 +137,7 @@ namespace Superbass.Services
             var lowerEmail = userEmail.Trim().ToLower();
             // Find worker profiles associated with this email
             var worker = await _context.Workers.FirstOrDefaultAsync(w => 
-                (w.ResidentEmail != null && w.ResidentEmail.ToLower() == lowerEmail) || 
-                (w.Email != null && w.Email.ToLower() == lowerEmail));
+                w.Email != null && w.Email.ToLower() == lowerEmail);
             int? workerId = worker?.Id;
 
             var conversations = await _context.Conversations
@@ -181,9 +165,8 @@ namespace Superbass.Services
             if (conv == null) return false;
 
             var isResident = string.Equals(conv.ResidentEmail, userEmail, StringComparison.OrdinalIgnoreCase);
-            var isWorker = conv.Worker != null && (
-                string.Equals(conv.Worker.ResidentEmail, userEmail, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(conv.Worker.Email, userEmail, StringComparison.OrdinalIgnoreCase));
+            var isWorker = conv.Worker != null && 
+                string.Equals(conv.Worker.Email, userEmail, StringComparison.OrdinalIgnoreCase);
 
             if (!isResident && !isWorker)
             {
@@ -214,9 +197,8 @@ namespace Superbass.Services
 
             // Security check: verify user is participant
             var isResident = string.Equals(conv.ResidentEmail, userEmail, StringComparison.OrdinalIgnoreCase);
-            var isWorker = conv.Worker != null && (
-                string.Equals(conv.Worker.ResidentEmail, userEmail, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(conv.Worker.Email, userEmail, StringComparison.OrdinalIgnoreCase));
+            var isWorker = conv.Worker != null && 
+                string.Equals(conv.Worker.Email, userEmail, StringComparison.OrdinalIgnoreCase);
 
             if (!isResident && !isWorker)
             {
@@ -247,39 +229,13 @@ namespace Superbass.Services
                 })
                 .ToListAsync();
 
-            var isUserWorker = conv.Worker != null && (
-                string.Equals(conv.Worker.ResidentEmail, userEmail, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(conv.Worker.Email, userEmail, StringComparison.OrdinalIgnoreCase));
-            var otherEmail = isUserWorker ? conv.ResidentEmail : (conv.Worker?.Email ?? conv.Worker?.ResidentEmail ?? string.Empty);
-
-            var residentWorker = await _context.Workers.AsNoTracking().FirstOrDefaultAsync(w => 
-                (w.ResidentEmail != null && w.ResidentEmail.ToLower() == conv.ResidentEmail.ToLower()) || 
-                (w.Email != null && w.Email.ToLower() == conv.ResidentEmail.ToLower()));
+            var isUserWorker = conv.Worker != null && 
+                string.Equals(conv.Worker.Email, userEmail, StringComparison.OrdinalIgnoreCase);
+            var otherEmail = isUserWorker ? conv.ResidentEmail : (conv.Worker?.Email ?? string.Empty);
 
             var cleanResidentName = conv.Resident?.Name;
-            if (string.IsNullOrWhiteSpace(cleanResidentName) || cleanResidentName.Contains('@') || cleanResidentName == conv.ResidentEmail.Split('@')[0])
-            {
-                if (!string.IsNullOrWhiteSpace(residentWorker?.Name))
-                {
-                    cleanResidentName = residentWorker.Name;
-                }
-            }
-
-            var residentProfileImage = !string.IsNullOrWhiteSpace(conv.Resident?.ProfileImage)
-                ? conv.Resident.ProfileImage
-                : (residentWorker != null && residentWorker.Id != conv.WorkerId ? residentWorker.ProfileImage : null);
-
+            var residentProfileImage = conv.Resident?.ProfileImage;
             var workerProfileImage = conv.Worker?.ProfileImage;
-            if (string.IsNullOrWhiteSpace(workerProfileImage) && conv.Worker != null)
-            {
-                var workerResidentEmail = conv.Worker.ResidentEmail ?? conv.Worker.Email;
-                if (!string.IsNullOrWhiteSpace(workerResidentEmail))
-                {
-                    var workerResident = await _context.Residents.AsNoTracking().FirstOrDefaultAsync(r => 
-                        r.Email.ToLower() == workerResidentEmail.ToLower());
-                    workerProfileImage = workerResident?.ProfileImage;
-                }
-            }
 
             return new ConversationDetailsDto
             {
@@ -360,7 +316,7 @@ namespace Superbass.Services
             {
                 if (senderEmail.Equals(conversation.ResidentEmail, StringComparison.OrdinalIgnoreCase))
                 {
-                    receiverEmail = conversation.Worker?.Email ?? conversation.Worker?.ResidentEmail ?? "worker@superbass.lk";
+                    receiverEmail = conversation.Worker?.Email ?? "worker@superbass.lk";
                     receiverRole = "Worker";
                 }
                 else
@@ -530,8 +486,7 @@ namespace Superbass.Services
         {
             var lowerEmail = userEmail.Trim().ToLower();
             var worker = await _context.Workers.FirstOrDefaultAsync(w => 
-                (w.ResidentEmail != null && w.ResidentEmail.ToLower() == lowerEmail) || 
-                (w.Email != null && w.Email.ToLower() == lowerEmail));
+                w.Email != null && w.Email.ToLower() == lowerEmail);
             int? workerId = worker?.Id;
 
             var unreadCount = await _context.ChatMessages
@@ -550,38 +505,13 @@ namespace Superbass.Services
                 .Where(m => m.ConversationId == conv.Id && !m.IsRead && !m.IsDeleted && m.SenderEmail.ToLower() != lowerEmail)
                 .CountAsync();
 
-            var isUserWorker = conv.Worker != null && (
-                string.Equals(conv.Worker.ResidentEmail, currentUserEmail, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(conv.Worker.Email, currentUserEmail, StringComparison.OrdinalIgnoreCase));
-            var otherEmail = isUserWorker ? conv.ResidentEmail : (conv.Worker?.Email ?? conv.Worker?.ResidentEmail ?? string.Empty);
-
-            var residentWorker = await _context.Workers.AsNoTracking().FirstOrDefaultAsync(w => 
-                (w.ResidentEmail != null && w.ResidentEmail.ToLower() == conv.ResidentEmail.ToLower()) || 
-                (w.Email != null && w.Email.ToLower() == conv.ResidentEmail.ToLower()));
+            var isUserWorker = conv.Worker != null && 
+                string.Equals(conv.Worker.Email, currentUserEmail, StringComparison.OrdinalIgnoreCase);
+            var otherEmail = isUserWorker ? conv.ResidentEmail : (conv.Worker?.Email ?? string.Empty);
 
             var cleanResidentName = conv.Resident?.Name;
-            if (string.IsNullOrWhiteSpace(cleanResidentName) || cleanResidentName.Contains('@') || cleanResidentName == conv.ResidentEmail.Split('@')[0])
-            {
-                if (!string.IsNullOrWhiteSpace(residentWorker?.Name))
-                {
-                    cleanResidentName = residentWorker.Name;
-                }
-            }
-            var residentProfileImage = !string.IsNullOrWhiteSpace(conv.Resident?.ProfileImage)
-                ? conv.Resident.ProfileImage
-                : (residentWorker != null && residentWorker.Id != conv.WorkerId ? residentWorker.ProfileImage : null);
-
+            var residentProfileImage = conv.Resident?.ProfileImage;
             var workerProfileImage = conv.Worker?.ProfileImage;
-            if (string.IsNullOrWhiteSpace(workerProfileImage) && conv.Worker != null)
-            {
-                var workerResidentEmail = conv.Worker.ResidentEmail ?? conv.Worker.Email;
-                if (!string.IsNullOrWhiteSpace(workerResidentEmail))
-                {
-                    var workerResident = await _context.Residents.AsNoTracking().FirstOrDefaultAsync(r => 
-                        r.Email.ToLower() == workerResidentEmail.ToLower());
-                    workerProfileImage = workerResident?.ProfileImage;
-                }
-            }
 
             var lastMsg = await _context.ChatMessages
                 .Where(m => m.ConversationId == conv.Id && !m.IsDeleted)
@@ -598,7 +528,7 @@ namespace Superbass.Services
                 ResidentProfileImage = residentProfileImage,
                 WorkerId = conv.WorkerId,
                 WorkerName = conv.Worker?.Name ?? "Worker",
-                WorkerEmail = !string.IsNullOrWhiteSpace(conv.Worker?.Email) ? conv.Worker.Email : (conv.Worker?.ResidentEmail ?? string.Empty),
+                WorkerEmail = conv.Worker?.Email ?? string.Empty,
                 WorkerPhone = (isUserWorker || await _context.ChatMessages.AnyAsync(m => m.ConversationId == conv.Id && m.MessageType == "ContactCard")) ? conv.Worker?.PhoneNo : null,
                 WorkerProfileImage = workerProfileImage,
                 BookingId = conv.BookingId,

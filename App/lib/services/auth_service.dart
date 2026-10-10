@@ -68,7 +68,7 @@ class AuthService {
         final bool isWorkerInDb = data is Map && data['worker'] != null;
         final int? workerId = isWorkerInDb ? data['worker']['id'] as int? : null;
         final bool isWorkerVerified = isWorkerInDb && (data['worker']['isVerified'] == true || data['worker']['IsVerified'] == true);
-        final String roleInDb = isWorkerInDb ? 'Worker' : 'Resident';
+        final String roleInDb = isWorkerInDb ? 'Worker' : user.activeRole;
 
         final prefs = await SharedPreferences.getInstance();
         if (isWorkerVerified) {
@@ -98,6 +98,10 @@ class AuthService {
   }
 
   Future<void> _syncVerificationStatusWithBackend(AuthUser user) async {
+    // Workers are independent entities — do NOT hit resident endpoints for workers
+    if (user.activeRole == 'Worker' || user.isWorker) {
+      return;
+    }
     try {
       final resUri = Uri.parse('${ApiConfig.baseUrl}/api/residents/${Uri.encodeComponent(user.email)}');
       final res = await http.get(resUri, headers: {

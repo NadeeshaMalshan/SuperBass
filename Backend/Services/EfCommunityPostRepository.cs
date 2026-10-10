@@ -113,7 +113,7 @@ namespace Superbass.Services
                     if (!p.IsAuthorVerified)
                     {
                         p.IsAuthorVerified = _context.Residents.Any(r => r.Email == p.UserId && r.IsVerified) ||
-                                             _context.Workers.Any(w => (w.ResidentEmail == p.UserId || w.Email == p.UserId) && w.IsVerified);
+                                             _context.Workers.Any(w => w.Email == p.UserId && w.IsVerified);
                     }
                 }
                 return list;
@@ -162,7 +162,7 @@ namespace Superbass.Services
                     }
                     else
                     {
-                        var worker = _context.Workers.FirstOrDefault(w => w.ResidentEmail == userId || w.Email == userId);
+                        var worker = _context.Workers.FirstOrDefault(w => w.Email == userId);
                         if (worker != null && !string.IsNullOrWhiteSpace(worker.Name))
                         {
                             resolvedName = worker.Name;
@@ -185,7 +185,7 @@ namespace Superbass.Services
                 }
 
                 var isAuthorVerified = _context.Residents.Any(r => r.Email == userId && r.IsVerified) ||
-                                       _context.Workers.Any(w => (w.ResidentEmail == userId || w.Email == userId) && w.IsVerified);
+                                       _context.Workers.Any(w => w.Email == userId && w.IsVerified);
 
                 var post = new CommunityPost
                 {
@@ -301,7 +301,7 @@ namespace Superbass.Services
                 }
 
                 var isUserVerified = _context.Residents.Any(r => r.Email == userId && r.IsVerified) ||
-                                     _context.Workers.Any(w => (w.ResidentEmail == userId || w.Email == userId) && w.IsVerified);
+                                     _context.Workers.Any(w => w.Email == userId && w.IsVerified);
 
                 var comment = new CommunityComment
                 {
