@@ -157,6 +157,32 @@ namespace Superbass.Controllers
             });
         }
 
+        // GET: /api/workers/{id}/reviews
+        [HttpGet("{id}/reviews")]
+        public async Task<IActionResult> GetReviews(int id)
+        {
+            var reviews = await _dbContext.Bookings
+                .Include(b => b.Resident)
+                .Where(b => b.WorkerId == id && b.ReviewRating.HasValue)
+                .OrderByDescending(b => b.ReviewedAt ?? b.UpdatedAt)
+                .Select(b => new
+                {
+                    b.Id,
+                    b.WorkerId,
+                    ReviewRating = b.ReviewRating ?? 5.0,
+                    QualityRating = b.QualityRating ?? 5,
+                    PunctualityRating = b.PunctualityRating ?? 5,
+                    CommunicationRating = b.CommunicationRating ?? 5,
+                    ReviewComment = b.ReviewComment,
+                    ReviewedAt = b.ReviewedAt ?? b.UpdatedAt,
+                    ResidentName = b.Resident != null ? b.Resident.Name : "Verified Resident",
+                    ResidentAvatar = b.Resident != null ? b.Resident.ProfileImage : null,
+                    JobTitle = b.JobTitle ?? "Home Service"
+                })
+                .ToListAsync();
+
+            return Ok(reviews);
+        }
 
         // POST /api/workers/{id}/skills
         [HttpPost("{id}/skills")]

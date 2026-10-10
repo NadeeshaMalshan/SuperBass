@@ -2143,7 +2143,10 @@ class _FindTabScreenState extends State<FindTabScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) => Container(
-        padding: const EdgeInsets.all(24),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(sheetContext).size.height * 0.88,
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -2163,7 +2166,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
               Row(
                 children: [
                   Container(
@@ -2232,11 +2235,13 @@ class _FindTabScreenState extends State<FindTabScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          worker.skills.isNotEmpty
-                              ? worker.skills.join(', ')
-                              : 'General Pro',
+                          worker.trade.isNotEmpty
+                              ? '${worker.trade} Specialist'
+                              : (worker.skills.isNotEmpty
+                                  ? worker.skills.first
+                                  : 'General Pro'),
                           style: GoogleFonts.dmSans(
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w600,
                             fontSize: 14,
                             color: AppColors.onSurfaceVariant,
                           ),
@@ -2244,28 +2249,45 @@ class _FindTabScreenState extends State<FindTabScreen> {
                         const SizedBox(height: 6),
                         Row(
                           children: [
-                            const Icon(
-                              Icons.star_rounded,
-                              size: 18,
-                              color: AppColors.starRating,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              (worker.overallRating != null &&
-                                      worker.overallRating! > 0)
-                                  ? worker.overallRating!.toStringAsFixed(1)
-                                  : '0',
-                              style: GoogleFonts.dmSans(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14,
+                            if (worker.overallRating != null &&
+                                worker.overallRating! > 0) ...[
+                              const Icon(
+                                Icons.star_rounded,
+                                size: 18,
+                                color: AppColors.starRating,
                               ),
-                            ),
-                            if (worker.completedJobs > 0) ...[
                               const SizedBox(width: 4),
                               Text(
-                                '(${worker.completedJobs} jobs)',
+                                worker.overallRating!.toStringAsFixed(1),
+                                style: GoogleFonts.dmSans(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              if (worker.completedJobs > 0) ...[
+                                const SizedBox(width: 4),
+                                Text(
+                                  '(${worker.completedJobs} ${worker.completedJobs == 1 ? 'job' : 'jobs'})',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 13,
+                                    color: AppColors.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ] else ...[
+                              const Icon(
+                                Icons.star_outline_rounded,
+                                size: 16,
+                                color: AppColors.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                worker.completedJobs > 0
+                                    ? '${worker.completedJobs} ${worker.completedJobs == 1 ? 'job' : 'jobs'}'
+                                    : 'New Pro',
                                 style: GoogleFonts.dmSans(
                                   fontSize: 13,
+                                  fontWeight: FontWeight.w600,
                                   color: AppColors.onSurfaceVariant,
                                 ),
                               ),
@@ -2294,30 +2316,29 @@ class _FindTabScreenState extends State<FindTabScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
               const Divider(color: AppColors.outlineVariant, height: 1),
               const SizedBox(height: 16),
-              if (worker.description != null &&
-                  worker.description!.isNotEmpty) ...[
-                Text(
-                  'About',
-                  style: GoogleFonts.dmSans(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                    color: AppColors.onSurface,
-                  ),
+              Text(
+                'About',
+                style: GoogleFonts.dmSans(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  color: AppColors.onSurface,
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  worker.description!,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 14,
-                    color: const Color(0xFF4B5563),
-                    height: 1.45,
-                  ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                (worker.description != null && worker.description!.trim().isNotEmpty)
+                    ? worker.description!
+                    : '${worker.name} is a verified professional technician offering reliable on-demand services in ${worker.primaryServiceArea ?? 'Colombo'}. Specializing in ${worker.skills.isNotEmpty ? worker.skills.take(2).join(' & ') : 'home repairs'}, committed to prompt, quality service.',
+                style: GoogleFonts.dmSans(
+                  fontSize: 14,
+                  color: const Color(0xFF4B5563),
+                  height: 1.45,
                 ),
-                const SizedBox(height: 16),
-              ],
+              ),
+              const SizedBox(height: 16),
               Text(
                 'Skills & Services',
                 style: GoogleFonts.dmSans(
@@ -2353,8 +2374,294 @@ class _FindTabScreenState extends State<FindTabScreen> {
                     )
                     .toList(),
               ),
+              const SizedBox(height: 20),
+              const Divider(color: AppColors.outlineVariant, height: 1),
+              const SizedBox(height: 16),
+              FutureBuilder<List<Map<String, dynamic>>>(
+                future: ApiService().fetchWorkerReviews(worker.id),
+                builder: (context, snapshot) {
+                  final reviews = snapshot.data ?? [];
+                  final bool hasRating = (worker.overallRating != null &&
+                      worker.overallRating! > 0);
+                  final int jobCount = worker.completedJobs;
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Reviews & Ratings',
+                            style: GoogleFonts.dmSans(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                              color: AppColors.onSurface,
+                            ),
+                          ),
+                          if (hasRating)
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.star_rounded,
+                                  color: AppColors.starRating,
+                                  size: 19,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  worker.overallRating!.toStringAsFixed(1),
+                                  style: GoogleFonts.dmSans(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 15,
+                                    color: AppColors.onSurface,
+                                  ),
+                                ),
+                                if (jobCount > 0)
+                                  Text(
+                                    ' ($jobCount ${jobCount == 1 ? 'job' : 'jobs'})',
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 13,
+                                      color: AppColors.onSurfaceVariant,
+                                    ),
+                                  ),
+                              ],
+                            )
+                          else
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.surfaceVariant,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                jobCount > 0
+                                    ? '$jobCount ${jobCount == 1 ? 'job' : 'jobs'}'
+                                    : 'No ratings yet',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF9FAFB),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.outlineVariant),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            _buildRatingCriterion(
+                              'Quality',
+                              worker.qualityRating != null &&
+                                      worker.qualityRating! > 0
+                                  ? worker.qualityRating!.toStringAsFixed(1)
+                                  : (hasRating
+                                      ? worker.overallRating!.toStringAsFixed(1)
+                                      : '—'),
+                            ),
+                            Container(
+                              width: 1,
+                              height: 26,
+                              color: AppColors.outlineVariant,
+                            ),
+                            _buildRatingCriterion(
+                              'Punctuality',
+                              worker.punctualityRating != null &&
+                                      worker.punctualityRating! > 0
+                                  ? worker.punctualityRating!.toStringAsFixed(1)
+                                  : (hasRating
+                                      ? worker.overallRating!.toStringAsFixed(1)
+                                      : '—'),
+                            ),
+                            Container(
+                              width: 1,
+                              height: 26,
+                              color: AppColors.outlineVariant,
+                            ),
+                            _buildRatingCriterion(
+                              'Communication',
+                              worker.communicationRating != null &&
+                                      worker.communicationRating! > 0
+                                  ? worker.communicationRating!
+                                      .toStringAsFixed(1)
+                                  : (hasRating
+                                      ? worker.overallRating!.toStringAsFixed(1)
+                                      : '—'),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      if (snapshot.connectionState == ConnectionState.waiting) ...[
+                        const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(8),
+                            child: SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.brandYellow,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ] else if (reviews.isNotEmpty) ...[
+                        ...reviews.take(3).map(
+                          (rev) => Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: const Color(0xFFE5E7EB),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 13,
+                                      backgroundColor: AppColors.surfaceVariant,
+                                      backgroundImage: (rev['residentAvatar'] !=
+                                                  null &&
+                                              rev['residentAvatar']
+                                                  .toString()
+                                                  .isNotEmpty)
+                                          ? NetworkImage(
+                                              rev['residentAvatar'].toString(),
+                                            )
+                                          : null,
+                                      child: (rev['residentAvatar'] == null ||
+                                              rev['residentAvatar']
+                                                  .toString()
+                                                  .isEmpty)
+                                          ? Text(
+                                              (rev['residentName'] != null &&
+                                                      rev['residentName']
+                                                          .toString()
+                                                          .isNotEmpty)
+                                                  ? rev['residentName']
+                                                      .toString()[0]
+                                                      .toUpperCase()
+                                                  : 'R',
+                                              style: GoogleFonts.dmSans(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            )
+                                          : null,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            rev['residentName']?.toString() ??
+                                                'Verified Resident',
+                                            style: GoogleFonts.dmSans(
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 13,
+                                              color: AppColors.onSurface,
+                                            ),
+                                          ),
+                                          Row(
+                                            children: List.generate(
+                                              5,
+                                              (i) => Icon(
+                                                Icons.star_rounded,
+                                                size: 13,
+                                                color: i <
+                                                        ((rev['reviewRating']
+                                                                    as num?)
+                                                                ?.toInt() ??
+                                                            5)
+                                                    ? AppColors.starRating
+                                                    : AppColors.outlineVariant,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (rev['reviewComment'] != null &&
+                                    rev['reviewComment']
+                                        .toString()
+                                        .isNotEmpty) ...[
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    rev['reviewComment'].toString(),
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 12.5,
+                                      color: const Color(0xFF374151),
+                                      height: 1.35,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                      ] else ...[
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF9FAFB),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                hasRating
+                                    ? Icons.verified_outlined
+                                    : Icons.info_outline_rounded,
+                                size: 16,
+                                color: hasRating
+                                    ? AppColors.primary
+                                    : AppColors.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  hasRating
+                                      ? '${worker.name} holds a ${worker.overallRating!.toStringAsFixed(1)}★ rating from $jobCount completed jobs. Written reviews will appear here.'
+                                      : 'No written reviews yet. Be the first to book and review ${worker.name}!',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 12,
+                                    color: AppColors.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  );
+                },
+              ),
               const SizedBox(height: 24),
-              if (isLoggedIn)
+              if (isLoggedIn) ...[
                 SizedBox(
                   width: double.infinity,
                   height: 48,
@@ -2378,8 +2685,39 @@ class _FindTabScreenState extends State<FindTabScreen> {
                       ),
                     ),
                   ),
-                )
-              else
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(sheetContext);
+                      _openChatWithWorker(worker);
+                    },
+                    icon: const Icon(
+                      Icons.chat_bubble_outline_rounded,
+                      size: 19,
+                      color: AppColors.onSurface,
+                    ),
+                    label: Text(
+                      'Chat with Worker',
+                      style: GoogleFonts.dmSans(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        color: AppColors.onSurface,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(
+                        color: AppColors.outlineVariant,
+                        width: 1.5,
+                      ),
+                      shape: const StadiumBorder(),
+                    ),
+                  ),
+                ),
+              ] else
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(14),
@@ -2402,6 +2740,105 @@ class _FindTabScreenState extends State<FindTabScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildRatingCriterion(String title, String score) {
+    final bool hasVal = score != '—';
+    return Column(
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              hasVal ? Icons.star_rounded : Icons.star_outline_rounded,
+              size: 13,
+              color: hasVal ? AppColors.starRating : AppColors.outline,
+            ),
+            const SizedBox(width: 2),
+            Text(
+              score,
+              style: GoogleFonts.dmSans(
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+                color: hasVal ? AppColors.onSurface : AppColors.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 1),
+        Text(
+          title,
+          style: GoogleFonts.dmSans(
+            fontSize: 11,
+            color: AppColors.onSurfaceVariant,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _openChatWithWorker(WorkerModel worker) async {
+    final currentUser = AuthService().currentUser;
+    if (currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in to chat with workers.')),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(color: AppColors.brandYellow),
+      ),
+    );
+
+    try {
+      final conv = await ApiService().getOrCreateConversation(
+        workerId: worker.id,
+        workerEmail: worker.email,
+        workerName: worker.name,
+        workerAvatar: worker.profileImage,
+        residentEmail: currentUser.email,
+      );
+
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+
+      if (conv != null && conv['id'] != null) {
+        final convId = conv['id'] is int
+            ? conv['id'] as int
+            : int.parse(conv['id'].toString());
+        if (mounted) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => ChatScreen(
+                conversationId: convId,
+                name: worker.name,
+                profileImage: worker.profileImage,
+                isVerified: worker.isVerified,
+              ),
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not open conversation. Please try again.')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
   }
 
   @override

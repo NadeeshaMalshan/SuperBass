@@ -859,6 +859,24 @@ class ApiService {
     }
   }
 
+  /// Fetch reviews for a worker: GET /api/workers/{id}/reviews
+  Future<List<Map<String, dynamic>>> fetchWorkerReviews(int workerId) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/workers/$workerId/reviews');
+      final response = await http.get(uri, headers: _headers);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final dynamic data = jsonDecode(response.body);
+        if (data is List) {
+          return List<Map<String, dynamic>>.from(data);
+        }
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error fetching worker reviews: $e');
+      return [];
+    }
+  }
+
   /// Upgrade Resident to Worker: POST /api/workers/become-worker
   Future<WorkerModel?> becomeWorker({
     required String email,
