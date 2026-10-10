@@ -25,7 +25,8 @@ namespace Superbass.Services
 
         public async Task<Worker?> GetWorkerByEmailAsync(string email)
         {
-            return await _context.Workers.Include(w => w.Skills).FirstOrDefaultAsync(w => w.ResidentEmail == email || w.Email == email);
+            var cleanEmail = email.Trim().ToLower();
+            return await _context.Workers.Include(w => w.Skills).FirstOrDefaultAsync(w => w.Email.ToLower() == cleanEmail);
         }
 
         public async Task<(IEnumerable<Worker> Workers, int TotalCount)> SearchWorkersAsync(
@@ -341,11 +342,13 @@ namespace Superbass.Services
             return worker;
         }
 
-        public async Task<Worker> CreateWorkerFromResidentAsync(string residentEmail, string? description, string primaryServiceArea, double coverageRadiusKm, string pricingModel, decimal? hourlyRate, decimal? dailyRate, List<WorkerSkill> skills)
+        public async Task<Worker> CreateWorkerDirectAsync(string email, string? name, string? description, string primaryServiceArea, double coverageRadiusKm, string pricingModel, decimal? hourlyRate, decimal? dailyRate, List<WorkerSkill> skills)
         {
-            var existingWorker = await _context.Workers.Include(w => w.Skills).FirstOrDefaultAsync(w => w.ResidentEmail == residentEmail || w.Email == residentEmail);
+            var cleanEmail = email.Trim().ToLower();
+            var existingWorker = await _context.Workers.Include(w => w.Skills).FirstOrDefaultAsync(w => w.Email.ToLower() == cleanEmail);
             if (existingWorker != null)
             {
+                if (!string.IsNullOrWhiteSpace(name)) existingWorker.Name = name;
                 existingWorker.Description = description ?? existingWorker.Description;
                 existingWorker.PrimaryServiceArea = primaryServiceArea ?? existingWorker.PrimaryServiceArea;
                 if (coverageRadiusKm > 0) existingWorker.CoverageRadiusKm = coverageRadiusKm;
@@ -361,24 +364,18 @@ namespace Superbass.Services
                 return existingWorker;
             }
 
-            var resident = await _context.Residents.FirstOrDefaultAsync(r => r.Email.ToLower() == residentEmail.ToLower());
-            var isResidentVerified = resident?.IsVerified ?? false;
-            var residentNic = resident?.NicNumber;
-
             var worker = new Worker
             {
-                ResidentEmail = residentEmail,
-                Email = residentEmail,
-                Name = residentEmail.Split('@')[0],
+                Email = cleanEmail,
+                Name = !string.IsNullOrWhiteSpace(name) ? name : cleanEmail.Split('@')[0],
                 Description = description,
                 PrimaryServiceArea = primaryServiceArea,
-                CoverageRadiusKm = coverageRadiusKm,
+                CoverageRadiusKm = coverageRadiusKm > 0 ? coverageRadiusKm : 10.0,
                 PricingModel = pricingModel,
                 HourlyRate = hourlyRate,
                 DailyRate = dailyRate,
                 IsAvailable = true,
-                IsVerified = isResidentVerified,
-                NicNumber = residentNic,
+                IsVerified = false,
                 Skills = skills ?? new List<WorkerSkill>()
             };
 
@@ -413,19 +410,57 @@ namespace Superbass.Services
             var worker = await _context.Workers.FindAsync(id);
             if (worker == null) return false;
 
-            _context.Workers.Remove(worker);
-            await _context.SaveChangesAsync();
-            return true;
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // Permanent hard-delete of worker and worker-specific associations:
+                // 1. Delete worker conversations and chat messages
+                var convIds = await _context.Conversations
+                    .Where(c => c.WorkerId == id)
+                    .Select(c => c.Id)
+                    .ToListAsync();
+
+                if (convIds.Any())
+                {
+                    await _context.ChatMessages
+                        .Where(m => convIds.Contains(m.ConversationId))
+                        .ExecuteDeleteAsync();
+
+                    await _context.Conversations
+                        .Where(c => convIds.Contains(c.Id))
+                        .ExecuteDeleteAsync();
+                }
+
+                // 2. Delete bookings associated with this worker
+                await _context.Bookings
+                    .Where(b => b.WorkerId == id)
+                    .ExecuteDeleteAsync();
+
+                // 3. Delete worker skills
+                await _context.WorkerSkills
+                    .Where(s => s.WorkerId == id)
+                    .ExecuteDeleteAsync();
+
+                // 4. Delete the worker record itself
+                _context.Workers.Remove(worker);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return true;
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
 
         public async Task<bool> DeleteWorkerByEmailAsync(string email)
         {
-            var worker = await _context.Workers.Include(w => w.Skills).FirstOrDefaultAsync(w => w.ResidentEmail == email || w.Email == email);
+            var cleanEmail = email.Trim().ToLower();
+            var worker = await _context.Workers.FirstOrDefaultAsync(w => w.Email.ToLower() == cleanEmail);
             if (worker == null) return false;
 
-            _context.Workers.Remove(worker);
-            await _context.SaveChangesAsync();
-            return true;
+            return await DeleteWorkerAsync(worker.Id);
         }
 
         public async Task<Worker?> UpdatePerformanceAsync(int id, double rating, bool isCompleted)
