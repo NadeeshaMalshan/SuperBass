@@ -345,6 +345,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
   String _searchQuery = '';
   Timer? _debounce;
   int _requestId = 0;
+  String _workerFilter = 'all'; // 'all' or 'verified'
 
   final List<Map<String, dynamic>> _categories = [
     {
@@ -671,19 +672,16 @@ class _FindTabScreenState extends State<FindTabScreen> {
         location: locationQuery,
         residentLat: resLat,
         residentLng: resLng,
-        onlyVerified: true,
+        onlyVerified: false,
       );
 
       debugPrint('SEARCHDBG: fetched ${list.length} workers from ApiService');
 
       if (!mounted || currentRequestId != _requestId) return;
 
-      // Only verified workers should appear in Find page
-      final verifiedList = list.where((w) => w.isVerified).toList();
-
       final filtered = isAllLocations
-          ? verifiedList
-          : verifiedList.where((w) {
+          ? list
+          : list.where((w) {
               return LocationService.workerMatchesLocation(
                 w.primaryServiceArea,
                 _selectedCity,
@@ -2488,7 +2486,9 @@ class _FindTabScreenState extends State<FindTabScreen> {
                         title: cat['name'] as String,
                         icon: cat['icon'] as IconData?,
                         imageAsset: cat['image'] as String?,
-                        count: _workers.where((w) => w.isVerified).length,
+                        count: _workerFilter == 'verified'
+                            ? _workers.where((w) => w.isVerified).length
+                            : _workers.length,
                         isSelected: _selectedCategoryIndex == index,
                         onTap: () => _onCategorySelected(index),
                       ),
@@ -2499,13 +2499,14 @@ class _FindTabScreenState extends State<FindTabScreen> {
 
               const SizedBox(height: 28),
 
-              // Nearby Verified Pros
+              // Nearby Pros with Sorting / Filter List (All, Verified)
               Builder(
                 builder: (context) {
-                  final displayWorkers = _workers.where((worker) {
-                    if (!worker.isVerified) return false;
-                    return true;
-                  }).toList();
+                  final verifiedWorkers =
+                      _workers.where((worker) => worker.isVerified).toList();
+                  final displayWorkers = _workerFilter == 'verified'
+                      ? verifiedWorkers
+                      : _workers;
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -2515,29 +2516,172 @@ class _FindTabScreenState extends State<FindTabScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              'Featured Workers Near You',
-                              style: Theme.of(
-                                context,
-                              ).textTheme.titleLarge?.copyWith(fontSize: 18),
+                            Expanded(
+                              child: Text(
+                                'Featured Workers Near You',
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.titleLarge?.copyWith(fontSize: 18),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.verified,
-                                  size: 16,
-                                  color: AppColors.brandYellowHover,
+                            const SizedBox(width: 8),
+                            PopupMenuButton<String>(
+                              initialValue: _workerFilter,
+                              tooltip: 'Sort / Filter workers',
+                              onSelected: (String value) {
+                                setState(() {
+                                  _workerFilter = value;
+                                });
+                              },
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              elevation: 4,
+                              shadowColor: Colors.black.withValues(alpha: 0.12),
+                              color: Colors.white,
+                              position: PopupMenuPosition.under,
+                              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                                PopupMenuItem<String>(
+                                  value: 'all',
+                                  height: 42,
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.people_outline_rounded,
+                                        size: 18,
+                                        color: _workerFilter == 'all'
+                                            ? Colors.black
+                                            : Colors.grey[600],
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          'All (${_workers.length})',
+                                          style: GoogleFonts.dmSans(
+                                            fontSize: 13.5,
+                                            fontWeight: _workerFilter == 'all'
+                                                ? FontWeight.w700
+                                                : FontWeight.w500,
+                                            color: _workerFilter == 'all'
+                                                ? Colors.black
+                                                : Colors.grey[800],
+                                          ),
+                                        ),
+                                      ),
+                                      if (_workerFilter == 'all')
+                                        const Icon(
+                                          Icons.check_rounded,
+                                          size: 17,
+                                          color: Colors.black,
+                                        ),
+                                    ],
+                                  ),
                                 ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'Verified (${displayWorkers.length})',
-                                  style: GoogleFonts.dmSans(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.brandYellowHover,
+                                const PopupMenuDivider(height: 1),
+                                PopupMenuItem<String>(
+                                  value: 'verified',
+                                  height: 42,
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.verified,
+                                        size: 18,
+                                        color: AppColors.brandYellowHover,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          'Verified (${verifiedWorkers.length})',
+                                          style: GoogleFonts.dmSans(
+                                            fontSize: 13.5,
+                                            fontWeight: _workerFilter == 'verified'
+                                                ? FontWeight.w700
+                                                : FontWeight.w500,
+                                            color: _workerFilter == 'verified'
+                                                ? Colors.black
+                                                : Colors.grey[800],
+                                          ),
+                                        ),
+                                      ),
+                                      if (_workerFilter == 'verified')
+                                        const Icon(
+                                          Icons.check_rounded,
+                                          size: 17,
+                                          color: AppColors.brandYellowHover,
+                                        ),
+                                    ],
                                   ),
                                 ),
                               ],
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: _workerFilter == 'verified'
+                                        ? AppColors.brandYellowHover
+                                            .withValues(alpha: 0.5)
+                                        : const Color(0xFFE2E8F0),
+                                    width: 1.2,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.04,
+                                      ),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 1),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (_workerFilter == 'verified') ...[
+                                      const Icon(
+                                        Icons.verified,
+                                        size: 15,
+                                        color: AppColors.brandYellowHover,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Verified (${verifiedWorkers.length})',
+                                        style: GoogleFonts.dmSans(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.brandYellowHover,
+                                        ),
+                                      ),
+                                    ] else ...[
+                                      Icon(
+                                        Icons.people_outline_rounded,
+                                        size: 15,
+                                        color: Colors.grey[700],
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'All (${_workers.length})',
+                                        style: GoogleFonts.dmSans(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                    ],
+                                    const SizedBox(width: 3),
+                                    const Icon(
+                                      Icons.keyboard_arrow_down_rounded,
+                                      size: 16,
+                                      color: Colors.black54,
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -2545,7 +2689,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
 
                       const SizedBox(height: 14),
 
-                      // Live Verified Workers list from backend
+                      // Live Workers list from backend
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: _isLoading
@@ -2567,8 +2711,10 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                 ),
                                 child: Column(
                                   children: [
-                                    const Icon(
-                                      Icons.verified_user_outlined,
+                                    Icon(
+                                      _workerFilter == 'verified'
+                                          ? Icons.verified_user_outlined
+                                          : Icons.person_search_outlined,
                                       size: 48,
                                       color: AppColors.onSurfaceVariant,
                                     ),
@@ -2576,9 +2722,11 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                     Text(
                                       _searchQuery.isNotEmpty
                                           ? 'No workers matching "$_searchQuery"'
-                                          : (_selectedCity == 'All Locations'
-                                                ? 'No workers found in this category'
-                                                : 'No workers found in $_selectedCity'),
+                                          : (_workerFilter == 'verified' && _workers.isNotEmpty)
+                                              ? 'No verified workers found in $_selectedCity'
+                                              : (_selectedCity == 'All Locations'
+                                                    ? 'No workers found in this category'
+                                                    : 'No workers found in $_selectedCity'),
                                       textAlign: TextAlign.center,
                                       style: GoogleFonts.dmSans(
                                         fontWeight: FontWeight.w700,
@@ -2587,15 +2735,39 @@ class _FindTabScreenState extends State<FindTabScreen> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      _selectedCity == 'All Locations'
-                                          ? 'Try selecting "All Pros" or refreshing'
-                                          : 'Try selecting "All Locations" or another city',
+                                      (_workerFilter == 'verified' && _workers.isNotEmpty)
+                                          ? 'Switch filter to "All" to view all available workers'
+                                          : (_selectedCity == 'All Locations'
+                                                ? 'Try selecting "All Pros" or refreshing'
+                                                : 'Try selecting "All Locations" or another city'),
                                       style: GoogleFonts.dmSans(
                                         fontSize: 13,
                                         color: AppColors.onSurfaceVariant,
                                       ),
                                     ),
-                                    if (_selectedCity != 'All Locations') ...[
+                                    if (_workerFilter == 'verified' && _workers.isNotEmpty) ...[
+                                      const SizedBox(height: 14),
+                                      ElevatedButton(
+                                        onPressed: () {
+                                          setState(() {
+                                            _workerFilter = 'all';
+                                          });
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: AppColors.brandBlack,
+                                          foregroundColor: Colors.white,
+                                          elevation: 0,
+                                          shape: const StadiumBorder(),
+                                        ),
+                                        child: Text(
+                                          'Show All Workers (${_workers.length})',
+                                          style: GoogleFonts.dmSans(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 13.5,
+                                          ),
+                                        ),
+                                      ),
+                                    ] else if (_selectedCity != 'All Locations') ...[
                                       const SizedBox(height: 14),
                                       ElevatedButton(
                                         onPressed: () =>
