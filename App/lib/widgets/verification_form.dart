@@ -17,6 +17,7 @@ class _VerificationFormState extends State<VerificationForm> {
   DateTime? _selectedDate;
   String _selectedGender = 'Male';
   bool _isVerified = false;
+  bool _isSubmitting = false;
   String? _errorText;
 
   @override
@@ -29,7 +30,9 @@ class _VerificationFormState extends State<VerificationForm> {
     }
   }
 
-  void _submit() {
+  Future<void> _submit() async {
+    if (_isSubmitting) return;
+
     setState(() {
       _errorText = null;
     });
@@ -59,21 +62,42 @@ class _VerificationFormState extends State<VerificationForm> {
       return;
     }
 
-    final nic = _nicController.text.trim();
-    final user = AuthService().currentUser;
-    if (user != null && user.email.isNotEmpty) {
-      ApiService().verifyResident(user.email, nicNumber: nic);
-      if (user.workerId != null && user.workerId! > 0) {
-        ApiService().verifyWorker(user.workerId!, nicNumber: nic);
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      final nic = _nicController.text.trim();
+      final user = AuthService().currentUser;
+      if (user != null && user.email.isNotEmpty) {
+        final resSuccess = await ApiService().verifyResident(user.email, nicNumber: nic);
+        if (user.workerId != null && user.workerId! > 0) {
+          await ApiService().verifyWorker(user.workerId!, nicNumber: nic);
+        }
+        if (!resSuccess) {
+          _showError('Failed to save verification to server. Please try again.');
+          return;
+        }
+      }
+
+      await AuthService().markUserVerified();
+      await AuthService().syncVerificationStatusWithBackend();
+
+      if (mounted) {
+        setState(() {
+          _isVerified = true;
+        });
+        widget.onVerifySuccess();
+      }
+    } catch (e) {
+      _showError('An error occurred during verification: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
       }
     }
-    AuthService().markUserVerified();
-
-    setState(() {
-      _isVerified = true;
-    });
-    
-    widget.onVerifySuccess();
   }
 
   void _showError(String message) {
@@ -198,11 +222,20 @@ class _VerificationFormState extends State<VerificationForm> {
             ],
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: _submit,
+              onPressed: _isSubmitting ? null : _submit,
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
-              child: const Text('Verify Now'),
+              child: _isSubmitting
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Verify Now'),
             ),
           ],
         ),

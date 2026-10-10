@@ -149,7 +149,8 @@ namespace Superbass.Controllers
                         isWorker = true,
                         isNewWorker = false,
                         activeRole = "Worker",
-                        workerId = existingWorker.Id
+                        workerId = existingWorker.Id,
+                        isVerified = existingWorker.IsVerified
                     });
                 }
 
@@ -218,7 +219,8 @@ namespace Superbass.Controllers
                     isNewUser = isNewUser,
                     isWorker = false,
                     isNewWorker = false,
-                    activeRole = "Resident"
+                    activeRole = "Resident",
+                    isVerified = existingResident.IsVerified
                 });
             }
         }
@@ -279,7 +281,8 @@ namespace Superbass.Controllers
                 picture = worker.ProfileImage,
                 isWorker = true,
                 activeRole = "Worker",
-                workerId = worker.Id
+                workerId = worker.Id,
+                isVerified = worker.IsVerified
             });
         }
 

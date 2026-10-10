@@ -41,7 +41,12 @@ class AuthUser {
       workerId: json['workerId'] as int?,
       locationLat: (json['locationLat'] as num?)?.toDouble(),
       locationLng: (json['locationLng'] as num?)?.toDouble(),
-      isVerified: json['isVerified'] == true || json['IsVerified'] == true,
+      isVerified: json['isVerified'] == true ||
+          json['IsVerified'] == true ||
+          json['isVerified']?.toString().toLowerCase() == 'true' ||
+          json['IsVerified']?.toString().toLowerCase() == 'true' ||
+          json['isVerified'] == 1 ||
+          json['IsVerified'] == 1,
     );
   }
 

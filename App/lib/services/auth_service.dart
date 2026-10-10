@@ -36,20 +36,24 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
     if (token != null && token.isNotEmpty) {
+      final email = prefs.getString('email') ?? '';
+      final cachedVerified = (email.isNotEmpty ? prefs.getBool('isVerified_$email') : null) ??
+          prefs.getBool('isVerified') ??
+          false;
       final user = AuthUser(
         token: token,
-        email: prefs.getString('email') ?? '',
+        email: email,
         name: prefs.getString('userName') ?? 'User',
         picture: prefs.getString('userPicture'),
         activeRole: prefs.getString('activeRole') ?? 'Resident',
         isWorker: prefs.getBool('isWorker') ?? false,
-        isVerified: prefs.getBool('isVerified') ?? false,
+        isVerified: cachedVerified,
       );
       currentUserNotifier.value = user;
       _syncOneSignalUser(user.email);
-      _syncWorkerStatusWithBackend(user);
-      _syncVerificationStatusWithBackend(user);
-      return user;
+      await _syncWorkerStatusWithBackend(user);
+      await syncVerificationStatusWithBackend(user);
+      return currentUserNotifier.value ?? user;
     }
     return null;
   }
@@ -97,8 +101,14 @@ class AuthService {
     }
   }
 
-  Future<void> _syncVerificationStatusWithBackend(AuthUser user) async {
+  /// Fetch and synchronize latest verification status from backend (source of truth)
+  Future<bool> syncVerificationStatusWithBackend([AuthUser? targetUser]) async {
+    final user = targetUser ?? currentUserNotifier.value;
+    if (user == null || user.email.isEmpty) return false;
     try {
+      bool isVerified = user.isVerified;
+
+      // 1. Check Resident profile from backend (source of truth)
       final resUri = Uri.parse('${ApiConfig.baseUrl}/api/residents/${Uri.encodeComponent(user.email)}');
       final res = await http.get(resUri, headers: {
         'Content-Type': 'application/json',
@@ -106,43 +116,74 @@ class AuthService {
       });
       if (res.statusCode >= 200 && res.statusCode < 300) {
         final data = jsonDecode(res.body);
-        final bool isVerified = data is Map && (data['isVerified'] == true || data['IsVerified'] == true);
-        final String? backendPhoto = data is Map ? (data['profileImage']?.toString() ?? data['ProfileImage']?.toString()) : null;
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('isVerified', isVerified);
-        if (currentUserNotifier.value != null && currentUserNotifier.value!.isVerified != isVerified) {
-          currentUserNotifier.value = currentUserNotifier.value!.copyWith(isVerified: isVerified);
-        }
-
-        // If backend has photo but local user doesn't, update local user
-        if (backendPhoto != null && backendPhoto.isNotEmpty && backendPhoto != 'null' && (user.picture == null || user.picture!.isEmpty)) {
-          await prefs.setString('userPicture', backendPhoto);
-          if (currentUserNotifier.value != null) {
-            currentUserNotifier.value = currentUserNotifier.value!.copyWith(picture: backendPhoto);
+        if (data is Map) {
+          final resVerified = data['isVerified'] == true ||
+              data['IsVerified'] == true ||
+              data['isVerified']?.toString().toLowerCase() == 'true' ||
+              data['IsVerified']?.toString().toLowerCase() == 'true' ||
+              data['isVerified'] == 1 ||
+              data['IsVerified'] == 1;
+          if (resVerified) {
+            isVerified = true;
+          }
+          final String? backendPhoto = (data['profileImage']?.toString() ?? data['ProfileImage']?.toString());
+          if (backendPhoto != null && backendPhoto.isNotEmpty && backendPhoto != 'null' && (user.picture == null || user.picture!.isEmpty)) {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('userPicture', backendPhoto);
+            if (currentUserNotifier.value != null) {
+              currentUserNotifier.value = currentUserNotifier.value!.copyWith(picture: backendPhoto);
+            }
           }
         }
-        // If local user has photo (e.g. from Google login) but backend doesn't, sync to backend
-        else if (user.picture != null && user.picture!.isNotEmpty && user.picture != 'null' && (backendPhoto == null || backendPhoto.isEmpty || backendPhoto == 'null')) {
-          try {
-            await http.put(
-              resUri,
-              headers: {
-                'Content-Type': 'application/json',
-                if (user.token.isNotEmpty) 'Authorization': 'Bearer ${user.token}',
-              },
-              body: jsonEncode({'profileImage': user.picture}),
-            );
-          } catch (_) {}
-        }
       }
+
+      // 2. If not verified yet, check Worker profile if applicable
+      if (!isVerified) {
+        try {
+          final wUri = Uri.parse('${ApiConfig.baseUrl}/api/workers/me').replace(
+            queryParameters: {'email': user.email},
+          );
+          final wRes = await http.get(wUri, headers: {
+            'Content-Type': 'application/json',
+            if (user.token.isNotEmpty) 'Authorization': 'Bearer ${user.token}',
+          });
+          if (wRes.statusCode >= 200 && wRes.statusCode < 300) {
+            final wData = jsonDecode(wRes.body);
+            if (wData is Map && wData['worker'] != null) {
+              final w = wData['worker'];
+              if (w['isVerified'] == true ||
+                  w['IsVerified'] == true ||
+                  w['isVerified']?.toString().toLowerCase() == 'true' ||
+                  w['IsVerified']?.toString().toLowerCase() == 'true' ||
+                  w['isVerified'] == 1 ||
+                  w['IsVerified'] == 1) {
+                isVerified = true;
+              }
+            }
+          }
+        } catch (_) {}
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isVerified', isVerified);
+      await prefs.setBool('isVerified_${user.email}', isVerified);
+      if (currentUserNotifier.value != null && currentUserNotifier.value!.isVerified != isVerified) {
+        currentUserNotifier.value = currentUserNotifier.value!.copyWith(isVerified: isVerified);
+      }
+      return isVerified;
     } catch (e) {
       debugPrint('Sync verification status error: $e');
+      return currentUserNotifier.value?.isVerified ?? false;
     }
   }
 
-  Future<void> markUserVerified() async {
+  Future<void> markUserVerified([String? email]) async {
+    final targetEmail = email ?? currentUser?.email;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isVerified', true);
+    if (targetEmail != null && targetEmail.isNotEmpty) {
+      await prefs.setBool('isVerified_$targetEmail', true);
+    }
     if (currentUserNotifier.value != null) {
       currentUserNotifier.value = currentUserNotifier.value!.copyWith(isVerified: true);
     }
@@ -242,23 +283,17 @@ class AuthService {
       if ((user.picture == null || user.picture!.isEmpty) &&
           fallbackPhotoUrl != null &&
           fallbackPhotoUrl.isNotEmpty) {
-        user = AuthUser(
-          token: user.token,
-          email: user.email,
-          name: user.name,
-          picture: fallbackPhotoUrl,
-          isNewUser: user.isNewUser,
-          isWorker: user.isWorker,
-          isNewWorker: user.isNewWorker,
-          activeRole: user.activeRole,
-          workerId: user.workerId,
-          locationLat: user.locationLat,
-          locationLng: user.locationLng,
-        );
+        user = user.copyWith(picture: fallbackPhotoUrl);
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      // Check if this specific email had a verified status cached
+      final cachedVerified = prefs.getBool('isVerified_${user.email}') ?? user.isVerified;
+      if (cachedVerified && !user.isVerified) {
+        user = user.copyWith(isVerified: true);
       }
 
       // Save credentials in SharedPreferences (matches Web localStorage)
-      final prefs = await SharedPreferences.getInstance();
       await prefs.setString('token', user.token);
       await prefs.setString('userName', user.name);
       if (user.picture != null) {
@@ -274,9 +309,18 @@ class AuthService {
         await prefs.setBool('workerAuth', true);
         await prefs.setString('workerEmail', user.email);
       }
+      await prefs.setBool('isVerified', user.isVerified);
+      await prefs.setBool('isVerified_${user.email}', user.isVerified);
 
       currentUserNotifier.value = user;
       _syncOneSignalUser(user.email);
+
+      // Immediately fetch and sync fresh verification status and worker details from backend
+      await _syncWorkerStatusWithBackend(user);
+      await syncVerificationStatusWithBackend(currentUserNotifier.value ?? user);
+      if (currentUserNotifier.value != null) {
+        user = currentUserNotifier.value!;
+      }
       return user;
     } else {
       String errorMessage = 'Backend authentication failed (${response.statusCode})';
@@ -315,7 +359,8 @@ class AuthService {
     );
     currentUserNotifier.value = user;
     _syncOneSignalUser(user.email);
-    return user;
+    await syncVerificationStatusWithBackend(user);
+    return currentUserNotifier.value ?? user;
   }
 
   /// Update active role (e.g. switch between 'Resident' and 'Worker')

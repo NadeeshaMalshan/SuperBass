@@ -20,6 +20,29 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _isUpdatingProfile = false;
+  bool _isLoadingProfile = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfileData();
+  }
+
+  Future<void> _loadProfileData() async {
+    final user = AuthService().currentUser;
+    if (user != null) {
+      try {
+        await AuthService().syncVerificationStatusWithBackend(user);
+      } catch (e) {
+        debugPrint('Error syncing profile verification: $e');
+      }
+    }
+    if (mounted) {
+      setState(() {
+        _isLoadingProfile = false;
+      });
+    }
+  }
 
   Future<void> _updateProfilePicture() async {
     if (_isUpdatingProfile) return;
@@ -86,6 +109,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
 
         final isVerified = user.isVerified;
+
+        if (!isVerified && _isLoadingProfile) {
+          return Scaffold(
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            appBar: AppBar(
+              title: const Text(
+                "My Profile",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
+              ),
+              centerTitle: false,
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              foregroundColor: Theme.of(context).textTheme.bodyLarge?.color,
+            ),
+            body: const Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
 
         return Scaffold(
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
