@@ -5,6 +5,7 @@ import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
 import '../main.dart';
 import 'onboarding_screen.dart';
+import 'worker/worker_onboarding_screen.dart';
 import 'package:loading_indicator_m3e/loading_indicator_m3e.dart';
 
 /// Pixel-perfect Google 4-color "G" Logo
@@ -169,6 +170,12 @@ class _JoinScreenState extends State<JoinScreen> {
     );
 
     if (user.activeRole == 'Worker' || user.isWorker) {
+      if (user.isNewWorker) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const WorkerOnboardingScreen()),
+        );
+        return;
+      }
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const MainNavigationShell()),
       );
