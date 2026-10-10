@@ -122,22 +122,12 @@ namespace Superbass.Controllers
             var existingResident = await _dbContext.Residents.FirstOrDefaultAsync(r => r.Email.ToLower() == email);
             var existingWorker = await _dbContext.Workers
                 .Include(w => w.Skills)
-                .FirstOrDefaultAsync(w => 
-                    (w.ResidentEmail != null && w.ResidentEmail.ToLower() == email) || 
-                    (w.Email != null && w.Email.ToLower() == email));
+                .FirstOrDefaultAsync(w => w.Email != null && w.Email.ToLower() == email);
 
             bool isFullyOnboardedWorker = existingWorker != null && existingWorker.Skills != null && existingWorker.Skills.Any();
 
             if (string.Equals(request.IntendedRole, "Worker", StringComparison.OrdinalIgnoreCase))
             {
-                // Strict rule: If email is already registered as Resident, it cannot become or login as a Worker
-                if (existingResident != null && !isFullyOnboardedWorker)
-                {
-                    return BadRequest(new { 
-                        message = "This email is registered as a Resident. You cannot log in or sign up as a Worker with this email. To switch roles, you must first delete your Resident account in the restricted Danger Zone."
-                    });
-                }
-
                 if (isFullyOnboardedWorker)
                 {
                     return Ok(new { 
@@ -170,14 +160,6 @@ namespace Superbass.Controllers
             else
             {
                 // IntendedRole is "Resident"
-                // Strict rule: If email is already registered as an onboarded Worker, it cannot log in or sign up as a Resident
-                if (isFullyOnboardedWorker)
-                {
-                    return BadRequest(new { 
-                        message = "This email is registered as a Worker. You cannot log in or sign up as a Resident with this email. To switch roles, you must first delete your Worker account in the restricted Danger Zone."
-                    });
-                }
-
                 bool isNewUser = false;
                 if (existingResident == null)
                 {
@@ -234,8 +216,7 @@ namespace Superbass.Controllers
             var cleanEmail = request.Email.Trim().ToLower();
             var worker = await _dbContext.Workers
                 .Include(w => w.Skills)
-                .FirstOrDefaultAsync(w => (w.Email != null && w.Email.ToLower() == cleanEmail) || 
-                                          (w.ResidentEmail != null && w.ResidentEmail.ToLower() == cleanEmail));
+                .FirstOrDefaultAsync(w => w.Email != null && w.Email.ToLower() == cleanEmail);
 
             if (worker == null)
             {
@@ -261,7 +242,7 @@ namespace Superbass.Controllers
                 Subject = new ClaimsIdentity(new[]
                 {
                     new Claim(ClaimTypes.NameIdentifier, worker.Id.ToString()),
-                    new Claim(ClaimTypes.Email, worker.Email ?? worker.ResidentEmail),
+                    new Claim(ClaimTypes.Email, worker.Email),
                     new Claim(ClaimTypes.Name, worker.Name ?? "Worker"),
                     new Claim(ClaimTypes.Role, "Worker")
                 }),
@@ -274,7 +255,7 @@ namespace Superbass.Controllers
             return Ok(new
             {
                 token = jwt,
-                email = worker.Email ?? worker.ResidentEmail,
+                email = worker.Email,
                 name = worker.Name,
                 picture = worker.ProfileImage,
                 isWorker = true,
