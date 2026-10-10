@@ -419,11 +419,18 @@ class ApiService {
     }
   }
 
-  /// 3b. Fetch Bookings for worker from /api/bookings/worker?email=...
-  Future<List<BookingModel>> fetchWorkerBookings(String workerEmail) async {
+  /// 3b. Fetch Bookings for worker from /api/bookings/worker?email=... or ?workerId=...
+  Future<List<BookingModel>> fetchWorkerBookings(String? workerEmail, {int? workerId}) async {
     try {
+      final Map<String, String> queryParams = {};
+      if (workerId != null && workerId > 0) {
+        queryParams['workerId'] = workerId.toString();
+      }
+      if (workerEmail != null && workerEmail.isNotEmpty) {
+        queryParams['email'] = workerEmail;
+      }
       final uri = Uri.parse('${ApiConfig.baseUrl}/api/bookings/worker').replace(
-        queryParameters: {'email': workerEmail},
+        queryParameters: queryParams,
       );
 
       debugPrint('Fetching worker bookings from: $uri');

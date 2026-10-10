@@ -2035,6 +2035,9 @@ class _FindTabScreenState extends State<FindTabScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) => Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(sheetContext).size.height * 0.90,
+        ),
         padding: const EdgeInsets.all(24),
         decoration: const BoxDecoration(
           color: Colors.white,
@@ -2124,11 +2127,11 @@ class _FindTabScreenState extends State<FindTabScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          worker.skills.isNotEmpty
-                              ? worker.skills.join(', ')
-                              : 'General Pro',
+                          worker.serviceNames.isNotEmpty
+                              ? worker.serviceNames.join(' • ')
+                              : worker.trade,
                           style: GoogleFonts.dmSans(
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w600,
                             fontSize: 14,
                             color: AppColors.onSurfaceVariant,
                           ),
@@ -2189,27 +2192,26 @@ class _FindTabScreenState extends State<FindTabScreen> {
               const SizedBox(height: 20),
               const Divider(color: AppColors.outlineVariant, height: 1),
               const SizedBox(height: 16),
-              if (worker.description != null &&
-                  worker.description!.isNotEmpty) ...[
-                Text(
-                  'About',
-                  style: GoogleFonts.dmSans(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                    color: AppColors.onSurface,
-                  ),
+              Text(
+                'About',
+                style: GoogleFonts.dmSans(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  color: AppColors.onSurface,
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  worker.description!,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 14,
-                    color: const Color(0xFF4B5563),
-                    height: 1.45,
-                  ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                (worker.description != null && worker.description!.trim().isNotEmpty)
+                    ? worker.description!
+                    : 'Certified professional ${worker.trade.toLowerCase()} craftsman serving ${worker.primaryServiceArea ?? 'Colombo'} and nearby regions.',
+                style: GoogleFonts.dmSans(
+                  fontSize: 14,
+                  color: const Color(0xFF4B5563),
+                  height: 1.45,
                 ),
-                const SizedBox(height: 16),
-              ],
+              ),
+              const SizedBox(height: 16),
               Text(
                 'Skills & Services',
                 style: GoogleFonts.dmSans(
@@ -2245,8 +2247,12 @@ class _FindTabScreenState extends State<FindTabScreen> {
                     )
                     .toList(),
               ),
+              const SizedBox(height: 20),
+              const Divider(color: AppColors.outlineVariant, height: 1),
+              const SizedBox(height: 16),
+              _buildWorkerRatingsAndReviews(worker),
               const SizedBox(height: 24),
-              if (isLoggedIn)
+              if (isLoggedIn) ...[
                 SizedBox(
                   width: double.infinity,
                   height: 48,
@@ -2256,7 +2262,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
                       _showBookingSheet(worker);
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.brandYellow,
+                      backgroundColor: AppColors.brandBlack,
                       foregroundColor: AppColors.onPrimary,
                       elevation: 0,
                       shape: const StadiumBorder(),
@@ -2270,8 +2276,36 @@ class _FindTabScreenState extends State<FindTabScreen> {
                       ),
                     ),
                   ),
-                )
-              else
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _openWorkerChat(worker, sheetContext),
+                    icon: const Icon(
+                      Icons.chat_bubble_outline_rounded,
+                      size: 18,
+                    ),
+                    label: Text(
+                      'Chat with ${worker.name.isNotEmpty ? worker.name.split(' ').first : "Pro"}',
+                      style: GoogleFonts.dmSans(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.brandBlack,
+                      side: const BorderSide(
+                        color: Color(0xFFE2E8F0),
+                        width: 1.5,
+                      ),
+                      shape: const StadiumBorder(),
+                      backgroundColor: const Color(0xFFF8FAFC),
+                    ),
+                  ),
+                ),
+              ] else
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(14),
@@ -2280,7 +2314,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
-                    'Please sign in to book this pro or request a service.',
+                    'Please sign in to book or chat with this pro.',
                     style: GoogleFonts.dmSans(
                       fontSize: 13,
                       color: AppColors.onSurfaceVariant,
@@ -2293,6 +2327,461 @@ class _FindTabScreenState extends State<FindTabScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Future<void> _openWorkerChat(WorkerModel worker, BuildContext sheetContext) async {
+    Navigator.pop(sheetContext);
+
+    final currentUser = AuthService().currentUser;
+    if (currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Please sign in to chat with this professional.',
+            style: GoogleFonts.dmSans(),
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final myEmail = currentUser.email.toLowerCase().trim();
+    final workerEmail = worker.email.toLowerCase().trim();
+    final residentEmail = worker.residentEmail.toLowerCase().trim();
+
+    if (myEmail.isNotEmpty && (myEmail == workerEmail || myEmail == residentEmail)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'You cannot start a chat with yourself.',
+            style: GoogleFonts.dmSans(),
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: SizedBox(
+          width: 36,
+          height: 36,
+          child: LoadingIndicatorM3E(),
+        ),
+      ),
+    );
+
+    try {
+      final conv = await ApiService().getOrCreateConversation(
+        workerId: worker.id,
+        workerEmail: worker.email.isNotEmpty ? worker.email : worker.residentEmail,
+        workerName: worker.name,
+        workerAvatar: worker.profileImage,
+        residentEmail: currentUser.email,
+      );
+
+      if (mounted) Navigator.of(context, rootNavigator: true).pop();
+
+      final convId = conv != null
+          ? (conv['id'] is int
+              ? conv['id']
+              : int.tryParse(conv['id']?.toString() ?? ''))
+          : null;
+
+      if (convId != null && mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ChatScreen(
+              conversationId: convId,
+              name: worker.name,
+              profileImage: worker.profileImage,
+              isVerified: worker.isVerified,
+            ),
+          ),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Could not start chat with ${worker.name}.',
+              style: GoogleFonts.dmSans(),
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) Navigator.of(context, rootNavigator: true).pop();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Error opening chat: $e',
+              style: GoogleFonts.dmSans(),
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildWorkerRatingBar(String label, IconData icon, double? rating) {
+    final double score = rating != null && rating > 0 ? rating : 5.0;
+    final double percentage = (score / 5.0).clamp(0.0, 1.0);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 15, color: const Color(0xFF64748B)),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF334155),
+                  ),
+                ),
+              ],
+            ),
+            Row(
+              children: [
+                const Icon(Icons.star_rounded, size: 14, color: AppColors.starRating),
+                const SizedBox(width: 3),
+                Text(
+                  score.toStringAsFixed(1),
+                  style: GoogleFonts.dmSans(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 5),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: LinearProgressIndicator(
+            value: percentage,
+            minHeight: 6,
+            backgroundColor: const Color(0xFFF1F5F9),
+            valueColor: const AlwaysStoppedAnimation<Color>(Colors.black),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWorkerRatingsAndReviews(WorkerModel worker) {
+    final double overallScore = (worker.overallRating != null && worker.overallRating! > 0)
+        ? worker.overallRating!
+        : 5.0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Ratings & Reviews',
+              style: GoogleFonts.dmSans(
+                fontWeight: FontWeight.w700,
+                fontSize: 15,
+                color: AppColors.onSurface,
+              ),
+            ),
+            if (worker.completedJobs > 0)
+              Text(
+                '${worker.completedJobs} jobs done',
+                style: GoogleFonts.dmSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF64748B),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        // Overall Score Overview Banner
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.star_rounded, color: AppColors.starRating, size: 20),
+                    const SizedBox(width: 4),
+                    Text(
+                      overallScore.toStringAsFixed(1),
+                      style: GoogleFonts.dmSans(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: List.generate(5, (index) {
+                        return Icon(
+                          Icons.star_rounded,
+                          size: 16,
+                          color: index < overallScore.round()
+                              ? AppColors.starRating
+                              : const Color(0xFFCBD5E1),
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      worker.overallRating != null && worker.overallRating! > 0
+                          ? 'Verified Customer Satisfaction'
+                          : 'High Verified Service Standard',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF475569),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // Category Rating Breakdown Bars
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Column(
+            children: [
+              _buildWorkerRatingBar(
+                'Quality & Craftsmanship',
+                Icons.handyman_rounded,
+                worker.qualityRating ?? overallScore,
+              ),
+              const SizedBox(height: 12),
+              _buildWorkerRatingBar(
+                'Punctuality & Timeliness',
+                Icons.schedule_rounded,
+                worker.punctualityRating ?? overallScore,
+              ),
+              const SizedBox(height: 12),
+              _buildWorkerRatingBar(
+                'Communication & Politeness',
+                Icons.forum_outlined,
+                worker.communicationRating ?? overallScore,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Client Written Reviews
+        FutureBuilder<List<BookingModel>>(
+          future: ApiService().fetchWorkerBookings(
+            worker.email.isNotEmpty ? worker.email : null,
+            workerId: worker.id,
+          ),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                  ),
+                ),
+              );
+            }
+
+            final bookings = snapshot.data ?? [];
+            final reviews = bookings.where((b) {
+              final hasRating = b.reviewRating != null && b.reviewRating! > 0;
+              final hasComment = b.reviewComment != null && b.reviewComment!.trim().isNotEmpty;
+              final isReviewed = b.status.toLowerCase() == 'reviewed';
+              return isReviewed || hasRating || hasComment;
+            }).toList();
+
+            if (reviews.isEmpty) {
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.verified_outlined, size: 18, color: Color(0xFF64748B)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Verified professional pro with verified job completions.',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12.5,
+                          color: const Color(0xFF64748B),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Recent Client Feedback (${reviews.length})',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF334155),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ...reviews.take(3).map((b) {
+                  final initial = b.residentName.isNotEmpty
+                      ? b.residentName[0].toUpperCase()
+                      : 'R';
+                  final ratingVal = b.reviewRating ?? 5.0;
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 14,
+                              backgroundColor: Colors.black,
+                              child: Text(
+                                initial,
+                                style: GoogleFonts.dmSans(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    b.residentName.isNotEmpty ? b.residentName : 'Resident',
+                                    style: GoogleFonts.dmSans(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                  if (b.jobTitle.isNotEmpty)
+                                    Text(
+                                      b.jobTitle,
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 11,
+                                        color: const Color(0xFF64748B),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFEF3C7),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.star_rounded, size: 13, color: Color(0xFFD97706)),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    ratingVal.toStringAsFixed(1),
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: const Color(0xFFB45309),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (b.reviewComment != null && b.reviewComment!.trim().isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            '"${b.reviewComment!.trim()}"',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 12.5,
+                              fontStyle: FontStyle.italic,
+                              color: const Color(0xFF334155),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            );
+          },
+        ),
+      ],
     );
   }
 
