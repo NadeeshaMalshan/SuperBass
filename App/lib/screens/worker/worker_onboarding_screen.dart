@@ -361,7 +361,7 @@ class _WorkerOnboardingScreenState extends State<WorkerOnboardingScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: AppColors.line),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
@@ -400,7 +400,7 @@ class _WorkerOnboardingScreenState extends State<WorkerOnboardingScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: AppColors.line),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
@@ -495,7 +495,7 @@ class _WorkerOnboardingScreenState extends State<WorkerOnboardingScreen> {
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: WorkerServicesCatalog.categories.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 10),
+            separatorBuilder: (_, _) => const SizedBox(width: 10),
             itemBuilder: (context, index) {
               final cat = WorkerServicesCatalog.categories[index];
               final isSelected = cat.id == _selectedCategory.id;
@@ -509,7 +509,7 @@ class _WorkerOnboardingScreenState extends State<WorkerOnboardingScreen> {
                     color: isSelected ? AppColors.brandBlack : Colors.white,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: isSelected ? AppColors.brandBlack : AppColors.border,
+                      color: isSelected ? AppColors.brandBlack : AppColors.line,
                       width: isSelected ? 2 : 1,
                     ),
                     boxShadow: isSelected
@@ -569,7 +569,7 @@ class _WorkerOnboardingScreenState extends State<WorkerOnboardingScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
                 side: BorderSide(
-                  color: isChosen ? AppColors.brandBlack : AppColors.border,
+                  color: isChosen ? AppColors.brandBlack : AppColors.line,
                 ),
               ),
               onSelected: (bool selected) {
@@ -645,7 +645,7 @@ class _WorkerOnboardingScreenState extends State<WorkerOnboardingScreen> {
                     color: isSelected ? AppColors.brandBlack : Colors.white,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: isSelected ? AppColors.brandBlack : AppColors.border,
+                      color: isSelected ? AppColors.brandBlack : AppColors.line,
                     ),
                   ),
                   child: Center(
@@ -709,11 +709,37 @@ class _WorkerOnboardingScreenState extends State<WorkerOnboardingScreen> {
           'Add a short professional bio highlighting your punctuality, skills, or specialized tools.',
         ),
         const SizedBox(height: 24),
-        WorkioTextField(
-          label: 'About You / Bio (Optional)',
-          controller: _bioController,
-          maxLines: 4,
-          onChanged: (_) => setState(() {}),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'About You / Bio (Optional)',
+              style: GoogleFonts.dmSans(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: AppColors.ink,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.line),
+              ),
+              child: TextField(
+                controller: _bioController,
+                maxLines: 4,
+                style: GoogleFonts.dmSans(fontSize: 15, color: AppColors.ink),
+                decoration: const InputDecoration(
+                  hintText: 'Share a brief summary of your expertise...',
+                  contentPadding: EdgeInsets.all(14),
+                  border: InputBorder.none,
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 24),
         Text(
@@ -730,7 +756,7 @@ class _WorkerOnboardingScreenState extends State<WorkerOnboardingScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: AppColors.line),
           ),
           child: Column(
             children: [
@@ -771,9 +797,10 @@ class _WorkerOnboardingScreenState extends State<WorkerOnboardingScreen> {
     if (_step == 4) isNextEnabled = _isStep4Valid;
     if (_step == 5) isNextEnabled = true;
 
-    return WorkioButton(
-      text: _step == 5 ? 'Complete Registration' : 'Next Step',
-      isLoading: _isSubmitting,
+    return WorkioPrimaryButton(
+      label: _step == 5 ? 'Complete Registration' : 'Next Step',
+      isLoading: _step == 5 && _isSubmitting,
+      isLastStep: _step == 5,
       onPressed: isNextEnabled
           ? () {
               if (_step < 5) {
@@ -788,9 +815,9 @@ class _WorkerOnboardingScreenState extends State<WorkerOnboardingScreen> {
 }
 
 class BoxBorderEffect {
-  static final selectedGlow = BoxShadow(
-    color: Colors.black.withOpacity(0.08),
+  static const selectedGlow = BoxShadow(
+    color: Color(0x14000000),
     blurRadius: 10,
-    offset: const Offset(0, 4),
+    offset: Offset(0, 4),
   );
 }
