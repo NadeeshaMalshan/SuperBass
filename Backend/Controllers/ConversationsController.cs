@@ -219,10 +219,8 @@ namespace Superbass.Controllers
             }
 
             // 1. Only allow the correct worker
-            var isCorrectWorker = conv.Worker != null && (
-                string.Equals(conv.Worker.Email?.Trim().ToLower(), cleanRequester, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(conv.Worker.ResidentEmail?.Trim().ToLower(), cleanRequester, StringComparison.OrdinalIgnoreCase)
-            );
+            var isCorrectWorker = conv.Worker != null && 
+                string.Equals(conv.Worker.Email?.Trim().ToLower(), cleanRequester, StringComparison.OrdinalIgnoreCase);
 
             if (!isCorrectWorker)
             {
