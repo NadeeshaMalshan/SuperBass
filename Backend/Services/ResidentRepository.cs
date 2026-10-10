@@ -60,18 +60,7 @@ namespace Superbass.Services
                 if (updateDto.NicNumber != null) resident.NicNumber = updateDto.NicNumber;
             }
 
-            // If profile image is being updated, synchronize it to worker profile if user is also a worker
-            if (!string.IsNullOrWhiteSpace(updateDto.ProfileImage))
-            {
-                var cleanEmail = email.Trim().ToLower();
-                var worker = await _context.Workers.FirstOrDefaultAsync(w =>
-                    (w.ResidentEmail != null && w.ResidentEmail.ToLower() == cleanEmail) ||
-                    w.Email.ToLower() == cleanEmail);
-                if (worker != null)
-                {
-                    worker.ProfileImage = updateDto.ProfileImage;
-                }
-            }
+            // Profile image is updated for resident only - workers are completely independent
 
             if (updateDto.Address != null && updateDto.LocationLat == null && updateDto.LocationLng == null)
             {
@@ -133,18 +122,7 @@ namespace Superbass.Services
                 }
             }
 
-            // Sync to worker profile if exists for this resident email
-            var worker = await _context.Workers.FirstOrDefaultAsync(w => 
-                (w.ResidentEmail != null && w.ResidentEmail.ToLower() == cleanEmail) || 
-                w.Email.ToLower() == cleanEmail);
-            if (worker != null)
-            {
-                worker.IsVerified = true;
-                if (!string.IsNullOrWhiteSpace(nicNumber))
-                {
-                    worker.NicNumber = nicNumber.Trim();
-                }
-            }
+            // Workers are completely independent entities - no verification sync
 
             await _context.SaveChangesAsync();
             return true;
@@ -160,16 +138,11 @@ namespace Superbass.Services
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                // Find worker associated with this resident/email if any
-                var worker = await _context.Workers.FirstOrDefaultAsync(w => 
-                    (w.ResidentEmail != null && w.ResidentEmail.ToLower() == cleanEmail) || 
-                    (w.Email != null && w.Email.ToLower() == cleanEmail));
+                // Workers are completely independent entities — deleting a resident does NOT affect any worker account.
 
-                var workerId = worker?.Id;
-
-                // 1. Delete Chat Messages & Conversations
+                // 1. Delete Chat Messages & Conversations owned by resident
                 var conversationIds = await _context.Conversations
-                    .Where(c => c.ResidentEmail.ToLower() == cleanEmail || (workerId.HasValue && c.WorkerId == workerId.Value))
+                    .Where(c => c.ResidentEmail.ToLower() == cleanEmail)
                     .Select(c => c.Id)
                     .ToListAsync();
 
@@ -184,9 +157,9 @@ namespace Superbass.Services
                         .ExecuteDeleteAsync();
                 }
 
-                // 2. Delete Bookings
+                // 2. Delete Bookings requested by resident
                 await _context.Bookings
-                    .Where(b => b.ResidentEmail.ToLower() == cleanEmail || (workerId.HasValue && b.WorkerId == workerId.Value))
+                    .Where(b => b.ResidentEmail.ToLower() == cleanEmail)
                     .ExecuteDeleteAsync();
 
                 // 3. Delete Community Comments & Reports by this user
@@ -219,18 +192,7 @@ namespace Superbass.Services
                         .ExecuteDeleteAsync();
                 }
 
-                // 5. Delete Worker & WorkerSkills if present
-                if (worker != null)
-                {
-                    await _context.WorkerSkills
-                        .Where(s => s.WorkerId == worker.Id)
-                        .ExecuteDeleteAsync();
-
-                    _context.Workers.Remove(worker);
-                    await _context.SaveChangesAsync();
-                }
-
-                // 6. Delete Resident
+                // 5. Delete Resident
                 _context.Residents.Remove(resident);
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
