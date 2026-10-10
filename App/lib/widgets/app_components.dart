@@ -588,7 +588,7 @@ class UberPromoBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 145,
+      height: 156,
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(20),
@@ -606,10 +606,10 @@ class UberPromoBanner extends StatelessWidget {
           children: [
             // Right organic pastel blob background
             Positioned(
-              right: -15,
+              right: -10,
               top: -20,
               bottom: -20,
-              width: 160,
+              width: 175,
               child: Container(
                 decoration: BoxDecoration(
                   color: blobColor,
@@ -625,10 +625,10 @@ class UberPromoBanner extends StatelessWidget {
 
             // 3D Illustration Graphic on Right
             Positioned(
-              right: 14,
-              top: 12,
-              bottom: 12,
-              width: 120,
+              right: 8,
+              top: 6,
+              bottom: 6,
+              width: 140,
               child: Center(
                 child: Image.asset(
                   imageAsset,
@@ -644,7 +644,7 @@ class UberPromoBanner extends StatelessWidget {
 
             // Left Content (Title, Subtitle & Button)
             Padding(
-              padding: const EdgeInsets.fromLTRB(18, 16, 140, 16),
+              padding: const EdgeInsets.fromLTRB(16, 14, 142, 14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -665,15 +665,16 @@ class UberPromoBanner extends StatelessWidget {
                         ),
                       ),
                       if (subtitle != null) ...[
-                        const SizedBox(height: 3),
+                        const SizedBox(height: 4),
                         Text(
                           subtitle!,
-                          maxLines: 1,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.dmSans(
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
                             color: AppColors.onSurfaceVariant,
+                            height: 1.25,
                           ),
                         ),
                       ],
@@ -754,7 +755,7 @@ class _UberPromoCarouselState extends State<UberPromoCarousel> {
     return Column(
       children: [
         SizedBox(
-          height: 145,
+          height: 156,
           child: PageView.builder(
             controller: _pageController,
             itemCount: widget.banners.length,

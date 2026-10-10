@@ -2525,7 +2525,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
                   banners: [
                     UberPromoBanner(
                       title: 'Find workers from\nCommunity Hub',
-                      subtitle: 'Connect, discuss & get trusted local help',
+                      subtitle: 'Connect, discuss &\nget trusted local help',
                       buttonText: 'Explore now',
                       imageAsset: 'assets/icons/community.png',
                       blobColor: const Color(0xFFFFECE5),
@@ -2550,7 +2550,7 @@ class _FindTabScreenState extends State<FindTabScreen> {
                     ),
                     UberPromoBanner(
                       title: 'AI Smart Assistant\nFind best pros fast!',
-                      subtitle: 'Instant diagnosis & smart matching',
+                      subtitle: 'Instant diagnosis &\nsmart matching',
                       buttonText: 'Try AI Match',
                       imageAsset: 'assets/icons/AI.png',
                       blobColor: const Color(0xFFE8F1FF),
