@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import axios from 'axios';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -31,6 +31,7 @@ export default function Find() {
   const [userPicture, setUserPicture] = useState('');
 
   const [workers, setWorkers] = useState([]);
+  const [allWorkers, setAllWorkers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState(() => {
     try {
@@ -386,6 +387,23 @@ export default function Find() {
     };
   }, [userLocation, selectedProvince, selectedDistrict, debouncedSearchQuery, selectedCategories, currentPage]);
 
+  // Fetch full worker catalog once to enable instantaneous, accurate filter counts across the whole database
+  useEffect(() => {
+    let isMounted = true;
+    const fetchAllWorkers = async () => {
+      try {
+        const res = await axios.get(`${API_BASE_URL}/workers`);
+        if (isMounted && res.data && Array.isArray(res.data)) {
+          setAllWorkers(res.data);
+        }
+      } catch (err) {
+        console.warn('Could not fetch all workers for filter counts:', err);
+      }
+    };
+    fetchAllWorkers();
+    return () => { isMounted = false; };
+  }, []);
+
   const getInitial = (name) => {
     if (!name) return 'U';
     return name.trim().charAt(0).toUpperCase();
@@ -430,8 +448,59 @@ export default function Find() {
     navigate('/find');
   };
 
-  const verifiedWorkers = workers.filter(w => w.isVerified || w.verified);
-  const starredCount = Object.keys(favorites).filter(id => favorites[id] && verifiedWorkers.some(w => w.id === Number(id))).length;
+  // Workers scoped to current geographic & search criteria for sidebar counts (never restricted to current page of 9 items)
+  const regionScopedWorkers = useMemo(() => {
+    const list = (allWorkers && allWorkers.length > 0) ? allWorkers : workers;
+    return list.filter(w => {
+      // 1.5 Province & District Filter
+      if (selectedProvince && selectedProvince !== 'all') {
+        const provDistricts = sriLankaDistricts[selectedProvince] || [];
+        const provKey = selectedProvince.toLowerCase().replace(' province', '');
+        const matchProv = (w.province && w.province.toLowerCase().includes(provKey)) ||
+                          (w.district && provDistricts.some(d => d.toLowerCase() === w.district.toLowerCase())) ||
+                          (w.primaryServiceArea && provDistricts.some(d => w.primaryServiceArea.toLowerCase().includes(d.toLowerCase()))) ||
+                          (w.description && w.description.toLowerCase().includes(provKey));
+        if (!matchProv) return false;
+      }
+
+      if (selectedDistrict && selectedDistrict !== 'all') {
+        const distLower = selectedDistrict.toLowerCase();
+        const matchDist = (w.district && w.district.toLowerCase() === distLower) ||
+                          (w.primaryServiceArea && w.primaryServiceArea.toLowerCase().includes(distLower)) ||
+                          (w.description && w.description.toLowerCase().includes(distLower));
+        if (!matchDist) return false;
+      }
+
+      // 1.6 Location Query Filter (PrimaryServiceArea, address, name, city)
+      if (appliedLocationQuery.trim() !== '' && !appliedLocationQuery.toLowerCase().includes('all')) {
+        if (!matchesWorkerLocation(w, appliedLocationQuery)) {
+          return false;
+        }
+      }
+
+      // Search Query Filter
+      if (debouncedSearchQuery && debouncedSearchQuery.trim() !== '') {
+        const qLower = debouncedSearchQuery.trim().toLowerCase();
+        const matchName = w.name && w.name.toLowerCase().includes(qLower);
+        const matchDesc = w.description && w.description.toLowerCase().includes(qLower);
+        const matchSkill = w.skills && Array.isArray(w.skills) && w.skills.some(s => {
+          const sName = (s.serviceName || s.ServiceName || s.skillName || s.SkillName || '').toLowerCase();
+          if (sName.includes(qLower)) return true;
+          const subSkills = s.skills || s.Skills;
+          if (Array.isArray(subSkills)) {
+            return subSkills.some(sub => typeof sub === 'string' && sub.toLowerCase().includes(qLower));
+          }
+          return false;
+        });
+        if (!matchName && !matchDesc && !matchSkill) return false;
+      }
+
+      return true;
+    });
+  }, [allWorkers, workers, selectedProvince, selectedDistrict, appliedLocationQuery, debouncedSearchQuery]);
+
+  const verifiedWorkers = regionScopedWorkers.filter(w => w.isVerified || w.verified);
+  const starredCount = Object.keys(favorites).filter(id => favorites[id] && regionScopedWorkers.some(w => w.id === Number(id))).length;
   const availableCount = verifiedWorkers.filter(w => w.isAvailable).length;
   const topRatedCount = verifiedWorkers.filter(w => (w.overallRating ?? 0) >= 4.5).length;
   const verifiedCount = verifiedWorkers.length;
@@ -479,14 +548,40 @@ export default function Find() {
     return [userLocation[0] + latOffset, userLocation[1] + lngOffset];
   };
 
-  // Category counts calculation
+  // Category counts calculation across all region-scoped workers
   const getCategoryCount = (catId) => {
-    return workers.filter(w => {
+    const target = (catId || '').toLowerCase().trim();
+    return regionScopedWorkers.filter(w => {
       if (!w.isVerified && !w.verified) return false;
-      if (w.skills && w.skills.length > 0) {
-        return w.skills.some(s => s.skillName.toLowerCase().includes(catId.toLowerCase()));
+
+      if (w.skills && Array.isArray(w.skills) && w.skills.length > 0) {
+        const hasSkillMatch = w.skills.some(s => {
+          const sName = (s.serviceName || s.ServiceName || s.skillName || s.SkillName || '').toLowerCase();
+          if (sName === target || sName.includes(target) || target.includes(sName)) return true;
+
+          // Common aliases
+          if (target.includes('ac') && sName.includes('air conditioning')) return true;
+          if (target.includes('vehicle') && (sName.includes('mechanic') || sName.includes('auto'))) return true;
+          if (target.includes('plumb') && sName.includes('pipe')) return true;
+          if (target.includes('electr') && sName.includes('wiring')) return true;
+
+          const subSkills = s.skills || s.Skills;
+          if (Array.isArray(subSkills)) {
+            return subSkills.some(sub => typeof sub === 'string' && (sub.toLowerCase().includes(target) || target.includes(sub.toLowerCase())));
+          }
+          return false;
+        });
+        if (hasSkillMatch) return true;
       }
-      return w.description && w.description.toLowerCase().includes(catId.toLowerCase());
+
+      if (w.description && typeof w.description === 'string') {
+        const descLower = w.description.toLowerCase();
+        if (descLower.includes(target)) return true;
+        if (target.includes('ac') && descLower.includes('air conditioning')) return true;
+        if (target.includes('vehicle') && (descLower.includes('mechanic') || descLower.includes('auto'))) return true;
+      }
+
+      return false;
     }).length;
   };
 
