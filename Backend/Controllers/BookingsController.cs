@@ -69,7 +69,7 @@ namespace Superbass.Controllers
                 ResidentProfileImage = b.Resident?.ProfileImage,
                 WorkerId = b.WorkerId,
                 WorkerName = b.Worker?.Name ?? "Worker",
-                WorkerEmail = b.Worker?.Email ?? b.Worker?.ResidentEmail ?? string.Empty,
+                WorkerEmail = b.Worker?.Email ?? string.Empty,
                 WorkerPhone = b.IsContactShared ? b.Worker?.PhoneNo : null,
                 WorkerProfileImage = b.Worker?.ProfileImage,
                 JobTitle = b.JobTitle,
@@ -120,7 +120,7 @@ namespace Superbass.Controllers
                 }
 
                 // Reject if hiring account is a worker
-                var isWorkerAccount = await _context.Workers.AnyAsync(w => w.Email == residentEmail || w.ResidentEmail == residentEmail);
+                var isWorkerAccount = await _context.Workers.AnyAsync(w => w.Email == residentEmail);
                 if (isWorkerAccount)
                 {
                     return BadRequest(new { message = "Workers are not permitted to hire or create bookings. Please switch to a Resident account to book services." });
@@ -217,7 +217,7 @@ namespace Superbass.Controllers
                     .FirstAsync(b => b.Id == booking.Id);
 
                 // Send OneSignal push notification to worker
-                var workerTargetEmail = worker.ResidentEmail ?? worker.Email;
+                var workerTargetEmail = worker.Email;
                 if (!string.IsNullOrWhiteSpace(workerTargetEmail))
                 {
                     try
@@ -305,7 +305,7 @@ namespace Superbass.Controllers
                 {
                     return BadRequest(new { message = "Worker ID or email is required." });
                 }
-                query = query.Where(b => b.Worker != null && (b.Worker.Email == userEmail || b.Worker.ResidentEmail == userEmail));
+                query = query.Where(b => b.Worker != null && b.Worker.Email == userEmail);
             }
 
             var bookings = await query.OrderByDescending(b => b.CreatedAt).ToListAsync();
@@ -567,7 +567,7 @@ namespace Superbass.Controllers
             // Send OneSignal push to the other party
             var currentUser = GetCurrentUserEmail();
             var isCancelledByResident = string.Equals(currentUser, booking.ResidentEmail, StringComparison.OrdinalIgnoreCase);
-            var notifyEmail = isCancelledByResident ? (booking.Worker?.ResidentEmail ?? booking.Worker?.Email) : booking.ResidentEmail;
+            var notifyEmail = isCancelledByResident ? booking.Worker?.Email : booking.ResidentEmail;
             if (!string.IsNullOrWhiteSpace(notifyEmail))
             {
                 _ = _pushNotificationService.SendPushNotificationAsync(
