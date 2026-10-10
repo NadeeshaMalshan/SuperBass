@@ -9,6 +9,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 import json
 
 
+import urllib.parse
+
+
 def normalize_database_url(raw: str) -> str:
     """Converts ADO.NET connection strings or standard postgres URLs to asyncpg format."""
     default_url = "postgresql+asyncpg://postgres:123456@localhost:5432/workio"
@@ -29,9 +32,13 @@ def normalize_database_url(raw: str) -> str:
         db = parts.get("database", "workio")
         user = parts.get("username", parts.get("user id", "postgres"))
         pwd = parts.get("password", "123456")
+        user_enc = urllib.parse.quote_plus(user)
+        pwd_enc = urllib.parse.quote_plus(pwd)
         ssl_part = "?ssl=require" if "localhost" not in host and "127.0.0.1" not in host else ""
-        return f"postgresql+asyncpg://{user}:{pwd}@{host}:{port}/{db}{ssl_part}"
+        return f"postgresql+asyncpg://{user_enc}:{pwd_enc}@{host}:{port}/{db}{ssl_part}"
 
+    if clean_raw.startswith("postgres://"):
+        return clean_raw.replace("postgres://", "postgresql+asyncpg://", 1)
     if clean_raw.startswith("postgresql://"):
         return clean_raw.replace("postgresql://", "postgresql+asyncpg://", 1)
 
